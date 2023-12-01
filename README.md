@@ -24,14 +24,6 @@ Before installing the application, ensure you have the following dependencies:
 - keyring
 - pydub
 
-### Install Dependencies
-
-To install the required dependencies, run the following command in your terminal:
-
-```bash
-pip install PyQt5 yt_dlp moviepy requests torch whisperx keyring pydub openai
-```
-
 ### Clone the Repository
 
 Clone the repository to your local machine:
@@ -40,6 +32,13 @@ Clone the repository to your local machine:
 git clone https://github.com/your-username/audio-transcription-app.git
 cd audio-transcription-app
 ```
+
+### Install Dependencies
+
+To install the required dependencies, run the following command in your terminal:
+
+```bash
+pip install -r requirements.txt
 
 ### Usage
 
