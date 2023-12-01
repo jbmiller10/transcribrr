@@ -29,8 +29,8 @@ Before installing the application, ensure you have the following dependencies:
 Clone the repository to your local machine:
 
 ```bash
-git clone https://github.com/your-username/audio-transcription-app.git
-cd audio-transcription-app
+git clone https://github.com/jbmiller10/transcribrr.git
+cd transcribrr
 ```
 
 ### Install Dependencies
