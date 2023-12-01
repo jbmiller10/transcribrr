@@ -9,11 +9,11 @@ import traceback
 from PyQt5.QtWidgets import QDialog, QVBoxLayout, QLabel, QLineEdit, QDialogButtonBox
 import keyring
 import json
-import YouTubeDownloadThread
-import SettingsDialog
-import TranscodingThread
-import TranscriptionThread
-import GPT4ProcessingThread
+from YouTubeDownloadThread import YouTubeDownloadThread
+from SettingsDialog import SettingsDialog
+from TranscodingThread import TranscodingThread
+from TranscriptionThread import TranscriptionThread
+from GPT4ProcessingThread import GPT4ProcessingThread
 
 class MainWindow(QMainWindow):
     def __init__(self):

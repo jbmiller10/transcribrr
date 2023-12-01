@@ -2,7 +2,7 @@ import yt_dlp
 from PyQt5.QtCore import QThread, pyqtSignal,Qt
 import traceback
 
-class YouTub2eDownloadThread(QThread):
+class YouTubeDownloadThread(QThread):
     update_progress = pyqtSignal(str)
     completed = pyqtSignal(str)
     error = pyqtSignal(str)

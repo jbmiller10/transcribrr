@@ -1,0 +1,18 @@
+{
+    "Journal Entry Formatting": "Format this raw audio transcript into a clean, coherent journal entry, maintaining a first-person narrative style.",
+    "Meeting Minutes": "Convert this transcript into a structured format of meeting minutes, highlighting key points, decisions made, and action items.",
+    "Interview Summary": "Summarize this interview transcript, emphasizing the main questions, responses, and any significant insights or conclusions.",
+    "Lecture Notes": "Condense this lecture transcript into concise notes, outlining the main topics, subtopics, and key points discussed.",
+    "Podcast Highlights": "Extract key highlights and interesting moments from this podcast transcript, presenting them in a bullet-point format.",
+    "Dialogue Cleanup": "Edit this dialogue transcript to remove filler words, repeated phrases, and non-verbal cues, making it more readable.",
+    "Speech to Article": "Transform this speech transcript into a well-structured article, maintaining the speaker's key messages and tone.",
+    "Q&A Format": "Organize this transcript into a clear question-and-answer format, ensuring each question and its corresponding answer are clearly presented.",
+    "Debate Summary": "Summarize this debate transcript, outlining the main points and arguments presented by each participant.",
+    "Storytelling Enhancement": "Enhance this narrative transcript by adding descriptive language and storytelling elements to make it more engaging.",
+    "Technical Explanation": "Rewrite this technical discussion transcript into a simpler, more understandable format for a general audience.",
+    "Legal Testimony Review": "Condense this legal testimony transcript, focusing on the key statements and evidence presented.",
+    "Conference Session Summary": "Provide a concise summary of this conference session transcript, highlighting the main themes, discussions, and conclusions.",
+    "Youtube to Article": "You will recieve the raw transcript of a video. Convert it into a readable article format. Retain as much detail as possible. I want to get all of the information conveyed in the video, within reason. Be verbose. You may use up to 2000 words.",
+    "Educational Course Summary": "Summarize this educational course transcript into a study guide format, including headings, key concepts, and important explanations.",
+    "Custom": ""
+}

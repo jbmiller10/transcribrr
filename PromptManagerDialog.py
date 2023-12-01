@@ -1,8 +1,10 @@
 from PyQt5.QtWidgets import (QPushButton, QTableWidgetItem, QHBoxLayout,
                              QTableWidget)
-from PyQt5.QtCore import  pyqtSignal
+from PyQt5.QtCore import pyqtSignal
 from PyQt5.QtWidgets import QDialog, QVBoxLayout
 import json
+
+
 class PromptManagerDialog(QDialog):
     prompts_saved = pyqtSignal()
     def __init__(self, preset_prompts, parent=None):
