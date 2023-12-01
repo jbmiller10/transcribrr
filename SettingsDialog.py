@@ -16,6 +16,7 @@ import whisperx
 from PyQt5.QtWidgets import QDialog, QVBoxLayout, QLabel, QLineEdit, QDialogButtonBox
 import keyring
 import json
+from PromptManagerDialog import PromptManagerDialog
 
 class SettingsDialog(QDialog):
     settings_changed = pyqtSignal()
