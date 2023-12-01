@@ -24,7 +24,7 @@ class TranscriptionThread(QThread):
             self.update_progress.emit('Transcription started...')
             device = "cuda" if torch.cuda.is_available() else "cpu"
             compute_type = "float16" if torch.cuda.is_available() else "float32"
-            model = whisperx.load_model(self.transcription_quality, device, compute_type="float16", language=self.language)
+            model = whisperx.load_model(self.transcription_quality, device, compute_type=compute_type, language=self.language)
             audio = whisperx.load_audio(self.file_path)
             result = model.transcribe(audio, batch_size=16)
             if not self.speaker_detection_enabled:
