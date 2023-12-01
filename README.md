@@ -14,7 +14,7 @@
 
 Before installing the application, ensure you have the following dependencies:
 
-- Python 3.7 or higher
+- Python 3.10 or higher
 - PyQt5
 - yt_dlp
 - moviepy
