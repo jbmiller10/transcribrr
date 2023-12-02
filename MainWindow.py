@@ -24,6 +24,7 @@ class MainWindow(QMainWindow):
         self.central_widget = QWidget(self)
         self.setCentralWidget(self.central_widget)
         self.layout = QGridLayout(self.central_widget)
+        self.status_bar = QStatusBar()
 
         # Initialize instance variables for all settings with default values
         self.transcription_quality = None
