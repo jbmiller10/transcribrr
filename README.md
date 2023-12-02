@@ -15,14 +15,9 @@
 Before installing the application, ensure you have the following dependencies:
 
 - Python 3.10 or higher
-- PyQt5
-- yt_dlp
-- moviepy
-- requests
-- torch
-- whisperx
-- keyring
-- pydub
+- Cuda 11.8 (for hardware acceleration)
+- ffmpeg
+- pyqt5
 
 ### Clone the Repository
 
