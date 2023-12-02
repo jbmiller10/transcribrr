@@ -2,7 +2,7 @@
 
 - Transcribe audio from local video/audio files or YouTube URLs via a simple GUI application
 - local transcription with optional speaker detection/diarization
-- GPT-4 for transcript processing
+- GPT-4 for transcript processing & summarization
 - Manageable transcription quality settings
 - Preset prompts management for GPT processing
 
