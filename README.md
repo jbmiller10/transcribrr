@@ -2,10 +2,9 @@
 
 - Transcribe audio from local video/audio files or YouTube URLs
 - Audio extraction from video files
-- Transcription with speaker detection using Hugging Face Whisper models
-- Integration with GPT-4 for transcript processing
+- local Transcription with optional 
+- GPT-4 for transcript processing
 - Manageable transcription quality settings
-- Convenient settings management for API keys and transcription parameters
 - Preset prompts management for GPT processing
 
 ## Installation
