@@ -51,7 +51,8 @@ Before usage, configure the application with your Hugging Face Access Token (opt
 
 You can also adjust transcription quality, GPT model selection, max tokens, temperature, and speaker detection settings.
 
-###Speaker Detection/Diarization
+### Speaker Detection/Diarization
+
 To **enable Speaker Detection**, you will need a Huggingface Access token that you can generate [Here](https://huggingface.co/settings/tokens) that you can set in the settings menu. Additionally, you will need to accept the usage terms for the following models while logged into your huggingface account: [Segmentation](https://huggingface.co/pyannote/segmentation) and [Speaker-Diarization-2.1.1](https://huggingface.co/pyannote/speaker-diarization).
 
 
