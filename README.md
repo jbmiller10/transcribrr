@@ -13,9 +13,8 @@
 Before installing the application, ensure you have the following dependencies:
 
 - Python 3.10 or higher
-- Cuda 11.8 or higher (optional, though highly recommended, for hardware acceleration)
-- ffmpeg
-- pyqt5
+- [Cuda 11.8 or higher](https://docs.nvidia.com/cuda/cuda-quick-start-guide/index.html) (optional, though highly recommended, for hardware acceleration)
+- [ffmpeg](https://ffmpeg.org/download.html)
 
 ### Clone the Repository
 
