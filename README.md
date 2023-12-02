@@ -13,7 +13,7 @@
 Before installing the application, ensure you have the following dependencies:
 
 - Python 3.10 or higher
-- Cuda 11.8 (for hardware acceleration)
+- Cuda 11.8 or higher (for hardware acceleration)
 - ffmpeg
 - pyqt5
 
@@ -49,7 +49,12 @@ python main.py
 
 Before usage, configure the application with your Hugging Face Access Token (optional, required for speaker detection/diarization) and OpenAI API keys through the 'Settings' menu.
 
-You can also adjust transcription quality, GPT model selection, max tokens, temperature, and speaker detection settings.
+You can also adjust transcription quality, GPT model selection, max tokens, temperature, speaker detection settings, and your preset GPT prompts.
+
+### Speaker Detection/Diarization
+
+To **enable Speaker Detection**, you will need a Huggingface Access token that you can generate [Here](https://huggingface.co/settings/tokens) that you can set in the settings menu. Additionally, you will need to accept the usage terms for the following models while logged into your huggingface account: [Segmentation](https://huggingface.co/pyannote/segmentation) and [Speaker-Diarization](https://huggingface.co/pyannote/speaker-diarization).
+
 
 ## How to Use
 
