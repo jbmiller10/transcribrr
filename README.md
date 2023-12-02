@@ -59,9 +59,3 @@ You can also adjust transcription quality, GPT model selection, max tokens, temp
 3. If using the YouTube URL mode, paste the YouTube link into the corresponding field.
 4. Click the "Start Transcription" button to begin processing.
 5. After transcription, you can process the text with GPT-4 using the "Process with GPT-4" button after setting your prompts.
-
-
-
----
-
-For any questions, feature requests, or bug reports, feel free to create an issue on the repository or contact the maintainer directly.
