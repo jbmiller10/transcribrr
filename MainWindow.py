@@ -2,7 +2,7 @@ import re
 from PyQt5.QtWidgets import (QApplication, QMainWindow, QGridLayout, QWidget, QLabel,
                              QPushButton, QComboBox, QLineEdit, QFileDialog, QTextEdit,
                              QMessageBox, QStatusBar, QAction, QTableWidgetItem, QHBoxLayout, QDoubleSpinBox, QSpinBox,
-                             QCheckBox, QTableWidget,QStyleFactory)
+                             QCheckBox, QTableWidget,QStyleFactory, QSizePolicy)
 from PyQt5.QtCore import QThread, pyqtSignal,Qt
 import os
 import traceback
@@ -75,6 +75,19 @@ class MainWindow(QMainWindow):
         self.gpt_processed_text = QTextEdit()
         self.status_bar = QStatusBar()
         self.setStatusBar(self.status_bar)
+
+        #text box sizes/resize policies
+        self.raw_transcript_text.setMinimumSize(0, 200)
+        self.gpt_processed_text.setMinimumSize(0, 200)
+        self.gpt_prompt_text.setMinimumSize(0, 50)
+        size_policy_large = QSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
+        size_policy_small = QSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
+        size_policy_large.setVerticalStretch(7)
+        size_policy_small.setVerticalStretch(1)
+        self.raw_transcript_text.setSizePolicy(size_policy_large)
+        self.gpt_processed_text.setSizePolicy(size_policy_large)
+        self.gpt_prompt_text.setSizePolicy(size_policy_small)
+
 
         # Connect signals
         self.open_file_button.clicked.connect(self.open_file_dialog)
