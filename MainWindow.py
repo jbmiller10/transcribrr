@@ -17,7 +17,7 @@ from GPT4ProcessingThread import GPT4ProcessingThread
 class MainWindow(QMainWindow):
     def __init__(self):
         super().__init__()
-        self.setWindowTitle('Audio Transcription App')
+        self.setWindowTitle('Transcribrr')
         self.setGeometry(100, 100, 800, 600)
         self.is_process_running = False
         self.central_widget = QWidget(self)
@@ -137,6 +137,11 @@ class MainWindow(QMainWindow):
         # Additional setup for widgets that depend on config and prompts
         self.youtube_url_entry.setDisabled(True)  # Disable the URL entry field on startup
 
+        #Youtube Entry Disabled @ Launch
+        self.youtube_url_entry.setVisible(False)  # Hide the YouTube URL entry
+        self.youtube_url_label.setVisible(False)  # Hide the YouTube URL label
+        self.youtube_url_entry.setDisabled(True)
+
         # Update button states
         self.update_button_state()
 
@@ -159,11 +164,15 @@ class MainWindow(QMainWindow):
     def on_mode_change(self, mode):
         if mode == "YouTube URL":
             self.file_path = None
+            self.youtube_url_entry.setVisible(True)  # Show the YouTube URL entry
+            self.youtube_url_label.setVisible(True)  # Show the YouTube URL label
             self.youtube_url_entry.setDisabled(False)
             self.start_transcription_button.setEnabled(False)
             self.open_file_button.setDisabled(True)  # Disable "Open Audio File" button
             self.youtube_url_entry.clear()
         else:  # File Upload mode
+            self.youtube_url_entry.setVisible(False)  # Hide the YouTube URL entry
+            self.youtube_url_label.setVisible(False)  # Hide the YouTube URL label
             self.youtube_url_entry.setDisabled(True)
             self.open_file_button.setDisabled(False)  # Enable "Open Audio File" button
             self.start_transcription_button.setEnabled(bool(self.file_path))

@@ -1,18 +1,5 @@
-import sys
-import re
-import yt_dlp
-from PyQt5.QtWidgets import (QApplication, QMainWindow, QGridLayout, QWidget, QLabel,
-                             QPushButton, QComboBox, QLineEdit, QFileDialog, QTextEdit,
-                             QMessageBox, QStatusBar, QAction, QTableWidgetItem, QHBoxLayout, QDoubleSpinBox, QSpinBox,
-                             QCheckBox, QTableWidget,QStyleFactory)
-from PyQt5.QtCore import QThread, pyqtSignal,Qt
-from moviepy.editor import VideoFileClip
-import requests
-import os
-import traceback
-import torch
-from pydub import AudioSegment
-import whisperx
+from PyQt5.QtWidgets import QPushButton, QComboBox, QDoubleSpinBox, QSpinBox,QCheckBox
+from PyQt5.QtCore import pyqtSignal
 from PyQt5.QtWidgets import QDialog, QVBoxLayout, QLabel, QLineEdit, QDialogButtonBox
 import keyring
 import json
@@ -48,7 +35,7 @@ class SettingsDialog(QDialog):
         self.transcription_quality_dropdown.addItems(['tiny', 'base', 'small', 'medium', 'large', 'large-v1', 'large-v2'])
 
         # GPT Model Selection
-        self.gpt_model_label = QLabel('GPT Model: (GPT-4-1106-preview strongly recommended)', self)
+        self.gpt_model_label = QLabel('GPT Model: (GPT-4-1106-preview strongly recommended due to token limits on other models)', self)
         self.gpt_model_dropdown = QComboBox(self)
         self.gpt_model_dropdown.addItems(['gpt-4-1106-preview', 'gpt-3.5-turbo', 'gpt-4'])
 
