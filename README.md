@@ -1,6 +1,6 @@
 ## Features
 
-- Transcribe audio from local video/audio files or YouTube URLs
+- Transcribe audio from local video/audio files or YouTube URLs via a simple GUI application
 - local transcription with optional speaker detection/diarization
 - GPT-4 for transcript processing
 - Manageable transcription quality settings
