@@ -45,7 +45,7 @@ python main.py
 
 ## Configuration
 
-Before usage, configure the application with your Hugging Face and OpenAI API keys through the 'Settings' menu.
+Before usage, configure the application with your Hugging Face Access Token (optional, required for speaker detection/diarization) and OpenAI API keys through the 'Settings' menu.
 
 You can also adjust transcription quality, GPT model selection, max tokens, temperature, and speaker detection settings.
 
