@@ -35,6 +35,9 @@ To install the required dependencies, run the following command in your terminal
 pip install -r requirements.txt
 ```
 
+### Install Torch w/ Cuda (optional, though recommended, for hardware acceleration)
+```pip3 install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu118```
+
 ### Usage
 
 Run the main script to start the application:
