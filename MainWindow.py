@@ -1,8 +1,7 @@
 import re
 from PyQt5.QtWidgets import (QApplication, QMainWindow, QGridLayout, QWidget, QLabel,
                              QPushButton, QComboBox, QLineEdit, QFileDialog, QTextEdit,
-                             QMessageBox, QStatusBar, QAction, QTableWidgetItem, QHBoxLayout, QDoubleSpinBox, QSpinBox,
-                             QCheckBox, QTableWidget,QStyleFactory, QSizePolicy)
+                             QMessageBox, QStatusBar,QSizePolicy,QStyle)
 from PyQt5.QtCore import QThread, pyqtSignal,Qt
 import os
 import traceback
@@ -56,7 +55,7 @@ class MainWindow(QMainWindow):
         self.file_path = None
 
     def init_ui(self):
-        # Create all widgets and set their properties
+        # Create all widgets
         self.select_mode_label = QLabel('Select Mode:')
         self.mode_selector_dropdown = QComboBox()
         self.mode_selector_dropdown.addItems(['File Upload', 'YouTube URL'])
@@ -75,6 +74,12 @@ class MainWindow(QMainWindow):
         self.gpt_processed_text = QTextEdit()
         self.status_bar = QStatusBar()
         self.setStatusBar(self.status_bar)
+        self.save_raw_transcript_button = QPushButton()
+        self.save_gpt_processed_button = QPushButton()
+        #icons
+        save_icon = self.style().standardIcon(QStyle.SP_DialogSaveButton)
+        self.save_raw_transcript_button.setIcon(save_icon)
+        self.save_gpt_processed_button.setIcon(save_icon)
 
         #text box sizes/resize policies
         self.raw_transcript_text.setMinimumSize(0, 200)
@@ -88,7 +93,6 @@ class MainWindow(QMainWindow):
         self.gpt_processed_text.setSizePolicy(size_policy_large)
         self.gpt_prompt_text.setSizePolicy(size_policy_small)
 
-
         # Connect signals
         self.open_file_button.clicked.connect(self.open_file_dialog)
         self.start_transcription_button.clicked.connect(self.toggle_transcription_process)
@@ -97,6 +101,11 @@ class MainWindow(QMainWindow):
         self.mode_selector_dropdown.currentTextChanged.connect(self.on_mode_change)
         self.gpt_prompt_dropdown.currentTextChanged.connect(self.update_gpt_prompt_text)
         self.youtube_url_entry.textChanged.connect(self.validate_youtube_url_input)
+        self.save_raw_transcript_button.clicked.connect(
+            lambda: self.save_text_content(self.raw_transcript_text, 'Save Raw Transcript'))
+        self.save_gpt_processed_button.clicked.connect(
+            lambda: self.save_text_content(self.gpt_processed_text, 'Save GPT Processed Result'))
+
 
         # Set up the layout
         self.layout.addWidget(self.select_mode_label, 0, 0)
@@ -114,6 +123,8 @@ class MainWindow(QMainWindow):
         self.layout.addWidget(self.gpt_prompt_text, 8, 0, 1, 3)
         self.layout.addWidget(self.gpt_processed_label, 9, 0)
         self.layout.addWidget(self.gpt_processed_text, 10, 0, 1, 3)
+        self.layout.addWidget(self.save_raw_transcript_button, 5, 2, 1, 1, Qt.AlignRight)
+        self.layout.addWidget(self.save_gpt_processed_button, 9, 2, 1, 1, Qt.AlignRight)
 
         # Load configuration and prompts
         self.load_config()
@@ -388,3 +399,10 @@ class MainWindow(QMainWindow):
                 "Youtube to Article": "You will recieve the raw transcript of a video. Convert it into a readable article format. Retain as much detail as possible. I want to get all of the information conveyed in the video, within reason. Be verbose. You may use up to 2000 words.",
                 "Educational Course Summary": "Summarize this educational course transcript into a study guide format, including headings, key concepts, and important explanations."
             }
+
+    def save_text_content(self, text_edit, dialog_title):
+        file_name, _ = QFileDialog.getSaveFileName(self, dialog_title, '', 'Text Files (*.txt);;All Files (*)')
+        if file_name:
+            with open(file_name, 'w', encoding='utf-8') as file:
+                file.write(text_edit.toPlainText())
+            self.status_bar.showMessage(f'Content saved to {file_name}')
