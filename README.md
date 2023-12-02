@@ -13,7 +13,7 @@
 Before installing the application, ensure you have the following dependencies:
 
 - Python 3.10 or higher
-- Cuda 11.8 or higher (for hardware acceleration)
+- Cuda 11.8 or higher (optional, though highly recommended, for hardware acceleration)
 - ffmpeg
 - pyqt5
 
