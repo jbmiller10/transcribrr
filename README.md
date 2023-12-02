@@ -63,21 +63,7 @@ You can also adjust transcription quality, GPT model selection, max tokens, temp
 4. Click the "Start Transcription" button to begin processing.
 5. After transcription, you can process the text with GPT-4 using the "Process with GPT-4" button after setting your prompts.
 
-## Contributing
 
-Contributions to the app are welcome. Please send pull requests for any bug fixes, new features, or improvements.
-
-## License
-
-This project is open-source under the MIT License. See the LICENSE file for more details.
-
-## Acknowledgments
-
-Special thanks to the creators of the third-party libraries, APIs, and tools utilized in this project.
-
-## Disclaimer
-
-This tool is for personal and educational use only. Ensure you respect copyright laws when using and distributing content transcribed or processed by the application.
 
 ---
 
