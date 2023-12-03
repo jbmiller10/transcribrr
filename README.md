@@ -13,9 +13,8 @@
 Before installing the application, ensure you have the following dependencies:
 
 - Python 3.10 or higher
-- Cuda 11.8 or higher (for hardware acceleration)
-- ffmpeg
-- pyqt5
+- [Cuda 11.8 or higher](https://docs.nvidia.com/cuda/cuda-quick-start-guide/index.html) (optional, though highly recommended, for hardware acceleration)
+- [ffmpeg](https://ffmpeg.org/download.html)
 
 ### Clone the Repository
 
@@ -34,7 +33,7 @@ To install the required dependencies, run the following command in your terminal
 pip install -r requirements.txt
 ```
 
-### Install Torch w/ Cuda (optional, though recommended, for hardware acceleration)
+### Install Torch w/ Cuda (optional, though highly recommended, for hardware acceleration. Requires an Nvidia GPU and cuda toolkit)
 ```pip3 install torch~=2.0.0 torchaudio~=2.0.0 --index-url https://download.pytorch.org/whl/cu118```
 
 ### Usage
@@ -48,12 +47,12 @@ python main.py
 ## Configuration
 
 Before usage, configure the application with your Hugging Face Access Token (optional, required for speaker detection/diarization) and OpenAI API keys through the 'Settings' menu.
-
+ll
 You can also adjust transcription quality, GPT model selection, max tokens, temperature, speaker detection settings, and your preset GPT prompts.
 
 ### Speaker Detection/Diarization
 
-To **enable Speaker Detection**, you will need a Huggingface Access token that you can generate [Here](https://huggingface.co/settings/tokens) that you can set in the settings menu. Additionally, you will need to accept the usage terms for the following models while logged into your huggingface account: [Segmentation](https://huggingface.co/pyannote/segmentation) and [Speaker-Diarization](https://huggingface.co/pyannote/speaker-diarization).
+To **enable Speaker Detection**, you will need a Huggingface access token (generate [here](https://huggingface.co/settings/tokens)) that you can set in the settings menu. Additionally, you will need to accept the usage terms for the following models while logged into your huggingface account: [Segmentation](https://huggingface.co/pyannote/segmentation) and [Speaker-Diarization](https://huggingface.co/pyannote/speaker-diarization).
 
 
 ## How to Use
