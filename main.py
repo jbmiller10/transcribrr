@@ -1,7 +1,7 @@
 import sys
 import os
 from PyQt5.QtWidgets import QApplication, QStyleFactory
-from MainWindow import MainWindow
+from app.MainWindow import MainWindow
 
 stylesheet = '''/* Base color definitions */
 * {
@@ -127,10 +127,6 @@ QPushButton:focus {
 
 if __name__ == "__main__":
     app = QApplication(sys.argv)
-    #if os.name == 'Darwin':
-        #app.setStyle(QStyleFactory.create("Fusion"))
-    #else:
-    #    app.setStyle(QStyleFactory.create("Fusion"))
     app.setStyleSheet(stylesheet)
     mainWin = MainWindow()
     mainWin.show()

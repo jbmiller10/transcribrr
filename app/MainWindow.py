@@ -7,11 +7,11 @@ import traceback
 #from PyQt5.QtWidgets import  QLabel, QLineEdit
 import keyring
 import json
-from YouTubeDownloadThread import YouTubeDownloadThread
-from SettingsDialog import SettingsDialog
-from TranscodingThread import TranscodingThread
-from TranscriptionThread import TranscriptionThread
-from GPT4ProcessingThread import GPT4ProcessingThread
+from app.YouTubeDownloadThread import YouTubeDownloadThread
+from app.SettingsDialog import SettingsDialog
+from app.TranscodingThread import TranscodingThread
+from app.TranscriptionThread import TranscriptionThread
+from app.GPT4ProcessingThread import GPT4ProcessingThread
 
 class MainWindow(QMainWindow):
     def __init__(self):
