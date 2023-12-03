@@ -1,11 +1,10 @@
 import re
-from PyQt5.QtWidgets import (QMainWindow, QGridLayout, QWidget, QTextEdit,
-                             QPushButton, QComboBox, QFileDialog, QStyle,
-                             QMessageBox, QStatusBar,QSizePolicy)
-from PyQt5.QtCore import Qt
+from PyQt5.QtWidgets import *
+from PyQt5.QtCore import *
+from PyQt5.QtGui import *
 import os
 import traceback
-from PyQt5.QtWidgets import  QLabel, QLineEdit
+#from PyQt5.QtWidgets import  QLabel, QLineEdit
 import keyring
 import json
 from YouTubeDownloadThread import YouTubeDownloadThread
@@ -56,13 +55,13 @@ class MainWindow(QMainWindow):
 
     def init_ui(self):
         # Create all widgets
-        self.select_mode_label = QLabel('Select Mode:')
+        #self.select_mode_label = QLabel('Select Mode:')
         self.mode_selector_dropdown = QComboBox()
         self.mode_selector_dropdown.addItems(['File Upload', 'YouTube URL'])
         self.open_file_button = QPushButton('Open Audio/Video File')
         self.start_transcription_button = QPushButton('Start Transcription')
         self.process_gpt_button = QPushButton('Process with GPT-4')
-        self.settings_button = QPushButton('Settings', self)
+        self.settings_button = QPushButton(self)
         self.youtube_url_entry = QLineEdit()
         self.youtube_url_label = QLabel('YouTube URL:')
         self.raw_transcript_label = QLabel('Raw Transcript:')
@@ -77,9 +76,15 @@ class MainWindow(QMainWindow):
         self.save_raw_transcript_button = QPushButton()
         self.save_gpt_processed_button = QPushButton()
         #icons
-        save_icon = self.style().standardIcon(QStyle.SP_DialogSaveButton)
+        save_icon = QIcon('icons/save.svg')
+        settings_icon = QIcon('icons/settings1.svg')
+        self.settings_button.setIcon(settings_icon)
+        self.settings_button.setToolTip('Settings')
+        self.settings_button.setIconSize(QSize(20,20))
         self.save_raw_transcript_button.setIcon(save_icon)
+        self.save_raw_transcript_button.setToolTip('Save Raw Transcript')
         self.save_gpt_processed_button.setIcon(save_icon)
+        self.save_gpt_processed_button.setToolTip('Save Processed Result')
 
         #text box sizes/resize policies
         self.raw_transcript_text.setMinimumSize(0, 160)
@@ -108,23 +113,23 @@ class MainWindow(QMainWindow):
 
 
         # Set up the layout
-        self.layout.addWidget(self.select_mode_label, 0, 0)
-        self.layout.addWidget(self.mode_selector_dropdown, 1, 0)
-        self.layout.addWidget(self.open_file_button, 4, 0)
-        self.layout.addWidget(self.start_transcription_button, 4, 1)
-        self.layout.addWidget(self.process_gpt_button, 4, 2)
+        #self.layout.addWidget(self.select_mode_label, 0, 0)
+        self.layout.addWidget(self.mode_selector_dropdown, 0, 0)
+        self.layout.addWidget(self.open_file_button, 3, 0)
+        self.layout.addWidget(self.start_transcription_button, 3, 1)
+        self.layout.addWidget(self.process_gpt_button, 3, 2)
         self.layout.addWidget(self.settings_button, 0, 2, 1, 1, Qt.AlignRight)
-        self.layout.addWidget(self.youtube_url_label, 2, 0)
-        self.layout.addWidget(self.youtube_url_entry, 3, 0, 1, 3)
-        self.layout.addWidget(self.raw_transcript_label, 5, 0)
-        self.layout.addWidget(self.raw_transcript_text, 6, 0, 1, 3)
-        self.layout.addWidget(self.gpt_prompt_label, 7, 0)
-        self.layout.addWidget(self.gpt_prompt_dropdown, 7, 2)
-        self.layout.addWidget(self.gpt_prompt_text, 8, 0, 1, 3)
-        self.layout.addWidget(self.gpt_processed_label, 9, 0)
-        self.layout.addWidget(self.gpt_processed_text, 10, 0, 1, 3)
-        self.layout.addWidget(self.save_raw_transcript_button, 5, 2, 1, 1, Qt.AlignRight)
-        self.layout.addWidget(self.save_gpt_processed_button, 9, 2, 1, 1, Qt.AlignRight)
+        self.layout.addWidget(self.youtube_url_label, 1, 0)
+        self.layout.addWidget(self.youtube_url_entry, 2, 0, 1, 3)
+        self.layout.addWidget(self.raw_transcript_label, 4, 0)
+        self.layout.addWidget(self.raw_transcript_text, 5, 0, 1, 3)
+        self.layout.addWidget(self.gpt_prompt_label, 6, 0)
+        self.layout.addWidget(self.gpt_prompt_dropdown, 6, 2)
+        self.layout.addWidget(self.gpt_prompt_text, 7, 0, 1, 3)
+        self.layout.addWidget(self.gpt_processed_label, 8, 0)
+        self.layout.addWidget(self.gpt_processed_text, 9, 0, 1, 3)
+        self.layout.addWidget(self.save_raw_transcript_button, 4, 2, 1, 1, Qt.AlignRight)
+        self.layout.addWidget(self.save_gpt_processed_button, 8, 2, 1, 1, Qt.AlignRight)
 
         # Load configuration and prompts
         self.load_config()
