@@ -7,7 +7,7 @@ Transcribrr is a straightforward python desktop application that transcribes loc
 ## Features
 
 - Transcribe audio from local video/audio files or YouTube URLs via a simple GUI application
-- local transcription with optional speaker detection/diarization
+- fast, accurate, local transcription with optional speaker detection (via the excellent [whisperx](https://github.com/m-bain/whisperX) library)
 - GPT-4 for transcript processing & summarization
 - Manageable transcription quality settings
 - Preset prompt management for GPT processing
