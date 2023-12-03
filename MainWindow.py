@@ -82,9 +82,9 @@ class MainWindow(QMainWindow):
         self.save_gpt_processed_button.setIcon(save_icon)
 
         #text box sizes/resize policies
-        self.raw_transcript_text.setMinimumSize(0, 200)
-        self.gpt_processed_text.setMinimumSize(0, 200)
-        self.gpt_prompt_text.setMinimumSize(0, 50)
+        self.raw_transcript_text.setMinimumSize(0, 160)
+        self.gpt_processed_text.setMinimumSize(0, 160)
+        self.gpt_prompt_text.setMinimumSize(0, 40)
         size_policy_large = QSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
         size_policy_small = QSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
         size_policy_large.setVerticalStretch(7)
@@ -128,7 +128,6 @@ class MainWindow(QMainWindow):
 
         # Load configuration and prompts
         self.load_config()
-        self.load_prompts()
 
         # Initialize the preset prompt dropdown
         self.gpt_prompt_dropdown.addItems(sorted(self.preset_prompts.keys()))
@@ -398,14 +397,13 @@ class MainWindow(QMainWindow):
                 "Lecture Notes": "Condense this lecture transcript into concise notes, outlining the main topics, subtopics, and key points discussed.",
                 "Podcast Highlights": "Extract key highlights and interesting moments from this podcast transcript, presenting them in a bullet-point format.",
                 "Dialogue Cleanup": "Edit this dialogue transcript to remove filler words, repeated phrases, and non-verbal cues, making it more readable.",
-                "Speech to Article": "Transform this speech transcript into a well-structured article, maintaining the speaker's key messages and tone.",
+                "Speech to Article": "Transform this speech transcript into a well-structured article, maintaining the speaker's key messages.",
                 "Q&A Format": "Organize this transcript into a clear question-and-answer format, ensuring each question and its corresponding answer are clearly presented.",
                 "Debate Summary": "Summarize this debate transcript, outlining the main points and arguments presented by each participant.",
-                "Storytelling Enhancement": "Enhance this narrative transcript by adding descriptive language and storytelling elements to make it more engaging.",
                 "Technical Explanation": "Rewrite this technical discussion transcript into a simpler, more understandable format for a general audience.",
                 "Legal Testimony Review": "Condense this legal testimony transcript, focusing on the key statements and evidence presented.",
                 "Conference Session Summary": "Provide a concise summary of this conference session transcript, highlighting the main themes, discussions, and conclusions.",
-                "Youtube to Article": "You will recieve the raw transcript of a video. Convert it into a readable article format. Retain as much detail as possible. I want to get all of the information conveyed in the video, within reason. Be verbose. You may use up to 2000 words.",
+                "Youtube to Article": "You will recieve the raw transcript of a video. Convert it into a readable article format. Retain as much detail as possible. Be verbose.",
                 "Educational Course Summary": "Summarize this educational course transcript into a study guide format, including headings, key concepts, and important explanations."
             }
 
