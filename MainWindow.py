@@ -1,11 +1,11 @@
 import re
-from PyQt5.QtWidgets import (QApplication, QMainWindow, QGridLayout, QWidget, QLabel,
-                             QPushButton, QComboBox, QLineEdit, QFileDialog, QTextEdit,
-                             QMessageBox, QStatusBar,QSizePolicy,QStyle)
-from PyQt5.QtCore import QThread, pyqtSignal,Qt
+from PyQt5.QtWidgets import (QMainWindow, QGridLayout, QWidget, QTextEdit,
+                             QPushButton, QComboBox, QFileDialog, QStyle,
+                             QMessageBox, QStatusBar,QSizePolicy)
+from PyQt5.QtCore import Qt
 import os
 import traceback
-from PyQt5.QtWidgets import QDialog, QVBoxLayout, QLabel, QLineEdit, QDialogButtonBox
+from PyQt5.QtWidgets import  QLabel, QLineEdit
 import keyring
 import json
 from YouTubeDownloadThread import YouTubeDownloadThread
