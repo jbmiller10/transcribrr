@@ -33,7 +33,7 @@ To install the required dependencies, run the following command in your terminal
 pip install -r requirements.txt
 ```
 
-### Install Torch w/ Cuda (optional, though highly recommended, for hardware acceleration)
+### Install Torch w/ Cuda (optional, though highly recommended, for hardware acceleration. Requires an Nvidia GPU and cuda toolkit)
 ```pip3 install torch~=2.0.0 torchaudio~=2.0.0 --index-url https://download.pytorch.org/whl/cu118```
 
 ### Usage
