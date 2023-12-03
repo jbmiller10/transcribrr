@@ -130,7 +130,7 @@ class MainWindow(QMainWindow):
         self.load_config()
 
         # Initialize the preset prompt dropdown
-        self.gpt_prompt_dropdown.addItems(sorted(self.preset_prompts.keys()))
+        self.gpt_prompt_dropdown.addItems(self.preset_prompts.keys())
         self.update_gpt_prompt_text(self.gpt_prompt_dropdown.currentText())
 
         # Additional setup for widgets that depend on config and prompts
@@ -385,7 +385,7 @@ class MainWindow(QMainWindow):
                 self.preset_prompts = json.load(file)
                 try:
                     self.gpt_prompt_dropdown.clear()
-                    self.gpt_prompt_dropdown.addItems(sorted(self.preset_prompts.keys()))
+                    self.gpt_prompt_dropdown.addItems(self.preset_prompts.keys())
                 except AttributeError:
                     pass
         except FileNotFoundError:
@@ -403,7 +403,6 @@ class MainWindow(QMainWindow):
                 "Technical Explanation": "Rewrite this technical discussion transcript into a simpler, more understandable format for a general audience.",
                 "Legal Testimony Review": "Condense this legal testimony transcript, focusing on the key statements and evidence presented.",
                 "Conference Session Summary": "Provide a concise summary of this conference session transcript, highlighting the main themes, discussions, and conclusions.",
-                "Youtube to Article": "You will recieve the raw transcript of a video. Convert it into a readable article format. Retain as much detail as possible. Be verbose.",
                 "Educational Course Summary": "Summarize this educational course transcript into a study guide format, including headings, key concepts, and important explanations."
             }
 
