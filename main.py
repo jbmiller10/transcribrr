@@ -17,6 +17,15 @@ QTextEdit, QLineEdit {
     border: 1px solid #DDDDDD; /* Light border for definition */
     padding: 5px;
     border-radius: 4px;
+    font-family: 'Roboto';
+    font-size: 8pt;
+}
+QLabel {
+
+font-weight: 800;
+font-size: 7pt;
+font-family: 'Roboto'
+
 }
 
 /* Hover and focus states using a slightly darker shade */
@@ -31,6 +40,10 @@ QPushButton {
     color: #FFFFFF; /* White text */
     padding: 6px 12px;
     border-radius: 4px;
+    font-family: 'Roboto';
+    font-size: 8pt;
+    font-weight: 900;
+
 }
 
 QPushButton:hover {
@@ -95,6 +108,10 @@ QComboBox {
     border-radius: 3px;
     padding: 1px 18px 1px 3px;
     min-width: 6em;
+    font-family: 'Roboto';
+    font-size:8pt;
+    font-weight: 425;
+
 }
 /*
 QComboBox:hover {

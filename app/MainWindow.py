@@ -82,17 +82,21 @@ class MainWindow(QMainWindow):
         self.save_raw_transcript_button.setIcon(save_icon)
         self.save_raw_transcript_button.setToolTip('Save Raw Transcript')
         self.save_raw_transcript_button.setProperty("isSecondary", True)
+        self.save_raw_transcript_button.setIconSize(QSize(17,17))
+
         #save gpt processed button
         self.save_gpt_processed_button = QPushButton()
         self.save_gpt_processed_button.setIcon(save_icon)
         self.save_gpt_processed_button.setToolTip('Save Processed Result')
         self.save_gpt_processed_button.setProperty("isSecondary", True)
+        self.save_gpt_processed_button.setIconSize(QSize(17,17))
+
         #settings button
         self.settings_button = QPushButton(self)
         self.settings_button.setIcon(settings_icon)
         self.settings_button.setToolTip('Settings')
         self.settings_button.setProperty("isSecondary", True)
-        #self.settings_button.setIconSize(QSize(17,17))
+        self.settings_button.setIconSize(QSize(17,17))
 
 
 
