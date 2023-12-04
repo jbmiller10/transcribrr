@@ -55,6 +55,10 @@ class MainWindow(QMainWindow):
         self.file_path = None
 
     def init_ui(self):
+        #icons
+        save_icon = QIcon('icons/save.svg')
+        settings_icon = QIcon('icons/settings.svg')
+
         # Create all widgets
         #self.select_mode_label = QLabel('Select Mode:')
         self.mode_selector_dropdown = QComboBox()
@@ -62,7 +66,6 @@ class MainWindow(QMainWindow):
         self.open_file_button = QPushButton('Open Audio/Video File')
         self.start_transcription_button = QPushButton('Start Transcription')
         self.process_gpt_button = QPushButton('Process with GPT-4')
-        self.settings_button = QPushButton(self)
         self.youtube_url_entry = QLineEdit()
         self.youtube_url_label = QLabel('YouTube URL:')
         self.raw_transcript_label = QLabel('Raw Transcript:')
@@ -74,18 +77,24 @@ class MainWindow(QMainWindow):
         self.gpt_processed_text = QTextEdit()
         self.status_bar = QStatusBar()
         self.setStatusBar(self.status_bar)
+        #save_raw_transcript button
         self.save_raw_transcript_button = QPushButton()
-        self.save_gpt_processed_button = QPushButton()
-        #icons
-        save_icon = QIcon('icons/save.svg')
-        settings_icon = QIcon('icons/settings.svg')
-        self.settings_button.setIcon(settings_icon)
-        self.settings_button.setToolTip('Settings')
-        self.settings_button.setIconSize(QSize(20,20))
         self.save_raw_transcript_button.setIcon(save_icon)
         self.save_raw_transcript_button.setToolTip('Save Raw Transcript')
+        self.save_raw_transcript_button.setProperty("isSecondary", True)
+        #save gpt processed button
+        self.save_gpt_processed_button = QPushButton()
         self.save_gpt_processed_button.setIcon(save_icon)
         self.save_gpt_processed_button.setToolTip('Save Processed Result')
+        self.save_gpt_processed_button.setProperty("isSecondary", True)
+        #settings button
+        self.settings_button = QPushButton(self)
+        self.settings_button.setIcon(settings_icon)
+        self.settings_button.setToolTip('Settings')
+        self.settings_button.setProperty("isSecondary", True)
+        #self.settings_button.setIconSize(QSize(17,17))
+
+
 
 
 
@@ -93,7 +102,7 @@ class MainWindow(QMainWindow):
         #text box sizes/resize policies
         self.raw_transcript_text.setMinimumSize(0, 160)
         self.gpt_processed_text.setMinimumSize(0, 160)
-        self.gpt_prompt_text.setMinimumSize(0, 40)
+        self.gpt_prompt_text.setMinimumSize(0, 50)
         size_policy_large = QSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
         size_policy_small = QSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
         size_policy_large.setVerticalStretch(7)

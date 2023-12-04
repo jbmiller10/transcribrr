@@ -43,15 +43,14 @@ QPushButton:disabled {
 }
 
 /* Secondary buttons with a subtle appearance */
-QPushButton#secondaryButton {
+QPushButton[isSecondary='true'] {
     background-color: #F7F7F7; /* Light grey matching the input fields */
     color: #333333; /* Dark text for contrast */
-    padding: 6px 12px;
     border: 1px solid #DDDDDD;
     border-radius: 4px;
 }
 
-QPushButton#secondaryButton:hover {
+QPushButton[isSecondary='true']:hover {
     background-color: #E6E6E6;
 }
 
