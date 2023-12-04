@@ -1,18 +1,17 @@
 import re
-from PyQt5.QtWidgets import (QMainWindow, QGridLayout, QWidget, QTextEdit,
-                             QPushButton, QComboBox, QFileDialog, QStyle,
-                             QMessageBox, QStatusBar,QSizePolicy)
-from PyQt5.QtCore import Qt
+from PyQt5.QtWidgets import *
+from PyQt5.QtCore import *
+from PyQt5.QtGui import *
 import os
 import traceback
-from PyQt5.QtWidgets import  QLabel, QLineEdit
+#from PyQt5.QtWidgets import  QLabel, QLineEdit
 import keyring
 import json
-from YouTubeDownloadThread import YouTubeDownloadThread
-from SettingsDialog import SettingsDialog
-from TranscodingThread import TranscodingThread
-from TranscriptionThread import TranscriptionThread
-from GPT4ProcessingThread import GPT4ProcessingThread
+from app.YouTubeDownloadThread import YouTubeDownloadThread
+from app.SettingsDialog import SettingsDialog
+from app.TranscodingThread import TranscodingThread
+from app.TranscriptionThread import TranscriptionThread
+from app.GPT4ProcessingThread import GPT4ProcessingThread
 
 class MainWindow(QMainWindow):
     def __init__(self):
@@ -39,6 +38,7 @@ class MainWindow(QMainWindow):
         self.load_prompts()
         self.init_ui()
         self.temp_files = []
+        self.create_spinner()
 
         # Initialize threads without starting them
         self.youtube_thread = YouTubeDownloadThread()
@@ -55,14 +55,17 @@ class MainWindow(QMainWindow):
         self.file_path = None
 
     def init_ui(self):
+        #icons
+        save_icon = QIcon('icons/save.svg')
+        settings_icon = QIcon('icons/settings.svg')
+
         # Create all widgets
-        self.select_mode_label = QLabel('Select Mode:')
+        #self.select_mode_label = QLabel('Select Mode:')
         self.mode_selector_dropdown = QComboBox()
         self.mode_selector_dropdown.addItems(['File Upload', 'YouTube URL'])
         self.open_file_button = QPushButton('Open Audio/Video File')
         self.start_transcription_button = QPushButton('Start Transcription')
         self.process_gpt_button = QPushButton('Process with GPT-4')
-        self.settings_button = QPushButton('Settings', self)
         self.youtube_url_entry = QLineEdit()
         self.youtube_url_label = QLabel('YouTube URL:')
         self.raw_transcript_label = QLabel('Raw Transcript:')
@@ -74,17 +77,36 @@ class MainWindow(QMainWindow):
         self.gpt_processed_text = QTextEdit()
         self.status_bar = QStatusBar()
         self.setStatusBar(self.status_bar)
+        #save_raw_transcript button
         self.save_raw_transcript_button = QPushButton()
-        self.save_gpt_processed_button = QPushButton()
-        #icons
-        save_icon = self.style().standardIcon(QStyle.SP_DialogSaveButton)
         self.save_raw_transcript_button.setIcon(save_icon)
+        self.save_raw_transcript_button.setToolTip('Save Raw Transcript')
+        self.save_raw_transcript_button.setProperty("isSecondary", True)
+        self.save_raw_transcript_button.setIconSize(QSize(17,17))
+
+        #save gpt processed button
+        self.save_gpt_processed_button = QPushButton()
         self.save_gpt_processed_button.setIcon(save_icon)
+        self.save_gpt_processed_button.setToolTip('Save Processed Result')
+        self.save_gpt_processed_button.setProperty("isSecondary", True)
+        self.save_gpt_processed_button.setIconSize(QSize(17,17))
+
+        #settings button
+        self.settings_button = QPushButton(self)
+        self.settings_button.setIcon(settings_icon)
+        self.settings_button.setToolTip('Settings')
+        self.settings_button.setProperty("isSecondary", True)
+        self.settings_button.setIconSize(QSize(17,17))
+
+
+
+
+
 
         #text box sizes/resize policies
         self.raw_transcript_text.setMinimumSize(0, 160)
         self.gpt_processed_text.setMinimumSize(0, 160)
-        self.gpt_prompt_text.setMinimumSize(0, 40)
+        self.gpt_prompt_text.setMinimumSize(0, 50)
         size_policy_large = QSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
         size_policy_small = QSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
         size_policy_large.setVerticalStretch(7)
@@ -108,23 +130,23 @@ class MainWindow(QMainWindow):
 
 
         # Set up the layout
-        self.layout.addWidget(self.select_mode_label, 0, 0)
-        self.layout.addWidget(self.mode_selector_dropdown, 1, 0)
-        self.layout.addWidget(self.open_file_button, 4, 0)
-        self.layout.addWidget(self.start_transcription_button, 4, 1)
-        self.layout.addWidget(self.process_gpt_button, 4, 2)
+        #self.layout.addWidget(self.select_mode_label, 0, 0)
+        self.layout.addWidget(self.mode_selector_dropdown, 0, 0)
+        self.layout.addWidget(self.open_file_button, 3, 0)
+        self.layout.addWidget(self.start_transcription_button, 3, 1)
+        self.layout.addWidget(self.process_gpt_button, 3, 2)
         self.layout.addWidget(self.settings_button, 0, 2, 1, 1, Qt.AlignRight)
-        self.layout.addWidget(self.youtube_url_label, 2, 0)
-        self.layout.addWidget(self.youtube_url_entry, 3, 0, 1, 3)
-        self.layout.addWidget(self.raw_transcript_label, 5, 0)
-        self.layout.addWidget(self.raw_transcript_text, 6, 0, 1, 3)
-        self.layout.addWidget(self.gpt_prompt_label, 7, 0)
-        self.layout.addWidget(self.gpt_prompt_dropdown, 7, 2)
-        self.layout.addWidget(self.gpt_prompt_text, 8, 0, 1, 3)
-        self.layout.addWidget(self.gpt_processed_label, 9, 0)
-        self.layout.addWidget(self.gpt_processed_text, 10, 0, 1, 3)
-        self.layout.addWidget(self.save_raw_transcript_button, 5, 2, 1, 1, Qt.AlignRight)
-        self.layout.addWidget(self.save_gpt_processed_button, 9, 2, 1, 1, Qt.AlignRight)
+        self.layout.addWidget(self.youtube_url_label, 1, 0)
+        self.layout.addWidget(self.youtube_url_entry, 2, 0, 1, 3)
+        self.layout.addWidget(self.raw_transcript_label, 4, 0)
+        self.layout.addWidget(self.raw_transcript_text, 5, 0, 1, 3)
+        self.layout.addWidget(self.gpt_prompt_label, 6, 0)
+        self.layout.addWidget(self.gpt_prompt_dropdown, 6, 2)
+        self.layout.addWidget(self.gpt_prompt_text, 7, 0, 1, 3)
+        self.layout.addWidget(self.gpt_processed_label, 8, 0)
+        self.layout.addWidget(self.gpt_processed_text, 9, 0, 1, 3)
+        self.layout.addWidget(self.save_raw_transcript_button, 4, 2, 1, 1, Qt.AlignRight)
+        self.layout.addWidget(self.save_gpt_processed_button, 8, 2, 1, 1, Qt.AlignRight)
 
         # Load configuration and prompts
         self.load_config()
@@ -190,6 +212,7 @@ class MainWindow(QMainWindow):
     def start_transcription(self):
         # Disable the transcription button to prevent starting another transcription process
         self.is_process_running = True
+        self.show_spinner(True)
         self.update_button_state()
        #self.start_transcription_button.setDisabled(True)
 
@@ -224,6 +247,7 @@ class MainWindow(QMainWindow):
         self.is_process_running = False
         self.update_button_state()
         self.cleanup_temp_files()
+        self.show_spinner(False)
         self.status_bar.showMessage('Transcription cancelled.')
 
     def start_youtube_download(self, youtube_url):
@@ -292,9 +316,11 @@ class MainWindow(QMainWindow):
         self.cleanup_temp_files()
         self.is_process_running = False
         self.update_button_state()
+        self.show_spinner(False)
 
     def process_with_gpt(self):
         transcript = self.raw_transcript_text.toPlainText()
+        self.show_spinner(True)
         prompt_instructions = self.gpt_prompt_text.toPlainText()
         if not transcript:
             QMessageBox.warning(self, 'Input Required', 'Please provide a transcription to process.')
@@ -307,6 +333,7 @@ class MainWindow(QMainWindow):
 
     def show_gpt_processed_result(self, result):
         self.gpt_processed_text.setPlainText(result)
+        self.show_spinner(False)
         self.status_bar.showMessage('GPT-4 processing completed.')
 
     def update_gpt_prompt_text(self, selected_preset):
@@ -323,6 +350,7 @@ class MainWindow(QMainWindow):
         QMessageBox.critical(self, 'Error', error_message)
         self.status_bar.showMessage('An error occurred: ' + message)
         self.is_process_running = False
+        self.show_spinner(False)
         self.update_button_state()
 
     def validate_youtube_url(self, url):
@@ -412,3 +440,21 @@ class MainWindow(QMainWindow):
             with open(file_name, 'w', encoding='utf-8') as file:
                 file.write(text_edit.toPlainText())
             self.status_bar.showMessage(f'Content saved to {file_name}')
+
+    def create_spinner(self):
+        self.spinner_label = QLabel(self)
+        self.spinner_movie = QMovie('icons/spinner.gif')
+        self.spinner_label.setMovie(self.spinner_movie)
+        spinner_size = QSize(32, 32)
+        #self.spinner_label.setFixedSize(spinner_size)
+        self.spinner_movie.setScaledSize(spinner_size)
+        # Add the spinner to the status bar
+        self.status_bar.addPermanentWidget(self.spinner_label, 0)
+        self.spinner_label.hide()  # Hide it by default
+    def show_spinner(self, show):
+        if show:
+            self.spinner_label.show()
+            self.spinner_movie.start()  # Start the animation
+        else:
+            self.spinner_movie.stop()  # Stop the animation
+            self.spinner_label.hide()

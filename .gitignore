@@ -1,0 +1,9 @@
+venv/
+__pycache__
+.git/
+*.wav
+.idea/inspectionProfiles/profiles_settings.xml
+.idea/misc.xml
+.idea/vcs.xml
+.idea/workspace.xml
+config.json
