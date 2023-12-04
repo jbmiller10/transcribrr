@@ -442,11 +442,12 @@ class MainWindow(QMainWindow):
             self.status_bar.showMessage(f'Content saved to {file_name}')
 
     def create_spinner(self):
-        # Create a label that will hold the spinner GIF
         self.spinner_label = QLabel(self)
-        # Set up the QMovie with the spinner GIF
         self.spinner_movie = QMovie('icons/spinner.gif')
         self.spinner_label.setMovie(self.spinner_movie)
+        spinner_size = QSize(32, 32)
+        #self.spinner_label.setFixedSize(spinner_size)
+        self.spinner_movie.setScaledSize(spinner_size)
         # Add the spinner to the status bar
         self.status_bar.addPermanentWidget(self.spinner_label, 0)
         self.spinner_label.hide()  # Hide it by default
