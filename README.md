@@ -1,7 +1,7 @@
 # Transcribrr
 Transcribrr is a straightforward python desktop application that transcribes local audio/video files or youtube videos and then summarizes/transforms the output using a variety of preset prompts via OpenAI's GPT large language models. 
 
-<img src="https://github.com/jbmiller10/transcribrr/blob/Screens/screenshot.png" alt="drawing" width="471"/>
+<img src="https://github.com/jbmiller10/transcribrr/blob/Screens/screenshot2.png" alt="drawing" width="471"/>
 
 
 ## Features
