@@ -18,12 +18,12 @@ QTextEdit, QLineEdit {
     padding: 5px;
     border-radius: 4px;
     font-family: 'Roboto';
-    font-size: 8pt;
+    font-size: 12pt;
 }
 QLabel {
 
-font-weight: 800;
-font-size: 7pt;
+font-weight: 600;
+font-size: 12pt;
 font-family: 'Roboto'
 
 }
@@ -41,7 +41,7 @@ QPushButton {
     padding: 6px 12px;
     border-radius: 4px;
     font-family: 'Roboto';
-    font-size: 8pt;
+    font-size: 12pt;
     font-weight: 900;
 
 }
@@ -109,7 +109,7 @@ QComboBox {
     padding: 1px 18px 1px 3px;
     min-width: 6em;
     font-family: 'Roboto';
-    font-size:8pt;
+    font-size:12pt;
     font-weight: 425;
 
 }
@@ -145,6 +145,134 @@ QComboBox::item:selected
 
 '''
 
+stylesheet_nightmode = '''/* Base colors for Night Mode */
+* {
+    background-color: #1e1e1e; /* Dark background for night mode */
+    color: #dcdcdc; /* Light grey for text to ensure good contrast */
+    border: none;
+}
+
+/* Text edit and display areas with a subtle shadow for depth */
+QTextEdit, QLineEdit {
+    background-color: #2e2e2e; /* Slightly lighter grey than the base */
+    color: #dcdcdc; /* Light grey for text */
+    border: 1px solid #3a3a3a; /* Dark border for definition */
+    padding: 5px;
+    border-radius: 4px;
+    font-family: 'Roboto';
+    font-size: 8pt;
+}
+
+/* Hover and focus states using a slightly lighter shade */
+QTextEdit:hover, QLineEdit:hover,
+QTextEdit:focus, QLineEdit:focus {
+    border: 1px solid #474747;
+}
+
+/* Primary buttons with a pop of color */
+QPushButton {
+    background-color: #3d8ef8; /* A brighter blue for primary actions */
+    color: #FFFFFF; /* White text */
+    padding: 6px 12px;
+    border-radius: 4px;
+    font-family: 'Roboto';
+    font-size: 8pt;
+    font-weight: 900;
+}
+
+QPushButton:hover {
+    background-color: #3577c2; /* A slightly darker blue on hover */
+}
+
+QPushButton:disabled {
+    background-color: #1e1e1e; /* Same as the base background when disabled */
+    color: #5a5a5a; /* Greyed out text */
+}
+
+/* Secondary buttons with a subtle appearance */
+QPushButton[isSecondary='true'] {
+    background-color: #2e2e2e; /* Same as text edit areas */
+    color: #dcdcdc; /* Light grey text for contrast */
+    border: 1px solid #3a3a3a;
+}
+
+QPushButton[isSecondary='true']:hover {
+    background-color: #3a3a3a;
+}
+
+/* Status bar with a slight contrast to the main window */
+QStatusBar {
+    background-color: #1a1a1a; /* A bit darker than the main background */
+    color: #dcdcdc;
+}
+
+/* Scroll bars for a modern look */
+QScrollBar:vertical {
+    background: #2e2e2e;
+    width: 10px;
+    margin: 10px 0 10px 0;
+    border: 1px solid #3a3a3a;
+}
+
+QScrollBar::handle:vertical {
+    background: #5a5a5a; /* Dark grey for the scroll handle */
+    min-height: 20px;
+    border-radius: 5px;
+}
+
+QScrollBar::handle:vertical:hover {
+    background: #3d8ef8; /* The bright blue for hover */
+}
+
+/* Tables for consistency */
+QTableWidget {
+    background-color: #1e1e1e;
+    color: #dcdcdc;
+    gridline-color: #3a3a3a;
+}
+
+QTableWidget::item:selected {
+    background-color: #3d8ef8;
+    color: #FFFFFF;
+}
+
+/* Combo Boxes styling */
+QComboBox {
+    border: 1px solid #3a3a3a;
+    border-radius: 3px;
+    padding: 1px 18px 1px 3px;
+    min-width: 6em;
+    font-family: 'Roboto';
+    font-size: 8pt;
+    font-weight: 425;
+    background-color: #2e2e2e; /* Same as text edit areas */
+    color: #dcdcdc; /* Light grey text */
+}
+
+QComboBox::drop-down {
+    subcontrol-origin: padding;
+    subcontrol-position: top right;
+    width: 30px;
+    border-left-width: 1px;
+    border-left-color: #3a3a3a;
+    border-left-style: solid;
+    border-top-right-radius: 3px;
+    border-bottom-right-radius: 3px;
+    font-family: "Roboto";
+    font-size: 12px;
+}
+
+QComboBox::down-arrow {
+    image: url(icons/dropdown_night.svg); /* Ensure this icon is visible on a dark background */
+    width:18px;
+    height:18px;
+}
+
+QComboBox::item:selected {
+    background-color: #3d8ef8; /* Bright blue for selected item */
+    color: #FFFFFF;
+}
+'''
 
 
 if __name__ == "__main__":

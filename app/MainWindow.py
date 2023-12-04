@@ -69,10 +69,14 @@ class MainWindow(QMainWindow):
         self.youtube_url_entry = QLineEdit()
         self.youtube_url_label = QLabel('YouTube URL:')
         self.raw_transcript_label = QLabel('Raw Transcript:')
+       # self.raw_transcript_label.setContentsMargins(0,0 , 10, 0)
         self.raw_transcript_text = QTextEdit()
+        #self.raw_transcript_text.setContentsMargins(0, 0, 0, 0)
+        self.layout.setSpacing(5)
         self.gpt_prompt_label = QLabel('GPT Prompt Instructions:')
         self.gpt_prompt_text = QTextEdit()
         self.gpt_prompt_dropdown = QComboBox()
+        #self.gpt_prompt_dropdown.setContentsMargins(10, 10, 0, 0)
         self.gpt_processed_label = QLabel('GPT Processed Result:')
         self.gpt_processed_text = QTextEdit()
         self.status_bar = QStatusBar()
@@ -82,21 +86,21 @@ class MainWindow(QMainWindow):
         self.save_raw_transcript_button.setIcon(save_icon)
         self.save_raw_transcript_button.setToolTip('Save Raw Transcript')
         self.save_raw_transcript_button.setProperty("isSecondary", True)
-        self.save_raw_transcript_button.setIconSize(QSize(17,17))
+        self.save_raw_transcript_button.setIconSize(QSize(12,12))
 
         #save gpt processed button
         self.save_gpt_processed_button = QPushButton()
         self.save_gpt_processed_button.setIcon(save_icon)
         self.save_gpt_processed_button.setToolTip('Save Processed Result')
         self.save_gpt_processed_button.setProperty("isSecondary", True)
-        self.save_gpt_processed_button.setIconSize(QSize(17,17))
+        self.save_gpt_processed_button.setIconSize(QSize(12,12))
 
         #settings button
         self.settings_button = QPushButton(self)
         self.settings_button.setIcon(settings_icon)
         self.settings_button.setToolTip('Settings')
         self.settings_button.setProperty("isSecondary", True)
-        self.settings_button.setIconSize(QSize(17,17))
+        self.settings_button.setIconSize(QSize(14,14))
 
 
 
@@ -445,7 +449,7 @@ class MainWindow(QMainWindow):
         self.spinner_label = QLabel(self)
         self.spinner_movie = QMovie('icons/spinner.gif')
         self.spinner_label.setMovie(self.spinner_movie)
-        spinner_size = QSize(32, 32)
+        spinner_size = QSize(26, 26)
         #self.spinner_label.setFixedSize(spinner_size)
         self.spinner_movie.setScaledSize(spinner_size)
         # Add the spinner to the status bar
