@@ -38,6 +38,7 @@ class MainWindow(QMainWindow):
         self.load_prompts()
         self.init_ui()
         self.temp_files = []
+        self.create_spinner()
 
         # Initialize threads without starting them
         self.youtube_thread = YouTubeDownloadThread()
@@ -77,7 +78,7 @@ class MainWindow(QMainWindow):
         self.save_gpt_processed_button = QPushButton()
         #icons
         save_icon = QIcon('icons/save.svg')
-        settings_icon = QIcon('icons/settings1.svg')
+        settings_icon = QIcon('icons/settings.svg')
         self.settings_button.setIcon(settings_icon)
         self.settings_button.setToolTip('Settings')
         self.settings_button.setIconSize(QSize(20,20))
@@ -85,6 +86,9 @@ class MainWindow(QMainWindow):
         self.save_raw_transcript_button.setToolTip('Save Raw Transcript')
         self.save_gpt_processed_button.setIcon(save_icon)
         self.save_gpt_processed_button.setToolTip('Save Processed Result')
+
+
+
 
         #text box sizes/resize policies
         self.raw_transcript_text.setMinimumSize(0, 160)
@@ -195,6 +199,7 @@ class MainWindow(QMainWindow):
     def start_transcription(self):
         # Disable the transcription button to prevent starting another transcription process
         self.is_process_running = True
+        self.show_spinner(True)
         self.update_button_state()
        #self.start_transcription_button.setDisabled(True)
 
@@ -229,6 +234,7 @@ class MainWindow(QMainWindow):
         self.is_process_running = False
         self.update_button_state()
         self.cleanup_temp_files()
+        self.show_spinner(False)
         self.status_bar.showMessage('Transcription cancelled.')
 
     def start_youtube_download(self, youtube_url):
@@ -297,9 +303,11 @@ class MainWindow(QMainWindow):
         self.cleanup_temp_files()
         self.is_process_running = False
         self.update_button_state()
+        self.show_spinner(False)
 
     def process_with_gpt(self):
         transcript = self.raw_transcript_text.toPlainText()
+        self.show_spinner(True)
         prompt_instructions = self.gpt_prompt_text.toPlainText()
         if not transcript:
             QMessageBox.warning(self, 'Input Required', 'Please provide a transcription to process.')
@@ -312,6 +320,7 @@ class MainWindow(QMainWindow):
 
     def show_gpt_processed_result(self, result):
         self.gpt_processed_text.setPlainText(result)
+        self.show_spinner(False)
         self.status_bar.showMessage('GPT-4 processing completed.')
 
     def update_gpt_prompt_text(self, selected_preset):
@@ -328,6 +337,7 @@ class MainWindow(QMainWindow):
         QMessageBox.critical(self, 'Error', error_message)
         self.status_bar.showMessage('An error occurred: ' + message)
         self.is_process_running = False
+        self.show_spinner(False)
         self.update_button_state()
 
     def validate_youtube_url(self, url):
@@ -417,3 +427,20 @@ class MainWindow(QMainWindow):
             with open(file_name, 'w', encoding='utf-8') as file:
                 file.write(text_edit.toPlainText())
             self.status_bar.showMessage(f'Content saved to {file_name}')
+
+    def create_spinner(self):
+        # Create a label that will hold the spinner GIF
+        self.spinner_label = QLabel(self)
+        # Set up the QMovie with the spinner GIF
+        self.spinner_movie = QMovie('icons/spinner.gif')
+        self.spinner_label.setMovie(self.spinner_movie)
+        # Add the spinner to the status bar
+        self.status_bar.addPermanentWidget(self.spinner_label, 0)
+        self.spinner_label.hide()  # Hide it by default
+    def show_spinner(self, show):
+        if show:
+            self.spinner_label.show()
+            self.spinner_movie.start()  # Start the animation
+        else:
+            self.spinner_movie.stop()  # Stop the animation
+            self.spinner_label.hide()
