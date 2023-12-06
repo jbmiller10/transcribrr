@@ -1,6 +1,7 @@
 import sys
 import os
 import pyaudio
+from pydub import AudioSegment
 import wave
 from PyQt5.QtWidgets import *
 from PyQt5.QtCore import *
@@ -9,31 +10,52 @@ import datetime
 from collections import deque
 import numpy as np
 
+
 class VoiceRecorderWidget(QWidget):
     recordingCompleted = pyqtSignal(str)
+
     def __init__(self, parent=None):
         super().__init__(parent)
         self.initUI()
         self.initAudio()
         self.recording_thread = None
         self.is_recording = False
+        self.is_paused = False
+        self.elapsed_time = 0
+        self.timer = QTimer(self)
+        self.timer.timeout.connect(self.updateTimer)
 
     def initUI(self):
         self.layout = QVBoxLayout(self)
+        self.layout.addStretch(1)
 
+        # Record button
         self.recordButton = QPushButton()
-        self.recordButton.setIcon(QIcon('icons/record.svg'))  # path to 'record' icon
-        self.recordButton.setFixedSize(80, 80)  # Big red circular button
+        self.recordButton.setIcon(QIcon('icons/record.svg'))  # Record icon
+        self.recordButton.setFixedSize(80, 80)
         self.recordButton.clicked.connect(self.toggleRecording)
+        self.layout.addWidget(self.recordButton, 0, Qt.AlignCenter)
 
-        self.recordButton.setStyleSheet("""
-            QPushButton {
-                border-radius: 40px; /* Half of the button size for a circular look */
-                background-color: #FF0000; /* Red color */
-            }
-        """)
+        # Timer display
+        self.timerLabel = QLabel("00:00:00")
+        self.layout.addWidget(self.timerLabel, 0, Qt.AlignCenter)
 
-        self.layout.addWidget(self.recordButton)
+        # Save and Delete buttons in a horizontal layout
+        buttonLayout = QHBoxLayout()
+        self.saveButton = QPushButton("Save")
+        self.saveButton.clicked.connect(self.saveRecording)
+        self.saveButton.setEnabled(False)
+        buttonLayout.addWidget(self.saveButton)
+
+        self.deleteButton = QPushButton("Delete")
+        self.deleteButton.clicked.connect(self.deleteRecording)
+        self.deleteButton.setEnabled(False)
+        buttonLayout.addWidget(self.deleteButton)
+        self.statusLabel = QLabel("Ready to record")
+        self.layout.addWidget(self.statusLabel, 0, Qt.AlignCenter)
+        self.layout.addLayout(buttonLayout)
+        self.layout.addStretch(1)
+
 
     def initAudio(self):
         self.format = pyaudio.paInt16
@@ -45,72 +67,144 @@ class VoiceRecorderWidget(QWidget):
     def toggleRecording(self):
         if not self.is_recording:
             self.startRecording()
+        elif self.is_paused:
+            self.resumeRecording()
         else:
-            self.stopRecording()
+            self.pauseRecording()
 
     def startRecording(self):
-        self.recordButton.setIcon(QIcon('icons/stop.svg'))  # path to 'stop' icon
-        self.stream = self.audio.open(format=self.format, channels=self.channels,
-                                      rate=self.rate, input=True,
-                                      frames_per_buffer=self.frames_per_buffer)
         self.is_recording = True
-        self.recording_thread = RecordingThread(self.audio)
+        self.is_paused = False
+        self.recordButton.setIcon(QIcon('icons/pause.svg'))  # Change to pause icon
+        self.statusLabel.setText("Recording...")
+        self.saveButton.setEnabled(True)  # Enable the save button when recording starts
+        self.deleteButton.setEnabled(True)
+        self.recording_thread = RecordingThread(self.audio, self.format, self.channels, self.rate, self.frames_per_buffer)
         self.recording_thread.startRecording()
-
-    def stopRecording(self):
+        self.timer.start(1000)
+    def pauseRecording(self):
         if self.recording_thread:
-            self.recording_thread.stopRecording()
-            file_name = self.recording_thread.saveRecording()
-            QMessageBox.information(self, "Recording", f"Recording saved as: {file_name}")
-            self.recordButton.setIcon(QIcon('icons/record.svg'))  # path to 'record' icon
+            self.is_paused = True
+            self.recordButton.setIcon(QIcon('icons/play.svg'))  # Change to play icon
+            self.statusLabel.setText("Recording paused")
+            self.recording_thread.pauseRecording()
+            self.timer.stop()
+
+    def resumeRecording(self):
+        if self.recording_thread:
+            self.is_paused = False
+            self.recordButton.setIcon(QIcon('icons/pause.svg'))  # Change back to pause icon
+            self.statusLabel.setText("Recording...")
+            self.recording_thread.resumeRecording()
+            self.timer.start(1000)
+
+    def saveRecording(self):
+        if self.recording_thread:
             self.is_recording = False
+            self.is_paused = False
+            self.recording_thread.stopRecording()
+            self.recording_thread.wait()
+            file_name = self.recording_thread.saveRecording()
+            self.recordButton.setIcon(QIcon('icons/record.svg'))  # Change back to record icon
+            self.statusLabel.setText("Ready to record")
+            self.saveButton.setEnabled(False)  # Disable the save button after saving
+            self.deleteButton.setEnabled(False)
             self.recordingCompleted.emit(file_name)
+            self.resetTimer()
+    def deleteRecording(self):
+        if self.recording_thread:
+            self.is_recording = False
+            self.is_paused = False
+            self.recording_thread.stopRecording()
+            self.recording_thread.wait()
+            self.recording_thread.frames.clear()  # Clear the recorded frames
+            self.recordButton.setIcon(QIcon('icons/record.svg'))  # Change back to record icon
+            self.statusLabel.setText("Ready to record")
+            self.deleteButton.setEnabled(False)  # Disable delete button after deletion
+            self.saveButton.setEnabled(False)  # Disable save button after deletion
+            self.resetTimer()
+    def updateTimer(self):
+        self.elapsed_time += 1
+        time_str = str(datetime.timedelta(seconds=self.elapsed_time))
+        self.timerLabel.setText(time_str)
 
-
+    def resetTimer(self):
+        self.timer.stop()
+        self.elapsed_time = 0
+        self.timerLabel.setText("00:00:00")
 
 class RecordingThread(QThread):
-    def __init__(self, audio_instance, parent=None):
+    def __init__(self, audio_instance, format, channels, rate, frames_per_buffer, parent=None):
         super().__init__(parent)
         self.audio = audio_instance
+        self.format = format
+        self.channels = channels
+        self.rate = rate
+        self.frames_per_buffer = frames_per_buffer
         self.frames = deque()
         self.is_recording = False
+        self.is_paused = False
 
     def run(self):
+        self.stream = self.audio.open(format=self.format, channels=self.channels,
+                                      rate=self.rate, input=True, frames_per_buffer=self.frames_per_buffer)
         while self.is_recording:
-            data = self.stream.read(4096)
-            self.frames.append(data)
+            if not self.is_paused:
+                data = self.stream.read(self.frames_per_buffer, exception_on_overflow=False)
+                self.frames.append(data)
+        self.stream.stop_stream()
+        self.stream.close()
+
+    def pauseRecording(self):
+        if self.is_recording:
+            self.is_paused = True
+
+    def resumeRecording(self):
+        if self.is_recording:
+            self.is_paused = False
 
     def startRecording(self):
-        self.stream = self.audio.open(format=pyaudio.paInt16, channels=1,
-                                      rate=44100, input=True, frames_per_buffer=4096)
         self.is_recording = True
         self.start()
 
     def stopRecording(self):
         self.is_recording = False
-        self.stream.stop_stream()
-        self.stream.close()
         self.wait()
 
     def saveRecording(self):
         recordings_dir = "Recordings"
         os.makedirs(recordings_dir, exist_ok=True)
         timestamp = datetime.datetime.now().strftime("%Y%m%d-%H%M%S")
-        file_name = os.path.join(recordings_dir, f"Recording-{timestamp}.wav")
+        wav_file_name = os.path.join(recordings_dir, f"Recording-{timestamp}.wav")
+        final_file_name = os.path.join(recordings_dir, f"Recording-{timestamp}.mp3")  # or .ogg for OGG format
 
-        # Assuming the audio is mono and the sample rate is 44100 Hz
-        wf = wave.open(file_name, 'wb')
+        # Save as WAV
+        wf = wave.open(wav_file_name, 'wb')
         wf.setnchannels(1)
         wf.setsampwidth(self.audio.get_sample_size(pyaudio.paInt16))
         wf.setframerate(44100)
         wf.writeframes(b''.join(self.frames))
         wf.close()
-        self.frames.clear()
-        return file_name
 
-# Test the VoiceRecorderWidget
-if __name__ == "__main__":
+        # Convert to MP3
+        audio = AudioSegment.from_wav(wav_file_name)
+        audio.export(final_file_name, format="mp3")  # maybe change to format="ogg"
+
+        os.remove(wav_file_name)  #Cleanup the WAV file
+        self.frames.clear()
+        return final_file_name
+
+def main():
     app = QApplication(sys.argv)
-    recorder = VoiceRecorderWidget()
-    recorder.show()
+    mainWindow = QMainWindow()
+    recorderWidget = VoiceRecorderWidget()
+
+    mainWindow.setCentralWidget(recorderWidget)
+    mainWindow.setWindowTitle("Voice Recorder")
+    mainWindow.resize(300, 200)
+    mainWindow.show()
+
     sys.exit(app.exec_())
+
+if __name__ == "__main__":
+    main()

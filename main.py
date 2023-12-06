@@ -151,7 +151,7 @@ stylesheet_nightmode = '''/* Base colors for Night Mode */
     color: #dcdcdc; /* Light grey for text to ensure good contrast */
     border: none;
 }
-
+2
 /* Text edit and display areas with a subtle shadow for depth */
 QTextEdit, QLineEdit {
     background-color: #2e2e2e; /* Slightly lighter grey than the base */

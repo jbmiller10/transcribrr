@@ -199,9 +199,14 @@ class MainWindow(QMainWindow):
     def on_recording_selected(self, filename):
         # TODO: Implement what happens when a recording is selected
         pass
+
     def onRecordingCompleted(self, file_name):
-        # Logic to add the new recording to 'RecentRecordingsWidget' or perform any other action
-        print(f"New recording completed: {file_name}")
+        # Add the new recording to the list
+        self.recent_recordings_widget.add_recording(file_name)
+        # Display a notification
+        QMessageBox.information(self, "Recording Completed", f"Recording saved: {file_name}")
+        # Start transcription automatically
+        # self.main_transcription_widget.start_transcription(file_name)
 
     def on_transcription_started(self):
         # TODO: Implement what happens when transcription starts
