@@ -314,6 +314,8 @@ class MainWindow(QMainWindow):
         # Enable the button if the URL is valid or if a local file is selected
         self.start_transcription_button.setEnabled(is_valid or bool(self.file_path))
 
+    def track_temp_file(self, file_path):
+        self.temp_files.append(file_path)
     def cleanup_temp_files(self):
         for temp_file in self.temp_files:
             try:
@@ -415,3 +417,4 @@ class MainWindow(QMainWindow):
                 # Create a QListWidgetItem for each recording
                 item = QListWidgetItem(recording)
                 self.recordings_list.addItem(item)
+
