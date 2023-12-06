@@ -38,9 +38,17 @@ class RecentRecordingsWidget(QWidget):
         self.add_button.clicked.connect(self.add_recording)
         self.recordings_list.itemClicked.connect(self.recording_clicked)
 
-    def add_recording(self):
-        # TODO: Implement logic to add a recording
-        pass
+    def add_recording(self, file_name):
+        creation_date = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S") # todo Extract the date and time from the filename or file properties
+        duration = "00:00:00"  # Placeholder, extract real duration
+
+        item = QListWidgetItem(f"{file_name}\n{creation_date} {duration}")
+        item.setData(Qt.UserRole, {
+            'filename': file_name,
+            'date': creation_date,
+            'duration': duration
+        })
+        self.recordings_list.addItem(item)
 
     def recording_clicked(self, item: QListWidgetItem):
         filename = item.text()
@@ -201,12 +209,15 @@ class MainWindow(QMainWindow):
         pass
 
     def onRecordingCompleted(self, file_name):
-        # Add the new recording to the list
+        # Add the new recording to the RecentRecordingsWidget
         self.recent_recordings_widget.add_recording(file_name)
+        # Optionally, you could select the new recording in the list
+        self.recent_recordings_widget.recordings_list.setCurrentRow(
+            self.recent_recordings_widget.recordings_list.count() - 1
+        )
         # Display a notification
         QMessageBox.information(self, "Recording Completed", f"Recording saved: {file_name}")
-        # Start transcription automatically
-        # self.main_transcription_widget.start_transcription(file_name)
+
 
     def on_transcription_started(self):
         # TODO: Implement what happens when transcription starts
