@@ -13,7 +13,36 @@ from app.TranscodingThread import TranscodingThread
 from app.TranscriptionThread import TranscriptionThread
 from app.GPT4ProcessingThread import GPT4ProcessingThread
 from app.VoiceRecorderWidget import *
+import datetime
+import shutil
 
+
+class YouTubeDownloadDialog(QDialog):
+    download_requested = pyqtSignal(str)
+
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        self.layout = QVBoxLayout(self)
+        self.url_input = QLineEdit(self)
+        self.layout.addWidget(self.url_input)
+
+        self.download_button = QPushButton("Download", self)
+        self.download_button.clicked.connect(self.on_download_clicked)
+        self.layout.addWidget(self.download_button)
+
+    def on_download_clicked(self):
+        url = self.url_input.text()
+        if self.validate_url(url):
+            self.download_requested.emit(url)
+            self.accept()
+        else:
+            QMessageBox.warning(self, "Invalid URL", "The provided URL is not a valid YouTube URL.")
+
+    @staticmethod
+    def validate_url(url):
+        # Use regex to validate the URL
+        regex = r'(https?://)?(www\.)?(youtube|youtu|youtube-nocookie)\.(com|be)/(watch\?v=|embed/|v/|.+\?v=)?([^&=%\?]{11})'
+        return re.match(regex, url) is not None
 
 class RecentRecordingsWidget(QWidget):
     recordingSelected = pyqtSignal(str)
@@ -27,20 +56,76 @@ class RecentRecordingsWidget(QWidget):
         self.header_label.setAlignment(Qt.AlignCenter)
 
         self.recordings_list = QListWidget()
-        self.add_button = QPushButton()
-        self.add_button.setIcon(QIcon('icons/add.svg'))  # path to '+' icon
-        self.add_button.setFixedSize(50, 50)
+        self.add_button = QPushButton("Open Local File")
+        #self.add_button.setIcon(QIcon('icons/add.svg'))  # path to '+' icon
+        #self.add_button.setFixedSize(50, 50)
+
+        #download youtube button
+        self.download_youtube_button = QPushButton("Download YouTube Video")
+        self.download_youtube_button.clicked.connect(self.on_download_youtube_clicked)
+
 
         self.layout.addWidget(self.header_label)
         self.layout.addWidget(self.recordings_list)
         self.layout.addWidget(self.add_button, 0, Qt.AlignCenter)
+        self.layout.addWidget(self.download_youtube_button, 0, Qt.AlignCenter)
 
-        self.add_button.clicked.connect(self.add_recording)
+        self.add_button.clicked.connect(self.on_add_button_clicked)
+
         self.recordings_list.itemClicked.connect(self.recording_clicked)
 
         # Right click context menu for delete
         self.recordings_list.setContextMenuPolicy(Qt.CustomContextMenu)
         self.recordings_list.customContextMenuRequested.connect(self.showRightClickMenu)
+
+
+    def on_add_button_clicked(self):
+        file_dialog = QFileDialog(self)
+        file_dialog.setNameFilter("Audio/Video Files (*.mp3 *.wav *.m4a *.ogg *.mp4 *.mkv *.avi *.mov)")
+        file_dialog.setFileMode(QFileDialog.ExistingFile)
+        if file_dialog.exec_() == QFileDialog.Accepted:
+            selected_file_path = file_dialog.selectedFiles()[0]
+            self.handle_file_addition(selected_file_path)
+
+
+    def handle_file_addition(self, file_path):
+        if self.is_video_file(file_path):
+            # If it's a video file, extract the audio and transcode to MP3
+            self.transcoding_thread = TranscodingThread(file_path, target_format='mp3')
+            self.transcoding_thread.completed.connect(self.add_recording)
+            self.transcoding_thread.error.connect(self.handle_transcoding_error)
+            self.transcoding_thread.start()
+        elif self.is_audio_file(file_path):
+            # If it's an audio file, copy it to the recordings directory
+            target_file_path = os.path.join('recordings', os.path.basename(file_path))
+            shutil.copyfile(file_path, target_file_path)
+            self.add_recording(target_file_path)
+        else:
+            QMessageBox.warning(self, "File Type", "The selected file is not a supported audio or video type.")
+    def handle_transcoding_error(self, error_message):
+        QMessageBox.critical(self, "Transcoding Error", error_message)
+    def on_download_youtube_clicked(self):
+        self.download_dialog = YouTubeDownloadDialog(self)
+        self.download_dialog.download_requested.connect(self.handle_youtube_download)
+        self.download_dialog.exec_()  # This will open the dialog to enter the URL
+    def handle_youtube_download_error(self, error_message):
+        QMessageBox.critical(self, "Download Error", error_message)
+
+    def handle_youtube_download(self, url):
+        self.youtube_thread = YouTubeDownloadThread(url)
+        self.youtube_thread.completed.connect(self.start_transcoding)
+        self.youtube_thread.error.connect(self.handle_youtube_download_error)
+        self.youtube_thread.start()
+
+    def start_transcoding(self, file_path):
+        self.transcoding_thread = TranscodingThread(file_path, target_format='mp3')
+        self.transcoding_thread.completed.connect(self.add_recording)
+        self.transcoding_thread.error.connect(self.handle_transcoding_error)
+        self.transcoding_thread.start()
+
+    def handle_transcoding_error(self, error_message):
+        QMessageBox.critical(self, "Transcoding Error", error_message)
+
 
 
     def add_recording(self, full_file_path):
@@ -115,6 +200,18 @@ class RecentRecordingsWidget(QWidget):
         if action == delete_action:
             self.deleteRecording(position)
 
+    @staticmethod
+    def is_video_file(file_path):
+        video_extensions = ['.mp4', '.mkv', '.avi', '.mov', '.webm']
+        file_extension = os.path.splitext(file_path)[1].lower()
+        return file_extension in video_extensions
+
+    @staticmethod
+    def is_audio_file(file_path):
+        audio_extensions = ['.mp3', '.wav', '.aac', '.flac', '.ogg', '.m4a']
+        file_extension = os.path.splitext(file_path)[1].lower()
+        return file_extension in audio_extensions
+
     def deleteRecording(self, position):
         # Get the item at the clicked position
         item = self.recordings_list.itemAt(position)
@@ -168,7 +265,7 @@ class RecordingListItem(QWidget):
         v_layout.addStretch()  # Pushes the labels to the top
 
 
-        layout.addLayout(v_layout, 3)
+        layout.addLayout(v_layout, 5)
 
         layout.addStretch(1)
 
