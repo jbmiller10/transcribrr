@@ -9,20 +9,10 @@ from PyQt5.QtGui import *
 import datetime
 from collections import deque
 from PyQt5.QtSvg import QSvgRenderer
+from app.SVGButton import *
 
 import numpy as np
 
-
-class SvgButton(QPushButton):
-    def __init__(self, svg_file, parent=None):
-        super().__init__(parent)
-        self.svg_renderer = QSvgRenderer(svg_file)
-
-    def paintEvent(self, event):
-        painter = QPainter(self)
-        rect = QRectF(self.rect())  # Convert QRect to QRectF
-        self.svg_renderer.render(painter, rect)
-        painter.end()
 
 class VoiceRecorderWidget(QWidget):
     recordingCompleted = pyqtSignal(str)
@@ -38,6 +28,8 @@ class VoiceRecorderWidget(QWidget):
         self.timer = QTimer(self)
         self.timer.timeout.connect(self.updateTimer)
 
+
+
     def initUI(self):
         self.layout = QVBoxLayout(self)
         self.layout.addStretch(1)
@@ -49,9 +41,12 @@ class VoiceRecorderWidget(QWidget):
         #self.recordButton.clicked.connect(self.toggleRecording)
         #self.layout.addWidget(self.recordButton, 0, Qt.AlignCenter)
 
-
+        record_button_svg_files = {
+            'record': 'icons/record.svg',
+            'pause': 'icons/pause.svg',
+        }
         # Record button - now using SvgButton
-        self.recordButton = SvgButton('icons/record.svg')  # Initialize with record icon
+        self.recordButton = SvgButton(record_button_svg_files)
         self.recordButton.setFixedSize(80, 80)
         self.recordButton.clicked.connect(self.toggleRecording)
         self.layout.addWidget(self.recordButton, 0, Qt.AlignCenter)
@@ -86,13 +81,13 @@ class VoiceRecorderWidget(QWidget):
 
     def toggleRecording(self):
         if not self.is_recording:
-            self.recordButton.svg_renderer.load('icons/pause.svg')  # Change to pause SVG
+            self.recordButton.set_svg('pause')  # Change to pause SVG
             self.startRecording()
         elif self.is_paused:
-            self.recordButton.svg_renderer.load('icons/record.svg')  # Change to record SVG
+            self.recordButton.set_svg('record')  # Change to record SVG
             self.resumeRecording()
         else:
-            self.recordButton.svg_renderer.load('icons/record.svg')  # Change to record SVG
+            self.recordButton.set_svg('record')  # Change to record SVG
 
             self.pauseRecording()
 
@@ -111,6 +106,7 @@ class VoiceRecorderWidget(QWidget):
         if self.recording_thread:
             self.is_paused = True
             #self.recordButton.setIcon(QIcon('icons/play.svg'))  # Change to play icon
+            self.recordButton.set_svg('record')  # Change to record SVG
             #self.recordButton.svg_renderer.load('icons/record.svg')  # Change to pause SVG
             self.statusLabel.setText("Recording paused")
             self.recording_thread.pauseRecording()
@@ -120,8 +116,9 @@ class VoiceRecorderWidget(QWidget):
         if self.recording_thread:
             self.is_paused = False
             #self.recordButton.setIcon(QIcon('icons/pause.svg'))  # Change back to pause icon
-            self.recordButton.svg_renderer.load('icons/pause.svg')  # Change to pause SVG
+            #self.recordButton.svg_renderer.load('icons/pause.svg')  # Change to pause SVG
             self.statusLabel.setText("Recording...")
+            self.recordButton.set_svg('pause')  # Change to record SVG
             self.recording_thread.resumeRecording()
             self.timer.start(1000)
 
@@ -129,9 +126,10 @@ class VoiceRecorderWidget(QWidget):
         if self.recording_thread:
             #self.recordButton.setIcon(QIcon('icons/record.svg'))  # Change back to record icon
 
-            self.recordButton.svg_renderer.load('icons/record.svg')  # Change back to record SVG
+            #self.recordButton.svg_renderer.load('icons/record.svg')  # Change back to record SVG
             self.is_recording = False
             self.is_paused = False
+            self.recordButton.set_svg('record')  # Change to record SVG
             self.recording_thread.stopRecording()
             self.recording_thread.wait()
             file_name = self.recording_thread.saveRecording()
@@ -143,8 +141,9 @@ class VoiceRecorderWidget(QWidget):
     def deleteRecording(self):
         if self.recording_thread:
             #self.recordButton.setIcon(QIcon('icons/record.svg'))  # Change back to record icon
-            self.recordButton.svg_renderer.load('icons/record.svg')  # Change back to record SVG
+            #self.recordButton.svg_renderer.load('icons/record.svg')  # Change back to record SVG
             self.statusLabel.setText("Ready to record")
+            self.recordButton.set_svg('record')  # Change to record SVG
             self.is_recording = False
             self.is_paused = False
             self.recording_thread.stopRecording()

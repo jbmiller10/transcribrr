@@ -4,6 +4,7 @@ import traceback
 from datetime import datetime
 import os
 
+
 class YouTubeDownloadThread(QThread):
     completed = pyqtSignal(str)
     error = pyqtSignal(str)
