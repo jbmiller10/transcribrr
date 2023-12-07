@@ -38,6 +38,11 @@ class RecentRecordingsWidget(QWidget):
         self.add_button.clicked.connect(self.add_recording)
         self.recordings_list.itemClicked.connect(self.recording_clicked)
 
+        # Right click context menu for delete
+        self.recordings_list.setContextMenuPolicy(Qt.CustomContextMenu)
+        self.recordings_list.customContextMenuRequested.connect(self.showRightClickMenu)
+
+
     def add_recording(self, full_file_path):
         recording_item_widget = RecordingListItem(full_file_path)
 
@@ -95,6 +100,40 @@ class RecentRecordingsWidget(QWidget):
                 color: white;
             }
         """)
+    def showRightClickMenu(self, position):
+        # Get the global position for showing the context menu
+        global_pos = self.recordings_list.viewport().mapToGlobal(position)
+
+        # Create the context menu
+        menu = QMenu()
+        delete_action = menu.addAction("Delete")
+
+        # Show the context menu and get the selected action
+        action = menu.exec_(global_pos)
+
+        # If delete is clicked, call the method to delete the item
+        if action == delete_action:
+            self.deleteRecording(position)
+
+    def deleteRecording(self, position):
+        # Get the item at the clicked position
+        item = self.recordings_list.itemAt(position)
+        if item is None:
+            return  # No item at the position
+
+        # Confirm deletion with the user
+        reply = QMessageBox.question(self, 'Delete Recording',
+                                     'Are you sure you want to delete this recording?',
+                                     QMessageBox.Yes | QMessageBox.No, QMessageBox.No)
+
+        if reply == QMessageBox.Yes:
+            # Proceed with deletion
+            row = self.recordings_list.row(item)
+            full_file_path = item.data(Qt.UserRole)['full_path']
+            # Optionally, delete the file from the filesystem
+            os.remove(full_file_path)
+            self.recordings_list.takeItem(row)
+
 
 class RecordingListItem(QWidget):
     def __init__(self, full_file_path, *args, **kwargs):
