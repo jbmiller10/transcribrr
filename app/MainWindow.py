@@ -231,7 +231,6 @@ class RecentRecordingsWidget(QWidget):
             os.remove(full_file_path)
             self.recordings_list.takeItem(row)
 
-
 class RecordingListItem(QWidget):
     def __init__(self, full_file_path, *args, **kwargs):
         super(RecordingListItem, self).__init__(*args, **kwargs)

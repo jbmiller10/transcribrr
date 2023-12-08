@@ -81,13 +81,13 @@ class VoiceRecorderWidget(QWidget):
 
     def toggleRecording(self):
         if not self.is_recording:
-            self.recordButton.set_svg('pause')  # Change to pause SVG
+            self.recordButton.set_svg('pause')
             self.startRecording()
         elif self.is_paused:
-            self.recordButton.set_svg('record')  # Change to record SVG
+            self.recordButton.set_svg('record')
             self.resumeRecording()
         else:
-            self.recordButton.set_svg('record')  # Change to record SVG
+            self.recordButton.set_svg('record')
 
             self.pauseRecording()
 
@@ -96,6 +96,8 @@ class VoiceRecorderWidget(QWidget):
         self.is_recording = True
         self.is_paused = False
         #self.recordButton.setIcon(QIcon('icons/pause.svg'))  # Change to pause icon
+        self.recordButton.set_svg('pause')
+        print('pause')
         self.statusLabel.setText("Recording...")
         self.saveButton.setEnabled(True)  # Enable the save button when recording starts
         self.deleteButton.setEnabled(True)
