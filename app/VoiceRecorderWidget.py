@@ -9,7 +9,7 @@ from PyQt5.QtGui import *
 import datetime
 from collections import deque
 from PyQt5.QtSvg import QSvgRenderer
-from app.SVGButton import *
+from app.SVGToggleButton import *
 
 import numpy as np
 
@@ -46,7 +46,7 @@ class VoiceRecorderWidget(QWidget):
             'pause': 'icons/pause.svg',
         }
         # Record button - now using SvgButton
-        self.recordButton = SvgButton(record_button_svg_files)
+        self.recordButton = SVGToggleButton(record_button_svg_files)
         self.recordButton.setFixedSize(80, 80)
         self.recordButton.clicked.connect(self.toggleRecording)
         self.layout.addWidget(self.recordButton, 0, Qt.AlignCenter)

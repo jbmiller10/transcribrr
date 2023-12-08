@@ -56,23 +56,67 @@ class RecentRecordingsWidget(QWidget):
         self.header_label.setAlignment(Qt.AlignCenter)
 
         self.recordings_list = QListWidget()
-        self.add_button = QPushButton("Open Local File")
-        #self.add_button.setIcon(QIcon('icons/add.svg'))  # path to '+' icon
-        #self.add_button.setFixedSize(50, 50)
-
-        #download youtube button
-        self.download_youtube_button = QPushButton("Download YouTube Video")
-        self.download_youtube_button.clicked.connect(self.on_download_youtube_clicked)
 
 
+        self.buttonLayout = QHBoxLayout()
+        self.button_stylesheet = """
+    QPushButton {
+
+         background-color: transparent;
+     }
+
+    QPushButton:pressed {
+        background-color: qlineargradient(
+            x1: 0, y1: 0, x2: 0, y2: 2,
+            stop: 0 #dadbde, stop: 1 #f6f7fa
+        );
+    }
+
+    QPushButton:hover {
+        border: 2px solid blue;
+        border-radius: 6px;
+    }
+"""
+
+        #self.download_youtube_button = QPushButton("Download YouTube Video")
+        self.add_button = QPushButton()
+        self.add_button.setIcon(QIcon('icons/upload.svg'))
+        self.add_button.setIconSize(QSize(40, 40))
+        self.add_button.setFixedSize(40,40)
+        self.add_button.setToolTip("Upload Local Audio/Video file")
+        self.add_button.setStyleSheet(self.button_stylesheet)
+
+        self.download_youtube_button = QPushButton()
+        self.download_youtube_button.setIcon(QIcon('icons/youtube.svg'))
+        self.download_youtube_button.setIconSize(QSize(40, 40))
+        self.download_youtube_button.setFixedSize(40, 40)
+        self.download_youtube_button.setToolTip("Use Youtube Link")
+        self.download_youtube_button.setStyleSheet(self.button_stylesheet)
+
+        self.record_new_button = QPushButton()
+        self.record_new_button.setIcon(QIcon('icons/record.svg'))
+        self.record_new_button.setIconSize(QSize(40, 40))
+        self.record_new_button.setFixedSize(40, 40)
+        self.record_new_button.setToolTip("Record from microphone/system audio")
+        self.record_new_button.setStyleSheet(self.button_stylesheet)
+
+
+        #self.buttonLayout.addWidget(self.add_button)x
+        ##add to buttonlayout
+        self.buttonLayout.addWidget(self.add_button)
+        self.buttonLayout.addWidget(self.download_youtube_button)
+        self.buttonLayout.addWidget(self.record_new_button)
+        buttonSpacer = QSpacerItem(50,50, QSizePolicy.Expanding, QSizePolicy.Minimum)
+        self.buttonLayout.addItem(buttonSpacer)
+        #self.recordings_list.setSizePolicy(QSizePolicy.Expanding,QSizePolicy.Expanding)
         self.layout.addWidget(self.header_label)
         self.layout.addWidget(self.recordings_list)
-        self.layout.addWidget(self.add_button, 0, Qt.AlignCenter)
-        self.layout.addWidget(self.download_youtube_button, 0, Qt.AlignCenter)
-
-        self.add_button.clicked.connect(self.on_add_button_clicked)
+        #self.layout.addStretch(1)
+        self.layout.addLayout(self.buttonLayout)
 
         self.recordings_list.itemClicked.connect(self.recording_clicked)
+        self.download_youtube_button.clicked.connect(self.on_download_youtube_clicked)
+        self.add_button.clicked.connect(self.on_add_button_clicked)
 
         # Right click context menu for delete
         self.recordings_list.setContextMenuPolicy(Qt.CustomContextMenu)
@@ -377,6 +421,9 @@ class MainTranscriptionWidget(QWidget):
             }
         """)
 
+
+
+
 class MainWindow(QMainWindow):
     def __init__(self):
         super().__init__()
@@ -390,12 +437,14 @@ class MainWindow(QMainWindow):
         self.left_layout = QVBoxLayout()
 
         self.recent_recordings_widget = RecentRecordingsWidget()
+        self.recent_recordings_widget.setSizePolicy(QSizePolicy.Expanding,QSizePolicy.Expanding)
         self.voice_recorder_widget = VoiceRecorderWidget()  # The voice recorder widget
         self.main_transcription_widget = MainTranscriptionWidget()
 
         # Add the RecentRecordingsWidget and VoiceRecorderWidget to left_layout
-        self.left_layout.addWidget(self.recent_recordings_widget)
-        self.left_layout.addWidget(self.voice_recorder_widget)
+        self.left_layout.addWidget(self.recent_recordings_widget,5) #1 is stretch
+        self.left_layout.addStretch(1) #spacer
+        self.left_layout.addWidget(self.voice_recorder_widget,1) #0 is stretch
 
         # Create a QWidget to hold the left side layout
         self.left_widget = QWidget()

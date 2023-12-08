@@ -2,7 +2,7 @@ from PyQt5.QtWidgets import QPushButton
 from PyQt5.QtGui import QPainter, QPixmap
 from PyQt5.QtSvg import QSvgRenderer
 from PyQt5.QtCore import QSize, Qt, QRectF
-class SvgButton(QPushButton):
+class SVGToggleButton(QPushButton):
     def __init__(self, svg_files, parent=None):
         super().__init__(parent)
         # Initialize a dictionary to store QSvgRenderer instances for each SVG
