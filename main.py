@@ -274,6 +274,36 @@ QComboBox::item:selected {
 }
 '''
 
+try_again_stylesheet = """
+        QWidget {
+            color: #ffffff;
+            background-color: #333333;
+            font-family: 'YourFontFamily'; /* Replace with your font */
+            font-size: 10pt;
+        }
+        /* Style for QListWidget that affects all QListWidgets */
+        QListWidget {
+            border: none;
+            padding: 5px;
+        }
+        QListWidget::item {
+            border-bottom: 1px solid #555;
+            padding: 5px;
+        }
+        QListWidget::item:selected {
+            background-color: #555;
+        }
+        /* General button style */
+        QPushButton {
+            border: 1px solid #444444;
+            padding: 5px;
+            border-radius: 4px;
+        }
+        QPushButton:hover {
+            border-color: #666666;
+        }
+    """
+
 
 if __name__ == "__main__":
     app = QApplication(sys.argv)
