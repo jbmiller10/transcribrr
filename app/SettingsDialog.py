@@ -1,6 +1,10 @@
-from PyQt5.QtWidgets import QPushButton, QComboBox, QDoubleSpinBox, QSpinBox,QCheckBox
 from PyQt5.QtCore import pyqtSignal
-from PyQt5.QtWidgets import QDialog, QVBoxLayout, QLabel, QLineEdit, QDialogButtonBox
+
+from PyQt6.QtWidgets import (
+    QPushButton, QComboBox, QDoubleSpinBox, QSpinBox, QCheckBox, QDialog,
+    QVBoxLayout, QLabel, QLineEdit, QDialogButtonBox
+)
+from PyQt6.QtCore import pyqtSignal
 import keyring
 import json
 from app.PromptManagerDialog import PromptManagerDialog
@@ -8,6 +12,7 @@ from app.PromptManagerDialog import PromptManagerDialog
 class SettingsDialog(QDialog):
     settings_changed = pyqtSignal()
     prompts_updated = pyqtSignal()
+
     def __init__(self, main_window, parent=None):
         super().__init__(parent)
         self.setWindowTitle('Settings')
@@ -82,7 +87,9 @@ class SettingsDialog(QDialog):
         self.hf_api_key_edit.textChanged.connect(self.toggle_speaker_detection_checkbox)
 
         # Add standard dialog button box
-        button_box = QDialogButtonBox(QDialogButtonBox.Ok | QDialogButtonBox.Cancel, self)
+        button_box = QDialogButtonBox(
+            QDialogButtonBox.StandardButton.Ok | QDialogButtonBox.StandardButton.Cancel, self
+        )
         layout.addWidget(button_box)
 
         button_box.accepted.connect(self.accept)
@@ -137,7 +144,7 @@ class SettingsDialog(QDialog):
     def open_prompt_manager(self):
         dialog = PromptManagerDialog(self.main_window.preset_prompts, self)
         dialog.prompts_saved.connect(self.prompts_saved_handler)
-        dialog.exec_()
+        dialog.exec()
 
     def prompts_saved_handler(self):
         self.prompts_updated.emit()  # When PromptManagerDialog saves prompts, emit the signal

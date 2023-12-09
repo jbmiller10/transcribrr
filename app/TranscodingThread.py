@@ -1,8 +1,7 @@
-from PyQt5.QtCore import QThread, pyqtSignal
+from PyQt6.QtCore import QThread, pyqtSignal
 from pydub import AudioSegment
 import os
 import traceback
-
 
 class TranscodingThread(QThread):
     update_progress = pyqtSignal(str)
@@ -10,7 +9,7 @@ class TranscodingThread(QThread):
     error = pyqtSignal(str)
 
     def __init__(self, file_path=None, target_format='mp3', *args, **kwargs):
-        super().__init__(*args, **kwargs)
+        super().__init__(*args, **kwargs)  # Changed to PyQt6 super() call
         self.file_path = file_path
         self.target_format = target_format
 

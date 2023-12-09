@@ -1,20 +1,22 @@
 import re
-from PyQt5.QtWidgets import *
-from PyQt5.QtCore import *
-from PyQt5.QtGui import *
-import os
 import traceback
-#from PyQt5.QtWidgets import  QLabel, QLineEdit
-import keyring
-import json
-from app.YouTubeDownloadThread import YouTubeDownloadThread
-from app.SettingsDialog import SettingsDialog
-from app.TranscodingThread import TranscodingThread
-from app.TranscriptionThread import TranscriptionThread
-from app.GPT4ProcessingThread import GPT4ProcessingThread
-from app.VoiceRecorderWidget import *
 import datetime
 import shutil
+from PyQt6.QtCore import (
+    pyqtSignal, QSize, Qt, QPropertyAnimation, QEasingCurve, QFile,
+)
+from PyQt6.QtGui import QIcon
+from PyQt6.QtWidgets import (
+    QDialog, QVBoxLayout, QLineEdit, QPushButton, QMessageBox,
+    QWidget, QHBoxLayout, QLabel, QListWidget, QSizePolicy,
+    QPushButton, QSpacerItem, QFileDialog, QMenu, QListWidgetItem, QMainWindow,QComboBox,QTextEdit, QSplitter,QStatusBar
+)
+
+from app.YouTubeDownloadThread import YouTubeDownloadThread
+from app.TranscodingThread import TranscodingThread
+from app.VoiceRecorderWidget import VoiceRecorderWidget  # Import specific classes
+import os
+from pydub import AudioSegment
 
 
 class YouTubeDownloadDialog(QDialog):
@@ -55,10 +57,10 @@ class RecentRecordingsWidget(QWidget):
         self.layout.setContentsMargins(0, 0, 0, 0)
 
         self.header_label = QLabel("Recent Recordings")
-        self.header_label.setAlignment(Qt.AlignCenter)
+        self.header_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
 
         self.recordings_list = QListWidget()
-        self.recordings_list.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
+        self.recordings_list.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding)
 
 
         self.buttonLayout = QHBoxLayout()
@@ -111,7 +113,7 @@ class RecentRecordingsWidget(QWidget):
         # Set up the animation for the voice recorder widget
         self.voiceRecorderAnimation = QPropertyAnimation(self.voice_recorder_widget, b"maximumHeight")
         self.voiceRecorderAnimation.setDuration(500)  # Animation duration in milliseconds
-        self.voiceRecorderAnimation.setEasingCurve(QEasingCurve.InOutQuad)  # Smooth easing curve for the animation
+        self.voiceRecorderAnimation.setEasingCurve(QEasingCurve.Type.InOutQuad)  # Smooth easing curve for the animation
 
         # Set initial visibility state and height
         self.voice_recorder_widget.setMaximumHeight(0)  # Start hidden
@@ -122,14 +124,14 @@ class RecentRecordingsWidget(QWidget):
         self.buttonLayout.addWidget(self.add_button)
         self.buttonLayout.addWidget(self.download_youtube_button)
         self.buttonLayout.addWidget(self.record_new_button)
-        buttonSpacer = QSpacerItem(50,50, QSizePolicy.Expanding, QSizePolicy.Minimum)
+        buttonSpacer = QSpacerItem(50,50, QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Minimum)
         self.buttonLayout.addItem(buttonSpacer)
-        #self.recordings_list.setSizePolicy(QSizePolicy.Expanding,QSizePolicy.Expanding)
+        #self.recordings_list.setSizePolicy(QSizePolicy.Policy.Expanding,QSizePolicy.Policy.Expanding)
         self.layout.addWidget(self.header_label)
         self.layout.addWidget(self.recordings_list,15)
         #self.layout.addStretch(1)
         self.layout.addWidget(self.voice_recorder_widget, 0)
-        verticalSpacer = QSpacerItem(20, 40, QSizePolicy.Minimum, QSizePolicy.Expanding)
+        verticalSpacer = QSpacerItem(20, 40, QSizePolicy.Policy.Minimum, QSizePolicy.Policy.Expanding)
         self.layout.addItem(verticalSpacer)
         self.layout.addLayout(self.buttonLayout)
 
@@ -139,7 +141,7 @@ class RecentRecordingsWidget(QWidget):
         self.add_button.clicked.connect(self.on_add_button_clicked)
 
         # Right click context menu for delete
-        self.recordings_list.setContextMenuPolicy(Qt.CustomContextMenu)
+        self.recordings_list.setContextMenuPolicy(Qt.ContextMenuPolicy.CustomContextMenu)
         self.recordings_list.customContextMenuRequested.connect(self.showRightClickMenu)
         self.voice_recorder_widget.recordingCompleted.connect(self.onRecordingCompleted)
 
@@ -181,12 +183,11 @@ class RecentRecordingsWidget(QWidget):
             self.voiceRecorderAnimation.finished.disconnect()
             self.animationFinishedConnected = False
 
-
     def on_add_button_clicked(self):
         file_dialog = QFileDialog(self)
         file_dialog.setNameFilter("Audio/Video Files (*.mp3 *.wav *.m4a *.ogg *.mp4 *.mkv *.avi *.mov)")
-        file_dialog.setFileMode(QFileDialog.ExistingFile)
-        if file_dialog.exec_() == QFileDialog.Accepted:
+        file_dialog.setFileMode(QFileDialog.FileMode.ExistingFile)
+        if file_dialog.exec() == QFileDialog.DialogCode.Accepted:
             selected_file_path = file_dialog.selectedFiles()[0]
             self.handle_file_addition(selected_file_path)
 
@@ -210,7 +211,7 @@ class RecentRecordingsWidget(QWidget):
     def on_download_youtube_clicked(self):
         self.download_dialog = YouTubeDownloadDialog(self)
         self.download_dialog.download_requested.connect(self.handle_youtube_download)
-        self.download_dialog.exec_()  # This will open the dialog to enter the URL
+        self.download_dialog.exec()  # This will open the dialog to enter the URL
     def handle_youtube_download_error(self, error_message):
         QMessageBox.critical(self, "Download Error", error_message)
 
@@ -241,7 +242,7 @@ class RecentRecordingsWidget(QWidget):
         self.recordings_list.setItemWidget(item, recording_item_widget)
 
         # Optionally store the metadata in the item's data
-        item.setData(Qt.UserRole, recording_item_widget.metadata)
+        item.setData(Qt.ItemDataRole.UserRole, recording_item_widget.metadata)
 
     def load_recordings(self):
         recordings_dir = "Recordings"
@@ -297,7 +298,7 @@ class RecentRecordingsWidget(QWidget):
         delete_action = menu.addAction("Delete")
 
         # Show the context menu and get the selected action
-        action = menu.exec_(global_pos)
+        action = menu.exec(global_pos)
 
         # If delete is clicked, call the method to delete the item
         if action == delete_action:
@@ -324,12 +325,13 @@ class RecentRecordingsWidget(QWidget):
         # Confirm deletion with the user
         reply = QMessageBox.question(self, 'Delete Recording',
                                      'Are you sure you want to delete this recording?',
-                                     QMessageBox.Yes | QMessageBox.No, QMessageBox.No)
+                                     QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
+                                     QMessageBox.StandardButton.No)
 
-        if reply == QMessageBox.Yes:
+        if reply == QMessageBox.StandardButton.Yes:
             # Proceed with deletion
             row = self.recordings_list.row(item)
-            full_file_path = item.data(Qt.UserRole)['full_path']
+            full_file_path = item.data(Qt.ItemDataRole.UserRole)['full_path']
             # Optionally, delete the file from the filesystem
             os.remove(full_file_path)
             self.recordings_list.takeItem(row)
@@ -386,7 +388,7 @@ class RecordingListItem(QWidget):
         self.setLayout(layout)
 
         # Align the duration label to the right
-        self.duration_label.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
+        self.duration_label.setAlignment(Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter)
 
         # Store metadata for later use
         self.metadata = {
@@ -397,7 +399,7 @@ class RecordingListItem(QWidget):
         }
 
     def mouseDoubleClickEvent(self, event):
-        if event.button() == Qt.LeftButton:
+        if event.button() == Qt.MouseButton.LeftButton:
             self.name_editable.setReadOnly(False)  # Allow editing
             self.name_editable.setFocus(Qt.MouseFocusReason)
 
@@ -410,7 +412,7 @@ class EditableLineEdit(QLineEdit):
         self.setReadOnly(True)  # Start as read-only
 
     def mouseDoubleClickEvent(self, event):
-        if event.button() == Qt.LeftButton:
+        if event.button() == Qt.MouseButton.LeftButton:
             self.setReadOnly(False)  # Allow editing
             self.selectAll()  # Optionally select all text to make editing easier
             QLineEdit.mouseDoubleClickEvent(self, event)  # Pass the event to the base class
@@ -490,8 +492,6 @@ class MainTranscriptionWidget(QWidget):
         """)
 
 
-
-
 class MainWindow(QMainWindow):
     def __init__(self):
         super().__init__()
@@ -505,7 +505,7 @@ class MainWindow(QMainWindow):
         self.left_layout = QVBoxLayout()
 
         self.recent_recordings_widget = RecentRecordingsWidget()
-        self.recent_recordings_widget.setSizePolicy(QSizePolicy.Expanding,QSizePolicy.Expanding)
+        self.recent_recordings_widget.setSizePolicy(QSizePolicy.Policy.Expanding,QSizePolicy.Policy.Expanding)
         self.main_transcription_widget = MainTranscriptionWidget()
 
 
@@ -519,7 +519,7 @@ class MainWindow(QMainWindow):
         self.left_widget.setLayout(self.left_layout)
 
         # QSplitter to split left and right sections
-        splitter = QSplitter(Qt.Horizontal)
+        splitter = QSplitter(Qt.Orientation.Horizontal)
         splitter.addWidget(self.left_widget)
         splitter.addWidget(self.main_transcription_widget)
         splitter.setSizes([400, 950])
@@ -543,7 +543,9 @@ class MainWindow(QMainWindow):
         self.setStatusBar(self.status_bar)
         self.status_bar.setVisible(False)
 
-
+    def onRecordingCompleted(self, file_name):
+        # Call add_recording on the instance of RecentRecordingsWidget
+        self.recent_recordings_widget.add_recording(file_name)
     def on_record_button_press(self):
         # Determine whether to show or hide the voice recorder
         pass

@@ -3,13 +3,12 @@ import os
 import pyaudio
 from pydub import AudioSegment
 import wave
-from PyQt5.QtWidgets import *
-from PyQt5.QtCore import *
-from PyQt5.QtGui import *
+from PyQt6.QtWidgets import QApplication, QWidget, QVBoxLayout, QLabel, QPushButton, QHBoxLayout
+from PyQt6.QtCore import QThread, pyqtSignal, QTimer, Qt
+from PyQt6.QtGui import QIcon
 import datetime
 from collections import deque
-from PyQt5.QtSvg import QSvgRenderer
-from app.SVGToggleButton import *
+from app.SVGToggleButton import SVGToggleButton  # Make sure this import is updated as well
 
 import numpy as np
 
@@ -39,7 +38,7 @@ class VoiceRecorderWidget(QWidget):
         #self.recordButton.setIcon(QIcon('icons/record.svg'))  # Record icon
         #self.recordButton.setFixedSize(80, 80)
         #self.recordButton.clicked.connect(self.toggleRecording)
-        #self.layout.addWidget(self.recordButton, 0, Qt.AlignCenter)
+        #self.layout.addWidget(self.recordButton, 0, Qt.AlignmentFlag.AlignCenter)
 
         record_button_svg_files = {
             'record': 'icons/record.svg',
@@ -49,11 +48,11 @@ class VoiceRecorderWidget(QWidget):
         self.recordButton = SVGToggleButton(record_button_svg_files)
         self.recordButton.setFixedSize(80, 80)
         self.recordButton.clicked.connect(self.toggleRecording)
-        self.layout.addWidget(self.recordButton, 0, Qt.AlignCenter)
+        self.layout.addWidget(self.recordButton, 0, Qt.AlignmentFlag.AlignCenter)
 
         # Timer display
         self.timerLabel = QLabel("00:00:00")
-        self.layout.addWidget(self.timerLabel, 0, Qt.AlignCenter)
+        self.layout.addWidget(self.timerLabel, 0, Qt.AlignmentFlag.AlignCenter)
 
         # Save and Delete buttons in a horizontal layout
         buttonLayout = QHBoxLayout()
@@ -67,7 +66,7 @@ class VoiceRecorderWidget(QWidget):
         self.deleteButton.setEnabled(False)
         buttonLayout.addWidget(self.deleteButton)
         self.statusLabel = QLabel("Ready to record")
-        self.layout.addWidget(self.statusLabel, 0, Qt.AlignCenter)
+        self.layout.addWidget(self.statusLabel, 0, Qt.AlignmentFlag.AlignCenter)
         self.layout.addLayout(buttonLayout)
         self.layout.addStretch(1)
 
@@ -235,7 +234,7 @@ def main():
     mainWindow.resize(300, 200)
     mainWindow.show()
 
-    sys.exit(app.exec_())
+    sys.exit(app.exec())
 
 if __name__ == "__main__":
     main()

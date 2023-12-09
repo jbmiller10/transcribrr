@@ -1,7 +1,8 @@
-from PyQt5.QtWidgets import QPushButton
-from PyQt5.QtGui import QPainter, QPixmap
-from PyQt5.QtSvg import QSvgRenderer
-from PyQt5.QtCore import QSize, Qt, QRectF
+from PyQt6.QtWidgets import QPushButton
+from PyQt6.QtGui import QPainter, QPixmap
+from PyQt6.QtSvg import QSvgRenderer
+from PyQt6.QtCore import QSize, Qt, QRectF
+
 class SVGToggleButton(QPushButton):
     def __init__(self, svg_files, parent=None):
         super().__init__(parent)
@@ -14,13 +15,12 @@ class SVGToggleButton(QPushButton):
     def render_svgs(self):
         for key, renderer in self.svg_renderers.items():
             pixmap = QPixmap(self.size())
-            pixmap.fill(Qt.transparent)  # Ensure transparent background for SVG
+            pixmap.fill(Qt.GlobalColor.transparent)  # Ensure transparent background for SVG, note the enum change
             painter = QPainter(pixmap)
             rect = QRectF(pixmap.rect())  # Convert QRect to QRectF
             renderer.render(painter, rect)
             painter.end()
             self.pixmaps[key] = pixmap
-
 
     def set_svg(self, key):
         if key in self.svg_renderers:

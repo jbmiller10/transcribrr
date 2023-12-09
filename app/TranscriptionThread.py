@@ -1,23 +1,21 @@
-from PyQt5.QtCore import QThread, pyqtSignal,Qt
+from PyQt6.QtCore import QThread, pyqtSignal
 import traceback
 import torch
 import whisperx
-
-
 
 class TranscriptionThread(QThread):
     update_progress = pyqtSignal(str)
     completed = pyqtSignal(str)
     error = pyqtSignal(str)
-    language = 'en' #make this configurable later
+    language = 'en'  # Make this configurable later
 
     def __init__(self, file_path, transcription_quality, speaker_detection_enabled, hf_auth_key, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        print('guy')
+        super().__init__(*args, **kwargs)  # Changed to PyQt6 super() call
         self.file_path = file_path
         self.transcription_quality = transcription_quality
         self.speaker_detection_enabled = speaker_detection_enabled
         self.hf_auth_key = hf_auth_key
+
 
     def run(self):
         print("transcript")

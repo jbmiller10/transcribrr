@@ -1,21 +1,19 @@
-from PyQt5.QtCore import QThread, pyqtSignal
+from PyQt6.QtCore import QThread, pyqtSignal
 import requests
 import traceback
-
 
 class GPT4ProcessingThread(QThread):
     update_progress = pyqtSignal(str)
     completed = pyqtSignal(str)
     error = pyqtSignal(str)
 
-    def __init__(self, transcript, prompt_instructions,gpt_model, max_tokens, temperature, openai_api_key, *args, **kwargs):
-        super().__init__(*args, **kwargs)
+    def __init__(self, transcript, prompt_instructions, gpt_model, max_tokens, temperature, openai_api_key, *args, **kwargs):
+        super().__init__(*args, **kwargs)  # Simplified super() call
         self.transcript = transcript
         self.prompt_instructions = prompt_instructions
         self.gpt_model = gpt_model
         self.max_tokens = max_tokens
         self.temperature = temperature
-        #print(temperature)
         self.openai_api_key = openai_api_key
 
     def run(self):
@@ -28,6 +26,7 @@ class GPT4ProcessingThread(QThread):
         except Exception as e:
             self.error.emit(str(e))
             traceback.print_exc()
+
     def ask_openai(self):
         data = {
             'messages': [

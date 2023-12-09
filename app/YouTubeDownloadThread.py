@@ -1,5 +1,5 @@
 import yt_dlp
-from PyQt5.QtCore import QThread, pyqtSignal,Qt
+from PyQt6.QtCore import QThread, pyqtSignal
 import traceback
 from datetime import datetime
 import os
@@ -10,7 +10,7 @@ class YouTubeDownloadThread(QThread):
     error = pyqtSignal(str)
 
     def __init__(self, youtube_url, *args, **kwargs):
-        super(YouTubeDownloadThread, self).__init__(*args, **kwargs)
+        super().__init__(*args, **kwargs)  # Simplified super() call
         self.youtube_url = youtube_url
 
     def run(self):
@@ -34,13 +34,13 @@ class YouTubeDownloadThread(QThread):
             }
 
             # Perform the download
-            # Perform the download
             with yt_dlp.YoutubeDL(ydl_opts) as ydl:
                 info = ydl.extract_info(self.youtube_url, download=True)
                 audio_file_path = ydl.prepare_filename(info)
                 # Assuming the postprocessor renames the file to '.wav'
                 audio_file_path = audio_file_path.rsplit('.', 1)[0] + '.wav'
                 self.completed.emit(audio_file_path)  # Emit the path of the saved audio file
+
         except Exception as e:
             self.error.emit(str(e))
 

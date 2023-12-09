@@ -1,6 +1,6 @@
 import sys
 import os
-from PyQt5.QtWidgets import QApplication, QStyleFactory
+from PyQt6.QtWidgets import QApplication
 from app.MainWindow import MainWindow
 
 stylesheet = '''/* Base colors */
@@ -310,4 +310,4 @@ if __name__ == "__main__":
     app.setStyleSheet(stylesheet)
     mainWin = MainWindow()
     mainWin.show()
-    sys.exit(app.exec_())
+    sys.exit(app.exec())
