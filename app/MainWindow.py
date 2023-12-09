@@ -46,6 +46,8 @@ class YouTubeDownloadDialog(QDialog):
 
 class RecentRecordingsWidget(QWidget):
     recordingSelected = pyqtSignal(str)
+    recordButtonPressed = pyqtSignal()
+
 
     def __init__(self, parent=None):
         super().__init__(parent)
@@ -56,6 +58,7 @@ class RecentRecordingsWidget(QWidget):
         self.header_label.setAlignment(Qt.AlignCenter)
 
         self.recordings_list = QListWidget()
+        self.recordings_list.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
 
 
         self.buttonLayout = QHBoxLayout()
@@ -81,25 +84,38 @@ class RecentRecordingsWidget(QWidget):
         #self.download_youtube_button = QPushButton("Download YouTube Video")
         self.add_button = QPushButton()
         self.add_button.setIcon(QIcon('icons/upload.svg'))
-        self.add_button.setIconSize(QSize(40, 40))
-        self.add_button.setFixedSize(40,40)
+        self.add_button.setIconSize(QSize(25, 25))
+        self.add_button.setFixedSize(25,25)
         self.add_button.setToolTip("Upload Local Audio/Video file")
         self.add_button.setStyleSheet(self.button_stylesheet)
 
         self.download_youtube_button = QPushButton()
         self.download_youtube_button.setIcon(QIcon('icons/youtube.svg'))
-        self.download_youtube_button.setIconSize(QSize(40, 40))
-        self.download_youtube_button.setFixedSize(40, 40)
+        self.download_youtube_button.setIconSize(QSize(25, 25))
+        self.download_youtube_button.setFixedSize(25, 25)
         self.download_youtube_button.setToolTip("Use Youtube Link")
         self.download_youtube_button.setStyleSheet(self.button_stylesheet)
 
         self.record_new_button = QPushButton()
         self.record_new_button.setIcon(QIcon('icons/record.svg'))
-        self.record_new_button.setIconSize(QSize(40, 40))
-        self.record_new_button.setFixedSize(40, 40)
+        self.record_new_button.setIconSize(QSize(25, 25))
+        self.record_new_button.setFixedSize(25, 25)
         self.record_new_button.setToolTip("Record from microphone/system audio")
         self.record_new_button.setStyleSheet(self.button_stylesheet)
+        self.record_new_button.clicked.connect(self.recordButtonPressed.emit)
+        self.record_new_button.clicked.connect(self.toggleVoiceRecorderVisibility)
 
+
+        self.voice_recorder_widget = VoiceRecorderWidget()  # The voice recorder widget
+
+        # Set up the animation for the voice recorder widget
+        self.voiceRecorderAnimation = QPropertyAnimation(self.voice_recorder_widget, b"maximumHeight")
+        self.voiceRecorderAnimation.setDuration(500)  # Animation duration in milliseconds
+        self.voiceRecorderAnimation.setEasingCurve(QEasingCurve.InOutQuad)  # Smooth easing curve for the animation
+
+        # Set initial visibility state and height
+        self.voice_recorder_widget.setMaximumHeight(0)  # Start hidden
+        self.voice_recorder_widget.setVisible(False)
 
         #self.buttonLayout.addWidget(self.add_button)x
         ##add to buttonlayout
@@ -110,9 +126,13 @@ class RecentRecordingsWidget(QWidget):
         self.buttonLayout.addItem(buttonSpacer)
         #self.recordings_list.setSizePolicy(QSizePolicy.Expanding,QSizePolicy.Expanding)
         self.layout.addWidget(self.header_label)
-        self.layout.addWidget(self.recordings_list)
+        self.layout.addWidget(self.recordings_list,15)
         #self.layout.addStretch(1)
+        self.layout.addWidget(self.voice_recorder_widget, 0)
+        verticalSpacer = QSpacerItem(20, 40, QSizePolicy.Minimum, QSizePolicy.Expanding)
+        self.layout.addItem(verticalSpacer)
         self.layout.addLayout(self.buttonLayout)
+
 
         self.recordings_list.itemClicked.connect(self.recording_clicked)
         self.download_youtube_button.clicked.connect(self.on_download_youtube_clicked)
@@ -121,6 +141,45 @@ class RecentRecordingsWidget(QWidget):
         # Right click context menu for delete
         self.recordings_list.setContextMenuPolicy(Qt.CustomContextMenu)
         self.recordings_list.customContextMenuRequested.connect(self.showRightClickMenu)
+        self.voice_recorder_widget.recordingCompleted.connect(self.onRecordingCompleted)
+
+        self.animationFinishedConnected = False  # Flag to track signal connection
+
+    def toggleVoiceRecorderVisibility(self):
+        # Check the flag before disconnecting the finished signal
+        if self.animationFinishedConnected:
+            self.voiceRecorderAnimation.finished.disconnect()
+            self.animationFinishedConnected = False
+
+        is_visible = self.voice_recorder_widget.isVisible()
+        start_value = self.voice_recorder_widget.maximumHeight()
+        end_value = 0 if is_visible else self.voice_recorder_widget.sizeHint().height()
+
+        self.voiceRecorderAnimation.setStartValue(start_value)
+        self.voiceRecorderAnimation.setEndValue(end_value)
+
+        if not is_visible:
+            self.voice_recorder_widget.setVisible(True)
+
+        if is_visible:
+            self.voiceRecorderAnimation.finished.connect(self.hideVoiceRecorder)
+            self.animationFinishedConnected = True
+        else:
+            self.voiceRecorderAnimation.finished.connect(self.showVoiceRecorder)
+            self.animationFinishedConnected = True
+
+        self.voiceRecorderAnimation.start()
+
+    def hideVoiceRecorder(self):
+        self.voice_recorder_widget.setVisible(False)
+        if self.animationFinishedConnected:
+            self.voiceRecorderAnimation.finished.disconnect()
+            self.animationFinishedConnected = False
+
+    def showVoiceRecorder(self):
+        if self.animationFinishedConnected:
+            self.voiceRecorderAnimation.finished.disconnect()
+            self.animationFinishedConnected = False
 
 
     def on_add_button_clicked(self):
@@ -274,6 +333,16 @@ class RecentRecordingsWidget(QWidget):
             # Optionally, delete the file from the filesystem
             os.remove(full_file_path)
             self.recordings_list.takeItem(row)
+
+    def onRecordingCompleted(self, file_name):
+        # Add the new recording to the RecentRecordingsWidget
+        self.recent_recordings_widget.add_recording(file_name)
+        # Optionally, you could select the new recording in the list
+        self.recent_recordings_widget.recordings_list.setCurrentRow(
+            self.recent_recordings_widget.recordings_list.count() - 1
+        )
+        # Display a notification
+        QMessageBox.information(self, "Recording Completed", f"Recording saved: {file_name}")
 
 class RecordingListItem(QWidget):
     def __init__(self, full_file_path, *args, **kwargs):
@@ -437,13 +506,13 @@ class MainWindow(QMainWindow):
 
         self.recent_recordings_widget = RecentRecordingsWidget()
         self.recent_recordings_widget.setSizePolicy(QSizePolicy.Expanding,QSizePolicy.Expanding)
-        self.voice_recorder_widget = VoiceRecorderWidget()  # The voice recorder widget
         self.main_transcription_widget = MainTranscriptionWidget()
+
 
         # Add the RecentRecordingsWidget and VoiceRecorderWidget to left_layout
         self.left_layout.addWidget(self.recent_recordings_widget,5) #1 is stretch
-        self.left_layout.addStretch(1) #spacer
-        self.left_layout.addWidget(self.voice_recorder_widget,1) #0 is stretch
+        #self.left_layout.addStretch(1) #spacer
+
 
         # Create a QWidget to hold the left side layout
         self.left_widget = QWidget()
@@ -468,26 +537,22 @@ class MainWindow(QMainWindow):
         self.main_transcription_widget.transcriptionStopped.connect(self.on_transcription_stopped)
         self.main_transcription_widget.transcriptionSaved.connect(self.on_transcription_saved)
         self.main_transcription_widget.settingsRequested.connect(self.on_settings_requested)
-        self.voice_recorder_widget.recordingCompleted.connect(self.onRecordingCompleted)
+        self.recent_recordings_widget.recordButtonPressed.connect(self.on_record_button_press)
 
         self.status_bar = QStatusBar()
         self.setStatusBar(self.status_bar)
+        self.status_bar.setVisible(False)
 
 
+    def on_record_button_press(self):
+        # Determine whether to show or hide the voice recorder
+        pass
 
     def on_recording_selected(self, filename):
         # TODO: Implement what happens when a recording is selected
         pass
 
-    def onRecordingCompleted(self, file_name):
-        # Add the new recording to the RecentRecordingsWidget
-        self.recent_recordings_widget.add_recording(file_name)
-        # Optionally, you could select the new recording in the list
-        self.recent_recordings_widget.recordings_list.setCurrentRow(
-            self.recent_recordings_widget.recordings_list.count() - 1
-        )
-        # Display a notification
-        QMessageBox.information(self, "Recording Completed", f"Recording saved: {file_name}")
+
 
 
     def on_transcription_started(self):
