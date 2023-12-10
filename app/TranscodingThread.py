@@ -16,7 +16,10 @@ class TranscodingThread(QThread):
     def run(self):
         try:
             self.update_progress.emit('Starting conversion...')
-            target_file_path = self.reencode_audio(self.file_path, self.target_format)
+            target_file_path = self.generate_unique_target_path(self.file_path, self.target_format)
+
+            # Transcode the audio
+            self.reencode_audio(self.file_path, target_file_path)
 
             # Delete the original file after successful conversion
             if os.path.exists(target_file_path):
@@ -28,17 +31,26 @@ class TranscodingThread(QThread):
             error_message = f'Error during conversion: {e}'
             self.handle_error(error_message)
 
-    def reencode_audio(self, file_path, target_format):
-        print(f'rencoding {file_path} to {target_format}')
-        # Determine the target file path based on the desired format
-        target_file_path = os.path.splitext(file_path)[0] + f'.{target_format}'
+    def generate_unique_target_path(self, file_path, target_format):
+        base_dir = os.path.dirname(file_path)
+        base_name = os.path.basename(file_path)
+        name, _ = os.path.splitext(base_name)
+        counter = 1
 
+        target_file_path = os.path.join(base_dir, f"{name}.{target_format}")
+        while os.path.exists(target_file_path):
+            target_file_path = os.path.join(base_dir, f"{name}_{counter}.{target_format}")
+            counter += 1
+
+        return target_file_path
+
+    def reencode_audio(self, source_path, target_path):
+        print(f'rencoding {source_path} to {target_path}')
         # Load the source audio file
-        source_audio = AudioSegment.from_file(file_path)
+        source_audio = AudioSegment.from_file(source_path)
 
         # Export the audio in the target format
-        source_audio.export(target_file_path, format=target_format)
-        return target_file_path
+        source_audio.export(target_path, format=self.target_format)
 
     def handle_error(self, error_message):
         traceback.print_exc()

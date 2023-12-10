@@ -17,6 +17,10 @@ from app.TranscodingThread import TranscodingThread
 from app.VoiceRecorderWidget import VoiceRecorderWidget  # Import specific classes
 import os
 from pydub import AudioSegment
+from app.utils import validate_url, is_audio_file, is_video_file
+from app.RecordingListItem import RecordingListItem
+from app.MainTranscriptionWidget import  MainTranscriptionWidget
+from app.ControlPanelWidget import ControlPanelWidget
 
 
 class YouTubeDownloadDialog(QDialog):
@@ -34,17 +38,11 @@ class YouTubeDownloadDialog(QDialog):
 
     def on_download_clicked(self):
         url = self.url_input.text()
-        if self.validate_url(url):
+        if validate_url(url):
             self.download_requested.emit(url)
             self.accept()
         else:
             QMessageBox.warning(self, "Invalid URL", "The provided URL is not a valid YouTube URL.")
-
-    @staticmethod
-    def validate_url(url):
-        # Use regex to validate the URL
-        regex = r'(https?://)?(www\.)?(youtube|youtu|youtube-nocookie)\.(com|be)/(watch\?v=|embed/|v/|.+\?v=)?([^&=%\?]{11})'
-        return re.match(regex, url) is not None
 
 class RecentRecordingsWidget(QWidget):
     recordingSelected = pyqtSignal(str)
@@ -83,7 +81,6 @@ class RecentRecordingsWidget(QWidget):
     }
 """
 
-        #self.download_youtube_button = QPushButton("Download YouTube Video")
         self.add_button = QPushButton()
         self.add_button.setIcon(QIcon('icons/upload.svg'))
         self.add_button.setIconSize(QSize(25, 25))
@@ -98,14 +95,14 @@ class RecentRecordingsWidget(QWidget):
         self.download_youtube_button.setToolTip("Use Youtube Link")
         self.download_youtube_button.setStyleSheet(self.button_stylesheet)
 
-        self.record_new_button = QPushButton()
-        self.record_new_button.setIcon(QIcon('icons/record.svg'))
-        self.record_new_button.setIconSize(QSize(25, 25))
-        self.record_new_button.setFixedSize(25, 25)
-        self.record_new_button.setToolTip("Record from microphone/system audio")
-        self.record_new_button.setStyleSheet(self.button_stylesheet)
-        self.record_new_button.clicked.connect(self.recordButtonPressed.emit)
-        self.record_new_button.clicked.connect(self.toggleVoiceRecorderVisibility)
+        #self.record_new_button = QPushButton()
+        #self.record_new_button.setIcon(QIcon('icons/record.svg'))
+        #self.record_new_button.setIconSize(QSize(25, 25))
+        #self.record_new_button.setFixedSize(25, 25)
+        #self.record_new_button.setToolTip("Record from microphone/system audio")
+        #self.record_new_button.setStyleSheet(self.button_stylesheet)
+        #self.record_new_button.clicked.connect(self.recordButtonPressed.emit)
+        #self.record_new_button.clicked.connect(self.toggleVoiceRecorderVisibility)
 
 
         self.voice_recorder_widget = VoiceRecorderWidget()  # The voice recorder widget
@@ -121,11 +118,11 @@ class RecentRecordingsWidget(QWidget):
 
         #self.buttonLayout.addWidget(self.add_button)x
         ##add to buttonlayout
-        self.buttonLayout.addWidget(self.add_button)
-        self.buttonLayout.addWidget(self.download_youtube_button)
-        self.buttonLayout.addWidget(self.record_new_button)
-        buttonSpacer = QSpacerItem(50,50, QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Minimum)
-        self.buttonLayout.addItem(buttonSpacer)
+        #self.buttonLayout.addWidget(self.add_button)
+        #self.buttonLayout.addWidget(self.download_youtube_button)
+        #self.buttonLayout.addWidget(self.record_new_button)
+        #buttonSpacer = QSpacerItem(50,50, QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Minimum)
+        #self.buttonLayout.addItem(buttonSpacer)
         #self.recordings_list.setSizePolicy(QSizePolicy.Policy.Expanding,QSizePolicy.Policy.Expanding)
         self.layout.addWidget(self.header_label)
         self.layout.addWidget(self.recordings_list,15)
@@ -137,100 +134,15 @@ class RecentRecordingsWidget(QWidget):
 
 
         self.recordings_list.itemClicked.connect(self.recording_clicked)
-        self.download_youtube_button.clicked.connect(self.on_download_youtube_clicked)
-        self.add_button.clicked.connect(self.on_add_button_clicked)
+        #self.download_youtube_button.clicked.connect(self.on_download_youtube_clicked)
+        #self.add_button.clicked.connect(self.on_add_button_clicked)
 
         # Right click context menu for delete
         self.recordings_list.setContextMenuPolicy(Qt.ContextMenuPolicy.CustomContextMenu)
         self.recordings_list.customContextMenuRequested.connect(self.showRightClickMenu)
-        self.voice_recorder_widget.recordingCompleted.connect(self.onRecordingCompleted)
+        #self.voice_recorder_widget.recordingCompleted.connect(self.onRecordingCompleted)
 
         self.animationFinishedConnected = False  # Flag to track signal connection
-
-    def toggleVoiceRecorderVisibility(self):
-        # Check the flag before disconnecting the finished signal
-        if self.animationFinishedConnected:
-            self.voiceRecorderAnimation.finished.disconnect()
-            self.animationFinishedConnected = False
-
-        is_visible = self.voice_recorder_widget.isVisible()
-        start_value = self.voice_recorder_widget.maximumHeight()
-        end_value = 0 if is_visible else self.voice_recorder_widget.sizeHint().height()
-
-        self.voiceRecorderAnimation.setStartValue(start_value)
-        self.voiceRecorderAnimation.setEndValue(end_value)
-
-        if not is_visible:
-            self.voice_recorder_widget.setVisible(True)
-
-        if is_visible:
-            self.voiceRecorderAnimation.finished.connect(self.hideVoiceRecorder)
-            self.animationFinishedConnected = True
-        else:
-            self.voiceRecorderAnimation.finished.connect(self.showVoiceRecorder)
-            self.animationFinishedConnected = True
-
-        self.voiceRecorderAnimation.start()
-
-    def hideVoiceRecorder(self):
-        self.voice_recorder_widget.setVisible(False)
-        if self.animationFinishedConnected:
-            self.voiceRecorderAnimation.finished.disconnect()
-            self.animationFinishedConnected = False
-
-    def showVoiceRecorder(self):
-        if self.animationFinishedConnected:
-            self.voiceRecorderAnimation.finished.disconnect()
-            self.animationFinishedConnected = False
-
-    def on_add_button_clicked(self):
-        file_dialog = QFileDialog(self)
-        file_dialog.setNameFilter("Audio/Video Files (*.mp3 *.wav *.m4a *.ogg *.mp4 *.mkv *.avi *.mov)")
-        file_dialog.setFileMode(QFileDialog.FileMode.ExistingFile)
-        if file_dialog.exec() == QFileDialog.DialogCode.Accepted:
-            selected_file_path = file_dialog.selectedFiles()[0]
-            self.handle_file_addition(selected_file_path)
-
-
-    def handle_file_addition(self, file_path):
-        if self.is_video_file(file_path):
-            # If it's a video file, extract the audio and transcode to MP3
-            self.transcoding_thread = TranscodingThread(file_path, target_format='mp3')
-            self.transcoding_thread.completed.connect(self.add_recording)
-            self.transcoding_thread.error.connect(self.handle_transcoding_error)
-            self.transcoding_thread.start()
-        elif self.is_audio_file(file_path):
-            # If it's an audio file, copy it to the recordings directory
-            target_file_path = os.path.join('recordings', os.path.basename(file_path))
-            shutil.copyfile(file_path, target_file_path)
-            self.add_recording(target_file_path)
-        else:
-            QMessageBox.warning(self, "File Type", "The selected file is not a supported audio or video type.")
-    def handle_transcoding_error(self, error_message):
-        QMessageBox.critical(self, "Transcoding Error", error_message)
-    def on_download_youtube_clicked(self):
-        self.download_dialog = YouTubeDownloadDialog(self)
-        self.download_dialog.download_requested.connect(self.handle_youtube_download)
-        self.download_dialog.exec()  # This will open the dialog to enter the URL
-    def handle_youtube_download_error(self, error_message):
-        QMessageBox.critical(self, "Download Error", error_message)
-
-    def handle_youtube_download(self, url):
-        self.youtube_thread = YouTubeDownloadThread(url)
-        self.youtube_thread.completed.connect(self.start_transcoding)
-        self.youtube_thread.error.connect(self.handle_youtube_download_error)
-        self.youtube_thread.start()
-
-    def start_transcoding(self, file_path):
-        self.transcoding_thread = TranscodingThread(file_path, target_format='mp3')
-        self.transcoding_thread.completed.connect(self.add_recording)
-        self.transcoding_thread.error.connect(self.handle_transcoding_error)
-        self.transcoding_thread.start()
-
-    def handle_transcoding_error(self, error_message):
-        QMessageBox.critical(self, "Transcoding Error", error_message)
-
-
 
     def add_recording(self, full_file_path):
         recording_item_widget = RecordingListItem(full_file_path)
@@ -304,18 +216,6 @@ class RecentRecordingsWidget(QWidget):
         if action == delete_action:
             self.deleteRecording(position)
 
-    @staticmethod
-    def is_video_file(file_path):
-        video_extensions = ['.mp4', '.mkv', '.avi', '.mov', '.webm']
-        file_extension = os.path.splitext(file_path)[1].lower()
-        return file_extension in video_extensions
-
-    @staticmethod
-    def is_audio_file(file_path):
-        audio_extensions = ['.mp3', '.wav', '.aac', '.flac', '.ogg', '.m4a']
-        file_extension = os.path.splitext(file_path)[1].lower()
-        return file_extension in audio_extensions
-
     def deleteRecording(self, position):
         # Get the item at the clicked position
         item = self.recordings_list.itemAt(position)
@@ -336,226 +236,144 @@ class RecentRecordingsWidget(QWidget):
             os.remove(full_file_path)
             self.recordings_list.takeItem(row)
 
-    def onRecordingCompleted(self, file_name):
-        # Add the new recording to the RecentRecordingsWidget
-        self.recent_recordings_widget.add_recording(file_name)
-        # Optionally, you could select the new recording in the list
-        self.recent_recordings_widget.recordings_list.setCurrentRow(
-            self.recent_recordings_widget.recordings_list.count() - 1
-        )
-        # Display a notification
-        QMessageBox.information(self, "Recording Completed", f"Recording saved: {file_name}")
+class MainWindow(QMainWindow):
+    def __init__(self):
+        super().__init__()
+        self.init_ui()
 
-class RecordingListItem(QWidget):
-    def __init__(self, full_file_path, *args, **kwargs):
-        super(RecordingListItem, self).__init__(*args, **kwargs)
+    def init_ui(self):
+        # Initialize the window properties
+        self.setWindowTitle('Transcribrr')
+        self.setGeometry(100, 100, 1350, 768)
 
-        # Extract the filename without the extension
-        filename = os.path.basename(full_file_path)
-        filename_no_ext = os.path.splitext(filename)[0]
+        # Create instances of widgets
+        self.control_panel = ControlPanelWidget(self)
+        self.recent_recordings_widget = RecentRecordingsWidget()
+        self.voice_recorder_widget = VoiceRecorderWidget()
+        self.main_transcription_widget = MainTranscriptionWidget()
 
-        # Extract the creation date and duration from the file metadata
-        creation_date = datetime.datetime.fromtimestamp(
-            os.path.getmtime(full_file_path)
-        ).strftime("%Y-%m-%d %H:%M:%S")
-        audio = AudioSegment.from_file(full_file_path)
-        duration = str(datetime.timedelta(milliseconds=len(audio))).split('.')[0]
+        # Connect signals from the ControlPanelWidget
+        self.control_panel.upload_clicked.connect(self.on_upload_button_clicked)
+        self.control_panel.youtube_clicked.connect(self.on_youtube_button_clicked)
+        #self.control_panel.record_clicked.connect(self.on_record_button_clicked)
 
-        self.name_editable = QLineEdit(filename_no_ext)
-        self.name_editable = EditableLineEdit(filename_no_ext)
-        self.name_editable.editingFinished.connect(self.finishEditing)
-        self.date_label = QLabel(creation_date)
-        self.duration_label = QLabel(duration)
+        #self.recent_recordings_widget = RecentRecordingsWidget()
+        self.voice_recorder_widget = VoiceRecorderWidget()
+        self.voice_recorder_widget.setMaximumHeight(0)
+        self.voice_recorder_widget.setVisible(False)
 
-        self.name_editable.setStyleSheet(
-            "QLineEdit { color: grey; font-size: 16px; border: none; background: transparent;font-family: Roboto; }")
-        self.date_label.setStyleSheet("color: grey; font-size: 12px;")
-        self.duration_label.setStyleSheet("color: grey; font-size: 12px;")
+        # Connect signals
+        #self.controls_widget.recordButtonPressed.connect(self.on_record_button_press)
+        #self.controls_widget.toggleVoiceRecorderRequest.connect(self.toggleVoiceRecorderVisibility)
 
-        layout = QHBoxLayout()
-        v_layout = QVBoxLayout()
-        v_layout.addWidget(self.name_editable)
-        v_layout.addWidget(self.date_label)
-        v_layout.addStretch()  # Pushes the labels to the top
+        # Set up the central widget and its layout
+        self.central_widget = QWidget()
+        self.setCentralWidget(self.central_widget)
+        self.main_layout = QHBoxLayout(self.central_widget)
 
+        # Create a QSplitter to manage the layout of the left and right sections
+        self.splitter = QSplitter(Qt.Orientation.Horizontal)
+        self.main_layout.addWidget(self.splitter)
 
-        layout.addLayout(v_layout, 5)
+        # Layout for the left side section
+        self.left_layout = QVBoxLayout()
+        self.left_layout.addWidget(self.recent_recordings_widget)
+        self.left_layout.addWidget(self.control_panel)
+        self.left_layout.addWidget(self.voice_recorder_widget)
 
-        layout.addStretch(1)
+        # Create a widget to hold the left_layout
+        self.left_widget = QWidget()
+        self.left_widget.setLayout(self.left_layout)
 
-        layout.addWidget(self.duration_label, 1)  # The second argument is the stretch factor
+        # Add left_widget to the splitter and define its initial size
+        self.splitter.addWidget(self.left_widget)
+        self.splitter.setSizes([400, 950])
 
-        self.setLayout(layout)
+        # Load existing recordings, if any
+        self.recent_recordings_widget.load_recordings()
 
-        # Align the duration label to the right
-        self.duration_label.setAlignment(Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter)
+        # Assuming you have a widget for managing transcriptions
+        self.main_transcription_widget = MainTranscriptionWidget()
 
-        # Store metadata for later use
-        self.metadata = {
-            'full_path': full_file_path,
-            'filename': filename_no_ext,
-            'date': creation_date,
-            'duration': duration
-        }
+        # Add the left panel (recent recordings and controls) to the splitter
+        self.splitter.addWidget(self.left_widget)
 
-    def mouseDoubleClickEvent(self, event):
-        if event.button() == Qt.MouseButton.LeftButton:
-            self.name_editable.setReadOnly(False)  # Allow editing
-            self.name_editable.setFocus(Qt.MouseFocusReason)
+        # Additionally, add the main transcription area to the right side of the splitter
+        self.splitter.addWidget(self.main_transcription_widget)
 
-    def finishEditing(self):
-        new_name = self.name_editable.text()
+        # Set the initial side ratios of the splitter (e.g., 1:2)
+        self.splitter.setSizes([400, 800])
 
-class EditableLineEdit(QLineEdit):
-    def __init__(self, *args, **kwargs):
-        super(EditableLineEdit, self).__init__(*args, **kwargs)
-        self.setReadOnly(True)  # Start as read-only
+        # Set status bar for the window, initially hidden
+        self.status_bar = QStatusBar()
+        self.setStatusBar(self.status_bar)
+        self.status_bar.setVisible(False)
 
-    def mouseDoubleClickEvent(self, event):
-        if event.button() == Qt.MouseButton.LeftButton:
-            self.setReadOnly(False)  # Allow editing
-            self.selectAll()  # Optionally select all text to make editing easier
-            QLineEdit.mouseDoubleClickEvent(self, event)  # Pass the event to the base class
+        # Set the initial style for the window
+        self.set_style()
 
-    def focusOutEvent(self, event):
-        self.setReadOnly(True)  # Make read-only again when focus is lost
-        QLineEdit.focusOutEvent(self, event)  # Pass the event to the base class
+    def toggleVoiceRecorderVisibility(self):
+        # Check if the recorder is visible and configure the animation accordingly
+        is_visible = self.voice_recorder_widget.isVisible()
 
-class MainTranscriptionWidget(QWidget):
-    transcriptionStarted = pyqtSignal()
-    transcriptionStopped = pyqtSignal()
-    transcriptionSaved = pyqtSignal(str)
-    settingsRequested = pyqtSignal()
+        # Create an animation object
+        self.voiceRecorderAnimation = QPropertyAnimation(self.voice_recorder_widget, b"maximumHeight")
+        self.voiceRecorderAnimation.setDuration(500)  # Animation duration in milliseconds
+        self.voiceRecorderAnimation.setEasingCurve(QEasingCurve.Type.InOutQuad)  # Easing curve for smooth animation
 
-    def __init__(self, parent=None):
-        super().__init__(parent)
-        self.layout = QVBoxLayout(self)
-        self.layout.setContentsMargins(0, 0, 0, 0)
+        # Determine the start and end values based on whether the widget is currently visible
+        start_value = self.voice_recorder_widget.maximumHeight() if is_visible else 0
+        end_value = self.voice_recorder_widget.sizeHint().height() if not is_visible else 0
 
-        self.transcription_type_combo = QComboBox()
-        self.transcription_type_combo.addItems([
-            'Journal Entry', 'Meeting Minutes', 'Interview Summary'
-        ])
+        self.voiceRecorderAnimation.setStartValue(start_value)
+        self.voiceRecorderAnimation.setEndValue(end_value)
 
-        self.play_button = QPushButton()
-        self.play_button.setIcon(QIcon('icons/play.svg'))  # path to 'play' icon
-        self.play_button.setFixedSize(50, 50)  # Adjust size as needed
+        # Ensure the widget is visible before starting the animation when showing
+        if not is_visible:
+            self.voice_recorder_widget.setVisible(True)
 
-        self.save_button = QPushButton()
-        self.save_button.setIcon(QIcon('icons/save.svg'))  # path to 'save' icon
-        self.save_button.setFixedSize(50, 50)  # Adjust size as needed
+        self.voiceRecorderAnimation.finished.connect(self.on_voiceRecorderAnimationFinished)
 
-        self.settings_button = QPushButton()
-        self.settings_button.setIcon(QIcon('icons/settings.svg'))  # path to 'settings' icon
-        self.settings_button.setFixedSize(50, 50)  # Adjust size as needed
+        # Start the animation
+        self.voiceRecorderAnimation.start()
 
-        self.transcript_text = QTextEdit()
+    def on_voiceRecorderAnimationFinished(self):
+        # Hide or show the widget based on the final state after the animation
+        if self.voiceRecorderAnimation.endValue() == 0:
+            self.voice_recorder_widget.setVisible(False)
 
-        self.layout.addWidget(self.transcription_type_combo)
-        self.layout.addWidget(self.play_button)
-        self.layout.addWidget(self.save_button)
-        self.layout.addWidget(self.settings_button)
-        self.layout.addWidget(self.transcript_text)
-
-        self.play_button.clicked.connect(self.toggle_transcription)
-        self.save_button.clicked.connect(self.save_transcription)
-        self.settings_button.clicked.connect(self.request_settings)
-
-    def toggle_transcription(self):
-        if self.play_button.text() == 'Play':
-            self.play_button.setIcon(QIcon('icons/stop.svg'))  # path to 'stop' icon
-            self.transcriptionStarted.emit()
-            self.play_button.setText('Stop')
-        else:
-            self.play_button.setIcon(QIcon('icons/play.svg'))  # path to 'play' icon
-            self.transcriptionStopped.emit()
-            self.play_button.setText('Play')
-
-    def save_transcription(self):
-        content = self.transcript_text.toPlainText()
-        self.transcriptionSaved.emit(content)
-
-    def request_settings(self):
-        self.settingsRequested.emit()
+        # Disconnect signal to avoid calling this slot multiple times
+        self.voiceRecorderAnimation.finished.disconnect(self.on_voiceRecorderAnimationFinished)
 
     def set_style(self):
         self.setStyleSheet("""
+            QMainWindow {
+                background-color: #252525;
+                color: white;
+            }
+            QLabel {
+                font-size: 18px;
+                color: white;
+                padding: 10px 0px; /* Top and bottom padding */
+            }
+            QListWidget {
+                background-color: #333;
+                color: white;
+            }
             QPushButton {
                 border-radius: 25px; /* Half of the button size for a circular look */
                 background-color: #444;
                 color: white;
             }
-            QTextEdit {
-                background-color: #333;
-                color: white;
-            }
         """)
-
-
-class MainWindow(QMainWindow):
-    def __init__(self):
-        super().__init__()
-        self.setWindowTitle('Transcribrr')
-        self.setGeometry(100, 100, 1350, 768)
-
-        self.central_widget = QWidget(self)
-        self.setCentralWidget(self.central_widget)
-
-        # Use QVBoxLayout for stacking widgets vertically
-        self.left_layout = QVBoxLayout()
-
-        self.recent_recordings_widget = RecentRecordingsWidget()
-        self.recent_recordings_widget.setSizePolicy(QSizePolicy.Policy.Expanding,QSizePolicy.Policy.Expanding)
-        self.main_transcription_widget = MainTranscriptionWidget()
-
-
-        # Add the RecentRecordingsWidget and VoiceRecorderWidget to left_layout
-        self.left_layout.addWidget(self.recent_recordings_widget,5) #1 is stretch
-        #self.left_layout.addStretch(1) #spacer
-
-
-        # Create a QWidget to hold the left side layout
-        self.left_widget = QWidget()
-        self.left_widget.setLayout(self.left_layout)
-
-        # QSplitter to split left and right sections
-        splitter = QSplitter(Qt.Orientation.Horizontal)
-        splitter.addWidget(self.left_widget)
-        splitter.addWidget(self.main_transcription_widget)
-        splitter.setSizes([400, 950])
-
-        # Main layout for the central widget, add the splitter to it
-        self.main_layout = QHBoxLayout(self.central_widget)
-        self.main_layout.addWidget(splitter)
-
-        # Load existing recordings
-        self.recent_recordings_widget.load_recordings()
-
-        # Connect the signals to their respective slots
-        self.recent_recordings_widget.recordingSelected.connect(self.on_recording_selected)
-        self.main_transcription_widget.transcriptionStarted.connect(self.on_transcription_started)
-        self.main_transcription_widget.transcriptionStopped.connect(self.on_transcription_stopped)
-        self.main_transcription_widget.transcriptionSaved.connect(self.on_transcription_saved)
-        self.main_transcription_widget.settingsRequested.connect(self.on_settings_requested)
-        self.recent_recordings_widget.recordButtonPressed.connect(self.on_record_button_press)
-
-        self.status_bar = QStatusBar()
-        self.setStatusBar(self.status_bar)
-        self.status_bar.setVisible(False)
 
     def onRecordingCompleted(self, file_name):
         # Call add_recording on the instance of RecentRecordingsWidget
         self.recent_recordings_widget.add_recording(file_name)
-    def on_record_button_press(self):
-        # Determine whether to show or hide the voice recorder
-        pass
 
     def on_recording_selected(self, filename):
         # TODO: Implement what happens when a recording is selected
         pass
-
-
-
 
     def on_transcription_started(self):
         # TODO: Implement what happens when transcription starts
@@ -580,3 +398,71 @@ class MainWindow(QMainWindow):
                 color: white;
             }
         """)
+
+    def toggleVoiceRecorderVisibility(self):
+        # Check the flag before disconnecting the finished signal
+        if self.animationFinishedConnected:
+            self.voiceRecorderAnimation.finished.disconnect()
+            self.animationFinishedConnected = False
+
+        is_visible = self.voice_recorder_widget.isVisible()
+        start_value = self.voice_recorder_widget.maximumHeight()
+        end_value = 0 if is_visible else self.voice_recorder_widget.sizeHint().height()
+
+        self.voiceRecorderAnimation.setStartValue(start_value)
+        self.voiceRecorderAnimation.setEndValue(end_value)
+
+        if not is_visible:
+            self.voice_recorder_widget.setVisible(True)
+
+        if is_visible:
+            self.voiceRecorderAnimation.finished.connect(self.hideVoiceRecorder)
+            self.animationFinishedConnected = True
+        else:
+            self.voiceRecorderAnimation.finished.connect(self.showVoiceRecorder)
+            self.animationFinishedConnected = True
+
+        self.voiceRecorderAnimation.start()
+
+    def hideVoiceRecorder(self):
+        self.voice_recorder_widget.setVisible(False)
+        if self.animationFinishedConnected:
+            self.voiceRecorderAnimation.finished.disconnect()
+            self.animationFinishedConnected = False
+
+    def showVoiceRecorder(self):
+        if self.animationFinishedConnected:
+            self.voiceRecorderAnimation.finished.disconnect()
+            self.animationFinishedConnected = False
+
+    def on_youtube_button_clicked(self):
+        self.download_dialog = YouTubeDownloadDialog(self)
+        self.download_dialog.download_requested.connect(self.handle_youtube_download)
+        self.download_dialog.exec()  # This will open the dialog to enter the URL
+    def handle_youtube_download_error(self, error_message):
+        QMessageBox.critical(self, "Download Error", error_message)
+
+    def onRecordingCompleted(self, file_name):
+        # Add the new recording to the RecentRecordingsWidget
+        self.recent_recordings_widget.add_recording(file_name)
+        # Optionally, you could select the new recording in the list
+        self.recent_recordings_widget.recordings_list.setCurrentRow(
+            self.recent_recordings_widget.recordings_list.count() - 1
+        )
+        # Display a notification
+        QMessageBox.information(self, "Recording Completed", f"Recording saved: {file_name}")
+
+    def handle_youtube_download(self, url):
+        self.youtube_thread = YouTubeDownloadThread(url)
+        self.youtube_thread.completed.connect(self.start_transcoding)
+        self.youtube_thread.error.connect(self.handle_youtube_download_error)
+        self.youtube_thread.start()
+
+    def start_transcoding(self, file_path):
+        self.transcoding_thread = TranscodingThread(file_path, target_format='mp3')
+        self.transcoding_thread.completed.connect(self.add_recording)
+        self.transcoding_thread.error.connect(self.handle_transcoding_error)
+        self.transcoding_thread.start()
+
+    def handle_transcoding_error(self, error_message):
+        QMessageBox.critical(self, "Transcoding Error", error_message)
