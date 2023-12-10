@@ -20,32 +20,9 @@ from app.MainTranscriptionWidget import  MainTranscriptionWidget
 from app.ControlPanelWidget import ControlPanelWidget
 
 
-# class YouTubeDownloadDialog(QDialog):
-#
-#     download_requested = pyqtSignal(str)
-#
-#     def __init__(self, parent=None):
-#         super().__init__(parent)
-#         self.layout = QVBoxLayout(self)
-#         self.url_input = QLineEdit(self)
-#         self.layout.addWidget(self.url_input)
-#
-#         self.download_button = QPushButton("Download", self)
-#         self.download_button.clicked.connect(self.on_download_clicked)
-#         self.layout.addWidget(self.download_button)
-#
-#     def on_download_clicked(self):
-#         url = self.url_input.text()
-#         if validate_url(url):
-#             self.download_requested.emit(url)
-#             self.accept()
-#         else:
-#             QMessageBox.warning(self, "Invalid URL", "The provided URL is not a valid YouTube URL.")
-
 class RecentRecordingsWidget(QWidget):
     recordingSelected = pyqtSignal(str)
     recordButtonPressed = pyqtSignal()
-
 
     def __init__(self, parent=None):
         super().__init__(parent)
@@ -56,10 +33,7 @@ class RecentRecordingsWidget(QWidget):
         self.header_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
 
         self.recordings_list = QListWidget()
-        self.recordings_list.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding)
 
-
-        self.buttonLayout = QHBoxLayout()
         self.button_stylesheet = """
     QPushButton {
 
@@ -79,46 +53,14 @@ class RecentRecordingsWidget(QWidget):
     }
 """
 
-
-
-
-        self.voice_recorder_widget = VoiceRecorderWidget()  # The voice recorder widget
-
-        # Set up the animation for the voice recorder widget
-        self.voiceRecorderAnimation = QPropertyAnimation(self.voice_recorder_widget, b"maximumHeight")
-        self.voiceRecorderAnimation.setDuration(500)  # Animation duration in milliseconds
-        self.voiceRecorderAnimation.setEasingCurve(QEasingCurve.Type.InOutQuad)  # Smooth easing curve for the animation
-
-        # Set initial visibility state and height
-        self.voice_recorder_widget.setMaximumHeight(0)  # Start hidden
-        self.voice_recorder_widget.setVisible(False)
-
-        #self.buttonLayout.addWidget(self.add_button)x
-        ##add to buttonlayout
-        #self.buttonLayout.addWidget(self.add_button)
-        #self.buttonLayout.addWidget(self.download_youtube_button)
-        #self.buttonLayout.addWidget(self.record_new_button)
-        #buttonSpacer = QSpacerItem(50,50, QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Minimum)
-        #self.buttonLayout.addItem(buttonSpacer)
-        #self.recordings_list.setSizePolicy(QSizePolicy.Policy.Expanding,QSizePolicy.Policy.Expanding)
         self.layout.addWidget(self.header_label)
-        self.layout.addWidget(self.recordings_list,15)
-        #self.layout.addStretch(1)
-        self.layout.addWidget(self.voice_recorder_widget, 0)
-        verticalSpacer = QSpacerItem(20, 40, QSizePolicy.Policy.Minimum, QSizePolicy.Policy.Expanding)
-        self.layout.addItem(verticalSpacer)
-        self.layout.addLayout(self.buttonLayout)
+        self.layout.addWidget(self.recordings_list)
 
         self.recordings_list.itemClicked.connect(self.recording_clicked)
-        #self.download_youtube_button.clicked.connect(self.on_download_youtube_clicked)
-        #self.add_button.clicked.connect(self.on_add_button_clicked)
 
         # Right click context menu for delete
         self.recordings_list.setContextMenuPolicy(Qt.ContextMenuPolicy.CustomContextMenu)
         self.recordings_list.customContextMenuRequested.connect(self.showRightClickMenu)
-        #self.voice_recorder_widget.recordingCompleted.connect(self.onRecordingCompleted)
-
-        self.animationFinishedConnected = False  # Flag to track signal connection
 
     def add_recording(self, full_file_path):
         recording_item_widget = RecordingListItem(full_file_path)
@@ -220,27 +162,14 @@ class MainWindow(QMainWindow):
     def init_ui(self):
         # Initialize the window properties
         self.setWindowTitle('Transcribrr')
-        self.setGeometry(100, 100, 1350, 768)
+        self.setGeometry(50, 50, 1350, 768)
 
         # Create instances of widgets
         self.control_panel = ControlPanelWidget(self)
         self.recent_recordings_widget = RecentRecordingsWidget()
-        self.voice_recorder_widget = VoiceRecorderWidget()
         self.main_transcription_widget = MainTranscriptionWidget()
 
-        # Connect signals from the ControlPanelWidget
-        #self.control_panel.upload_clicked.connect(self.on_upload_button_clicked)
-        #elf.control_panel.youtube_clicked.connect(self.on_youtube_button_clicked)
-        #self.control_panel.record_clicked.connect(self.on_record_button_clicked)
-
-        #self.recent_recordings_widget = RecentRecordingsWidget()
-        self.voice_recorder_widget = VoiceRecorderWidget()
-        self.voice_recorder_widget.setMaximumHeight(0)
-        self.voice_recorder_widget.setVisible(False)
-
         # Connect signals
-        #self.controls_widget.recordButtonPressed.connect(self.on_record_button_press)
-        #self.controls_widget.toggleVoiceRecorderRequest.connect(self.toggleVoiceRecorderVisibility)
 
         # Set up the central widget and its layout
         self.central_widget = QWidget()
@@ -249,13 +178,16 @@ class MainWindow(QMainWindow):
 
         # Create a QSplitter to manage the layout of the left and right sections
         self.splitter = QSplitter(Qt.Orientation.Horizontal)
+
         self.main_layout.addWidget(self.splitter)
 
         # Layout for the left side section
         self.left_layout = QVBoxLayout()
-        self.left_layout.addWidget(self.recent_recordings_widget)
-        self.left_layout.addWidget(self.control_panel)
-        self.left_layout.addWidget(self.voice_recorder_widget)
+        self.left_layout.addWidget(self.recent_recordings_widget,12)
+        self.left_layout.addWidget(self.control_panel,0)
+
+        self.recent_recordings_widget.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding)
+        self.control_panel.setSizePolicy(QSizePolicy.Policy.MinimumExpanding, QSizePolicy.Policy.MinimumExpanding)
 
         # Create a widget to hold the left_layout
         self.left_widget = QWidget()
@@ -277,6 +209,8 @@ class MainWindow(QMainWindow):
         # Additionally, add the main transcription area to the right side of the splitter
         self.splitter.addWidget(self.main_transcription_widget)
 
+        self.control_panel.uploaded_filepath.connect(self.onRecordingCompleted)
+
         # Set the initial side ratios of the splitter (e.g., 1:2)
         self.splitter.setSizes([400, 800])
 
@@ -287,39 +221,6 @@ class MainWindow(QMainWindow):
 
         # Set the initial style for the window
         self.set_style()
-
-    def toggleVoiceRecorderVisibility(self):
-        # Check if the recorder is visible and configure the animation accordingly
-        is_visible = self.voice_recorder_widget.isVisible()
-
-        # Create an animation object
-        self.voiceRecorderAnimation = QPropertyAnimation(self.voice_recorder_widget, b"maximumHeight")
-        self.voiceRecorderAnimation.setDuration(500)  # Animation duration in milliseconds
-        self.voiceRecorderAnimation.setEasingCurve(QEasingCurve.Type.InOutQuad)  # Easing curve for smooth animation
-
-        # Determine the start and end values based on whether the widget is currently visible
-        start_value = self.voice_recorder_widget.maximumHeight() if is_visible else 0
-        end_value = self.voice_recorder_widget.sizeHint().height() if not is_visible else 0
-
-        self.voiceRecorderAnimation.setStartValue(start_value)
-        self.voiceRecorderAnimation.setEndValue(end_value)
-
-        # Ensure the widget is visible before starting the animation when showing
-        if not is_visible:
-            self.voice_recorder_widget.setVisible(True)
-
-        self.voiceRecorderAnimation.finished.connect(self.on_voiceRecorderAnimationFinished)
-
-        # Start the animation
-        self.voiceRecorderAnimation.start()
-
-    def on_voiceRecorderAnimationFinished(self):
-        # Hide or show the widget based on the final state after the animation
-        if self.voiceRecorderAnimation.endValue() == 0:
-            self.voice_recorder_widget.setVisible(False)
-
-        # Disconnect signal to avoid calling this slot multiple times
-        self.voiceRecorderAnimation.finished.disconnect(self.on_voiceRecorderAnimationFinished)
 
     def set_style(self):
         self.setStyleSheet("""
@@ -375,43 +276,7 @@ class MainWindow(QMainWindow):
             }
         """)
 
-    def toggleVoiceRecorderVisibility(self):
-        # Check the flag before disconnecting the finished signal
-        if self.animationFinishedConnected:
-            self.voiceRecorderAnimation.finished.disconnect()
-            self.animationFinishedConnected = False
-
-        is_visible = self.voice_recorder_widget.isVisible()
-        start_value = self.voice_recorder_widget.maximumHeight()
-        end_value = 0 if is_visible else self.voice_recorder_widget.sizeHint().height()
-
-        self.voiceRecorderAnimation.setStartValue(start_value)
-        self.voiceRecorderAnimation.setEndValue(end_value)
-
-        if not is_visible:
-            self.voice_recorder_widget.setVisible(True)
-
-        if is_visible:
-            self.voiceRecorderAnimation.finished.connect(self.hideVoiceRecorder)
-            self.animationFinishedConnected = True
-        else:
-            self.voiceRecorderAnimation.finished.connect(self.showVoiceRecorder)
-            self.animationFinishedConnected = True
-
-        self.voiceRecorderAnimation.start()
-
-    def hideVoiceRecorder(self):
-        self.voice_recorder_widget.setVisible(False)
-        if self.animationFinishedConnected:
-            self.voiceRecorderAnimation.finished.disconnect()
-            self.animationFinishedConnected = False
-
-    def showVoiceRecorder(self):
-        if self.animationFinishedConnected:
-            self.voiceRecorderAnimation.finished.disconnect()
-            self.animationFinishedConnected = False
-
-    def onRecordingCompleted(self, file_name):
+    def on_recording_completed(self, file_name):
         # Add the new recording to the RecentRecordingsWidget
         self.recent_recordings_widget.add_recording(file_name)
         # Optionally, you could select the new recording in the list

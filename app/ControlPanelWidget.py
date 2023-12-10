@@ -1,84 +1,116 @@
-from PyQt6.QtCore import pyqtSignal, QSize, QPropertyAnimation,QEasingCurve
+from PyQt6.QtCore import pyqtSignal, QSize, QPropertyAnimation, QEasingCurve
 from PyQt6.QtGui import QIcon
-from PyQt6.QtWidgets import QWidget, QHBoxLayout, QPushButton, QFileDialog, QMessageBox,QLineEdit
+from PyQt6.QtWidgets import QWidget, QHBoxLayout, QPushButton, QFileDialog, QMessageBox, QLineEdit, QApplication, QMainWindow, QVBoxLayout, QLabel
 import os
 import shutil
-from app.utils import is_video_file,is_audio_file,validate_url
-from app.TranscodingThread import *
 import sys
-from PyQt6.QtWidgets import QApplication, QMainWindow, QVBoxLayout, QLabel
+from app.utils import is_video_file, is_audio_file, validate_url
+from app.TranscodingThread import TranscodingThread
 from app.YouTubeDownloadThread import YouTubeDownloadThread
+from app.VoiceRecorderWidget import VoiceRecorderWidget
 
-print("Current working directory:", os.getcwd())
+
 class ControlPanelWidget(QWidget):
     uploaded_filepath = pyqtSignal(str)
     record_clicked = pyqtSignal()
-    youtube_download_requested = pyqtSignal(str)  # Signal to request the download
+    youtube_download_requested = pyqtSignal(str)
 
     def __init__(self, parent=None):
         super().__init__(parent)
-        self.youtube_url_field_visible = False  # To track the visibility of the URL field
         self.initUI()
-        self.youtube_download_requested.connect(self.handle_youtube_download)
-
 
     def initUI(self):
-        main_layout = QVBoxLayout(self)  # Main layout is vertical
+        main_layout = QVBoxLayout(self)
 
-        # Container for the YouTube URL field and submit button
+        # YouTube container setup
         self.youtube_container = QWidget(self)
         youtube_layout = QHBoxLayout(self.youtube_container)
-        self.youtube_container.setVisible(False)  # Start hidden
-
-        # YouTube URL field setup
         self.youtube_url_field = QLineEdit(self.youtube_container)
         self.youtube_url_field.setPlaceholderText("Enter YouTube URL here")
         youtube_layout.addWidget(self.youtube_url_field)
-
-        # Submit button setup
         self.submit_youtube_url_button = QPushButton("Submit", self.youtube_container)
         self.submit_youtube_url_button.clicked.connect(self.submit_youtube_url)
         youtube_layout.addWidget(self.submit_youtube_url_button)
-
         main_layout.addWidget(self.youtube_container)
+        self.youtube_container.setVisible(False)
 
-        # Layer for the existing buttons
+        # Voice recorder widget setup
+        self.voice_recorder_widget = VoiceRecorderWidget(self)
+        main_layout.addWidget(self.voice_recorder_widget)
+        self.voice_recorder_widget.recordingCompleted.connect(self.uploaded_filepath.emit)
+        self.voice_recorder_widget.setVisible(False)
+
+        # Button layout setup
         button_layout = QHBoxLayout()
-        self.upload_button = self.create_button('../icons/upload.svg', "Upload Local Audio/Video file")
+        self.upload_button = self.create_button('./icons/upload.svg', "Upload Local Audio/Video file")
         self.upload_button.clicked.connect(self.on_upload_button_clicked)
-        self.youtube_button = self.create_button('../icons/youtube.svg', "Use Youtube Link")
-        self.youtube_button.clicked.connect(self.youtube_button_click)
-        self.record_button = self.create_button('../icons/record.svg', "Record from microphone/system audio")
-        self.record_button.clicked.connect(self.record_button_click)
-
+        self.youtube_button = self.create_button('./icons/youtube.svg', "Use Youtube Link")
+        self.youtube_button.clicked.connect(self.toggle_youtube_container)
+        self.record_button = self.create_button('./icons/record.svg', "Record from microphone/system audio")
+        self.record_button.clicked.connect(self.toggle_voice_recorder)
         button_layout.addWidget(self.upload_button)
         button_layout.addWidget(self.youtube_button)
         button_layout.addWidget(self.record_button)
+        main_layout.addLayout(button_layout)
 
-        main_layout.addLayout(button_layout)  # Add the button layout to the main layout
-        main_layout.setSpacing(1)
-        self.setLayout(main_layout)  # Set the main layout for the widget
 
-        # Setup animations for the container
-        self.show_container_animation = QPropertyAnimation(self.youtube_container, b"maximumHeight")
-        self.show_container_animation.setDuration(500)
-        self.show_container_animation.setStartValue(0)
-        self.show_container_animation.setEndValue(self.youtube_container.sizeHint().height())
-        self.show_container_animation.setEasingCurve(QEasingCurve.Type.InOutQuad)
+        # Animations setup
+        self.setup_animations()
 
-        self.hide_container_animation = QPropertyAnimation(self.youtube_container, b"maximumHeight")
-        self.hide_container_animation.setDuration(500)
-        self.hide_container_animation.setStartValue(self.youtube_container.sizeHint().height())
-        self.hide_container_animation.setEndValue(0)
-        self.hide_container_animation.setEasingCurve(QEasingCurve.Type.InOutQuad)
-        self.hide_container_animation.finished.connect(self.on_hide_animation_finished)
 
+
+    def setup_animations(self):
+        # YouTube container animations
+        self.youtube_container_animation = QPropertyAnimation(self.youtube_container, b"maximumHeight")
+        self.youtube_container_animation.setDuration(500)
+        self.youtube_container_animation.setEasingCurve(QEasingCurve.Type.InOutQuad)
+
+        # Voice recorder widget animations
+        self.voice_recorder_animation = QPropertyAnimation(self.voice_recorder_widget, b"maximumHeight")
+        self.voice_recorder_animation.setDuration(500)
+        self.voice_recorder_animation.setEasingCurve(QEasingCurve.Type.InOutQuad)
+
+    def toggle_youtube_container(self):
+        # If voice recorder widget is visible, toggle it off
+        if self.voice_recorder_widget.isVisible():
+            self.toggle_voice_recorder()
+
+        self.toggle_container(self.youtube_container, self.youtube_container_animation)
+
+    def toggle_voice_recorder(self):
+        # If YouTube container is visible, toggle it off
+        if self.youtube_container.isVisible():
+            self.toggle_youtube_container()
+
+        self.toggle_container(self.voice_recorder_widget, self.voice_recorder_animation)
+
+    def toggle_container(self, widget, animation):
+        is_visible = widget.isVisible()
+        current_height = widget.sizeHint().height() if is_visible else 0
+        target_height = 0 if is_visible else widget.sizeHint().height()
+
+        # Disconnect any existing 'finished' signal connections
+        try:
+            animation.finished.disconnect()
+        except TypeError:
+            # No connections to disconnect, safe to ignore
+            pass
+
+        # Connect 'finished' signal to handle visibility post-animation
+        animation.finished.connect(lambda: self.handle_animation_finished(widget, target_height))
+
+        widget.setVisible(True)  # Ensure the widget is visible for the animation
+        animation.setStartValue(current_height)
+        animation.setEndValue(target_height)
+        animation.start()
+
+    def handle_animation_finished(self, widget, target_height):
+        # Hide the widget if the target height is 0
+        if target_height == 0:
+            widget.setVisible(False)
 
     def create_button(self, icon_path, tool_tip):
-        # Relative path from the 'app' directory to the 'icons' directory
-        # Convert to an absolute path to avoid any relative path issues
         absolute_icon_path = os.path.abspath(icon_path)
-        print(f"Attempting to load icon from: {absolute_icon_path}")
         button = QPushButton()
         button.setIcon(QIcon(absolute_icon_path))
         button.setIconSize(QSize(25, 25))
@@ -86,6 +118,7 @@ class ControlPanelWidget(QWidget):
         button.setToolTip(tool_tip)
         button.setStyleSheet(self.button_stylesheet())
         return button
+
     def button_stylesheet(self):
         return """
             QPushButton {
@@ -103,28 +136,13 @@ class ControlPanelWidget(QWidget):
             }
         """
 
-    def reset_max_height(self):
-        # This method will reset the maximumHeight to 0 when the hide animation completes
-        if self.url_field_animation.direction() == QPropertyAnimation.Direction.Backward:
-            self.youtube_url_field.setMaximumHeight(0)
-
-    def on_hide_animation_finished(self):
-        if self.hide_container_animation.currentValue() == 0:
-            self.youtube_container.setVisible(False)
-
-
-
-    def youtube_button_click(self):
-        if self.youtube_container.isVisible():
-            self.hide_container_animation.start()
+    def submit_youtube_url(self):
+        youtube_url = self.youtube_url_field.text().strip()
+        if validate_url(youtube_url):
+            self.youtube_download_requested.emit(youtube_url)
+            self.toggle_youtube_container()
         else:
-            self.youtube_container.setVisible(True)
-            self.youtube_container.setMaximumHeight(self.youtube_container.sizeHint().height())  # Reset max height for animation
-            self.show_container_animation.start()
-
-    def record_button_click(self):
-        # Logic when the record button is clicked
-        self.record_clicked.emit()
+            QMessageBox.warning(self, "Invalid URL", "Please enter a valid YouTube URL.")
 
     def on_upload_button_clicked(self):
         file_dialog = QFileDialog(self)
@@ -132,69 +150,7 @@ class ControlPanelWidget(QWidget):
         file_dialog.setFileMode(QFileDialog.FileMode.ExistingFile)
         if file_dialog.exec() == QFileDialog.DialogCode.Accepted:
             original_file_path = file_dialog.selectedFiles()[0]
-            target_file_path = self.copy_to_recordings(original_file_path)
-
-            if is_video_file(target_file_path):
-                self.start_transcoding_thread(target_file_path)
-            elif is_audio_file(target_file_path):
-                self.uploaded_filepath.emit(target_file_path)
-            else:
-                QMessageBox.warning(self, "File Type", "The selected file is not a supported audio or video type.")
-
-    def copy_to_recordings(self, file_path):
-        recordings_dir = "Recordings"
-        os.makedirs(recordings_dir, exist_ok=True)
-        base_name = os.path.basename(file_path)
-        name, ext = os.path.splitext(base_name)
-        counter = 1
-
-        target_file_path = os.path.join(recordings_dir, base_name)
-        while os.path.exists(target_file_path):
-            target_file_path = os.path.join(recordings_dir, f"{name}_{counter}{ext}")
-            counter += 1
-
-        shutil.copyfile(file_path, target_file_path)
-        return target_file_path
-
-    def start_transcoding_thread(self, file_path):
-        self.transcoding_thread = TranscodingThread(file_path, target_format='mp3')
-        self.transcoding_thread.completed.connect(self.uploaded_filepath.emit)
-        self.transcoding_thread.error.connect(lambda error: QMessageBox.critical(self, "Transcoding Error", error))
-        self.transcoding_thread.start()
-
-    def submit_youtube_url(self):
-        youtube_url = self.youtube_url_field.text().strip()  # Strip to remove any extra whitespace
-        if validate_url(youtube_url):
-            self.hide_container_animation.start()
-            self.youtube_download_requested.emit(youtube_url)
-        else:
-            QMessageBox.warning(self, "Invalid URL", "Please enter a valid YouTube URL.")
-
-    def handle_youtube_download(self, url):
-        if validate_url(url):  # Assume validate_url function does the actual URL validation
-            # Start the YouTube download thread
-            self.youtube_thread = YouTubeDownloadThread(url)
-            self.youtube_thread.completed.connect(self.start_transcoding)
-            self.youtube_thread.error.connect(self.handle_youtube_download_error)
-            self.youtube_thread.start()
-        else:
-            QMessageBox.warning(self, "Invalid URL", "The provided URL is not a valid YouTube URL.")
-
-    def handle_youtube_download_error(self, error_message):
-        QMessageBox.critical(self, "Error", f"Failed to download YouTube video: {error_message}")
-
-    def start_transcoding(self, file_path):
-        # Assuming you have a TranscodingThread class similar to YouTubeDownloadThread
-        self.transcoding_thread = TranscodingThread(file_path, target_format='mp3')
-        self.transcoding_thread.completed.connect(self.on_transcoding_completed)
-        self.transcoding_thread.error.connect(self.handle_transcoding_error)
-        self.transcoding_thread.start()
-
-    def handle_transcoding_error(self, error_message):
-        QMessageBox.critical(self, "Error", f"Failed to transcode file: {error_message}")
-
-    def on_transcoding_completed(self, file_path):
-        self.uploaded_filepath.emit(file_path)
+            self.uploaded_filepath.emit(original_file_path)
 
 class MainWindow(QMainWindow):
     def __init__(self):
@@ -205,28 +161,19 @@ class MainWindow(QMainWindow):
         self.setWindowTitle("Transcribrr Test")
         self.setGeometry(100, 100, 800, 600)
 
-        # Create an instance of ControlPanelWidget
         self.control_panel = ControlPanelWidget(self)
-
-        # Connect the signals to slots
-        self.control_panel.uploaded_filepath.connect(self.on_uploaded_filepath)
-        self.control_panel.record_clicked.connect(self.on_record_clicked)
         self.control_panel.uploaded_filepath.connect(self.on_uploaded_filepath)
 
-
-        # Layout
         layout = QVBoxLayout()
         self.status_label = QLabel("Status: Waiting for actions")
         layout.addWidget(self.control_panel)
         layout.addWidget(self.status_label)
 
-        # Central Widget
         central_widget = QWidget()
         central_widget.setLayout(layout)
         self.setCentralWidget(central_widget)
 
     def on_uploaded_filepath(self, filepath):
-        print(f"File uploaded: {filepath}")  # Print to console
         self.status_label.setText(f"File uploaded: {filepath}")
 
     def on_record_clicked(self):
@@ -237,7 +184,6 @@ def main():
     main_window = MainWindow()
     main_window.show()
     sys.exit(app.exec())
-
 
 if __name__ == "__main__":
     main()
