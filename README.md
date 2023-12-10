@@ -51,6 +51,8 @@ source venv/bin/activate
 pip3 install torch~=2.0.0 torchaudio~=2.0.0 --index-url https://download.pytorch.org/whl/cu118
 ```
 
+#### Install requirements.txt
+
 ```bash
 pip install -r requirements.txt
 ```
