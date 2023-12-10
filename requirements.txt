@@ -1,12 +1,10 @@
-PyQt5~=5.15.10
 keyring~=24.3.0
 requests~=2.31.0
-torch~=2.0.0
+torch~=2.1.1
 git+https://github.com/m-bain/whisperx.git
 moviepy~=1.0.3
 pydub~=0.25.1
 yt-dlp~=2023.11.16
-
-
-
-
+PyQt6~=6.6.1
+PyAudio~=0.2.14
+numpy~=1.26.2

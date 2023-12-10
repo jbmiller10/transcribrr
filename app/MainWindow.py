@@ -12,37 +12,35 @@ from PyQt6.QtWidgets import (
     QPushButton, QSpacerItem, QFileDialog, QMenu, QListWidgetItem, QMainWindow,QComboBox,QTextEdit, QSplitter,QStatusBar
 )
 
-from app.YouTubeDownloadThread import YouTubeDownloadThread
 from app.TranscodingThread import TranscodingThread
 from app.VoiceRecorderWidget import VoiceRecorderWidget  # Import specific classes
 import os
-from pydub import AudioSegment
-from app.utils import validate_url, is_audio_file, is_video_file
 from app.RecordingListItem import RecordingListItem
 from app.MainTranscriptionWidget import  MainTranscriptionWidget
 from app.ControlPanelWidget import ControlPanelWidget
 
 
-class YouTubeDownloadDialog(QDialog):
-    download_requested = pyqtSignal(str)
-
-    def __init__(self, parent=None):
-        super().__init__(parent)
-        self.layout = QVBoxLayout(self)
-        self.url_input = QLineEdit(self)
-        self.layout.addWidget(self.url_input)
-
-        self.download_button = QPushButton("Download", self)
-        self.download_button.clicked.connect(self.on_download_clicked)
-        self.layout.addWidget(self.download_button)
-
-    def on_download_clicked(self):
-        url = self.url_input.text()
-        if validate_url(url):
-            self.download_requested.emit(url)
-            self.accept()
-        else:
-            QMessageBox.warning(self, "Invalid URL", "The provided URL is not a valid YouTube URL.")
+# class YouTubeDownloadDialog(QDialog):
+#
+#     download_requested = pyqtSignal(str)
+#
+#     def __init__(self, parent=None):
+#         super().__init__(parent)
+#         self.layout = QVBoxLayout(self)
+#         self.url_input = QLineEdit(self)
+#         self.layout.addWidget(self.url_input)
+#
+#         self.download_button = QPushButton("Download", self)
+#         self.download_button.clicked.connect(self.on_download_clicked)
+#         self.layout.addWidget(self.download_button)
+#
+#     def on_download_clicked(self):
+#         url = self.url_input.text()
+#         if validate_url(url):
+#             self.download_requested.emit(url)
+#             self.accept()
+#         else:
+#             QMessageBox.warning(self, "Invalid URL", "The provided URL is not a valid YouTube URL.")
 
 class RecentRecordingsWidget(QWidget):
     recordingSelected = pyqtSignal(str)
@@ -81,28 +79,7 @@ class RecentRecordingsWidget(QWidget):
     }
 """
 
-        self.add_button = QPushButton()
-        self.add_button.setIcon(QIcon('icons/upload.svg'))
-        self.add_button.setIconSize(QSize(25, 25))
-        self.add_button.setFixedSize(25,25)
-        self.add_button.setToolTip("Upload Local Audio/Video file")
-        self.add_button.setStyleSheet(self.button_stylesheet)
 
-        self.download_youtube_button = QPushButton()
-        self.download_youtube_button.setIcon(QIcon('icons/youtube.svg'))
-        self.download_youtube_button.setIconSize(QSize(25, 25))
-        self.download_youtube_button.setFixedSize(25, 25)
-        self.download_youtube_button.setToolTip("Use Youtube Link")
-        self.download_youtube_button.setStyleSheet(self.button_stylesheet)
-
-        #self.record_new_button = QPushButton()
-        #self.record_new_button.setIcon(QIcon('icons/record.svg'))
-        #self.record_new_button.setIconSize(QSize(25, 25))
-        #self.record_new_button.setFixedSize(25, 25)
-        #self.record_new_button.setToolTip("Record from microphone/system audio")
-        #self.record_new_button.setStyleSheet(self.button_stylesheet)
-        #self.record_new_button.clicked.connect(self.recordButtonPressed.emit)
-        #self.record_new_button.clicked.connect(self.toggleVoiceRecorderVisibility)
 
 
         self.voice_recorder_widget = VoiceRecorderWidget()  # The voice recorder widget
@@ -131,7 +108,6 @@ class RecentRecordingsWidget(QWidget):
         verticalSpacer = QSpacerItem(20, 40, QSizePolicy.Policy.Minimum, QSizePolicy.Policy.Expanding)
         self.layout.addItem(verticalSpacer)
         self.layout.addLayout(self.buttonLayout)
-
 
         self.recordings_list.itemClicked.connect(self.recording_clicked)
         #self.download_youtube_button.clicked.connect(self.on_download_youtube_clicked)
@@ -253,8 +229,8 @@ class MainWindow(QMainWindow):
         self.main_transcription_widget = MainTranscriptionWidget()
 
         # Connect signals from the ControlPanelWidget
-        self.control_panel.upload_clicked.connect(self.on_upload_button_clicked)
-        self.control_panel.youtube_clicked.connect(self.on_youtube_button_clicked)
+        #self.control_panel.upload_clicked.connect(self.on_upload_button_clicked)
+        #elf.control_panel.youtube_clicked.connect(self.on_youtube_button_clicked)
         #self.control_panel.record_clicked.connect(self.on_record_button_clicked)
 
         #self.recent_recordings_widget = RecentRecordingsWidget()
@@ -435,13 +411,6 @@ class MainWindow(QMainWindow):
             self.voiceRecorderAnimation.finished.disconnect()
             self.animationFinishedConnected = False
 
-    def on_youtube_button_clicked(self):
-        self.download_dialog = YouTubeDownloadDialog(self)
-        self.download_dialog.download_requested.connect(self.handle_youtube_download)
-        self.download_dialog.exec()  # This will open the dialog to enter the URL
-    def handle_youtube_download_error(self, error_message):
-        QMessageBox.critical(self, "Download Error", error_message)
-
     def onRecordingCompleted(self, file_name):
         # Add the new recording to the RecentRecordingsWidget
         self.recent_recordings_widget.add_recording(file_name)
@@ -451,12 +420,6 @@ class MainWindow(QMainWindow):
         )
         # Display a notification
         QMessageBox.information(self, "Recording Completed", f"Recording saved: {file_name}")
-
-    def handle_youtube_download(self, url):
-        self.youtube_thread = YouTubeDownloadThread(url)
-        self.youtube_thread.completed.connect(self.start_transcoding)
-        self.youtube_thread.error.connect(self.handle_youtube_download_error)
-        self.youtube_thread.start()
 
     def start_transcoding(self, file_path):
         self.transcoding_thread = TranscodingThread(file_path, target_format='mp3')
