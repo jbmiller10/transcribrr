@@ -46,16 +46,16 @@ source venv/bin/activate
 
 ### Install Dependencies
 
-To install the required dependencies, run the following command in your terminal:
+#### Install Torch w/ Cuda (optional, though highly recommended, for hardware acceleration. Requires an Nvidia GPU and cuda toolkit)
+```bash
+pip3 install torch~=2.0.0 torchaudio~=2.0.0 --index-url https://download.pytorch.org/whl/cu118
+```
 
 ```bash
 pip install -r requirements.txt
 ```
 
-#### Install Torch w/ Cuda (optional, though highly recommended, for hardware acceleration. Requires an Nvidia GPU and cuda toolkit)
-```bash
-pip3 install torch~=2.0.0 torchaudio~=2.0.0 --index-url https://download.pytorch.org/whl/cu118
-```
+
 
 ### Usage
 
