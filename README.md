@@ -18,7 +18,7 @@ Transcribrr is a straightforward python desktop application that transcribes loc
 
 Before installing the application, ensure you have the following dependencies:
 
-- Python 3.10 or higher
+- Python 3.10
 - [Cuda 11.8 or higher](https://docs.nvidia.com/cuda/cuda-quick-start-guide/index.html) (optional, though highly recommended, for hardware acceleration. Requires a supported Nvidia GPU.)
 - [ffmpeg](https://ffmpeg.org/download.html)
 
