@@ -30,46 +30,58 @@ class TextEditor(QMainWindow):
         toolbar.addWidget(self.font_size_combobox)
 
         # Bold, Italic, Underline, etc. Actions
-        bold_action = QAction(QIcon("icons/bold.png"), "Bold", self)
+        bold_action = QAction(QIcon("../icons/TextEditor/bold.svg"), "Bold", self)
+        bold_action.setShortcut("Ctrl+B")
         bold_action.triggered.connect(self.bold_text)
         toolbar.addAction(bold_action)
 
-        italic_action = QAction(QIcon("icons/italic.png"), "Italic", self)
+        italic_action = QAction(QIcon("../icons/TextEditor/italic.svg"), "Italic", self)
+        italic_action.setShortcut("Ctrl+I")
         italic_action.triggered.connect(self.italic_text)
         toolbar.addAction(italic_action)
 
-        underline_action = QAction(QIcon("icons/underline.png"), "Underline", self)
+        underline_action = QAction(QIcon("../icons/TextEditor/underline.svg"), "Underline", self)
+        underline_action.setShortcut("Ctrl+U")
         underline_action.triggered.connect(self.underline_text)
         toolbar.addAction(underline_action)
 
-        font_color_action = QAction(QIcon("icons/font_color.png"), "Font Color", self)
+        font_color_action = QAction(QIcon("../icons/TextEditor/font_color.svg"), "Font Color", self)
         font_color_action.triggered.connect(self.font_color)
         toolbar.addAction(font_color_action)
 
         # Alignment Actions
-        align_left_action = QAction(QIcon("icons/align_left.png"), "Align Left", self)
+        align_left_action = QAction(QIcon("../icons/TextEditor/align_left.svg"), "Align Left", self)
         align_left_action.triggered.connect(lambda: self.editor.setAlignment(Qt.AlignmentFlag.AlignLeft))
+        align_left_action.setShortcut("Ctrl+L")
         toolbar.addAction(align_left_action)
 
-        align_center_action = QAction(QIcon("icons/align_center.png"), "Align Center", self)
+        align_center_action = QAction(QIcon("../icons/TextEditor/align_center.svg"), "Align Center", self)
+        align_center_action.setShortcut("Ctrl+E")
         align_center_action.triggered.connect(lambda: self.editor.setAlignment(Qt.AlignmentFlag.AlignCenter))
+
         toolbar.addAction(align_center_action)
 
-        align_right_action = QAction(QIcon("icons/align_right.png"), "Align Right", self)
+        align_right_action = QAction(QIcon("../icons/TextEditor/align_right.svg"), "Align Right", self)
+        align_right_action.setShortcut("Ctrl+R")
         align_right_action.triggered.connect(lambda: self.editor.setAlignment(Qt.AlignmentFlag.AlignRight))
         toolbar.addAction(align_right_action)
 
         # Bullet List Action
-        bullet_action = QAction(QIcon("icons/bullet.png"), "Bullet List", self)
+        bullet_action = QAction(QIcon("../icons/TextEditor/bullet.svg"), "Bullet List", self)
         bullet_action.triggered.connect(self.bullet_list)
         toolbar.addAction(bullet_action)
 
+        # Numbered List Action
+        numbered_action = QAction(QIcon("../icons/TextEditor/numbered.svg"), "Numbered List", self)
+        numbered_action.triggered.connect(self.numbered_list)
+        toolbar.addAction(numbered_action)
+
         # Indentation Actions
-        increase_indent_action = QAction(QIcon("icons/increase_indent.png"), "Increase Indent", self)
+        increase_indent_action = QAction(QIcon("../icons/TextEditor/increase_indent.svg"), "Increase Indent", self)
         increase_indent_action.triggered.connect(self.increase_indent)
         toolbar.addAction(increase_indent_action)
 
-        decrease_indent_action = QAction(QIcon("icons/decrease_indent.png"), "Decrease Indent", self)
+        decrease_indent_action = QAction(QIcon("../icons/TextEditor/decrease_indent.svg"), "Decrease Indent", self)
         decrease_indent_action.triggered.connect(self.decrease_indent)
         toolbar.addAction(decrease_indent_action)
 
@@ -99,6 +111,15 @@ class TextEditor(QMainWindow):
         if color.isValid():
             self.editor.setTextColor(color)
 
+    def numbered_list(self):
+        cursor = self.editor.textCursor()
+        list_format = QTextListFormat()
+        if cursor.currentList():
+            list_format = cursor.currentList().format()
+        else:
+            list_format.setStyle(QTextListFormat.Style.ListDecimal)
+        cursor.createList(list_format)
+
     def bullet_list(self):
         cursor = self.editor.textCursor()
         list_format = QTextListFormat()
@@ -108,17 +129,21 @@ class TextEditor(QMainWindow):
             list_format.setStyle(QTextListFormat.Style.ListDisc)
         cursor.createList(list_format)
 
-    def increase_indent(self):
-        self.adjust_indent(1)
 
     def decrease_indent(self):
-        self.adjust_indent(-1)
-
-    def adjust_indent(self, adjustment):
         cursor = self.editor.textCursor()
         if cursor.currentList():
             list_format = cursor.currentList().format()
-            list_format.setIndent(list_format.indent() + adjustment)
+            new_indent_level = max(list_format.indent() - 1, 1)  # Avoid negative or zero indentation
+            list_format.setIndent(new_indent_level)
+            cursor.createList(list_format)
+    def increase_indent(self):
+        cursor = self.editor.textCursor()
+        if cursor.currentList():
+            list_format = cursor.currentList().format()
+            new_indent_level = list_format.indent() + 1
+            list_format.setIndent(new_indent_level)
+            cursor.createList(list_format)
 
 
 if __name__ == '__main__':
