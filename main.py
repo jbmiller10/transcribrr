@@ -307,7 +307,7 @@ try_again_stylesheet = """
 
 if __name__ == "__main__":
     app = QApplication(sys.argv)
-    app.setStyleSheet(stylesheet)
+    #app.setStyleSheet(stylesheet)
     mainWin = MainWindow()
     mainWin.show()
     sys.exit(app.exec())
