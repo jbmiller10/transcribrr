@@ -40,13 +40,18 @@ class MainTranscriptionWidget(QWidget):
         self.save_button.setFixedSize(50, 50)  # Adjust size as needed
         self.upper_transcription_toolbar.addWidget(self.save_button)
 
+        self.horizontal_spacer = QWidget()
+        self.top_toolbar = QHBoxLayout()
+        self.horizontal_spacer.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Preferred)
         self.settings_button = QPushButton()
         self.settings_button.setIcon(QIcon('icons/settings.svg'))  # path to 'settings' icon
-        self.settings_button.setFixedSize(50, 50)  # Adjust size as needed
+        self.settings_button.setIconSize(QSize(25,25))
+        self.settings_button.setFixedSize(30, 30)  # Adjust size as needed
         self.upper_transcription_toolbar.addWidget(self.settings_button)
         self.transcript_text = TextEditor()
-
-        self.layout.addWidget(self.settings_button)
+        self.top_toolbar.addWidget(self.horizontal_spacer)
+        self.top_toolbar.addWidget(self.settings_button)
+        self.layout.addLayout(self.top_toolbar)
         self.upper_transcription_toolbar.addWidget(self.transcription_type_combo)
         self.layout.addWidget(self.transcript_text)
 

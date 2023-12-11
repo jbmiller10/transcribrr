@@ -30,6 +30,7 @@ class RecentRecordingsWidget(QWidget):
         self.layout.setContentsMargins(0, 0, 0, 0)
 
         self.header_label = QLabel("Recent Recordings")
+        self.header_label.setObjectName("RecentRecordingHeader")
         self.header_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
 
         self.recordings_list = QListWidget()
@@ -214,13 +215,12 @@ class MainWindow(QMainWindow):
         # Set the initial side ratios of the splitter (e.g., 1:2)
         self.splitter.setSizes([400, 800])
 
-        # Set status bar for the window, initially hidden
         self.status_bar = QStatusBar()
         self.setStatusBar(self.status_bar)
-        self.status_bar.setVisible(False)
-
-        # Set the initial style for the window
-        self.set_style()
+        self.status_bar.setSizePolicy(QSizePolicy.Policy.Fixed, QSizePolicy.Policy.Fixed)
+        fixed_height = 10
+        self.status_bar.setFixedHeight(fixed_height)
+        self.status_bar.setVisible(True)
 
     def set_style(self):
         self.setStyleSheet("""

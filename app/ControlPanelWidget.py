@@ -121,7 +121,7 @@ class ControlPanelWidget(QWidget):
 
     def button_stylesheet(self):
         return """
-            QPushButton {
+            /*QPushButton {
                 background-color: transparent;
             }
             QPushButton:pressed {
@@ -133,7 +133,7 @@ class ControlPanelWidget(QWidget):
             QPushButton:hover {
                 border: 2px solid blue;
                 border-radius: 6px;
-            }
+            }*/
         """
 
     def submit_youtube_url(self):
