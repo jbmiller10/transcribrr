@@ -12,7 +12,7 @@ class FileDropWidget(QWidget):
     def __init__(self, parent=None):
         super().__init__(parent)
         self.setAcceptDrops(True)
-        self.setMinimumSize(568, 100)
+        self.setMinimumSize(50, 100)
         self.initUI()
 
     def initUI(self):
@@ -33,25 +33,34 @@ class FileDropWidget(QWidget):
         """)
 
     def dragEnterEvent(self, event: QDragEnterEvent):
+        event.accept()
         if event.mimeData().hasUrls():
             url = event.mimeData().urls()[0]
             if url.isLocalFile() and url.toLocalFile().endswith(self.supported_file_types):
                 event.acceptProposedAction()
             else:
-                self.showErrorMessage()
+                self.label.setText("Unsupported filetype.")
+                event.accept()
+    def dragLeaveEvent(self, event):
+
+        self.label.setText("Drag audio/video files here or click to browse")
 
     def dragMoveEvent(self, event):
         if event.mimeData().hasUrls():
             event.acceptProposedAction()
 
     def dropEvent(self, event: QDropEvent):
+        # Reset label text in all cases
+        self.label.setText("Drag audio/video files here or click to browse")
+
         if event.mimeData().hasUrls():
             url = event.mimeData().urls()[0]
             file_path = url.toLocalFile()
             if file_path.endswith(self.supported_file_types):
                 self.fileDropped.emit(file_path)
             else:
-                self.showErrorMessage()
+                event.ignore()
+
 
     def mousePressEvent(self, event):
         if event.button() == Qt.MouseButton.LeftButton:

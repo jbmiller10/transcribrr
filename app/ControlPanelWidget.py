@@ -8,6 +8,7 @@ from app.utils import is_video_file, is_audio_file, validate_url
 from app.TranscodingThread import TranscodingThread
 from app.YouTubeDownloadThread import YouTubeDownloadThread
 from app.VoiceRecorderWidget import VoiceRecorderWidget
+from app.FileDropWidget import FileDropWidget
 
 
 class ControlPanelWidget(QWidget):
@@ -40,10 +41,22 @@ class ControlPanelWidget(QWidget):
         self.voice_recorder_widget.recordingCompleted.connect(self.uploaded_filepath.emit)
         self.voice_recorder_widget.setVisible(False)
 
+        # Voice recorder widget setup
+        main_layout.addWidget(self.voice_recorder_widget)
+        self.voice_recorder_widget.recordingCompleted.connect(self.uploaded_filepath.emit)
+        self.voice_recorder_widget.setVisible(False)
+
+        #File Drop Widget setup
+        self.file_upload_widget = FileDropWidget(self)  # Adjust as per your actual widget
+        main_layout.addWidget(self.file_upload_widget)
+        self.file_upload_widget.setVisible(False)
+        #self.voice_recorder_widget.recordingCompleted.connect(self.uploaded_filepath.emit)
+
+
         # Button layout setup
         button_layout = QHBoxLayout()
         self.upload_button = self.create_button('./icons/upload.svg', "Upload Local Audio/Video file")
-        self.upload_button.clicked.connect(self.on_upload_button_clicked)
+        self.upload_button.clicked.connect(self.toggle_file_upload)
         self.youtube_button = self.create_button('./icons/youtube.svg', "Use Youtube Link")
         self.youtube_button.clicked.connect(self.toggle_youtube_container)
         self.record_button = self.create_button('./icons/record.svg', "Record from microphone/system audio")
@@ -70,10 +83,17 @@ class ControlPanelWidget(QWidget):
         self.voice_recorder_animation.setDuration(500)
         self.voice_recorder_animation.setEasingCurve(QEasingCurve.Type.InOutQuad)
 
+        # file upload widget animations
+        self.file_upload_animation = QPropertyAnimation(self.file_upload_widget, b"maximumHeight")
+        self.file_upload_animation.setDuration(500)
+        self.file_upload_animation.setEasingCurve(QEasingCurve.Type.InOutQuad)
+
     def toggle_youtube_container(self):
         # If voice recorder widget is visible, toggle it off
         if self.voice_recorder_widget.isVisible():
             self.toggle_voice_recorder()
+        elif self.file_upload_widget.isVisible():
+            self.toggle_file_upload()
 
         self.toggle_container(self.youtube_container, self.youtube_container_animation)
 
@@ -81,8 +101,20 @@ class ControlPanelWidget(QWidget):
         # If YouTube container is visible, toggle it off
         if self.youtube_container.isVisible():
             self.toggle_youtube_container()
+        elif self.file_upload_widget.isVisible():
+            self.toggle_file_upload()
 
         self.toggle_container(self.voice_recorder_widget, self.voice_recorder_animation)
+
+    def toggle_file_upload(self):
+        # Hide other containers if visible
+        if self.youtube_container.isVisible():
+            self.toggle_youtube_container()
+        elif self.voice_recorder_widget.isVisible():
+            self.toggle_voice_recorder()
+
+        # Toggle the file upload widget
+        self.toggle_container(self.file_upload_widget, self.file_upload_animation)
 
     def toggle_container(self, widget, animation):
         is_visible = widget.isVisible()
