@@ -28,7 +28,9 @@ class FileDropWidget(QWidget):
             }
             QWidget {
                 border: 2px dashed #cccccc;
-                border-radius: 10px;
+                padding: 20px;
+                border-radius: 5px;
+                font-weight: medium;
             }
         """)
 
