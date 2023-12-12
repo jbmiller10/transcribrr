@@ -9,15 +9,15 @@ from app.TranscodingThread import TranscodingThread
 from app.YouTubeDownloadThread import YouTubeDownloadThread
 from app.VoiceRecorderWidget import VoiceRecorderWidget
 from app.FileDropWidget import FileDropWidget
-
+import time
 
 class ControlPanelWidget(QWidget):
     uploaded_filepath = pyqtSignal(str)
     record_clicked = pyqtSignal()
-    youtube_download_requested = pyqtSignal(str)
 
     def __init__(self, parent=None):
         super().__init__(parent)
+        self.transcoding_thread = None
         self.initUI()
 
     def initUI(self):
@@ -38,18 +38,14 @@ class ControlPanelWidget(QWidget):
         # Voice recorder widget setup
         self.voice_recorder_widget = VoiceRecorderWidget(self)
         main_layout.addWidget(self.voice_recorder_widget)
-        self.voice_recorder_widget.recordingCompleted.connect(self.uploaded_filepath.emit)
-        self.voice_recorder_widget.setVisible(False)
-
-        # Voice recorder widget setup
-        main_layout.addWidget(self.voice_recorder_widget)
-        self.voice_recorder_widget.recordingCompleted.connect(self.uploaded_filepath.emit)
+        self.voice_recorder_widget.recordingCompleted.connect(self.on_io_complete)
         self.voice_recorder_widget.setVisible(False)
 
         #File Drop Widget setup
         self.file_upload_widget = FileDropWidget(self)  # Adjust as per your actual widget
         main_layout.addWidget(self.file_upload_widget)
         self.file_upload_widget.setVisible(False)
+        self.file_upload_widget.fileDropped.connect(self.on_io_complete)
         #self.voice_recorder_widget.recordingCompleted.connect(self.uploaded_filepath.emit)
 
 
@@ -70,7 +66,24 @@ class ControlPanelWidget(QWidget):
         # Animations setup
         self.setup_animations()
 
+    def on_update_progress(self,message):
+        print('prog'+message)
+    def on_io_complete(self,filepath):
+        if filepath.endswith('.mp3'):
+            self.uploaded_filepath.emit(filepath)
+        else:
+            self.transcoding_thread = TranscodingThread(file_path=filepath)
+            self.transcoding_thread.update_progress.connect(self.on_update_progress)
+            self.transcoding_thread.completed.connect(self.on_transcoding_complete)
+            self.transcoding_thread.error.connect(self.on_error)
+            self.transcoding_thread.start()
 
+    def on_transcoding_complete(self,filepath):
+        print("Completed. File saved to:", filepath)
+        self.uploaded_filepath.emit(filepath)
+
+    def on_error(self,message):
+        print('error'+message)
 
     def setup_animations(self):
         # YouTube container animations
@@ -94,7 +107,6 @@ class ControlPanelWidget(QWidget):
             self.toggle_voice_recorder()
         elif self.file_upload_widget.isVisible():
             self.toggle_file_upload()
-
         self.toggle_container(self.youtube_container, self.youtube_container_animation)
 
     def toggle_voice_recorder(self):
@@ -103,7 +115,6 @@ class ControlPanelWidget(QWidget):
             self.toggle_youtube_container()
         elif self.file_upload_widget.isVisible():
             self.toggle_file_upload()
-
         self.toggle_container(self.voice_recorder_widget, self.voice_recorder_animation)
 
     def toggle_file_upload(self):
@@ -113,7 +124,6 @@ class ControlPanelWidget(QWidget):
         elif self.voice_recorder_widget.isVisible():
             self.toggle_voice_recorder()
 
-        # Toggle the file upload widget
         self.toggle_container(self.file_upload_widget, self.file_upload_animation)
 
     def toggle_container(self, widget, animation):
@@ -171,18 +181,18 @@ class ControlPanelWidget(QWidget):
     def submit_youtube_url(self):
         youtube_url = self.youtube_url_field.text().strip()
         if validate_url(youtube_url):
-            self.youtube_download_requested.emit(youtube_url)
             self.toggle_youtube_container()
+            self.youtube_download_thread = YouTubeDownloadThread(youtube_url=youtube_url)
+            #self.youtube_download_thread.update_progress.connect(self.on_update_progress) need2implement
+            self.youtube_download_thread.completed.connect(self.on_io_complete)
+            self.youtube_download_thread.error.connect(self.on_error)
+            self.youtube_download_thread.start()
+
+
+
         else:
             QMessageBox.warning(self, "Invalid URL", "Please enter a valid YouTube URL.")
 
-    def on_upload_button_clicked(self):
-        file_dialog = QFileDialog(self)
-        file_dialog.setNameFilter("Audio/Video Files (*.mp3 *.wav *.m4a *.ogg *.mp4 *.mkv *.avi *.mov)")
-        file_dialog.setFileMode(QFileDialog.FileMode.ExistingFile)
-        if file_dialog.exec() == QFileDialog.DialogCode.Accepted:
-            original_file_path = file_dialog.selectedFiles()[0]
-            self.uploaded_filepath.emit(original_file_path)
 
 class MainWindow(QMainWindow):
     def __init__(self):

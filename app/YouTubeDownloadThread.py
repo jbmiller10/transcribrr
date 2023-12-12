@@ -3,6 +3,7 @@ from PyQt6.QtCore import QThread, pyqtSignal
 import traceback
 from datetime import datetime
 import os
+import time
 
 
 class YouTubeDownloadThread(QThread):
@@ -17,8 +18,8 @@ class YouTubeDownloadThread(QThread):
         try:
             # Define the output template for the downloaded audio file
             output_template = os.path.join(
-                'recordings',  # Ensure this directory exists or is created before downloading
-                f'downloaded_audio_{datetime.now().strftime("%Y%m%d_%H%M%S")}.%(ext)s'
+                'Recordings',  # Ensure this directory exists or is created before downloading
+                f'downloaded_youtube_video_{datetime.now().strftime("%Y%m%d_%H%M%S")}.%(ext)s'
             )
 
             # Setup yt_dlp options

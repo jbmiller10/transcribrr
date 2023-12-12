@@ -12,8 +12,6 @@ from PyQt6.QtWidgets import (
     QPushButton, QSpacerItem, QFileDialog, QMenu, QListWidgetItem, QMainWindow,QComboBox,QTextEdit, QSplitter,QStatusBar
 )
 
-from app.TranscodingThread import TranscodingThread
-from app.VoiceRecorderWidget import VoiceRecorderWidget  # Import specific classes
 import os
 from app.RecordingListItem import RecordingListItem
 from app.MainTranscriptionWidget import  MainTranscriptionWidget
@@ -210,7 +208,7 @@ class MainWindow(QMainWindow):
         # Additionally, add the main transcription area to the right side of the splitter
         self.splitter.addWidget(self.main_transcription_widget)
 
-        self.control_panel.uploaded_filepath.connect(self.onRecordingCompleted)
+        self.control_panel.uploaded_filepath.connect(self.on_new_file)
 
         # Set the initial side ratios of the splitter (e.g., 1:2)
         self.splitter.setSizes([400, 800])
@@ -244,8 +242,7 @@ class MainWindow(QMainWindow):
             }
         """)
 
-    def onRecordingCompleted(self, file_name):
-        # Call add_recording on the instance of RecentRecordingsWidget
+    def on_new_file(self, file_name):
         self.recent_recordings_widget.add_recording(file_name)
 
     def on_recording_selected(self, filename):
@@ -276,21 +273,4 @@ class MainWindow(QMainWindow):
             }
         """)
 
-    def on_recording_completed(self, file_name):
-        # Add the new recording to the RecentRecordingsWidget
-        self.recent_recordings_widget.add_recording(file_name)
-        # Optionally, you could select the new recording in the list
-        self.recent_recordings_widget.recordings_list.setCurrentRow(
-            self.recent_recordings_widget.recordings_list.count() - 1
-        )
-        # Display a notification
-        QMessageBox.information(self, "Recording Completed", f"Recording saved: {file_name}")
 
-    def start_transcoding(self, file_path):
-        self.transcoding_thread = TranscodingThread(file_path, target_format='mp3')
-        self.transcoding_thread.completed.connect(self.add_recording)
-        self.transcoding_thread.error.connect(self.handle_transcoding_error)
-        self.transcoding_thread.start()
-
-    def handle_transcoding_error(self, error_message):
-        QMessageBox.critical(self, "Transcoding Error", error_message)

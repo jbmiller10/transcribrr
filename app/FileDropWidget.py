@@ -2,6 +2,8 @@ import sys
 from PyQt6.QtWidgets import QApplication, QMainWindow, QVBoxLayout, QWidget, QLabel, QFileDialog, QMessageBox
 from PyQt6.QtCore import Qt, pyqtSignal
 from PyQt6.QtGui import QDragEnterEvent, QDropEvent, QPainter, QPen, QFont
+import os
+import shutil
 
 class FileDropWidget(QWidget):
     fileDropped = pyqtSignal(str)
@@ -52,14 +54,26 @@ class FileDropWidget(QWidget):
             event.acceptProposedAction()
 
     def dropEvent(self, event: QDropEvent):
-        # Reset label text in all cases
         self.label.setText("Drag audio/video files here or click to browse")
 
         if event.mimeData().hasUrls():
             url = event.mimeData().urls()[0]
             file_path = url.toLocalFile()
             if file_path.endswith(self.supported_file_types):
-                self.fileDropped.emit(file_path)
+                # Determine the app's directory and ensure the /Recordings directory exists
+                app_directory = os.getcwd()
+                recordings_path = os.path.join(app_directory, 'Recordings')
+                os.makedirs(recordings_path, exist_ok=True)
+
+                # Copy the file to the /Recordings directory
+                try:
+                    base_name = os.path.basename(file_path)
+                    new_path = os.path.join(recordings_path, base_name)
+                    shutil.copy2(file_path, new_path)
+                    self.fileDropped.emit(new_path)  # Emit the new path
+                except Exception as e:
+                    QMessageBox.critical(self, "Error", f"Failed to copy file: {e}")
+                    event.ignore()
             else:
                 event.ignore()
 
@@ -75,10 +89,21 @@ class FileDropWidget(QWidget):
         if file_dialog.exec() == QFileDialog.DialogCode.Accepted:
             file_path = file_dialog.selectedFiles()[0]
             if file_path.endswith(self.supported_file_types):
-                self.fileDropped.emit(file_path)
+                # Determine the app's directory and ensure the /Recordings directory exists
+                app_directory = os.getcwd()
+                recordings_path = os.path.join(app_directory, 'Recordings')
+                os.makedirs(recordings_path, exist_ok=True)
+
+                # Copy the file to the /Recordings directory
+                try:
+                    base_name = os.path.basename(file_path)
+                    new_path = os.path.join(recordings_path, base_name)
+                    shutil.copy2(file_path, new_path)
+                    self.fileDropped.emit(new_path)  # Emit the new path
+                except Exception as e:
+                    QMessageBox.critical(self, "Error", f"Failed to copy file: {e}")
             else:
                 self.showErrorMessage()
-
     def showErrorMessage(self):
         QMessageBox.critical(self, "Unsupported File Type",
                              "The file you dragged is not a supported audio/video file.")
