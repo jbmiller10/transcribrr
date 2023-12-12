@@ -15,21 +15,19 @@ class ToggleSwitch(QSlider):
                 width: 80px;
                 margin: 0px;
                 border-radius: 10px;
-                background: white;
             }
             QSlider::handle:horizontal {
-                background: lightgray;
                 border: 1px solid #5c5c5c;
+                background: gray;
                 width: 40px;
                 height: 20px;
                 border-radius: 10px; 
                 position: relative;
             }
             QSlider::handle:horizontal:hover {
-                background: #2d2d2d;
+            /* */
             }
             QSlider::sub-page:horizontal {
-                background: #c7c7c7;
                 border-radius: 10px;
             }
         """)
