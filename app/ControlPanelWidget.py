@@ -14,6 +14,7 @@ import time
 class ControlPanelWidget(QWidget):
     uploaded_filepath = pyqtSignal(str)
     record_clicked = pyqtSignal()
+    update_progress = pyqtSignal(str)
 
     def __init__(self, parent=None):
         super().__init__(parent)
@@ -41,13 +42,13 @@ class ControlPanelWidget(QWidget):
         self.voice_recorder_widget.recordingCompleted.connect(self.on_io_complete)
         self.voice_recorder_widget.setVisible(False)
 
-        #File Drop Widget setup
-        self.file_upload_widget = FileDropWidget(self)  # Adjust as per your actual widget
-        main_layout.addWidget(self.file_upload_widget)
+        self.file_upload_layout = QHBoxLayout(self)
+        self.file_upload_widget = FileDropWidget(self)
+        self.file_upload_layout.addWidget(self.file_upload_widget)
         self.file_upload_widget.setVisible(False)
         self.file_upload_widget.fileDropped.connect(self.on_io_complete)
-        #self.voice_recorder_widget.recordingCompleted.connect(self.uploaded_filepath.emit)
 
+        main_layout.addLayout(self.file_upload_layout)
 
         # Button layout setup
         button_layout = QHBoxLayout()
@@ -61,13 +62,15 @@ class ControlPanelWidget(QWidget):
         button_layout.addWidget(self.youtube_button)
         button_layout.addWidget(self.record_button)
         main_layout.addLayout(button_layout)
-
-
         # Animations setup
         self.setup_animations()
 
+
+
+
     def on_update_progress(self,message):
-        print('prog'+message)
+        self.update_progress.emit(message)
+        print(message)
     def on_io_complete(self,filepath):
         if filepath.endswith('.mp3'):
             self.uploaded_filepath.emit(filepath)
@@ -183,7 +186,7 @@ class ControlPanelWidget(QWidget):
         if validate_url(youtube_url):
             self.toggle_youtube_container()
             self.youtube_download_thread = YouTubeDownloadThread(youtube_url=youtube_url)
-            #self.youtube_download_thread.update_progress.connect(self.on_update_progress) need2implement
+            self.youtube_download_thread.update_progress.connect(self.on_update_progress)
             self.youtube_download_thread.completed.connect(self.on_io_complete)
             self.youtube_download_thread.error.connect(self.on_error)
             self.youtube_download_thread.start()
@@ -207,7 +210,6 @@ class MainWindow(QMainWindow):
         self.control_panel.uploaded_filepath.connect(self.on_uploaded_filepath)
 
         layout = QVBoxLayout()
-        self.status_label = QLabel("Status: Waiting for actions")
         layout.addWidget(self.control_panel)
         layout.addWidget(self.status_label)
 

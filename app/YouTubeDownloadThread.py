@@ -7,6 +7,7 @@ import time
 
 
 class YouTubeDownloadThread(QThread):
+    update_progress = pyqtSignal(str)
     completed = pyqtSignal(str)
     error = pyqtSignal(str)
 
@@ -17,6 +18,7 @@ class YouTubeDownloadThread(QThread):
     def run(self):
         try:
             # Define the output template for the downloaded audio file
+            self.update_progress.emit('Downloading audio file...')
             output_template = os.path.join(
                 'Recordings',  # Ensure this directory exists or is created before downloading
                 f'downloaded_youtube_video_{datetime.now().strftime("%Y%m%d_%H%M%S")}.%(ext)s'

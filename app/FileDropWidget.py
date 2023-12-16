@@ -14,7 +14,7 @@ class FileDropWidget(QWidget):
     def __init__(self, parent=None):
         super().__init__(parent)
         self.setAcceptDrops(True)
-        self.setMinimumSize(50, 100)
+        #self.setMinimumSize(50, 100)
         self.initUI()
 
     def initUI(self):
@@ -30,10 +30,19 @@ class FileDropWidget(QWidget):
             }
             QWidget {
                 border: 2px dashed #cccccc;
-                padding: 20px;
-                border-radius: 5px;
+                padding-top: 50px;
+                padding-bottom: 50px;
+                padding-left: 3px;
+                padding-right: 3px;
                 font-weight: medium;
             }
+                QPushButton:hover {
+        background-color: qlineargradient(
+            x1:0, y1:0, x2:1, y2:0,
+            stop:0 gray, stop:1 darkgray
+                    );
+             }
+            
         """)
 
     def dragEnterEvent(self, event: QDragEnterEvent):

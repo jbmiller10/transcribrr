@@ -132,7 +132,8 @@ class RecentRecordingsWidget(QWidget):
         # If delete is clicked, call the method to delete the item
         if action == delete_action:
             self.deleteRecording(position)
-
+    def update_status_bar(self, message):
+        self.status_bar.showMessage(message)
     def deleteRecording(self, position):
         # Get the item at the clicked position
         item = self.recordings_list.itemAt(position)
@@ -158,6 +159,7 @@ class MainWindow(QMainWindow):
         super().__init__()
         self.init_ui()
 
+
     def init_ui(self):
         # Initialize the window properties
         self.setWindowTitle('Transcribrr')
@@ -167,6 +169,7 @@ class MainWindow(QMainWindow):
         self.control_panel = ControlPanelWidget(self)
         self.recent_recordings_widget = RecentRecordingsWidget()
         self.main_transcription_widget = MainTranscriptionWidget()
+        #self.control_panel.update_progress.connect(self.update_status_bar)
 
         # Connect signals
 
@@ -214,11 +217,14 @@ class MainWindow(QMainWindow):
         self.splitter.setSizes([400, 800])
 
         self.status_bar = QStatusBar()
+        #self.statusBar().setStyleSheet("QStatusBar{color: red;}")
         self.setStatusBar(self.status_bar)
         self.status_bar.setSizePolicy(QSizePolicy.Policy.Fixed, QSizePolicy.Policy.Fixed)
         fixed_height = 10
         self.status_bar.setFixedHeight(fixed_height)
         self.status_bar.setVisible(True)
+        self.status_bar.showMessage("This is a status message.")
+
 
     def set_style(self):
         self.setStyleSheet("""
@@ -264,12 +270,18 @@ class MainWindow(QMainWindow):
     def on_settings_requested(self):
         # TODO: Open the settings dialog
         pass
-
+    def update_status_bar(self, message):
+        self.statusBar().showMessage(message)
+        print('whee'+message)
     def set_style(self):
         self.setStyleSheet("""
             QMainWindow {
                 background-color: #252525;
-                color: white;
+                color: black;
+            }
+            statusBar {
+    background-color: #252525;
+                color: red;
             }
         """)
 

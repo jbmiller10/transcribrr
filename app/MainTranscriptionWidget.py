@@ -20,6 +20,7 @@ class MainTranscriptionWidget(QWidget):
     transcriptionStopped = pyqtSignal()
     transcriptionSaved = pyqtSignal(str)
     settingsRequested = pyqtSignal()
+    update_progress = pyqtSignal(str)
 
     def __init__(self, parent=None):
         super().__init__(parent)

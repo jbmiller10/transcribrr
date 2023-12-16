@@ -31,6 +31,7 @@ class TranscodingThread(QThread):
             self.handle_error(error_message)
 
     def transcode_audio(self, source_path, target_dir):
+        self.update_progress.emit('Transcoding audio file...')
         target_file_path = self.generate_unique_target_path(target_dir, self.target_format)
         self.reencode_audio(source_path, target_file_path)
         if os.path.exists(target_file_path):
@@ -39,6 +40,7 @@ class TranscodingThread(QThread):
 
 
     def extract_audio_from_video(self, video_path, target_dir):
+        self.update_progress.emit('Extracting audio from video file...')
         with VideoFileClip(video_path) as video:
             audio_path = self.generate_unique_target_path(target_dir, 'mp3', audio_only=True)
             video.audio.write_audiofile(audio_path)
@@ -62,6 +64,7 @@ class TranscodingThread(QThread):
         return target_file_path
 
     def reencode_audio(self, source_path, target_path):
+        self.update_progress.emit('Transcoding audio file...')
         source_audio = AudioSegment.from_file(source_path)
         source_audio.export(target_path, format=self.target_format)
 
