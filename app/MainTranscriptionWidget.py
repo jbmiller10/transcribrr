@@ -77,7 +77,8 @@ class MainTranscriptionWidget(QWidget):
             self.play_button.setIcon(QIcon('icons/play.svg'))
             self.transcriptionStopped.emit()
             self.play_button.setText('Play')
-
+    def set_file_path(self, file_path):
+        self.file_path = file_path
     def save_transcription(self):
         content = self.transcript_text.editor.toPlainText()
         self.transcriptionSaved.emit(content)

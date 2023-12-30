@@ -98,8 +98,11 @@ class RecentRecordingsWidget(QWidget):
             traceback.print_exc()
 
     def recording_clicked(self, item: QListWidgetItem):
-        filename = item.text()
-        self.recordingSelected.emit(filename)
+        # Retrieve the metadata from the item's data
+        metadata = item.data(Qt.ItemDataRole.UserRole)
+        full_file_path = metadata['full_path']
+        self.recordingSelected.emit(full_file_path)
+
 
     def set_style(self):
         self.setStyleSheet("""
@@ -224,6 +227,8 @@ class MainWindow(QMainWindow):
         self.status_bar.setFixedHeight(fixed_height)
         self.status_bar.setVisible(True)
         self.status_bar.showMessage("This is a status message.")
+
+        self.recent_recordings_widget.recordingSelected.connect(self.main_transcription_widget.set_file_path)
 
 
     def set_style(self):

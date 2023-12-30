@@ -10,7 +10,7 @@ class TranscriptionThread(QThread):
     language = 'en'  # Make this configurable later
 
     def __init__(self, file_path, transcription_quality, speaker_detection_enabled, hf_auth_key, *args, **kwargs):
-        super().__init__(*args, **kwargs)  # Changed to PyQt6 super() call
+        super().__init__(*args, **kwargs)  
         self.file_path = file_path
         self.transcription_quality = transcription_quality
         self.speaker_detection_enabled = speaker_detection_enabled
@@ -19,6 +19,7 @@ class TranscriptionThread(QThread):
 
     def run(self):
         print("transcript")
+        print(self.file_path)
         try:
             self.update_progress.emit('Transcription started...')
             device = "cuda" if torch.cuda.is_available() else "cpu"

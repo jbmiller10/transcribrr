@@ -8,3 +8,5 @@ yt-dlp~=2023.11.16
 PyQt6~=6.6.1
 PyAudio~=0.2.14
 numpy~=1.26.2
+markdown2~=2.4.11
+PyQt5~=5.15.10

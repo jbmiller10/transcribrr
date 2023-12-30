@@ -299,7 +299,7 @@ QScrollBar::handle:vertical:hover {
 
 if __name__ == "__main__":
     app = QApplication(sys.argv)
-    app.setStyleSheet(stylesheet)
+    app.setStyleSheet(stylesheet_night)
     mainWin = MainWindow()
     mainWin.show()
     sys.exit(app.exec())
