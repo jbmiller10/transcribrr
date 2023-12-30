@@ -1,182 +1,148 @@
 import sys
-from PyQt6.QtWidgets import QApplication, QMainWindow, QTextEdit, QToolBar, QColorDialog, QFontDialog, QFontComboBox, QComboBox,QSizePolicy
-from PyQt6.QtGui import QIcon, QFont, QColor, QTextListFormat, QKeyEvent,QAction,QActionGroup
-from PyQt6.QtCore import Qt, QEvent, QSize
+from PyQt6.QtWidgets import (
+    QApplication, QMainWindow, QTextEdit, QToolBar, QColorDialog,
+    QFontDialog, QFontComboBox, QComboBox, QSizePolicy
+)
+from PyQt6.QtGui import QIcon, QFont, QColor, QTextListFormat, QAction, QActionGroup
+from PyQt6.QtCore import Qt, QSize, pyqtSignal
+
 import markdown2
+import logging
 
 class TextEditor(QMainWindow):
+    transcription_requested = pyqtSignal()
+    gpt4_processing_requested = pyqtSignal()
+
     def __init__(self):
         super().__init__()
 
         self.editor = QTextEdit()
         self.setCentralWidget(self.editor)
-        self.editor.installEventFilter(self)
-
+        self._toolbar_actions = {}
         self.create_toolbar()
 
     def create_toolbar(self):
-        toolbar = QToolBar("Edit")
-        toolbar.setMovable(False)
-        toolbar.setIconSize(QSize(20,20))
-        self.addToolBar(toolbar)
+        self.toolbar = QToolBar("Edit")
+        self.toolbar.setMovable(False)
+        self.toolbar.setIconSize(QSize(20, 20))
+        self.addToolBar(self.toolbar)
 
-        # Font Family ComboBox
         self.font_family_combobox = QFontComboBox()
         self.font_family_combobox.setSizePolicy(QSizePolicy.Policy.Minimum, QSizePolicy.Policy.Minimum)
         self.font_family_combobox.currentFontChanged.connect(self.font_family_changed)
-        toolbar.addWidget(self.font_family_combobox)
+        self.toolbar.addWidget(self.font_family_combobox)
 
-        # Font Size ComboBox
         self.font_size_combobox = QComboBox()
         self.font_size_combobox.addItems(['8', '9', '10', '11', '12', '14', '16', '18', '20', '22', '24', '26', '28', '36', '48', '72'])
         self.font_size_combobox.setSizePolicy(QSizePolicy.Policy.Minimum, QSizePolicy.Policy.Minimum)
         self.font_size_combobox.setEditable(True)
         self.font_size_combobox.currentTextChanged.connect(self.font_size_changed)
-        toolbar.addWidget(self.font_size_combobox)
+        self.toolbar.addWidget(self.font_size_combobox)
 
-        # Bold, Italic, Underline Actions
-        bold_action = QAction(QIcon("./icons/TextEditor/bold.svg"), "Bold", self)
-        bold_action.setCheckable(True)  # Make the action toggleable
-        bold_action.setShortcut("Ctrl+B")
-        bold_action.triggered.connect(self.bold_text)
-        toolbar.addAction(bold_action)
-
-        italic_action = QAction(QIcon("./icons/TextEditor/italic.svg"), "Italic", self)
-        italic_action.setCheckable(True)  # Make the action toggleable
-        italic_action.setShortcut("Ctrl+I")
-        italic_action.triggered.connect(self.italic_text)
-        toolbar.addAction(italic_action)
-
-        underline_action = QAction(QIcon("./icons/TextEditor/underline.svg"), "Underline", self)
-        underline_action.setCheckable(True)  # Make the action toggleable
-        underline_action.setShortcut("Ctrl+U")
-        underline_action.triggered.connect(self.underline_text)
-        toolbar.addAction(underline_action)
-
-        font_color_action = QAction(QIcon("./icons/TextEditor/font_color.svg"), "Font Color", self)
-        font_color_action.triggered.connect(self.font_color)
-        toolbar.addAction(font_color_action)
+        self.add_toolbar_action('bold', './icons/TextEditor/bold.svg', self.bold_text, 'Bold (Ctrl+B)', True)
+        self.add_toolbar_action('italic', './icons/TextEditor/italic.svg', self.italic_text, 'Italic (Ctrl+I)', True)
+        self.add_toolbar_action('underline', './icons/TextEditor/underline.svg', self.underline_text, 'Underline (Ctrl+U)', True)
+        self.add_toolbar_action('font_color', './icons/TextEditor/font_color.svg', self.font_color, 'Font Color')
 
         alignment_group = QActionGroup(self)
+        self.add_toolbar_action('align_left', './icons/TextEditor/align_left.svg', lambda: self.set_alignment(Qt.AlignmentFlag.AlignLeft), 'Align Left (Ctrl+L)', True)
+        self.add_toolbar_action('align_center', './icons/TextEditor/align_center.svg', lambda: self.set_alignment(Qt.AlignmentFlag.AlignCenter), 'Align Center (Ctrl+E)', True)
+        self.add_toolbar_action('align_right', './icons/TextEditor/align_right.svg', lambda: self.set_alignment(Qt.AlignmentFlag.AlignRight), 'Align Right (Ctrl+R)', True)
 
-        # Alignment Actions
-        align_left_action = QAction(QIcon("./icons/TextEditor/align_left.svg"), "Align Left", self)
-        align_left_action.setCheckable(True)
-        align_left_action.setShortcut("Ctrl+L")
-        align_left_action.triggered.connect(lambda: self.set_alignment(Qt.AlignmentFlag.AlignLeft))
-        toolbar.addAction(align_left_action)
-        alignment_group.addAction(align_left_action)
+        for alignment_action in ['align_left', 'align_center', 'align_right']:
+            action = self._toolbar_actions[alignment_action]
+            alignment_group.addAction(action)
 
-        align_center_action = QAction(QIcon("./icons/TextEditor/align_center.svg"), "Align Center", self)
-        align_center_action.setCheckable(True)
-        align_center_action.setShortcut("Ctrl+E")
-        align_center_action.triggered.connect(lambda: self.set_alignment(Qt.AlignmentFlag.AlignCenter))
-        toolbar.addAction(align_center_action)
-        alignment_group.addAction(align_center_action)
+        self.add_toolbar_action('bullet_list', './icons/TextEditor/bullet.svg', self.bullet_list, 'Bullet List')
+        self.add_toolbar_action('numbered_list', './icons/TextEditor/numbered.svg', self.numbered_list, 'Numbered List')
 
-        align_right_action = QAction(QIcon("./icons/TextEditor/align_right.svg"), "Align Right", self)
-        align_right_action.setCheckable(True)
-        align_right_action.setShortcut("Ctrl+R")
-        align_right_action.triggered.connect(lambda: self.set_alignment(Qt.AlignmentFlag.AlignRight))
-        toolbar.addAction(align_right_action)
-        alignment_group.addAction(align_right_action)
+        self.add_toolbar_action('increase_indent', './icons/TextEditor/increase_indent.svg', self.increase_indent, 'Increase Indent')
+        self.add_toolbar_action('decrease_indent', './icons/TextEditor/decrease_indent.svg', self.decrease_indent, 'Decrease Indent')
 
-        bullet_action = QAction(QIcon("./icons/TextEditor/bullet.svg"), "Bullet List", self)
-        bullet_action.triggered.connect(self.bullet_list)
-        toolbar.addAction(bullet_action)
+        self.add_toolbar_action(
+            'start_transcription',
+            './icons/transcribe.svg',
+            self.start_transcription,
+            'Start Transcription',
+            checkable=False
+        )
+        self.add_toolbar_action(
+            'process_with_gpt4',
+            './icons/gpt4.svg',
+            self.process_with_gpt4,
+            'Process with GPT-4',
+            checkable=False
+        )
 
-        # Numbered List Action
-        numbered_action = QAction(QIcon("./icons/TextEditor/numbered.svg"), "Numbered List", self)
-        numbered_action.triggered.connect(self.numbered_list)
-        toolbar.addAction(numbered_action)
-
-        # Indentation Actions
-        increase_indent_action = QAction(QIcon("./icons/TextEditor/increase_indent.svg"), "Increase Indent", self)
-        increase_indent_action.triggered.connect(self.increase_indent)
-        toolbar.addAction(increase_indent_action)
-
-        decrease_indent_action = QAction(QIcon("./icons/TextEditor/decrease_indent.svg"), "Decrease Indent", self)
-        decrease_indent_action.triggered.connect(self.decrease_indent)
-        toolbar.addAction(decrease_indent_action)
+    def add_toolbar_action(self, action_name, icon_path, callback, tooltip, checkable=False):
+        action = QAction(QIcon(icon_path) if icon_path else None, tooltip, self)
+        action.setCheckable(checkable)
+        if callback:
+            action.triggered.connect(callback)
+        self.toolbar.addAction(action)
+        self._toolbar_actions[action_name] = action
 
     def font_family_changed(self, font):
         self.editor.setCurrentFont(font)
-        # Update the current font for new text
-        current_font = self.editor.font()
-        current_font.setFamily(font.family())
-        self.editor.setFont(current_font)
 
     def font_size_changed(self, size):
         self.editor.setFontPointSize(float(size))
-        # Update the current font size for new text
-        current_font = self.editor.font()
-        current_font.setPointSize(float(size))
-        self.editor.setFont(current_font)
 
     def bold_text(self):
         font = self.editor.currentFont()
         font.setBold(not font.bold())
         self.editor.setCurrentFont(font)
-        self.editor.setFocus()
 
     def italic_text(self):
         font = self.editor.currentFont()
         font.setItalic(not font.italic())
         self.editor.setCurrentFont(font)
-        self.editor.setFocus()
 
     def underline_text(self):
         font = self.editor.currentFont()
         font.setUnderline(not font.underline())
         self.editor.setCurrentFont(font)
-        self.editor.setFocus()
 
     def set_alignment(self, alignment):
         self.editor.setAlignment(alignment)
-        self.editor.setFocus()
 
     def font_color(self):
         color = QColorDialog.getColor()
         if color.isValid():
             self.editor.setTextColor(color)
 
-    def numbered_list(self):
-        cursor = self.editor.textCursor()
-        list_format = QTextListFormat()
-        if cursor.currentList():
-            list_format = cursor.currentList().format()
-        else:
-            list_format.setStyle(QTextListFormat.Style.ListDecimal)
-        cursor.createList(list_format)
-
     def bullet_list(self):
         cursor = self.editor.textCursor()
         list_format = QTextListFormat()
-        if cursor.currentList():
-            list_format = cursor.currentList().format()
-        else:
-            list_format.setStyle(QTextListFormat.Style.ListDisc)
+        list_format.setStyle(QTextListFormat.Style.ListDisc)
         cursor.createList(list_format)
 
-    def insert_html(self, html_text):
-        #Inserts HTML formatted text into the editor.
-        self.editor.insertHtml(html_text)
+    def numbered_list(self):
+        cursor = self.editor.textCursor()
+        list_format = QTextListFormat()
+        list_format.setStyle(QTextListFormat.Style.ListDecimal)
+        cursor.createList(list_format)
 
-    def insert_markdown(self, markdown_text):
-        html_text = markdown2.markdown(markdown_text)
-        self.editor.setHtml(html_text)
+    def increase_indent(self):
+        cursor = self.editor.textCursor()
+        list_format = cursor.currentList().format() if cursor.currentList() else QTextListFormat()
+        list_format.setIndent(list_format.indent() + 1)
+        cursor.createList(list_format)
 
     def decrease_indent(self):
         cursor = self.editor.textCursor()
-        if cursor.currentList():
-            list_format = cursor.currentList().format()
-            new_indent_level = max(list_format.indent() - 1, 1)  # Avoid negative or zero indentation
-            list_format.setIndent(new_indent_level)
-            cursor.createList(list_format)
-    def increase_indent(self):
-        cursor = self.editor.textCursor()
-        if cursor.currentList():
-            list_format = cursor.currentList().format()
-            new_indent_level = list_format.indent() + 1
-            list_format.setIndent(new_indent_level)
-            cursor.createList(list_format)
+        list_format = cursor.currentList().format() if cursor.currentList() else QTextListFormat()
+        list_format.setIndent(max(list_format.indent() - 1, 1))
+        cursor.createList(list_format)
+
+    def start_transcription(self):
+        self.transcription_requested.emit()
+
+    def process_with_gpt4(self):
+        self.gpt4_processing_requested.emit()
+
+if __name__ == "__main__":
+    app = QApplication(sys.argv)
+    textEditor = TextEditor()
+    textEditor.show()
+    sys.exit(app.exec())
