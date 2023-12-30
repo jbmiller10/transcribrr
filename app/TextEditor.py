@@ -5,7 +5,6 @@ from PyQt6.QtWidgets import (
 )
 from PyQt6.QtGui import QIcon, QFont, QColor, QTextListFormat, QAction, QActionGroup
 from PyQt6.QtCore import Qt, QSize, pyqtSignal
-
 import markdown2
 import logging
 
