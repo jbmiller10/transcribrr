@@ -30,6 +30,7 @@ class TranscriptionThread(QThread):
             if not self.speaker_detection_enabled:
                 transcript_text = "\n".join(segment['text'] for segment in result['segments'])
                 self.completed.emit(transcript_text)
+                #print(transcript_text)
                 return
             # Diarize Audio
             self.update_progress.emit('Detecting speakers...')
@@ -100,5 +101,5 @@ class TranscriptionThread(QThread):
                 current_speaker = speaker
 
             transcript += text + " "
-
+        #print(transcript.strip())
         return transcript.strip()

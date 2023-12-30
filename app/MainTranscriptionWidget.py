@@ -112,6 +112,7 @@ class MainTranscriptionWidget(QWidget):
         self.update_ui_state()
 
     def on_transcription_completed(self, transcript):
+        self.transcript_text.editor.setPlainText(transcript)
         if self.current_selected_item:
             recording_item = self.recordings_list.itemWidget(self.current_selected_item)
             recording_item.set_raw_transcript(transcript)
