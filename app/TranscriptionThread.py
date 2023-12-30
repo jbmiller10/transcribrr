@@ -21,6 +21,7 @@ class TranscriptionThread(QThread):
         print("transcript")
         print(self.file_path)
         try:
+            print(self.transcription_quality)
             self.update_progress.emit('Transcription started...')
             device = "cuda" if torch.cuda.is_available() else "cpu"
             compute_type = "float16" if torch.cuda.is_available() else "int8"

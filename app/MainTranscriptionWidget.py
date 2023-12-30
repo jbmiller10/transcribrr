@@ -88,7 +88,7 @@ class MainTranscriptionWidget(QWidget):
         dialog = SettingsDialog(self)
         dialog.settings_changed.connect(self.load_config)
         dialog.prompts_updated.connect(self.load_prompts)
-        dialog.exec_()
+        dialog.exec()
 
     def start_transcription(self):
         if self.file_path is None:
@@ -190,19 +190,6 @@ class MainTranscriptionWidget(QWidget):
             recording_item = self.recordings_list.itemWidget(self.current_selected_item)
             return bool(recording_item.get_raw_transcript())
         return False
-
-    def set_style(self):
-        self.setStyleSheet("""
-            QPushButton {
-                border-radius: 25px;
-                background-color: #444;
-                color: white;
-            }
-            QTextEdit {
-                background-color: #333;
-                color: white;
-            }
-        """)
 
     def load_config(self):
         # You will need to implement this method to load the configuration
