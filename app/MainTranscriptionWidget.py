@@ -13,6 +13,7 @@ from PyQt6.QtWidgets import (
 )
 from app.ToggleSwitch import ToggleSwitch
 from app.TextEditor import TextEditor
+from app.SettingsDialog import SettingsDialog
 
 
 class MainTranscriptionWidget(QWidget):
@@ -88,8 +89,14 @@ class MainTranscriptionWidget(QWidget):
         self.transcriptionSaved.emit(content)
 
     def request_settings(self):
-        self.settingsRequested.emit()
-
+        try:
+            dialog = SettingsDialog(self)
+            dialog.settings_changed.connect(self.load_config)
+            dialog.prompts_updated.connect(self.load_prompts)
+            dialog.exec_()
+        except Exception as e:
+            traceback.print_exc()
+            QMessageBox.critical(self, 'Exception', f'An exception occurred: {str(e)}')
     def set_style(self):
         self.setStyleSheet("""
             QPushButton {

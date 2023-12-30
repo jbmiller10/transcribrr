@@ -1,5 +1,3 @@
-from PyQt5.QtCore import pyqtSignal
-
 from PyQt6.QtWidgets import (
     QPushButton, QComboBox, QDoubleSpinBox, QSpinBox, QCheckBox, QDialog,
     QVBoxLayout, QLabel, QLineEdit, QDialogButtonBox
