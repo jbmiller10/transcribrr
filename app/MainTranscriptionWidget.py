@@ -9,6 +9,7 @@ from app.TranscriptionThread import TranscriptionThread
 from app.GPT4ProcessingThread import GPT4ProcessingThread
 from app.SettingsDialog import SettingsDialog
 from app.ToggleSwitch import ToggleSwitch
+import traceback
 
 class MainTranscriptionWidget(QWidget):
     transcriptionStarted = pyqtSignal()
@@ -114,11 +115,15 @@ class MainTranscriptionWidget(QWidget):
     def on_transcription_completed(self, transcript):
         self.transcript_text.editor.setPlainText(transcript)
         if self.current_selected_item:
-            recording_item = self.recordings_list.itemWidget(self.current_selected_item)
+            recording_item = self.current_selected_item
             recording_item.set_raw_transcript(transcript)
             self.transcript_text.editor.setPlainText(transcript)
         self.is_transcribing = False
-        self.update_ui_state()
+        try:
+            self.update_ui_state()
+        except Exception as e:
+            print(f"An error occurred: {e}")
+            traceback.print_exc()
 
 
     def on_transcription_progress(self, progress_message):
@@ -187,14 +192,20 @@ class MainTranscriptionWidget(QWidget):
     def raw_transcript_available(self):
         # Check if there is a raw transcript available for processing
         if self.current_selected_item is not None:
-            recording_item = self.recordings_list.itemWidget(self.current_selected_item)
+            if self.current_selected_item:
+                recording_item = self.current_selected_item
             return bool(recording_item.get_raw_transcript())
         return False
 
     def load_config(self):
-        # You will need to implement this method to load the configuration
         pass
 
     def load_prompts(self):
-        # You will need to implement this method to load the prompts
         pass
+
+    def on_recording_item_selected(self, recording_item):
+        try:
+            self.current_selected_item = recording_item
+        except Exception as e:
+            print(f"An error occurred: {e}")
+            traceback.print_exc()

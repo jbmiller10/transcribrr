@@ -21,6 +21,7 @@ from app.ControlPanelWidget import ControlPanelWidget
 class RecentRecordingsWidget(QWidget):
     recordingSelected = pyqtSignal(str)
     recordButtonPressed = pyqtSignal()
+    recordingItemSelected = pyqtSignal(RecordingListItem)
 
     def __init__(self, parent=None):
         super().__init__(parent)
@@ -102,6 +103,9 @@ class RecentRecordingsWidget(QWidget):
         metadata = item.data(Qt.ItemDataRole.UserRole)
         full_file_path = metadata['full_path']
         self.recordingSelected.emit(full_file_path)
+        #idk this might be a bad idea lol
+        recording_item_widget = self.recordings_list.itemWidget(item)
+        self.recordingItemSelected.emit(recording_item_widget)
 
 
     def set_style(self):
@@ -229,6 +233,7 @@ class MainWindow(QMainWindow):
 
         self.recent_recordings_widget.recordingSelected.connect(self.main_transcription_widget.set_file_path)
 
+        self.recent_recordings_widget.recordingItemSelected.connect(self.main_transcription_widget.on_recording_item_selected)
 
     def set_style(self):
         self.setStyleSheet("""
