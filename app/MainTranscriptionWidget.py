@@ -12,6 +12,7 @@ from app.ToggleSwitch import ToggleSwitch
 
 class MainTranscriptionWidget(QWidget):
     transcriptionStarted = pyqtSignal()
+    transcriptionCompleted = pyqtSignal(str)
     transcriptionStopped = pyqtSignal()
     transcriptionSaved = pyqtSignal(str)
     settingsRequested = pyqtSignal()
@@ -117,6 +118,7 @@ class MainTranscriptionWidget(QWidget):
             self.transcript_text.editor.setPlainText(transcript)
         self.is_transcribing = False
         self.update_ui_state()
+
 
     def on_transcription_progress(self, progress_message):
         self.update_progress.emit(progress_message)

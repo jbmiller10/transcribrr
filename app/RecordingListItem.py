@@ -53,6 +53,7 @@ class RecordingListItem(QWidget):
         }
 
     def set_raw_transcript(self, transcript):
+        print('hello')
         self.raw_transcript = transcript
         print(self.raw_transcript)
 

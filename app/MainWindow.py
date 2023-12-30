@@ -153,7 +153,6 @@ class RecentRecordingsWidget(QWidget):
             # Proceed with deletion
             row = self.recordings_list.row(item)
             full_file_path = item.data(Qt.ItemDataRole.UserRole)['full_path']
-            # Optionally, delete the file from the filesystem
             os.remove(full_file_path)
             self.recordings_list.takeItem(row)
 
