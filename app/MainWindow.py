@@ -63,16 +63,20 @@ class RecentRecordingsWidget(QWidget):
         self.recordings_list.customContextMenuRequested.connect(self.showRightClickMenu)
 
     def add_recording(self, full_file_path):
-        recording_item_widget = RecordingListItem(full_file_path)
+        try:
+            recording_item_widget = RecordingListItem(full_file_path)
 
-        item = QListWidgetItem(self.recordings_list)
-        item.setSizeHint(recording_item_widget.sizeHint())
+            item = QListWidgetItem(self.recordings_list)
+            item.setSizeHint(recording_item_widget.sizeHint())
 
-        self.recordings_list.addItem(item)
-        self.recordings_list.setItemWidget(item, recording_item_widget)
+            self.recordings_list.addItem(item)
+            self.recordings_list.setItemWidget(item, recording_item_widget)
 
-        # Optionally store the metadata in the item's data
-        item.setData(Qt.ItemDataRole.UserRole, recording_item_widget.metadata)
+            #set metadata
+            item.setData(Qt.ItemDataRole.UserRole, recording_item_widget.metadata)
+        except Exception as e:
+            print(f"An error occurred: {e}")
+            traceback.print_exc()
 
     def load_recordings(self):
         recordings_dir = "Recordings"

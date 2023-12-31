@@ -41,6 +41,13 @@ class MainTranscriptionWidget(QWidget):
         self.horizontal_spacer.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Preferred)
         self.top_toolbar.addWidget(self.horizontal_spacer)
 
+        ###prompt dropdown
+        self.load_prompts()
+        self.gpt_prompt_dropdown = QComboBox()
+        self.top_toolbar.addWidget(self.gpt_prompt_dropdown)
+        self.top_toolbar.addWidget(self.horizontal_spacer)
+        self.gpt_prompt_dropdown.addItems(self.preset_prompts.keys())
+
         self.raw_transcript_label = QLabel('Raw Transcript')
         self.top_toolbar.addWidget(self.raw_transcript_label)
         self.mode_switch = ToggleSwitch()
@@ -69,6 +76,7 @@ class MainTranscriptionWidget(QWidget):
         self.file_path = None
         self.is_transcribing = False
         self.is_processing_gpt4 = False
+
 
     def toggle_transcription(self):
         if self.play_button.text() == 'Play':
@@ -136,13 +144,14 @@ class MainTranscriptionWidget(QWidget):
 
     def start_gpt4_processing(self):
         raw_transcript = self.transcript_text.editor.toPlainText()
+        prompt_instructions = self.gpt_prompt_dropdown.toPlainText() ###I want this to be the value for the key that's displayed in the dropdown
 
         with open('config.json', 'r') as config_file:
             config = json.load(config_file)
 
         self.gpt4_processing_thread = GPT4ProcessingThread(
             transcript=raw_transcript,
-            prompt_instructions=config.get('prompt_instructions', ''),
+            prompt_instructions=config.get(prompt_instructions, ''),
             gpt_model=config.get('gpt_model', 'gpt-4-1106-preview'),
             max_tokens=config.get('max_tokens', 4096),
             temperature=config.get('temperature', 0.7),
@@ -157,7 +166,7 @@ class MainTranscriptionWidget(QWidget):
 
     def on_gpt4_processing_completed(self, processed_text):
         if self.current_selected_item:
-            recording_item = self.recordings_list.itemWidget(self.current_selected_item)
+            recording_item = self.current_selected_item
             recording_item.set_processed_text(processed_text)
             self.transcript_text.editor.setPlainText(processed_text)
         self.is_processing_gpt4 = False
@@ -173,10 +182,10 @@ class MainTranscriptionWidget(QWidget):
 
     def toggle_transcription_view(self):
         if self.current_selected_item is not None:
-            recording_item = self.recordings_list.itemWidget(self.current_selected_item)
-            if self.mode_switch.value() == 0:  # Assuming 0 is for raw transcript
+            recording_item = self.current_selected_item
+            if self.mode_switch.value() == 0:  #  0 s for raw transcript
                 self.transcript_text.editor.setPlainText(recording_item.get_raw_transcript())
-            else:  # Assuming 1 is for processed text
+            else:  # 1 is for processed text
                 self.transcript_text.editor.setPlainText(recording_item.get_processed_text())
 
     def set_file_path(self, file_path):
@@ -201,11 +210,37 @@ class MainTranscriptionWidget(QWidget):
         pass
 
     def load_prompts(self):
-        pass
+        try:
+            with open('preset_prompts.json', 'r') as file:
+                self.preset_prompts = json.load(file)
+                try:
+                    self.gpt_prompt_dropdown.clear()
+                    self.gpt_prompt_dropdown.addItems(self.preset_prompts.keys())
+                except AttributeError:
+                    pass
+        except FileNotFoundError:
+            print('No existing prompts file found. Using Defaults.')
+            self.preset_prompts = {
+                "Journal Entry Formatting": "Format this raw audio transcript into a clean, coherent journal entry, maintaining a first-person narrative style.",
+                "Meeting Minutes": "Convert this transcript into a structured format of meeting minutes, highlighting key points, decisions made, and action items.",
+                "Interview Summary": "Summarize this interview transcript, emphasizing the main questions, responses, and any significant insights or conclusions.",
+                "Lecture Notes": "Condense this lecture transcript into concise notes, outlining the main topics, subtopics, and key points discussed.",
+                "Podcast Highlights": "Extract key highlights and interesting moments from this podcast transcript, presenting them in a bullet-point format.",
+                "Dialogue Cleanup": "Edit this dialogue transcript to remove filler words, repeated phrases, and non-verbal cues, making it more readable.",
+                "Speech to Article": "Transform this speech transcript into a well-structured article, maintaining the speaker's key messages.",
+                "Q&A Format": "Organize this transcript into a clear question-and-answer format, ensuring each question and its corresponding answer are clearly presented.",
+                "Debate Summary": "Summarize this debate transcript, outlining the main points and arguments presented by each participant.",
+                "Technical Explanation": "Rewrite this technical discussion transcript into a simpler, more understandable format for a general audience.",
+                "Legal Testimony Review": "Condense this legal testimony transcript, focusing on the key statements and evidence presented.",
+                "Conference Session Summary": "Provide a concise summary of this conference session transcript, highlighting the main themes, discussions, and conclusions.",
+                "Educational Course Summary": "Summarize this educational course transcript into a study guide format, including headings, key concepts, and important explanations."
+            }
 
     def on_recording_item_selected(self, recording_item):
         try:
             self.current_selected_item = recording_item
+
+
         except Exception as e:
             print(f"An error occurred: {e}")
             traceback.print_exc()
