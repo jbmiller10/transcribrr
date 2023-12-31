@@ -46,10 +46,12 @@ class GPT4ProcessingThread(QThread):
         headers = {
             'Authorization': f'Bearer {self.openai_api_key}'
         }
+        print(data)
         response = requests.post(
             'https://api.openai.com/v1/chat/completions',
             json=data,
             headers=headers
         )
         print(response)
+        print(response.json())
         return response.json().get('choices', [{}])[0].get('message', {}).get('content', '')

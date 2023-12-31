@@ -41,3 +41,11 @@ class ToggleSwitch(QSlider):
             else:
                 self.setValue(1)
             event.accept()
+
+    def toggle(self):
+        self.setValue(0 if self.value() == 1 else 1)
+
+    def setValue(self, value):
+        if value != self.value():
+            super().setValue(value)
+            self.valueChanged.emit(value)

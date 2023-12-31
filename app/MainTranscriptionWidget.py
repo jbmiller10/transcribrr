@@ -10,6 +10,7 @@ from app.GPT4ProcessingThread import GPT4ProcessingThread
 from app.SettingsDialog import SettingsDialog
 from app.ToggleSwitch import ToggleSwitch
 import traceback
+import keyring
 
 class MainTranscriptionWidget(QWidget):
     transcriptionStarted = pyqtSignal()
@@ -39,7 +40,7 @@ class MainTranscriptionWidget(QWidget):
         self.top_toolbar = QHBoxLayout()
         self.horizontal_spacer = QWidget()
         self.horizontal_spacer.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Preferred)
-        self.top_toolbar.addWidget(self.horizontal_spacer)
+        #self.top_toolbar.addWidget(self.horizontal_spacer)
 
         ###prompt dropdown
         self.load_prompts()
@@ -144,18 +145,22 @@ class MainTranscriptionWidget(QWidget):
 
     def start_gpt4_processing(self):
         raw_transcript = self.transcript_text.editor.toPlainText()
-        prompt_instructions = self.gpt_prompt_dropdown.toPlainText() ###I want this to be the value for the key that's displayed in the dropdown
+        selected_prompt_key = self.gpt_prompt_dropdown.currentText()
+        prompt_instructions = self.preset_prompts.get(selected_prompt_key, '')
 
         with open('config.json', 'r') as config_file:
             config = json.load(config_file)
 
+        #self.hf_auth_key = keyring.get_password("transcription_application", "HF_AUTH_TOKEN")
+        openai_api_key = keyring.get_password("transcription_application", "OPENAI_API_KEY")
+
         self.gpt4_processing_thread = GPT4ProcessingThread(
             transcript=raw_transcript,
-            prompt_instructions=config.get(prompt_instructions, ''),
+            prompt_instructions=prompt_instructions,
             gpt_model=config.get('gpt_model', 'gpt-4-1106-preview'),
             max_tokens=config.get('max_tokens', 4096),
             temperature=config.get('temperature', 0.7),
-            openai_api_key=config.get('openai_api_key', '')
+            openai_api_key=openai_api_key
         )
         self.gpt4_processing_thread.completed.connect(self.on_gpt4_processing_completed)
         self.gpt4_processing_thread.update_progress.connect(self.on_gpt4_processing_progress)
@@ -169,6 +174,7 @@ class MainTranscriptionWidget(QWidget):
             recording_item = self.current_selected_item
             recording_item.set_processed_text(processed_text)
             self.transcript_text.editor.setPlainText(processed_text)
+            self.mode_switch.setValue(1)
         self.is_processing_gpt4 = False
         self.update_ui_state()
 
@@ -233,7 +239,8 @@ class MainTranscriptionWidget(QWidget):
                 "Technical Explanation": "Rewrite this technical discussion transcript into a simpler, more understandable format for a general audience.",
                 "Legal Testimony Review": "Condense this legal testimony transcript, focusing on the key statements and evidence presented.",
                 "Conference Session Summary": "Provide a concise summary of this conference session transcript, highlighting the main themes, discussions, and conclusions.",
-                "Educational Course Summary": "Summarize this educational course transcript into a study guide format, including headings, key concepts, and important explanations."
+                "Educational Course Summary": "Summarize this educational course transcript into a study guide format, including headings, key concepts, and important explanations.",
+                "Youtube to Article": "Transform this raw transcript of a youtube video into a well-structured article, maintaining as much detail as possible."
             }
 
     def on_recording_item_selected(self, recording_item):
