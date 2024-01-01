@@ -10,3 +10,5 @@ config.json
 *.mp3
 *.m4a
 .DS_Store
+database/database.sqlite
+preset_prompts.json
