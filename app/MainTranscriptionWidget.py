@@ -12,6 +12,7 @@ from app.ToggleSwitch import ToggleSwitch
 import traceback
 import keyring
 
+
 class MainTranscriptionWidget(QWidget):
     transcriptionStarted = pyqtSignal()
     transcriptionCompleted = pyqtSignal(str)

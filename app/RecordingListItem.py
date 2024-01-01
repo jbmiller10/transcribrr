@@ -66,7 +66,8 @@ class RecordingListItem(QWidget):
 
     def finishEditing(self):
         new_name = self.name_editable.text()
-        # Here you would implement the rename logic
+    def get_id(self):
+        return self.metadata['id']
 
 class EditableLineEdit(QLineEdit):
     def __init__(self, *args, **kwargs):
@@ -76,7 +77,7 @@ class EditableLineEdit(QLineEdit):
     def mouseDoubleClickEvent(self, event):
         if event.button() == Qt.MouseButton.LeftButton:
             self.setReadOnly(False)  # Allow editing
-            self.selectAll()  # Optionally select all text to make editing easier
+            self.selectAll()
             super(EditableLineEdit, self).mouseDoubleClickEvent(event)  # Pass the event to the base class
 
     def focusOutEvent(self, event):

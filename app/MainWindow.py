@@ -11,12 +11,12 @@ from PyQt6.QtWidgets import (
     QWidget, QHBoxLayout, QLabel, QListWidget, QSizePolicy,
     QPushButton, QSpacerItem, QFileDialog, QMenu, QListWidgetItem, QMainWindow,QComboBox,QTextEdit, QSplitter,QStatusBar
 )
-
 import os
 from app.RecordingListItem import RecordingListItem
 from app.MainTranscriptionWidget import  MainTranscriptionWidget
 from app.ControlPanelWidget import ControlPanelWidget
-
+from app.database import create_connection, get_all_recordings, create_recording, update_recording, delete_recording
+from moviepy.editor import VideoFileClip, AudioFileClip
 
 class RecentRecordingsWidget(QWidget):
     recordingSelected = pyqtSignal(str)
@@ -78,38 +78,39 @@ class RecentRecordingsWidget(QWidget):
             print(f"An error occurred: {e}")
             traceback.print_exc()
 
-    def load_recordings(self):
-        recordings_dir = "Recordings"
-        if not os.path.exists(recordings_dir):
-            print("Recordings directory not found.")
-            return
-
-        supported_formats = ['.mp3', '.wav', '.ogg', '.flac']
-        file_list = []
-
-        try:
-            for filename in os.listdir(recordings_dir):
-                file_extension = os.path.splitext(filename)[1]
-                if file_extension.lower() in supported_formats:
-                    file_path = os.path.join(recordings_dir, filename)
-                    file_list.append(file_path)
-
-            # Now file_list contains full paths of all recordings
-            for file_path in file_list:
-                self.add_recording(file_path)
-
-        except Exception as e:
-            print("An error occurred while loading recordings:", e)
-            traceback.print_exc()
+    # def load_recordings(self):
+    #     recordings_dir = "Recordings"
+    #     if not os.path.exists(recordings_dir):
+    #         print("Recordings directory not found.")
+    #         return
+    #
+    #     supported_formats = ['.mp3', '.wav', '.ogg', '.flac']
+    #     file_list = []
+    #
+    #     try:
+    #         for filename in os.listdir(recordings_dir):
+    #             file_extension = os.path.splitext(filename)[1]
+    #             if file_extension.lower() in supported_formats:
+    #                 file_path = os.path.join(recordings_dir, filename)
+    #                 file_list.append(file_path)
+    #
+    #         # Now file_list contains full paths of all recordings
+    #         for file_path in file_list:
+    #             self.add_recording(file_path)
+    #
+    #     except Exception as e:
+    #         print("An error occurred while loading recordings:", e)
+    #         traceback.print_exc()
 
     def recording_clicked(self, item: QListWidgetItem):
         # Retrieve the metadata from the item's data
         metadata = item.data(Qt.ItemDataRole.UserRole)
-        full_file_path = metadata['full_path']
-        self.recordingSelected.emit(full_file_path)
-        #idk this might be a bad idea lol
-        recording_item_widget = self.recordings_list.itemWidget(item)
-        self.recordingItemSelected.emit(recording_item_widget)
+        if metadata is not None:
+            full_file_path = metadata['full_path']
+            self.recordingSelected.emit(full_file_path)
+        else:
+            # Handle the case where metadata is None
+            print("Error: Recording item has no metadata.")
 
 
     def set_style(self):
@@ -142,27 +143,72 @@ class RecentRecordingsWidget(QWidget):
 
         # If delete is clicked, call the method to delete the item
         if action == delete_action:
-            self.deleteRecording(position)
+            self.delete_selected_recording()
+
+
     def update_status_bar(self, message):
         self.status_bar.showMessage(message)
-    def deleteRecording(self, position):
-        # Get the item at the clicked position
-        item = self.recordings_list.itemAt(position)
-        if item is None:
-            return  # No item at the position
 
-        # Confirm deletion with the user
-        reply = QMessageBox.question(self, 'Delete Recording',
-                                     'Are you sure you want to delete this recording?',
-                                     QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
-                                     QMessageBox.StandardButton.No)
+    def delete_selected_recording(self):
+        current_item = self.recordings_list.currentItem()
+        if current_item is not None:
+            response = QMessageBox.question(self, 'Delete Recording',
+                                            'Are you sure you want to delete this recording?',
+                                            QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No)
+            if response == QMessageBox.StandardButton.Yes:
+                recording_id = current_item.data(Qt.ItemDataRole.UserRole)['id']
+                self.delete_recording_from_db(recording_id)
+                row = self.recordings_list.row(current_item)
+                self.recordings_list.takeItem(row)
 
-        if reply == QMessageBox.StandardButton.Yes:
-            # Proceed with deletion
-            row = self.recordings_list.row(item)
-            full_file_path = item.data(Qt.ItemDataRole.UserRole)['full_path']
-            os.remove(full_file_path)
-            self.recordings_list.takeItem(row)
+    def delete_recording_from_db(self, recording_id):
+        conn = create_connection("./database/database.sqlite")
+        delete_recording(conn, recording_id)
+
+    def load_recordings(self):
+        """Load recordings from the database and populate the list."""
+        conn = create_connection("./database/database.sqlite")
+        recordings = get_all_recordings(conn)
+        for recording in recordings:
+            id, filename, file_path, date_created, duration, raw_transcript, processed_text = recording
+            self.add_recording_to_list(id, filename, file_path, date_created, duration, raw_transcript, processed_text)
+
+    def add_recording_to_list(self, id, filename, file_path, date_created, duration, raw_transcript, processed_text):
+        recording_item_widget = RecordingListItem(file_path)  # Initialize your widget here
+        recording_item_widget.set_raw_transcript(raw_transcript)
+        recording_item_widget.set_processed_text(processed_text)
+
+        # Set metadata
+        recording_item_widget.metadata = {
+            'id': id,
+            'filename': filename,
+            'full_path': file_path,
+            'date_created': date_created,
+            'duration': duration
+        }
+
+        # Add item to the list
+        item = QListWidgetItem(self.recordings_list)
+        item.setSizeHint(recording_item_widget.sizeHint())
+
+        # Here is the crucial step: set the metadata on the QListWidgetItem
+        item.setData(Qt.ItemDataRole.UserRole, recording_item_widget.metadata)
+
+        self.recordings_list.addItem(item)
+        self.recordings_list.setItemWidget(item, recording_item_widget)
+
+    def save_recordings(self):
+        """Save all recordings from the list to the database."""
+        conn = create_connection("./database/database.sqlite")
+        for index in range(self.recordings_list.count()):
+            item = self.recordings_list.item(index)
+            recording_item_widget = self.recordings_list.itemWidget(item)
+            recording = (
+                recording_item_widget.get_raw_transcript(),
+                recording_item_widget.get_processed_text(),
+                recording_item_widget.metadata['id']
+            )
+            update_recording(conn, recording)
 
 class MainWindow(QMainWindow):
     def __init__(self):
@@ -261,28 +307,36 @@ class MainWindow(QMainWindow):
             }
         """)
 
-    def on_new_file(self, file_name):
-        self.recent_recordings_widget.add_recording(file_name)
+    def on_new_file(self, file_path):
+        # Extract metadata from the file path
+        filename = os.path.basename(file_path)
+        date_created = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        # Assume you have a method to calculate the duration of the recording
+        duration = self.calculate_duration(file_path)
 
-    def on_recording_selected(self, filename):
-        # TODO: Implement what happens when a recording is selected
-        pass
+        # Create a new recording in the database
+        conn = create_connection("./database/database.sqlite")
+        recording_data = (filename, file_path, date_created, duration, "", "")
+        recording_id = create_recording(conn, recording_data)
 
-    def on_transcription_started(self):
-        # TODO: Implement what happens when transcription starts
-        pass
+        # Add the recording to the recent recordings widget
+        self.recent_recordings_widget.add_recording_to_list(recording_id, filename, file_path, date_created, duration,
+                                                            "", "")
 
-    def on_transcription_stopped(self):
-        # TODO: Stop any ongoing transcription
-        pass
+    def calculate_duration(self, file_path):
+        # Determine if the file is audio or video to use the appropriate MoviePy class
+        if file_path.lower().endswith(('.mp3', '.wav', '.aac', '.flac', '.ogg', '.m4a')):
+            clip = AudioFileClip(file_path)
+        else:
+            clip = VideoFileClip(file_path)
 
-    def on_transcription_saved(self, content):
-        # TODO: Implement the transcription save functionality
-        pass
+        # Calculate the duration
+        duration_in_seconds = clip.duration
+        clip.close()  # Close the clip to release the file
 
-    def on_settings_requested(self):
-        # TODO: Open the settings dialog
-        pass
+        # Format the duration as HH:MM:SS
+        duration_str = str(datetime.timedelta(seconds=int(duration_in_seconds)))
+        return duration_str
     def update_status_bar(self, message):
         self.statusBar().showMessage(message)
         print('whee'+message)
@@ -297,5 +351,6 @@ class MainWindow(QMainWindow):
                 color: red;
             }
         """)
+
 
 
