@@ -1,6 +1,6 @@
 import sys
 from PyQt6.QtWidgets import (
-    QApplication, QMainWindow, QTextEdit, QToolBar, QColorDialog,
+    QApplication, QMainWindow, QTextEdit, QToolBar, QColorDialog, QSpacerItem, QWidget,
     QFontDialog, QFontComboBox, QComboBox, QSizePolicy
 )
 from PyQt6.QtGui import QIcon, QFont, QColor, QTextListFormat, QAction, QActionGroup
@@ -58,16 +58,20 @@ class TextEditor(QMainWindow):
         self.add_toolbar_action('increase_indent', './icons/TextEditor/increase_indent.svg', self.increase_indent, 'Increase Indent')
         self.add_toolbar_action('decrease_indent', './icons/TextEditor/decrease_indent.svg', self.decrease_indent, 'Decrease Indent')
 
+        spacer = QWidget()  # A simple widget that acts as a spacer
+        spacer.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding)
+        self.toolbar.addWidget(spacer)  # Add the spacer to the toolbar
+
         self.add_toolbar_action(
             'start_transcription',
-            './icons/transcribe.svg',
+            './icons/quill.svg',
             self.start_transcription,
             'Start Transcription',
             checkable=False
         )
         self.add_toolbar_action(
             'process_with_gpt4',
-            './icons/gpt4.svg',
+            './icons/lightbulb.svg',
             self.process_with_gpt4,
             'Process with GPT-4',
             checkable=False

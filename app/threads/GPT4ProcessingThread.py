@@ -43,10 +43,10 @@ class GPT4ProcessingThread(QThread):
             'max_tokens': self.max_tokens,
             'temperature': self.temperature
         }
+        print(data)
         headers = {
             'Authorization': f'Bearer {self.openai_api_key}'
         }
-        print(data)
         response = requests.post(
             'https://api.openai.com/v1/chat/completions',
             json=data,

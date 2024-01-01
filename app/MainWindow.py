@@ -11,158 +11,15 @@ from PyQt6.QtWidgets import (
     QWidget, QHBoxLayout, QLabel, QListWidget, QSizePolicy,
     QPushButton, QSpacerItem, QFileDialog, QMenu, QListWidgetItem, QMainWindow,QComboBox,QTextEdit, QSplitter,QStatusBar
 )
-
 import os
 from app.RecordingListItem import RecordingListItem
 from app.MainTranscriptionWidget import  MainTranscriptionWidget
 from app.ControlPanelWidget import ControlPanelWidget
+from app.database import create_connection, get_all_recordings, create_db, create_recording, update_recording, delete_recording
+from moviepy.editor import VideoFileClip, AudioFileClip
+from app.RecentRecordingsWidget import RecentRecordingsWidget
 
 
-class RecentRecordingsWidget(QWidget):
-    recordingSelected = pyqtSignal(str)
-    recordButtonPressed = pyqtSignal()
-    recordingItemSelected = pyqtSignal(RecordingListItem)
-
-    def __init__(self, parent=None):
-        super().__init__(parent)
-        self.layout = QVBoxLayout(self)
-        self.layout.setContentsMargins(0, 0, 0, 0)
-
-        self.header_label = QLabel("Recent Recordings")
-        self.header_label.setObjectName("RecentRecordingHeader")
-        self.header_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
-
-        self.recordings_list = QListWidget()
-
-        self.button_stylesheet = """
-    QPushButton {
-
-         background-color: transparent;
-     }
-
-    QPushButton:pressed {
-        background-color: qlineargradient(
-            x1: 0, y1: 0, x2: 0, y2: 2,
-            stop: 0 #dadbde, stop: 1 #f6f7fa
-        );
-    }
-
-    QPushButton:hover {
-        border: 2px solid blue;
-        border-radius: 6px;
-    }
-"""
-
-        self.layout.addWidget(self.header_label)
-        self.layout.addWidget(self.recordings_list)
-
-        self.recordings_list.itemClicked.connect(self.recording_clicked)
-
-        # Right click context menu for delete
-        self.recordings_list.setContextMenuPolicy(Qt.ContextMenuPolicy.CustomContextMenu)
-        self.recordings_list.customContextMenuRequested.connect(self.showRightClickMenu)
-
-    def add_recording(self, full_file_path):
-        try:
-            recording_item_widget = RecordingListItem(full_file_path)
-
-            item = QListWidgetItem(self.recordings_list)
-            item.setSizeHint(recording_item_widget.sizeHint())
-
-            self.recordings_list.addItem(item)
-            self.recordings_list.setItemWidget(item, recording_item_widget)
-
-            #set metadata
-            item.setData(Qt.ItemDataRole.UserRole, recording_item_widget.metadata)
-        except Exception as e:
-            print(f"An error occurred: {e}")
-            traceback.print_exc()
-
-    def load_recordings(self):
-        recordings_dir = "Recordings"
-        if not os.path.exists(recordings_dir):
-            print("Recordings directory not found.")
-            return
-
-        supported_formats = ['.mp3', '.wav', '.ogg', '.flac']
-        file_list = []
-
-        try:
-            for filename in os.listdir(recordings_dir):
-                file_extension = os.path.splitext(filename)[1]
-                if file_extension.lower() in supported_formats:
-                    file_path = os.path.join(recordings_dir, filename)
-                    file_list.append(file_path)
-
-            # Now file_list contains full paths of all recordings
-            for file_path in file_list:
-                self.add_recording(file_path)
-
-        except Exception as e:
-            print("An error occurred while loading recordings:", e)
-            traceback.print_exc()
-
-    def recording_clicked(self, item: QListWidgetItem):
-        # Retrieve the metadata from the item's data
-        metadata = item.data(Qt.ItemDataRole.UserRole)
-        full_file_path = metadata['full_path']
-        self.recordingSelected.emit(full_file_path)
-        #idk this might be a bad idea lol
-        recording_item_widget = self.recordings_list.itemWidget(item)
-        self.recordingItemSelected.emit(recording_item_widget)
-
-
-    def set_style(self):
-        self.setStyleSheet("""
-            QLabel {
-                font-size: 18px;
-                color: white;
-                padding: 10px 0px; /* Top and bottom padding */
-            }
-            QListWidget {
-                background-color: #333;
-                color: white;
-            }
-            QPushButton {
-                border-radius: 25px; /* Half of the button size for a circular look */
-                background-color: #444;
-                color: white;
-            }
-        """)
-    def showRightClickMenu(self, position):
-        # Get the global position for showing the context menu
-        global_pos = self.recordings_list.viewport().mapToGlobal(position)
-
-        # Create the context menu
-        menu = QMenu()
-        delete_action = menu.addAction("Delete")
-
-        # Show the context menu and get the selected action
-        action = menu.exec(global_pos)
-
-        # If delete is clicked, call the method to delete the item
-        if action == delete_action:
-            self.deleteRecording(position)
-    def update_status_bar(self, message):
-        self.status_bar.showMessage(message)
-    def deleteRecording(self, position):
-        # Get the item at the clicked position
-        item = self.recordings_list.itemAt(position)
-        if item is None:
-            return  # No item at the position
-
-        # Confirm deletion with the user
-        reply = QMessageBox.question(self, 'Delete Recording',
-                                     'Are you sure you want to delete this recording?',
-                                     QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
-                                     QMessageBox.StandardButton.No)
-
-        if reply == QMessageBox.StandardButton.Yes:
-            # Proceed with deletion
-            row = self.recordings_list.row(item)
-            full_file_path = item.data(Qt.ItemDataRole.UserRole)['full_path']
-            os.remove(full_file_path)
-            self.recordings_list.takeItem(row)
 
 class MainWindow(QMainWindow):
     def __init__(self):
@@ -175,13 +32,13 @@ class MainWindow(QMainWindow):
         self.setWindowTitle('Transcribrr')
         self.setGeometry(50, 50, 1350, 768)
 
+        #create db if needed
+        create_db()
+
         # Create instances of widgets
         self.control_panel = ControlPanelWidget(self)
         self.recent_recordings_widget = RecentRecordingsWidget()
         self.main_transcription_widget = MainTranscriptionWidget()
-        #self.control_panel.update_progress.connect(self.update_status_bar)
-
-        # Connect signals
 
         # Set up the central widget and its layout
         self.central_widget = QWidget()
@@ -261,41 +118,39 @@ class MainWindow(QMainWindow):
             }
         """)
 
-    def on_new_file(self, file_name):
-        self.recent_recordings_widget.add_recording(file_name)
+    def on_new_file(self, file_path):
+        # Extract metadata from the file path
+        filename = os.path.basename(file_path)
+        date_created = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        # Assume you have a method to calculate the duration of the recording
+        duration = self.calculate_duration(file_path)
 
-    def on_recording_selected(self, filename):
-        # TODO: Implement what happens when a recording is selected
-        pass
+        # Create a new recording in the database
+        conn = create_connection("./database/database.sqlite")
+        recording_data = (filename, file_path, date_created, duration, "", "")
+        recording_id = create_recording(conn, recording_data)
 
-    def on_transcription_started(self):
-        # TODO: Implement what happens when transcription starts
-        pass
+        # Add the recording to the recent recordings widget
+        self.recent_recordings_widget.add_recording_to_list(recording_id, filename, file_path, date_created, duration,
+                                                            "", "")
 
-    def on_transcription_stopped(self):
-        # TODO: Stop any ongoing transcription
-        pass
+    def calculate_duration(self, file_path):
+        # Determine if the file is audio or video to use the appropriate MoviePy class
+        if file_path.lower().endswith(('.mp3', '.wav', '.aac', '.flac', '.ogg', '.m4a')):
+            clip = AudioFileClip(file_path)
+        else:
+            clip = VideoFileClip(file_path)
 
-    def on_transcription_saved(self, content):
-        # TODO: Implement the transcription save functionality
-        pass
+        # Calculate the duration
+        duration_in_seconds = clip.duration
+        clip.close()  # Close the clip to release the file
 
-    def on_settings_requested(self):
-        # TODO: Open the settings dialog
-        pass
+        # Format the duration as HH:MM:SS
+        duration_str = str(datetime.timedelta(seconds=int(duration_in_seconds)))
+        return duration_str
     def update_status_bar(self, message):
         self.statusBar().showMessage(message)
         print('whee'+message)
-    def set_style(self):
-        self.setStyleSheet("""
-            QMainWindow {
-                background-color: #252525;
-                color: black;
-            }
-            statusBar {
-    background-color: #252525;
-                color: red;
-            }
-        """)
+
 
 
