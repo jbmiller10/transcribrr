@@ -125,6 +125,7 @@ class MainTranscriptionWidget(QWidget):
         self.transcript_text.editor.setPlainText(transcript)
         if self.current_selected_item:
             recording_item = self.current_selected_item
+            self.mode_switch.setValue(0)
             recording_item.set_raw_transcript(transcript)
             self.transcript_text.editor.setPlainText(transcript)
         self.is_transcribing = False
@@ -144,7 +145,9 @@ class MainTranscriptionWidget(QWidget):
         self.update_ui_state()
 
     def start_gpt4_processing(self):
-        raw_transcript = self.transcript_text.editor.toPlainText()
+        recording_item = self.current_selected_item
+        raw_transcript = recording_item.get_raw_transcript()
+
         selected_prompt_key = self.gpt_prompt_dropdown.currentText()
         prompt_instructions = self.preset_prompts.get(selected_prompt_key, '')
 
@@ -246,8 +249,10 @@ class MainTranscriptionWidget(QWidget):
     def on_recording_item_selected(self, recording_item):
         try:
             self.current_selected_item = recording_item
-
-
+            if self.mode_switch.value() == 0:
+                self.transcript_text.editor.setPlainText(recording_item.get_raw_transcript())
+            elif self.mode_switch.value() == 1:
+                self.transcript_text.editor.setPlainText(recording_item.get_processed_text())
         except Exception as e:
             print(f"An error occurred: {e}")
             traceback.print_exc()

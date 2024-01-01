@@ -21,9 +21,10 @@ font-size:22pt;
 }
 
 QLabel {
-color:white;
+color:black;
 font-family: Helvetica;
-font-size:16pt;
+font-weight: medium;
+font-size:12pt;
 
 }
 QPushButton {
@@ -299,7 +300,7 @@ QScrollBar::handle:vertical:hover {
 
 if __name__ == "__main__":
     app = QApplication(sys.argv)
-    app.setStyleSheet(stylesheet_night)
+    app.setStyleSheet(stylesheet)
     mainWin = MainWindow()
     mainWin.show()
     sys.exit(app.exec())
