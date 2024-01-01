@@ -104,7 +104,6 @@ class MainTranscriptionWidget(QWidget):
         dialog.exec()
 
     def start_transcription(self):
-        print(self.filepath)
         if self.filepath is None:
             QMessageBox.warning(self, 'No File Selected', 'Please select a file to transcribe.')
             return
@@ -113,7 +112,7 @@ class MainTranscriptionWidget(QWidget):
             config = json.load(config_file)
 
         self.transcription_thread = TranscriptionThread(
-            file_path=self.file_path,
+            file_path=self.filepath,
             transcription_quality=config.get('transcription_quality', 'medium'),
             speaker_detection_enabled=config.get('speaker_detection_enabled', False),
             hf_auth_key=config.get('hf_auth_key', '')
@@ -127,15 +126,14 @@ class MainTranscriptionWidget(QWidget):
 
     def on_transcription_completed(self, transcript):
         self.transcript_text.editor.setPlainText(transcript)
-        print(self.recording_id)
+
+        recording_id = self.current_selected_item.get_id()
         self.mode_switch.setValue(0)
-        #recording_item.set_raw_transcript(transcript)
         self.transcript_text.editor.setPlainText(transcript)
 
         # Save the raw transcript to the database
         conn = create_connection("./database/database.sqlite")
-        update_recording(conn, self.recording_id,raw_transcript=transcript)
-        print(99324)
+        update_recording(conn, recording_id,raw_transcript=transcript)
 
         self.is_transcribing = False
         try:
@@ -154,8 +152,26 @@ class MainTranscriptionWidget(QWidget):
         self.update_ui_state()
 
     def start_gpt4_processing(self):
-        recording_item = self.current_selected_item
-        raw_transcript = recording_item.get_raw_transcript()
+        if self.current_selected_item is None:
+            QMessageBox.warning(self, 'No Recording Selected', 'Please select a recording first.')
+            return
+
+        recording_id = self.current_selected_item.get_id()
+        conn = create_connection("./database/database.sqlite")
+
+        if conn is None:
+            QMessageBox.critical(self, 'Database Error', 'Unable to connect to the database.')
+            return
+
+        recording = get_recording_by_id(conn, recording_id)
+        conn.close()  # Close the database connection after fetching the data
+
+        if recording is None:
+            QMessageBox.warning(self, 'Recording Not Found', f'No recording found with ID: {recording_id}')
+            return
+
+        # Assuming the raw transcript is at index 5 in the recording tuple
+        raw_transcript = recording[5] if recording else ""
 
         selected_prompt_key = self.gpt_prompt_dropdown.currentText()
         prompt_instructions = self.preset_prompts.get(selected_prompt_key, '')
@@ -163,9 +179,9 @@ class MainTranscriptionWidget(QWidget):
         with open('config.json', 'r') as config_file:
             config = json.load(config_file)
 
-        #self.hf_auth_key = keyring.get_password("transcription_application", "HF_AUTH_TOKEN")
         openai_api_key = keyring.get_password("transcription_application", "OPENAI_API_KEY")
 
+        # Start the GPT-4 processing thread
         self.gpt4_processing_thread = GPT4ProcessingThread(
             transcript=raw_transcript,
             prompt_instructions=prompt_instructions,
@@ -184,14 +200,18 @@ class MainTranscriptionWidget(QWidget):
     def on_gpt4_processing_completed(self, processed_text):
         if self.current_selected_item:
             recording_item = self.current_selected_item
-            recording_item.set_processed_text(processed_text)
-            self.transcript_text.editor.setPlainText(processed_text)
             self.mode_switch.setValue(1)
-            recording_id = recording_item.get_recording_id()
-            # Save the processed text to the database
+            self.transcript_text.editor.setPlainText(processed_text)
+            recording_id = self.current_selected_item.get_id()
             conn = create_connection("./database/database.sqlite")
-            update_recording(conn, (recording_item.get_raw_transcript(), processed_text, self.id))
+            update_recording(conn, recording_id, processed_text=processed_text)
 
+            self.is_transcribing = False
+            try:
+                self.update_ui_state()
+            except Exception as e:
+                print(f"An error occurred: {e}")
+                traceback.print_exc()
         self.is_processing_gpt4 = False
         self.update_ui_state()
 
@@ -205,15 +225,28 @@ class MainTranscriptionWidget(QWidget):
 
     def toggle_transcription_view(self):
         if self.current_selected_item is not None:
-            recording_item = self.current_selected_item
-            recording_id = recording_item.get_id()
+            recording_id = self.current_selected_item.get_id()
             conn = create_connection("./database/database.sqlite")
+
+            # Make sure to handle the case where the connection fails
+            if conn is None:
+                print("Error! Cannot connect to the database.")
+                return
+
             recording = get_recording_by_id(conn, recording_id)
 
+            # Make sure to handle the case where no recording is found
+            if recording is None:
+                print(f"No recording found with ID: {recording_id}")
+                return
+
             if self.mode_switch.value() == 0:  # 0 is for raw transcript
-                self.transcript_text.editor.setPlainText(recording['raw_transcript'])
+                self.transcript_text.editor.setPlainText(recording[5])
             else:  # 1 is for processed text
-                self.transcript_text.editor.setPlainText(recording['processed_text'])
+                self.transcript_text.editor.setPlainText(recording[6])
+
+            # Close the database connection
+            conn.close()
 
     def set_file_path(self, file_path):
         self.file_path = file_path
@@ -269,7 +302,6 @@ class MainTranscriptionWidget(QWidget):
             conn = create_connection("./database/database.sqlite")
             recording_id = self.current_selected_item.get_id()
             recording = get_recording_by_id(conn, recording_id)
-            print(recording_id)
 
             if recording:
                 self.id = recording[0]

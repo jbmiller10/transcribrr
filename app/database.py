@@ -48,7 +48,6 @@ def get_recording_by_id(conn, id):
     cur = conn.cursor()
     cur.execute("SELECT * FROM recordings WHERE id=?", (id,))
     row = cur.fetchone()
-    print(row)
     return row
 
 def update_recording(conn, recording_id, **kwargs):

@@ -100,29 +100,7 @@ class RecentRecordingsWidget(QWidget):
         except Exception as e:
             print(f"An error occurred: {e}")
             traceback.print_exc()
-    # def load_recordings(self):
-    #     recordings_dir = "Recordings"
-    #     if not os.path.exists(recordings_dir):
-    #         print("Recordings directory not found.")
-    #         return
-    #
-    #     supported_formats = ['.mp3', '.wav', '.ogg', '.flac']
-    #     file_list = []
-    #
-    #     try:
-    #         for filename in os.listdir(recordings_dir):
-    #             file_extension = os.path.splitext(filename)[1]
-    #             if file_extension.lower() in supported_formats:
-    #                 file_path = os.path.join(recordings_dir, filename)
-    #                 file_list.append(file_path)
-    #
-    #         # Now file_list contains full paths of all recordings
-    #         for file_path in file_list:
-    #             self.add_recording(file_path)
-    #
-    #     except Exception as e:
-    #         print("An error occurred while loading recordings:", e)
-    #         traceback.print_exc()
+
 
     def recording_clicked(self, item: QListWidgetItem):
         recording_item_widget = self.recordings_list.itemWidget(item)
