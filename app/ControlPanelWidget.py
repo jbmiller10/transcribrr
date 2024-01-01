@@ -1,15 +1,14 @@
 from PyQt6.QtCore import pyqtSignal, QSize, QPropertyAnimation, QEasingCurve
 from PyQt6.QtGui import QIcon
-from PyQt6.QtWidgets import QWidget, QHBoxLayout, QPushButton, QFileDialog, QMessageBox, QLineEdit, QApplication, QMainWindow, QVBoxLayout, QLabel
+from PyQt6.QtWidgets import QWidget, QHBoxLayout, QPushButton, QMessageBox, QLineEdit, QApplication, QMainWindow, QVBoxLayout
 import os
-import shutil
 import sys
-from app.utils import is_video_file, is_audio_file, validate_url
-from app.TranscodingThread import TranscodingThread
-from app.YouTubeDownloadThread import YouTubeDownloadThread
+from app.utils import validate_url
+from app.threads.TranscodingThread import TranscodingThread
+from app.threads.YouTubeDownloadThread import YouTubeDownloadThread
 from app.VoiceRecorderWidget import VoiceRecorderWidget
 from app.FileDropWidget import FileDropWidget
-import time
+
 
 class ControlPanelWidget(QWidget):
     uploaded_filepath = pyqtSignal(str)

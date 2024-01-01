@@ -5,8 +5,8 @@ from PyQt6.QtWidgets import (
 from PyQt6.QtGui import QIcon
 from PyQt6.QtCore import pyqtSignal, QSize
 from app.TextEditor import TextEditor
-from app.TranscriptionThread import TranscriptionThread
-from app.GPT4ProcessingThread import GPT4ProcessingThread
+from app.threads.TranscriptionThread import TranscriptionThread
+from app.threads.GPT4ProcessingThread import GPT4ProcessingThread
 from app.SettingsDialog import SettingsDialog
 from app.ToggleSwitch import ToggleSwitch
 import traceback
