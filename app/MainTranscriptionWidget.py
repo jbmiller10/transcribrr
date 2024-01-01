@@ -293,7 +293,7 @@ class MainTranscriptionWidget(QWidget):
                 "Legal Testimony Review": "Condense this legal testimony transcript, focusing on the key statements and evidence presented.",
                 "Conference Session Summary": "Provide a concise summary of this conference session transcript, highlighting the main themes, discussions, and conclusions.",
                 "Educational Course Summary": "Summarize this educational course transcript into a study guide format, including headings, key concepts, and important explanations.",
-                "Youtube to Article": "Transform this raw transcript of a youtube video into a well-structured article, maintaining as much detail as possible."
+                "Youtube to Article": "Transform this raw transcript of a youtube video into a well-structured article, maintaining as much detail as possible. Do your best to replicate the speaker's voice and tone in your entry. Do not embelish by adding details not mentioned."
             }
 
     def on_recording_item_selected(self, recording_item):
