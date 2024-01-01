@@ -5,25 +5,27 @@ import os
 from pydub import AudioSegment
 
 class RecordingListItem(QWidget):
-    def __init__(self, full_file_path, *args, **kwargs):
+    def __init__(self, id, filename, file_path, date_created, duration, raw_transcript, processed_text, *args, **kwargs):
         super(RecordingListItem, self).__init__(*args, **kwargs)
-        self.raw_transcript = ""
-        self.processed_text = ""
-
+        self.raw_transcript = raw_transcript
+        self.processed_text = processed_text
+        self.duration = duration
+        self.filename = filename
+        self.id = id
+        self.date_created = date_created
+        self.file_path = file_path
         # Extract the filename without the extension
-        filename = os.path.basename(full_file_path)
-        filename_no_ext = os.path.splitext(filename)[0]
+       # filename = os.path.basename(full_file_path)
+        self.filename_no_ext = os.path.splitext(self.filename)[0]
 
         # Extract the creation date and duration from the file metadata
-        creation_date = datetime.datetime.fromtimestamp(
-            os.path.getmtime(full_file_path)
+        self.creation_date = datetime.datetime.fromtimestamp(
+            os.path.getmtime(self.file_path)
         ).strftime("%Y-%m-%d %H:%M:%S")
-        audio = AudioSegment.from_file(full_file_path)
-        duration = str(datetime.timedelta(milliseconds=len(audio))).split('.')[0]
 
-        self.name_editable = EditableLineEdit(filename_no_ext)
+        self.name_editable = EditableLineEdit(self.filename_no_ext)
         self.name_editable.editingFinished.connect(self.finishEditing)
-        self.date_label = QLabel(creation_date)
+        self.date_label = QLabel(self.creation_date)
         self.duration_label = QLabel(duration)
 
         self.name_editable.setStyleSheet(
@@ -46,10 +48,11 @@ class RecordingListItem(QWidget):
 
         # Store metadata for later use
         self.metadata = {
-            'full_path': full_file_path,
-            'filename': filename_no_ext,
-            'date': creation_date,
-            'duration': duration
+            'id': self.id,
+            'full_path': self.file_path,
+            'filename': self.filename_no_ext,
+            'date': self.creation_date,
+            'duration': self.duration
         }
 
     def set_raw_transcript(self, transcript):
@@ -82,4 +85,4 @@ class EditableLineEdit(QLineEdit):
 
     def focusOutEvent(self, event):
         self.setReadOnly(True)  # Make read-only again when focus is lost
-        super(EditableLineEdit, self).focusOutEvent(event)  # Pass the event to the base class
+        super(EditableLineEdit, self).focusOutEvent(event)

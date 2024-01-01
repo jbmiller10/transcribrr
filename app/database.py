@@ -43,20 +43,28 @@ def get_all_recordings(conn):
     rows = cur.fetchall()
 
     return rows
-
-def update_recording(conn, recording):
-    """
-    Update raw_transcript and processed_text of a recording
-    :param conn:
-    :param recording: (raw_transcript, processed_text, id)
-    :return:
-    """
-    sql = ''' UPDATE recordings
-              SET raw_transcript = ? ,
-                  processed_text = ? 
-              WHERE id = ?'''
+def get_recording_by_id(conn, id):
+    """Get a single recording by its ID."""
     cur = conn.cursor()
-    cur.execute(sql, recording)
+    cur.execute("SELECT * FROM recordings WHERE id=?", (id,))
+    row = cur.fetchone()
+    print(row)
+    return row
+
+def update_recording(conn, recording_id, **kwargs):
+    """
+    Update fields of a recording given by recording_id with values in kwargs
+    :param conn: Database connection object
+    :param recording_id: ID of the recording to update
+    :param kwargs: Dictionary of column names and their new values
+    :return: None
+    """
+    parameters = [f"{key} = ?" for key in kwargs]
+    values = list(kwargs.values())
+    values.append(recording_id)
+    sql = f"UPDATE recordings SET {', '.join(parameters)} WHERE id = ?"
+    cur = conn.cursor()
+    cur.execute(sql, values)
     conn.commit()
 
 def delete_recording(conn, id):

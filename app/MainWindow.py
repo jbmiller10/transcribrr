@@ -17,6 +17,7 @@ from app.MainTranscriptionWidget import  MainTranscriptionWidget
 from app.ControlPanelWidget import ControlPanelWidget
 from app.database import create_connection, get_all_recordings, create_recording, update_recording, delete_recording
 from moviepy.editor import VideoFileClip, AudioFileClip
+from pydub import AudioSegment
 
 class RecentRecordingsWidget(QWidget):
     recordingSelected = pyqtSignal(str)
@@ -64,20 +65,41 @@ class RecentRecordingsWidget(QWidget):
 
     def add_recording(self, full_file_path):
         try:
-            recording_item_widget = RecordingListItem(full_file_path)
+            # Extract metadata from the file path
+            filename = os.path.basename(full_file_path)
+            date_created = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+            audio = AudioSegment.from_file(full_file_path)
+            duration = str(datetime.timedelta(milliseconds=len(audio))).split('.')[0]
 
+            # Create a new recording in the database
+            conn = create_connection("./database/database.sqlite")
+            recording_data = (filename, full_file_path, date_created, duration, "", "")
+            recording_id = create_recording(conn, recording_data)
+
+            # Now create the RecordingListItem with the new database id
+            recording_item_widget = RecordingListItem(recording_id, full_file_path)
+            recording_item_widget.metadata = {
+                'id': recording_id,
+                'full_path': full_file_path,
+                'filename': filename,
+                'date': date_created,
+                'duration': duration
+            }
+
+            # Create the QListWidgetItem and set its size hint
             item = QListWidgetItem(self.recordings_list)
             item.setSizeHint(recording_item_widget.sizeHint())
 
+            # Add the QListWidgetItem to the list and set the custom widget
             self.recordings_list.addItem(item)
             self.recordings_list.setItemWidget(item, recording_item_widget)
 
-            #set metadata
+            # Set the metadata for the QListWidgetItem
             item.setData(Qt.ItemDataRole.UserRole, recording_item_widget.metadata)
+
         except Exception as e:
             print(f"An error occurred: {e}")
             traceback.print_exc()
-
     # def load_recordings(self):
     #     recordings_dir = "Recordings"
     #     if not os.path.exists(recordings_dir):
@@ -103,15 +125,8 @@ class RecentRecordingsWidget(QWidget):
     #         traceback.print_exc()
 
     def recording_clicked(self, item: QListWidgetItem):
-        # Retrieve the metadata from the item's data
-        metadata = item.data(Qt.ItemDataRole.UserRole)
-        if metadata is not None:
-            full_file_path = metadata['full_path']
-            self.recordingSelected.emit(full_file_path)
-        else:
-            # Handle the case where metadata is None
-            print("Error: Recording item has no metadata.")
-
+        recording_item_widget = self.recordings_list.itemWidget(item)
+        self.recordingItemSelected.emit(recording_item_widget)
 
     def set_style(self):
         self.setStyleSheet("""
@@ -174,9 +189,9 @@ class RecentRecordingsWidget(QWidget):
             self.add_recording_to_list(id, filename, file_path, date_created, duration, raw_transcript, processed_text)
 
     def add_recording_to_list(self, id, filename, file_path, date_created, duration, raw_transcript, processed_text):
-        recording_item_widget = RecordingListItem(file_path)  # Initialize your widget here
-        recording_item_widget.set_raw_transcript(raw_transcript)
-        recording_item_widget.set_processed_text(processed_text)
+        recording_item_widget = RecordingListItem(id, filename, file_path, date_created, duration, raw_transcript, processed_text)  # Initialize your widget here
+        #recording_item_widget.set_raw_transcript(raw_transcript)
+        #recording_item_widget.set_processed_text(processed_text)
 
         # Set metadata
         recording_item_widget.metadata = {

@@ -12,6 +12,8 @@ from app.ToggleSwitch import ToggleSwitch
 import traceback
 import keyring
 
+from app.database import *
+
 
 class MainTranscriptionWidget(QWidget):
     transcriptionStarted = pyqtSignal()
@@ -102,7 +104,8 @@ class MainTranscriptionWidget(QWidget):
         dialog.exec()
 
     def start_transcription(self):
-        if self.file_path is None:
+        print(self.filepath)
+        if self.filepath is None:
             QMessageBox.warning(self, 'No File Selected', 'Please select a file to transcribe.')
             return
 
@@ -124,11 +127,16 @@ class MainTranscriptionWidget(QWidget):
 
     def on_transcription_completed(self, transcript):
         self.transcript_text.editor.setPlainText(transcript)
-        if self.current_selected_item:
-            recording_item = self.current_selected_item
-            self.mode_switch.setValue(0)
-            recording_item.set_raw_transcript(transcript)
-            self.transcript_text.editor.setPlainText(transcript)
+        print(self.recording_id)
+        self.mode_switch.setValue(0)
+        #recording_item.set_raw_transcript(transcript)
+        self.transcript_text.editor.setPlainText(transcript)
+
+        # Save the raw transcript to the database
+        conn = create_connection("./database/database.sqlite")
+        update_recording(conn, self.recording_id,raw_transcript=transcript)
+        print(99324)
+
         self.is_transcribing = False
         try:
             self.update_ui_state()
@@ -179,6 +187,11 @@ class MainTranscriptionWidget(QWidget):
             recording_item.set_processed_text(processed_text)
             self.transcript_text.editor.setPlainText(processed_text)
             self.mode_switch.setValue(1)
+            recording_id = recording_item.get_recording_id()
+            # Save the processed text to the database
+            conn = create_connection("./database/database.sqlite")
+            update_recording(conn, (recording_item.get_raw_transcript(), processed_text, self.id))
+
         self.is_processing_gpt4 = False
         self.update_ui_state()
 
@@ -193,10 +206,14 @@ class MainTranscriptionWidget(QWidget):
     def toggle_transcription_view(self):
         if self.current_selected_item is not None:
             recording_item = self.current_selected_item
-            if self.mode_switch.value() == 0:  #  0 s for raw transcript
-                self.transcript_text.editor.setPlainText(recording_item.get_raw_transcript())
+            recording_id = recording_item.get_id()
+            conn = create_connection("./database/database.sqlite")
+            recording = get_recording_by_id(conn, recording_id)
+
+            if self.mode_switch.value() == 0:  # 0 is for raw transcript
+                self.transcript_text.editor.setPlainText(recording['raw_transcript'])
             else:  # 1 is for processed text
-                self.transcript_text.editor.setPlainText(recording_item.get_processed_text())
+                self.transcript_text.editor.setPlainText(recording['processed_text'])
 
     def set_file_path(self, file_path):
         self.file_path = file_path
@@ -209,13 +226,12 @@ class MainTranscriptionWidget(QWidget):
         )
 
     def raw_transcript_available(self):
-        # Check if there is a raw transcript available for processing
         if self.current_selected_item is not None:
-            if self.current_selected_item:
-                recording_item = self.current_selected_item
-            return bool(recording_item.get_raw_transcript())
+            conn = create_connection("./database/database.sqlite")
+            recording_id = self.current_selected_item.get_id()
+            recording = get_recording_by_id(conn, recording_id)
+            return bool(recording and recording[5])  # Index 5 corresponds to the raw_transcript column
         return False
-
     def load_config(self):
         pass
 
@@ -250,10 +266,27 @@ class MainTranscriptionWidget(QWidget):
     def on_recording_item_selected(self, recording_item):
         try:
             self.current_selected_item = recording_item
-            if self.mode_switch.value() == 0:
-                self.transcript_text.editor.setPlainText(recording_item.get_raw_transcript())
-            elif self.mode_switch.value() == 1:
-                self.transcript_text.editor.setPlainText(recording_item.get_processed_text())
+            conn = create_connection("./database/database.sqlite")
+            recording_id = self.current_selected_item.get_id()
+            recording = get_recording_by_id(conn, recording_id)
+            print(recording_id)
+
+            if recording:
+                self.id = recording[0]
+                self.filename = recording[1]
+                self.filepath = recording[2]
+                self.date_created = recording[3]
+                self.duration = recording[4]
+                self.raw_transcript = recording[5]  # Assuming index 5 is where raw_transcript is stored
+                self.processed_text = recording[6]  # Assuming index 6 is where processed_text is stored
+
+                if self.mode_switch.value() == 0:  # 0 is for raw transcript
+                    self.transcript_text.editor.setPlainText(self.raw_transcript)
+                elif self.mode_switch.value() == 1:  # 1 is for processed text
+                    self.transcript_text.editor.setPlainText(self.processed_text)
+            else:
+                print("No recording found with the provided ID.")
+
         except Exception as e:
             print(f"An error occurred: {e}")
             traceback.print_exc()
