@@ -12,3 +12,4 @@ config.json
 .DS_Store
 database/database.sqlite
 preset_prompts.json
+database/database.sqlite
