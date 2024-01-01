@@ -7,3 +7,6 @@ __pycache__
 .idea/vcs.xml
 .idea/workspace.xml
 config.json
+*.mp3
+*.m4a
+.DS_Store

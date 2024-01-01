@@ -1,464 +1,301 @@
 import re
-from PyQt5.QtWidgets import *
-from PyQt5.QtCore import *
-from PyQt5.QtGui import *
-import os
 import traceback
-#from PyQt5.QtWidgets import  QLabel, QLineEdit
-import keyring
-import json
-from app.YouTubeDownloadThread import YouTubeDownloadThread
-from app.SettingsDialog import SettingsDialog
-from app.TranscodingThread import TranscodingThread
-from app.TranscriptionThread import TranscriptionThread
-from app.GPT4ProcessingThread import GPT4ProcessingThread
+import datetime
+import shutil
+from PyQt6.QtCore import (
+    pyqtSignal, QSize, Qt, QPropertyAnimation, QEasingCurve, QFile,
+)
+from PyQt6.QtGui import QIcon
+from PyQt6.QtWidgets import (
+    QDialog, QVBoxLayout, QLineEdit, QPushButton, QMessageBox,
+    QWidget, QHBoxLayout, QLabel, QListWidget, QSizePolicy,
+    QPushButton, QSpacerItem, QFileDialog, QMenu, QListWidgetItem, QMainWindow,QComboBox,QTextEdit, QSplitter,QStatusBar
+)
+
+import os
+from app.RecordingListItem import RecordingListItem
+from app.MainTranscriptionWidget import  MainTranscriptionWidget
+from app.ControlPanelWidget import ControlPanelWidget
+
+
+class RecentRecordingsWidget(QWidget):
+    recordingSelected = pyqtSignal(str)
+    recordButtonPressed = pyqtSignal()
+    recordingItemSelected = pyqtSignal(RecordingListItem)
+
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        self.layout = QVBoxLayout(self)
+        self.layout.setContentsMargins(0, 0, 0, 0)
+
+        self.header_label = QLabel("Recent Recordings")
+        self.header_label.setObjectName("RecentRecordingHeader")
+        self.header_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
+
+        self.recordings_list = QListWidget()
+
+        self.button_stylesheet = """
+    QPushButton {
+
+         background-color: transparent;
+     }
+
+    QPushButton:pressed {
+        background-color: qlineargradient(
+            x1: 0, y1: 0, x2: 0, y2: 2,
+            stop: 0 #dadbde, stop: 1 #f6f7fa
+        );
+    }
+
+    QPushButton:hover {
+        border: 2px solid blue;
+        border-radius: 6px;
+    }
+"""
+
+        self.layout.addWidget(self.header_label)
+        self.layout.addWidget(self.recordings_list)
+
+        self.recordings_list.itemClicked.connect(self.recording_clicked)
+
+        # Right click context menu for delete
+        self.recordings_list.setContextMenuPolicy(Qt.ContextMenuPolicy.CustomContextMenu)
+        self.recordings_list.customContextMenuRequested.connect(self.showRightClickMenu)
+
+    def add_recording(self, full_file_path):
+        try:
+            recording_item_widget = RecordingListItem(full_file_path)
+
+            item = QListWidgetItem(self.recordings_list)
+            item.setSizeHint(recording_item_widget.sizeHint())
+
+            self.recordings_list.addItem(item)
+            self.recordings_list.setItemWidget(item, recording_item_widget)
+
+            #set metadata
+            item.setData(Qt.ItemDataRole.UserRole, recording_item_widget.metadata)
+        except Exception as e:
+            print(f"An error occurred: {e}")
+            traceback.print_exc()
+
+    def load_recordings(self):
+        recordings_dir = "Recordings"
+        if not os.path.exists(recordings_dir):
+            print("Recordings directory not found.")
+            return
+
+        supported_formats = ['.mp3', '.wav', '.ogg', '.flac']
+        file_list = []
+
+        try:
+            for filename in os.listdir(recordings_dir):
+                file_extension = os.path.splitext(filename)[1]
+                if file_extension.lower() in supported_formats:
+                    file_path = os.path.join(recordings_dir, filename)
+                    file_list.append(file_path)
+
+            # Now file_list contains full paths of all recordings
+            for file_path in file_list:
+                self.add_recording(file_path)
+
+        except Exception as e:
+            print("An error occurred while loading recordings:", e)
+            traceback.print_exc()
+
+    def recording_clicked(self, item: QListWidgetItem):
+        # Retrieve the metadata from the item's data
+        metadata = item.data(Qt.ItemDataRole.UserRole)
+        full_file_path = metadata['full_path']
+        self.recordingSelected.emit(full_file_path)
+        #idk this might be a bad idea lol
+        recording_item_widget = self.recordings_list.itemWidget(item)
+        self.recordingItemSelected.emit(recording_item_widget)
+
+
+    def set_style(self):
+        self.setStyleSheet("""
+            QLabel {
+                font-size: 18px;
+                color: white;
+                padding: 10px 0px; /* Top and bottom padding */
+            }
+            QListWidget {
+                background-color: #333;
+                color: white;
+            }
+            QPushButton {
+                border-radius: 25px; /* Half of the button size for a circular look */
+                background-color: #444;
+                color: white;
+            }
+        """)
+    def showRightClickMenu(self, position):
+        # Get the global position for showing the context menu
+        global_pos = self.recordings_list.viewport().mapToGlobal(position)
+
+        # Create the context menu
+        menu = QMenu()
+        delete_action = menu.addAction("Delete")
+
+        # Show the context menu and get the selected action
+        action = menu.exec(global_pos)
+
+        # If delete is clicked, call the method to delete the item
+        if action == delete_action:
+            self.deleteRecording(position)
+    def update_status_bar(self, message):
+        self.status_bar.showMessage(message)
+    def deleteRecording(self, position):
+        # Get the item at the clicked position
+        item = self.recordings_list.itemAt(position)
+        if item is None:
+            return  # No item at the position
+
+        # Confirm deletion with the user
+        reply = QMessageBox.question(self, 'Delete Recording',
+                                     'Are you sure you want to delete this recording?',
+                                     QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
+                                     QMessageBox.StandardButton.No)
+
+        if reply == QMessageBox.StandardButton.Yes:
+            # Proceed with deletion
+            row = self.recordings_list.row(item)
+            full_file_path = item.data(Qt.ItemDataRole.UserRole)['full_path']
+            os.remove(full_file_path)
+            self.recordings_list.takeItem(row)
 
 class MainWindow(QMainWindow):
     def __init__(self):
         super().__init__()
-        self.setWindowTitle('Transcribrr')
-        self.setGeometry(100, 100, 800, 600)
-        self.is_process_running = False
-        self.central_widget = QWidget(self)
-        self.setCentralWidget(self.central_widget)
-        self.layout = QGridLayout(self.central_widget)
-        self.status_bar = QStatusBar()
-
-        # Initialize instance variables for all settings with default values
-        self.transcription_quality = None
-        self.speaker_detection_enabled = None
-        self.gpt_model = None
-        self.max_tokens = None
-        self.temperature = None
-        self.hf_auth_key = None
-        self.openai_api_key = None
-        self.preset_prompts = {}
-        # Load the configuration settings from the file
-        self.load_config()
-        self.load_prompts()
         self.init_ui()
-        self.temp_files = []
-        self.create_spinner()
 
-        # Initialize threads without starting them
-        self.youtube_thread = YouTubeDownloadThread()
-        self.transcoding_thread = TranscodingThread()
-        #self.transcription_thread = TranscriptionThread()
-        #self.gpt4_processing_thread = GPT4ProcessingThread()
-
-        # Connect signals to slots
-        self.transcoding_thread.temp_file_created.connect(self.track_temp_file)
-        self.youtube_thread.temp_file_created.connect(self.track_temp_file)
-
-        # Initialize the list to track temporary files
-
-        self.file_path = None
 
     def init_ui(self):
-        #icons
-        save_icon = QIcon('icons/save.svg')
-        settings_icon = QIcon('icons/settings.svg')
+        # Initialize the window properties
+        self.setWindowTitle('Transcribrr')
+        self.setGeometry(50, 50, 1350, 768)
 
-        # Create all widgets
-        #self.select_mode_label = QLabel('Select Mode:')
-        self.mode_selector_dropdown = QComboBox()
-        self.mode_selector_dropdown.addItems(['File Upload', 'YouTube URL'])
-        self.open_file_button = QPushButton('Open Audio/Video File')
-        self.start_transcription_button = QPushButton('Start Transcription')
-        self.process_gpt_button = QPushButton('Process with GPT-4')
-        self.youtube_url_entry = QLineEdit()
-        self.youtube_url_label = QLabel('YouTube URL:')
-        self.raw_transcript_label = QLabel('Raw Transcript:')
-       # self.raw_transcript_label.setContentsMargins(0,0 , 10, 0)
-        self.raw_transcript_text = QTextEdit()
-        #self.raw_transcript_text.setContentsMargins(0, 0, 0, 0)
-        self.layout.setSpacing(5)
-        self.gpt_prompt_label = QLabel('GPT Prompt Instructions:')
-        self.gpt_prompt_text = QTextEdit()
-        self.gpt_prompt_dropdown = QComboBox()
-        #self.gpt_prompt_dropdown.setContentsMargins(10, 10, 0, 0)
-        self.gpt_processed_label = QLabel('GPT Processed Result:')
-        self.gpt_processed_text = QTextEdit()
-        self.status_bar = QStatusBar()
-        self.setStatusBar(self.status_bar)
-        #save_raw_transcript button
-        self.save_raw_transcript_button = QPushButton()
-        self.save_raw_transcript_button.setIcon(save_icon)
-        self.save_raw_transcript_button.setToolTip('Save Raw Transcript')
-        self.save_raw_transcript_button.setProperty("isSecondary", True)
-        self.save_raw_transcript_button.setIconSize(QSize(12,12))
-
-        #save gpt processed button
-        self.save_gpt_processed_button = QPushButton()
-        self.save_gpt_processed_button.setIcon(save_icon)
-        self.save_gpt_processed_button.setToolTip('Save Processed Result')
-        self.save_gpt_processed_button.setProperty("isSecondary", True)
-        self.save_gpt_processed_button.setIconSize(QSize(12,12))
-
-        #settings button
-        self.settings_button = QPushButton(self)
-        self.settings_button.setIcon(settings_icon)
-        self.settings_button.setToolTip('Settings')
-        self.settings_button.setProperty("isSecondary", True)
-        self.settings_button.setIconSize(QSize(14,14))
-
-
-
-
-
-
-        #text box sizes/resize policies
-        self.raw_transcript_text.setMinimumSize(0, 160)
-        self.gpt_processed_text.setMinimumSize(0, 160)
-        self.gpt_prompt_text.setMinimumSize(0, 50)
-        size_policy_large = QSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
-        size_policy_small = QSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
-        size_policy_large.setVerticalStretch(7)
-        size_policy_small.setVerticalStretch(1)
-        self.raw_transcript_text.setSizePolicy(size_policy_large)
-        self.gpt_processed_text.setSizePolicy(size_policy_large)
-        self.gpt_prompt_text.setSizePolicy(size_policy_small)
+        # Create instances of widgets
+        self.control_panel = ControlPanelWidget(self)
+        self.recent_recordings_widget = RecentRecordingsWidget()
+        self.main_transcription_widget = MainTranscriptionWidget()
+        #self.control_panel.update_progress.connect(self.update_status_bar)
 
         # Connect signals
-        self.open_file_button.clicked.connect(self.open_file_dialog)
-        self.start_transcription_button.clicked.connect(self.toggle_transcription_process)
-        self.process_gpt_button.clicked.connect(self.process_with_gpt)
-        self.settings_button.clicked.connect(self.open_settings_dialog)
-        self.mode_selector_dropdown.currentTextChanged.connect(self.on_mode_change)
-        self.gpt_prompt_dropdown.currentTextChanged.connect(self.update_gpt_prompt_text)
-        self.youtube_url_entry.textChanged.connect(self.validate_youtube_url_input)
-        self.save_raw_transcript_button.clicked.connect(
-            lambda: self.save_text_content(self.raw_transcript_text, 'Save Raw Transcript'))
-        self.save_gpt_processed_button.clicked.connect(
-            lambda: self.save_text_content(self.gpt_processed_text, 'Save GPT Processed Result'))
 
+        # Set up the central widget and its layout
+        self.central_widget = QWidget()
+        self.setCentralWidget(self.central_widget)
+        self.main_layout = QHBoxLayout(self.central_widget)
 
-        # Set up the layout
-        #self.layout.addWidget(self.select_mode_label, 0, 0)
-        self.layout.addWidget(self.mode_selector_dropdown, 0, 0)
-        self.layout.addWidget(self.open_file_button, 3, 0)
-        self.layout.addWidget(self.start_transcription_button, 3, 1)
-        self.layout.addWidget(self.process_gpt_button, 3, 2)
-        self.layout.addWidget(self.settings_button, 0, 2, 1, 1, Qt.AlignRight)
-        self.layout.addWidget(self.youtube_url_label, 1, 0)
-        self.layout.addWidget(self.youtube_url_entry, 2, 0, 1, 3)
-        self.layout.addWidget(self.raw_transcript_label, 4, 0)
-        self.layout.addWidget(self.raw_transcript_text, 5, 0, 1, 3)
-        self.layout.addWidget(self.gpt_prompt_label, 6, 0)
-        self.layout.addWidget(self.gpt_prompt_dropdown, 6, 2)
-        self.layout.addWidget(self.gpt_prompt_text, 7, 0, 1, 3)
-        self.layout.addWidget(self.gpt_processed_label, 8, 0)
-        self.layout.addWidget(self.gpt_processed_text, 9, 0, 1, 3)
-        self.layout.addWidget(self.save_raw_transcript_button, 4, 2, 1, 1, Qt.AlignRight)
-        self.layout.addWidget(self.save_gpt_processed_button, 8, 2, 1, 1, Qt.AlignRight)
+        # Create a QSplitter to manage the layout of the left and right sections
+        self.splitter = QSplitter(Qt.Orientation.Horizontal)
 
-        # Load configuration and prompts
-        self.load_config()
+        self.main_layout.addWidget(self.splitter)
 
-        # Initialize the preset prompt dropdown
-        self.gpt_prompt_dropdown.addItems(self.preset_prompts.keys())
-        self.update_gpt_prompt_text(self.gpt_prompt_dropdown.currentText())
+        # Layout for the left side section
+        self.left_layout = QVBoxLayout()
+        self.left_layout.addWidget(self.recent_recordings_widget,12)
+        self.left_layout.addWidget(self.control_panel,0)
 
-        # Additional setup for widgets that depend on config and prompts
-        self.youtube_url_entry.setDisabled(True)  # Disable the URL entry field on startup
+        self.recent_recordings_widget.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding)
+        self.control_panel.setSizePolicy(QSizePolicy.Policy.MinimumExpanding, QSizePolicy.Policy.MinimumExpanding)
 
-        #Youtube Entry Disabled @ Launch
-        self.youtube_url_entry.setVisible(False)  # Hide the YouTube URL entry
-        self.youtube_url_label.setVisible(False)  # Hide the YouTube URL label
-        self.youtube_url_entry.setDisabled(True)
+        # Create a widget to hold the left_layout
+        self.left_widget = QWidget()
+        self.left_widget.setLayout(self.left_layout)
 
-        # Update button states
-        self.update_button_state()
+        # Add left_widget to the splitter and define its initial size
+        self.splitter.addWidget(self.left_widget)
+        self.splitter.setSizes([400, 950])
 
-    def toggle_transcription_process(self):
-        if self.is_process_running:
-            self.cancel_transcription()
-        else:
-            self.start_transcription()
+        # Load existing recordings, if any
+        self.recent_recordings_widget.load_recordings()
 
-    def open_settings_dialog(self):
-        try:
-            dialog = SettingsDialog(self)
-            dialog.settings_changed.connect(self.load_config)
-            dialog.prompts_updated.connect(self.load_prompts)
-            dialog.exec_()
-        except Exception as e:
-            traceback.print_exc()
-            QMessageBox.critical(self, 'Exception', f'An exception occurred: {str(e)}')
+        # Assuming you have a widget for managing transcriptions
+        self.main_transcription_widget = MainTranscriptionWidget()
 
-    def on_mode_change(self, mode):
-        if mode == "YouTube URL":
-            self.file_path = None
-            self.youtube_url_entry.setVisible(True)  # Show the YouTube URL entry
-            self.youtube_url_label.setVisible(True)  # Show the YouTube URL label
-            self.youtube_url_entry.setDisabled(False)
-            self.start_transcription_button.setEnabled(False)
-            self.open_file_button.setDisabled(True)  # Disable "Open Audio File" button
-            self.youtube_url_entry.clear()
-        else:  # File Upload mode
-            self.youtube_url_entry.setVisible(False)  # Hide the YouTube URL entry
-            self.youtube_url_label.setVisible(False)  # Hide the YouTube URL label
-            self.youtube_url_entry.setDisabled(True)
-            self.open_file_button.setDisabled(False)  # Enable "Open Audio File" button
-            self.start_transcription_button.setEnabled(bool(self.file_path))
+        # Add the left panel (recent recordings and controls) to the splitter
+        self.splitter.addWidget(self.left_widget)
 
-    def open_file_dialog(self):
-        options = QFileDialog.Options()
-        file_name, _ = QFileDialog.getOpenFileName(self, 'Open Audio or Video File', '',
-                                                   'Audio Files/Video Files (*.mp3 *.wav *.m4a *.ogg *.mp4 *.mkv *.avi *.mov)', options=options)
-        if file_name:
-            self.file_path = file_name
-            self.youtube_url_entry.clear()  # Clear the YouTube URL field
-            self.youtube_url_entry.setDisabled(True)  # Disable the YouTube URL field
-            self.status_bar.showMessage(f'Selected file: {file_name}')
-            self.start_transcription_button.setEnabled(True)  # Enable transcription button
+        # Additionally, add the main transcription area to the right side of the splitter
+        self.splitter.addWidget(self.main_transcription_widget)
 
-    def start_transcription(self):
-        # Disable the transcription button to prevent starting another transcription process
-        self.is_process_running = True
-        self.show_spinner(True)
-        self.update_button_state()
-       #self.start_transcription_button.setDisabled(True)
+        self.control_panel.uploaded_filepath.connect(self.on_new_file)
 
-        # Check the mode and start the appropriate process
-        if self.mode_selector_dropdown.currentText() == 'YouTube URL':
-            youtube_url = self.youtube_url_entry.text()
-            if self.validate_youtube_url(youtube_url):
-                self.start_youtube_download(youtube_url)
-            else:
-                QMessageBox.warning(self, 'Invalid URL', 'Please enter a valid YouTube URL.')
-                self.start_transcription_button.setEnabled(True)  # Re-enable the button in case of an invalid URL
-        elif self.file_path:
-            self.start_transcription_thread(self.file_path)
-        else:
-            QMessageBox.warning(self, 'Input Required', 'Please select a file or enter a YouTube URL to transcribe.')
-            self.start_transcription_button.setEnabled(True)  # Re-enable the button in case of missing input
-        # Set the process running state to True
-        self.is_process_running = True
-        self.update_button_state()
+        # Set the initial side ratios of the splitter (e.g., 1:2)
+        self.splitter.setSizes([400, 800])
 
-    def cancel_transcription(self):
-        # Implement the logic to cancel the ongoing process
-        # For example, if you're using QThread, you can implement a method to terminate it
-        if self.youtube_thread and self.youtube_thread.isRunning():
-            self.youtube_thread.terminate()
-        if self.transcription_thread and self.transcription_thread.isRunning():
-            self.transcription_thread.terminate()
-        if self.transcoding_thread and self.transcoding_thread.isRunning():
-            self.transcoding_thread.terminate()
+        self.status_bar = QStatusBar()
+        #self.statusBar().setStyleSheet("QStatusBar{color: red;}")
+        self.setStatusBar(self.status_bar)
+        self.status_bar.setSizePolicy(QSizePolicy.Policy.Fixed, QSizePolicy.Policy.Fixed)
+        fixed_height = 10
+        self.status_bar.setFixedHeight(fixed_height)
+        self.status_bar.setVisible(True)
+        self.status_bar.showMessage("This is a status message.")
 
-        # After canceling, set the process running state to False
-        self.is_process_running = False
-        self.update_button_state()
-        self.cleanup_temp_files()
-        self.show_spinner(False)
-        self.status_bar.showMessage('Transcription cancelled.')
+        self.recent_recordings_widget.recordingSelected.connect(self.main_transcription_widget.set_file_path)
 
-    def start_youtube_download(self, youtube_url):
-        print('start_ytd')
-        self.youtube_thread = YouTubeDownloadThread()
-        self.youtube_thread.set_youtube_url(youtube_url)  # Set the URL before starting the thread
-        self.youtube_thread.update_progress.connect(self.status_bar.showMessage)
-        self.youtube_thread.completed.connect(self.on_youtube_download_complete)
-        self.youtube_thread.error.connect(lambda e: self.show_error(e, traceback.format_exc()))
-        self.youtube_thread.start()
-        self.status_bar.showMessage('Downloading YouTube video...')
+        self.recent_recordings_widget.recordingItemSelected.connect(self.main_transcription_widget.on_recording_item_selected)
 
-    def update_button_state(self):
-        if self.is_process_running:
-            self.start_transcription_button.setText('Cancel')
-        else:
-            self.start_transcription_button.setText('Start Transcription')
-
-    def is_video_file(self, file_path):
-        # Check if the file is a video file based on its extension (case-insensitive)
-        video_extensions = ['.mp4', '.mkv', '.avi', '.mov']
-        file_extension = os.path.splitext(file_path)[1].lower()
-        return file_extension in (ext.lower() for ext in video_extensions)
-
-    def on_youtube_download_complete(self, file_path):
-        # The YouTube video has been downloaded, now start the transcoding process
-        self.status_bar.showMessage('YouTube video downloaded. Extracting audio...')
-        self.transcode_file(file_path)
-
-    def transcode_file(self, file_path):
-        print('start transcode')
-        # Start the transcoding process
-        self.transcoding_thread = TranscodingThread(file_path)
-        self.transcoding_thread.update_progress.connect(self.status_bar.showMessage)
-        self.transcoding_thread.completed.connect(self.on_transcoding_complete)
-        self.transcoding_thread.error.connect(self.show_error)
-        self.transcoding_thread.start()
-
-    def on_transcoding_complete(self, audio_file_path):
-        self.transcription_thread = TranscriptionThread(audio_file_path, self.transcription_quality, self.speaker_detection_enabled, self.hf_auth_key)
-        self.transcription_thread.update_progress.connect(self.status_bar.showMessage)
-        self.transcription_thread.completed.connect(self.show_transcription_result)
-        self.transcription_thread.error.connect(self.show_error)
-        self.transcription_thread.finished.connect(self.clean_up_thread)
-        self.transcription_thread.start()
-
-    def start_transcription_thread(self, file_path):
-        self.transcription_thread = TranscriptionThread(file_path, self.transcription_quality, self.speaker_detection_enabled, self.hf_auth_key)
-        self.transcription_thread.update_progress.connect(self.status_bar.showMessage)
-        self.transcription_thread.completed.connect(self.show_transcription_result)
-        self.transcription_thread.error.connect(self.show_error)
-        self.transcription_thread.start()
-
-    def clean_up_thread(self):
-        # Clean up the transcription thread and reset UI controls if necessary
-        self.transcription_thread.deleteLater()
-        self.transcription_thread = None
-        self.start_transcription_button.setEnabled(True)  # Re-enable the transcription button
-
-    def show_transcription_result(self, result):
-        print("Updating raw transcript text with the result.")  # Debug print
-        self.raw_transcript_text.setPlainText(result)  # Set the transcription result in the QTextEdit
-        self.process_gpt_button.setEnabled(True)
-        self.start_transcription_button.setEnabled(True)
-        self.status_bar.showMessage('Transcription completed.')
-        self.cleanup_temp_files()
-        self.is_process_running = False
-        self.update_button_state()
-        self.show_spinner(False)
-
-    def process_with_gpt(self):
-        transcript = self.raw_transcript_text.toPlainText()
-        self.show_spinner(True)
-        prompt_instructions = self.gpt_prompt_text.toPlainText()
-        if not transcript:
-            QMessageBox.warning(self, 'Input Required', 'Please provide a transcription to process.')
-            return
-        self.gpt4_processing_thread = GPT4ProcessingThread(transcript, prompt_instructions,self.gpt_model, self.max_tokens, self.temperature, self.openai_api_key,)
-        self.gpt4_processing_thread.update_progress.connect(self.status_bar.showMessage)
-        self.gpt4_processing_thread.completed.connect(self.show_gpt_processed_result)
-        self.gpt4_processing_thread.error.connect(self.show_error)
-        self.gpt4_processing_thread.start()
-
-    def show_gpt_processed_result(self, result):
-        self.gpt_processed_text.setPlainText(result)
-        self.show_spinner(False)
-        self.status_bar.showMessage('GPT-4 processing completed.')
-
-    def update_gpt_prompt_text(self, selected_preset):
-        if selected_preset in self.preset_prompts:
-            prompt_text = self.preset_prompts[selected_preset]
-            self.gpt_prompt_text.setPlainText(prompt_text)
-        else:
-            self.gpt_prompt_text.clear()
-
-    def show_error(self, message, traceback_info=None):
-        error_message = f'An error occurred: {message}'
-        if traceback_info:
-            error_message += f"\n{traceback_info}"
-        QMessageBox.critical(self, 'Error', error_message)
-        self.status_bar.showMessage('An error occurred: ' + message)
-        self.is_process_running = False
-        self.show_spinner(False)
-        self.update_button_state()
-
-    def validate_youtube_url(self, url):
-        regex = r"(https?://)?(www\.)?(youtube|youtu|youtube-nocookie)\.(com|be)/(watch\?v=|embed/|v/|.+\?v=)?([^&=%\?]{11})"
-        return re.match(regex, url) is not None
-
-    def validate_youtube_url_input(self):
-        youtube_url = self.youtube_url_entry.text()
-        is_valid = self.validate_youtube_url(youtube_url)
-        # Enable the button if the URL is valid or if a local file is selected
-        self.start_transcription_button.setEnabled(is_valid or bool(self.file_path))
-
-    def track_temp_file(self, file_path):
-        self.temp_files.append(file_path)
-
-    def cleanup_temp_files(self):
-        for temp_file in self.temp_files:
-            try:
-                os.remove(temp_file)
-                print(f"Removed temporary file: {temp_file}")
-            except OSError as e:
-                print(f"Error removing temporary file {temp_file}: {e.strerror}")
-        self.temp_files.clear()  # Clear the list after cleanup
-
-    def load_config(self):
-        try:
-            with open('config.json', 'r') as config_file:
-                config = json.load(config_file)
-                # Set instance variables from the configuration or use default values
-        except FileNotFoundError:
-            default_config = {
-                'transcription_quality': self.transcription_quality_dropdown.currentText(),
-                'gpt_model': self.gpt_model_dropdown.currentText(),
-                'max_tokens': self.max_tokens_spinbox.value(),
-                'temperature': self.temperature_spinbox.value(),
-                'speaker_detection_enabled': self.speaker_detection_checkbox.isChecked(),
+    def set_style(self):
+        self.setStyleSheet("""
+            QMainWindow {
+                background-color: #252525;
+                color: white;
             }
-            with open('config.json', 'w') as config_file:
-                json.dump(config, config_file)
-        finally:
-            self.transcription_quality = config.get('transcription_quality', self.transcription_quality)
-            self.speaker_detection_enabled = config.get('speaker_detection_enabled', self.speaker_detection_enabled)
-            self.gpt_model = config.get('gpt_model', self.gpt_model)
-            self.max_tokens = config.get('max_tokens', self.max_tokens)
-            self.temperature = config.get('temperature', self.temperature)
-
-        # load api keys
-        self.hf_auth_key = keyring.get_password("transcription_application", "HF_AUTH_TOKEN")
-        self.openai_api_key = keyring.get_password("transcription_application", "OPENAI_API_KEY")
-
-        if not self.openai_api_key:
-            self.status_bar.showMessage('Please set OpenAI API key in Settings')
-
-        if not self.hf_auth_key:
-            self.speaker_detection_enabled = False
-
-    def load_prompts(self):
-        try:
-            with open('preset_prompts.json', 'r') as file:
-                self.preset_prompts = json.load(file)
-                try:
-                    self.gpt_prompt_dropdown.clear()
-                    self.gpt_prompt_dropdown.addItems(self.preset_prompts.keys())
-                except AttributeError:
-                    pass
-        except FileNotFoundError:
-            print('No existing prompts file found. Using Defaults.')
-            self.preset_prompts = {
-                "Journal Entry Formatting": "Format this raw audio transcript into a clean, coherent journal entry, maintaining a first-person narrative style.",
-                "Meeting Minutes": "Convert this transcript into a structured format of meeting minutes, highlighting key points, decisions made, and action items.",
-                "Interview Summary": "Summarize this interview transcript, emphasizing the main questions, responses, and any significant insights or conclusions.",
-                "Lecture Notes": "Condense this lecture transcript into concise notes, outlining the main topics, subtopics, and key points discussed.",
-                "Podcast Highlights": "Extract key highlights and interesting moments from this podcast transcript, presenting them in a bullet-point format.",
-                "Dialogue Cleanup": "Edit this dialogue transcript to remove filler words, repeated phrases, and non-verbal cues, making it more readable.",
-                "Speech to Article": "Transform this speech transcript into a well-structured article, maintaining the speaker's key messages.",
-                "Q&A Format": "Organize this transcript into a clear question-and-answer format, ensuring each question and its corresponding answer are clearly presented.",
-                "Debate Summary": "Summarize this debate transcript, outlining the main points and arguments presented by each participant.",
-                "Technical Explanation": "Rewrite this technical discussion transcript into a simpler, more understandable format for a general audience.",
-                "Legal Testimony Review": "Condense this legal testimony transcript, focusing on the key statements and evidence presented.",
-                "Conference Session Summary": "Provide a concise summary of this conference session transcript, highlighting the main themes, discussions, and conclusions.",
-                "Educational Course Summary": "Summarize this educational course transcript into a study guide format, including headings, key concepts, and important explanations."
+            QLabel {
+                font-size: 18px;
+                color: white;
+                padding: 10px 0px; /* Top and bottom padding */
             }
+            QListWidget {
+                background-color: #333;
+                color: white;
+            }
+            QPushButton {
+                border-radius: 25px; /* Half of the button size for a circular look */
+                background-color: #444;
+                color: white;
+            }
+        """)
 
-    def save_text_content(self, text_edit, dialog_title):
-        file_name, _ = QFileDialog.getSaveFileName(self, dialog_title, '', 'Text Files (*.txt);;All Files (*)')
-        if file_name:
-            with open(file_name, 'w', encoding='utf-8') as file:
-                file.write(text_edit.toPlainText())
-            self.status_bar.showMessage(f'Content saved to {file_name}')
+    def on_new_file(self, file_name):
+        self.recent_recordings_widget.add_recording(file_name)
 
-    def create_spinner(self):
-        self.spinner_label = QLabel(self)
-        self.spinner_movie = QMovie('icons/spinner.gif')
-        self.spinner_label.setMovie(self.spinner_movie)
-        spinner_size = QSize(26, 26)
-        #self.spinner_label.setFixedSize(spinner_size)
-        self.spinner_movie.setScaledSize(spinner_size)
-        # Add the spinner to the status bar
-        self.status_bar.addPermanentWidget(self.spinner_label, 0)
-        self.spinner_label.hide()  # Hide it by default
-    def show_spinner(self, show):
-        if show:
-            self.spinner_label.show()
-            self.spinner_movie.start()  # Start the animation
-        else:
-            self.spinner_movie.stop()  # Stop the animation
-            self.spinner_label.hide()
+    def on_recording_selected(self, filename):
+        # TODO: Implement what happens when a recording is selected
+        pass
+
+    def on_transcription_started(self):
+        # TODO: Implement what happens when transcription starts
+        pass
+
+    def on_transcription_stopped(self):
+        # TODO: Stop any ongoing transcription
+        pass
+
+    def on_transcription_saved(self, content):
+        # TODO: Implement the transcription save functionality
+        pass
+
+    def on_settings_requested(self):
+        # TODO: Open the settings dialog
+        pass
+    def update_status_bar(self, message):
+        self.statusBar().showMessage(message)
+        print('whee'+message)
+    def set_style(self):
+        self.setStyleSheet("""
+            QMainWindow {
+                background-color: #252525;
+                color: black;
+            }
+            statusBar {
+    background-color: #252525;
+                color: red;
+            }
+        """)
+
+

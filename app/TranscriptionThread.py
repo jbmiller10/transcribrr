@@ -1,27 +1,27 @@
-from PyQt5.QtCore import QThread, pyqtSignal,Qt
+from PyQt6.QtCore import QThread, pyqtSignal
 import traceback
 import torch
 import whisperx
-
-
 
 class TranscriptionThread(QThread):
     update_progress = pyqtSignal(str)
     completed = pyqtSignal(str)
     error = pyqtSignal(str)
-    language = 'en' #make this configurable later
+    language = 'en'  # Make this configurable later
 
     def __init__(self, file_path, transcription_quality, speaker_detection_enabled, hf_auth_key, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        print('guy')
+        super().__init__(*args, **kwargs)  
         self.file_path = file_path
         self.transcription_quality = transcription_quality
         self.speaker_detection_enabled = speaker_detection_enabled
         self.hf_auth_key = hf_auth_key
 
+
     def run(self):
         print("transcript")
+        print(self.file_path)
         try:
+            print(self.transcription_quality)
             self.update_progress.emit('Transcription started...')
             device = "cuda" if torch.cuda.is_available() else "cpu"
             compute_type = "float16" if torch.cuda.is_available() else "int8"
@@ -31,6 +31,7 @@ class TranscriptionThread(QThread):
             if not self.speaker_detection_enabled:
                 transcript_text = "\n".join(segment['text'] for segment in result['segments'])
                 self.completed.emit(transcript_text)
+                #print(transcript_text)
                 return
             # Diarize Audio
             self.update_progress.emit('Detecting speakers...')
@@ -101,5 +102,5 @@ class TranscriptionThread(QThread):
                 current_speaker = speaker
 
             transcript += text + " "
-
+        #print(transcript.strip())
         return transcript.strip()

@@ -1,283 +1,306 @@
 import sys
 import os
-from PyQt5.QtWidgets import QApplication, QStyleFactory
+from PyQt6.QtWidgets import QApplication
 from app.MainWindow import MainWindow
 
-stylesheet = '''/* Base colors */
-* {
-    background-color: #FFFFFF; /* White background for a clean look */
-    color: #333333; /* Almost black for primary text */
+stylesheet = '''/* Main window background */
+QMainWindow {
+    background-color: #FFFFFF;  
+}
+
+QToolBar {
+    border: none;
+    background-color: #E1E1E1;
+    spacing: 5px;
+}
+QLabel#RecentRecordingHeader {
+color:black;
+font-family: Helvetica;
+font-size:22pt;
+
+}
+
+QLabel {
+color:black;
+font-family: Helvetica;
+font-weight: medium;
+font-size:12pt;
+
+}
+QPushButton {
+    background-color: transparent;
+    color: #000000; /* Black*/
+    border: 1px solid transparent;
+    border-radius: 1px;
+    padding: 1px;
+    margin: 0 1px;
+}
+
+QPushButton:hover {
+    background-color: #F0F0F0; /* Light grey background on hover */
+    color: #005A9C; /* Blue text on hover */
+    border: 1px solid #005A9C; /* Blue border on hover */
+    padding: 1px;
+    margin: 0 2px;
+}
+
+QPushButton:checked {
+    background-color: rgba(0, 0, 0, 0.05); /* Slightly darker transparent overlay*/
+    color: #000000;
+    border: 2px solid transparent;
+    border-radius: 1px;
+    padding: 1px;
+    margin: 0 1px;
+}
+
+QPushButton:pressed {
+    background-color: rgba(0, 0, 0, 0.1); 
+}
+
+/* Toolbar button styling */
+QToolButton {
+    background-color: #E1E1E1;
+    color: #000000;
+    border-radius: 4px; /* Rounded corners */
+    padding: 4px;
+    margin: 0 2px;
+}
+
+QToolButton:checked, QToolButton:hover {
+    background-color: #D0D0D0; 
+}
+
+QComboBox {
+    background-color: #E1E1E1;
+    color: #000000;
+    border-radius: 4px;
+    font-weight: medium;
+    padding: 1px 15px 1px 5px; 
+    margin-right: 5px;
+}
+
+QComboBox::drop-down {
+    width: 15px; 
     border: none;
 }
 
-/* Text edit and display areas with a subtle shadow for depth */
-QTextEdit, QLineEdit {
-    background-color: #F9F9F9; /* Light grey background */
-    color: #333333; /* Dark text for readability */
-    border: 1px solid #DDDDDD; /* Light border for definition */
+QComboBox::down-arrow {
+    image: url(icons/dropdown_arrow.svg); 
+    height: 17;
+    width: 17;
+}
+
+QSlider::groove:horizontal {
+    border: 1px solid #999999;
+    height: 8px; 
+    background: #E1E1E1;
+    margin: 2px 0;
+}
+
+QSlider::handle:horizontal {
+    background: #000000;
+    border: 1px solid #5c5c5c;
+    width: 18px; 
+    margin: -2px 0; 
+    border-radius: 3px;
+}
+
+/* TextEdit where the transcription is displayed */
+QTextEdit {
+    background-color: #FFFFFF;
+    color: #000000; /* Black text for visibility */
+    border: 1px solid #CCCCCC; /* Light visible border */
     padding: 5px;
-    border-radius: 4px;
-    font-family: 'Roboto';
-    font-size: 12pt;
-}
-QLabel {
-
-font-weight: 600;
-font-size: 12pt;
-font-family: 'Roboto'
-
+    font-family: 'Helvetica'; 
 }
 
-/* Hover and focus states using a slightly darker shade */
-QTextEdit:hover, QLineEdit:hover,
-QTextEdit:focus, QLineEdit:focus {
+/* ListWidget styling for the recordings list */
+QListWidget {
+    background-color: #F7F7F7;
+    border: none;
+    color: #000000;
+    padding: 10px; 
+}
+
+QListWidget::item {
+    background-color: #F7F7F7;
+    color: #000000;
+    border-bottom: 1px solid #CCCCCC; 
+    padding: 5px;
+}
+
+QListWidget::item:selected {
+    background-color: #E1E1E1;
+    color: #000000;
+}
+
+/* Scroll bars for a modern look */
+QScrollBar:vertical {
+    background: #FFFFFF;
+    width: 10px; 
+    margin: 10px 0px 10px 0px;
     border: 1px solid #CCCCCC;
 }
 
-/* Primary buttons with a pop of color */
-QPushButton {
-    background-color: #5E97F6; /* Vibrant blue for primary actions */
-    color: #FFFFFF; /* White text */
-    padding: 6px 12px;
-    border-radius: 4px;
-    font-family: 'Roboto';
-    font-size: 12pt;
-    font-weight: 900;
-
-}
-
-QPushButton:hover {
-    background-color: #507AC7; /* Slightly darker blue on hover */
-}
-
-QPushButton:disabled {
-    background-color: #B0D1F8; /* Lighter blue when disabled */
-    color: #FFFFFF;
-}
-
-/* Secondary buttons with a subtle appearance */
-QPushButton[isSecondary='true'] {
-    background-color: #F7F7F7; /* Light grey matching the input fields */
-    color: #333333; /* Dark text for contrast */
-    border: 1px solid #DDDDDD;
-    border-radius: 4px;
-}
-
-QPushButton[isSecondary='true']:hover {
-    background-color: #E6E6E6;
-}
-
-/* Status bar with a slight contrast to the main window */
-QStatusBar {
-    background-color: #FFFFFF; /* Slightly darker grey for the status bar */
-    color: #333333;
-}
-
-/* Scroll bars for a modern look */
-QScrollBar:vertical {
-    background: #F7F7F7;
-    width: 10px;
-    margin: 10px 0 10px 0;
-    border: 1px solid #DDDDDD;
-}
-
 QScrollBar::handle:vertical {
-    background: #B0D1F8; /* Light blue for the scroll handle */
-    min-height: 20px;
+    background-color: #D0D0D0; 
+    min-height: 10px; 
     border-radius: 5px;
 }
 
 QScrollBar::handle:vertical:hover {
-    background: #5E97F6; /* The vibrant blue for hover */
+    background-color: #C0C0C0;
+}
+'''
+
+stylesheet_night = '''/* Main window background */
+QMainWindow {
+    background-color: #2B2B2B; 
 }
 
-/* Tables for consistency */
-QTableWidget {
-    background-color: #FFFFFF;
-    color: #333333;
-    gridline-color: #DDDDDD;
+/* Toolbar styling */
+QToolBar {
+    border: none;
+    background-color: #333333; /* Dark grey background */
+    spacing: 5px; 
 }
 
-QTableWidget::item:selected {
-    background-color: #5E97F6;
+QPushButton {
+    background-color: transparent;
     color: #FFFFFF;
+    border: 1px solid transparent;
+    border-radius: 1px;
+    padding: 1px;
+    margin: 0 1px;
+}
+
+QPushButton:hover {
+    background-color: transparent;
+    color: #214223;
+    border: 1px solid blue; /* Blue border on hover */
+    /*border-radius: 1px;*/
+    padding: 1px;
+    margin: 0 2px;
+}
+
+QPushButton:checked {
+    background-color: rgba(0, 0, 0, 0.1); /* Slightly darker transparent overlay */
+    color: #111111;
+    border: 2px solid transparent;
+    border-radius: 1px;
+    padding: 1px;
+    margin: 0 1px;
+}
+
+QPushButton:pressed {
+    background-color: rgba(0, 0, 0, 0.2); /* dark for the pressed state */
+}
+QLabel#RecentRecordingHeader {
+color:white;
+font-family: Helvetica;
+font-size:22pt;
+
+}
+
+
+/* Toolbar button styling */
+QToolButton {
+    background-color: #333333;
+    color: #FFFFFF;
+    border-radius: 4px; /* Rounded corners */
+    padding: 4px;
+    margin: 0 2px; 
+}
+
+QToolButton:checked, QToolButton:hover {
+    background-color: #3A3A3A; /* slightly lighter shade of grey */
 }
 
 QComboBox {
-    border: 1px solid silver;
-    border-radius: 3px;
-    padding: 1px 18px 1px 3px;
-    min-width: 6em;
-    font-family: 'Roboto';
-    font-size:12pt;
-    font-weight: 425;
-
+    background-color: #333333;
+    color: grey;
+    border-radius: 4px;
+    font-weight: medium;
+    padding: 1px 15px 1px 5px;
+    margin-right: 5px; 
 }
-/*
-QComboBox:hover {
-    border-color: #5E97F6;
-}*/
-
-
 
 QComboBox::drop-down {
-    subcontrol-origin: padding;
-    subcontrol-position: top right;
-    width: 30px; /* Make sure this width is enough to contain the arrow with some padding */
-    border-left-width: 1px;
-    border-left-color: darkgray;
-    border-left-style: solid;
-    border-top-right-radius: 3px;
-    border-bottom-right-radius: 3px;
-}
-
-QComboBox::down-arrow {
-    image: url(icons/dropdown.svg);
-    width: 18px; /* Adjust the width as needed */
-    height: 18px; /* Adjust the height as needed */
-}
-
-QComboBox::item:selected
-{
-    background-color: #F1F1F1;
-    color: rgb(0, 0, 0);
-}
-
-'''
-
-stylesheet_nightmode = '''/* Base colors for Night Mode */
-* {
-    background-color: #1e1e1e; /* Dark background for night mode */
-    color: #dcdcdc; /* Light grey for text to ensure good contrast */
+    width: 15px; /* Adjust as needed */
     border: none;
 }
 
-/* Text edit and display areas with a subtle shadow for depth */
-QTextEdit, QLineEdit {
-    background-color: #2e2e2e; /* Slightly lighter grey than the base */
-    color: #dcdcdc; /* Light grey for text */
-    border: 1px solid #3a3a3a; /* Dark border for definition */
+QComboBox::down-arrow {
+    image: url(icons/dropdown_arrow.svg); 
+    height: 17;
+    width: 17;
+}
+
+QSlider::groove:horizontal {
+    border: 1px solid #999999;
+    height: 8px; /* Adjust to match your design */
+    background: #333333;
+    margin: 2px 0;
+}
+
+QSlider::handle:horizontal {
+    background: #FFFFFF;
+    border: 1px solid #5c5c5c;
+    width: 18px; /* Adjust to match your design */
+    margin: -2px 0; 
+    border-radius: 3px;
+}
+
+QTextEdit {
+    background-color: #2B2B2B;
+    color: #FFFFFF; /* White*/
+    border: 1px solid #444;
     padding: 5px;
-    border-radius: 4px;
-    font-family: 'Roboto';
-    font-size: 8pt;
+    font-family: 'Helvetica'; 
 }
 
-/* Hover and focus states using a slightly lighter shade */
-QTextEdit:hover, QLineEdit:hover,
-QTextEdit:focus, QLineEdit:focus {
-    border: 1px solid #474747;
+/* ListWidget styling for the recordings list */
+QListWidget {
+    background-color: #1E1E1E;
+    border: none;
+    color: #FFFFFF;
+    padding: 10px; 
 }
 
-/* Primary buttons with a pop of color */
-QPushButton {
-    background-color: #3d8ef8; /* A brighter blue for primary actions */
-    color: #FFFFFF; /* White text */
-    padding: 6px 12px;
-    border-radius: 4px;
-    font-family: 'Roboto';
-    font-size: 8pt;
-    font-weight: 900;
+QListWidget::item {
+    background-color: #1E1E1E;
+    color: #FFFFFF;
+    border-bottom: 1px solid #333; 
+    padding: 5px;
 }
 
-QPushButton:hover {
-    background-color: #3577c2; /* A slightly darker blue on hover */
+QListWidget::item:selected {
+    background-color: #333333;
+    color: #FFFFFF;
 }
 
-QPushButton:disabled {
-    background-color: #1e1e1e; /* Same as the base background when disabled */
-    color: #5a5a5a; /* Greyed out text */
-}
-
-/* Secondary buttons with a subtle appearance */
-QPushButton[isSecondary='true'] {
-    background-color: #2e2e2e; /* Same as text edit areas */
-    color: #dcdcdc; /* Light grey text for contrast */
-    border: 1px solid #3a3a3a;
-}
-
-QPushButton[isSecondary='true']:hover {
-    background-color: #3a3a3a;
-}
-
-/* Status bar with a slight contrast to the main window */
-QStatusBar {
-    background-color: #1a1a1a; /* A bit darker than the main background */
-    color: #dcdcdc;
-}
-
-/* Scroll bars for a modern look */
+/* Scroll bars*/
 QScrollBar:vertical {
-    background: #2e2e2e;
-    width: 10px;
-    margin: 10px 0 10px 0;
-    border: 1px solid #3a3a3a;
+    background: #2B2B2B;
+    width: 10px; 
+    margin: 10px 0px 10px 0px;
+    border: 1px solid #333333;
 }
 
 QScrollBar::handle:vertical {
-    background: #5a5a5a; /* Dark grey for the scroll handle */
-    min-height: 20px;
+    background-color: #555555; 
+    min-height: 10px; 
     border-radius: 5px;
 }
 
 QScrollBar::handle:vertical:hover {
-    background: #3d8ef8; /* The bright blue for hover */
-}
-
-/* Tables for consistency */
-QTableWidget {
-    background-color: #1e1e1e;
-    color: #dcdcdc;
-    gridline-color: #3a3a3a;
-}
-
-QTableWidget::item:selected {
-    background-color: #3d8ef8;
-    color: #FFFFFF;
-}
-
-/* Combo Boxes styling */
-QComboBox {
-    border: 1px solid #3a3a3a;
-    border-radius: 3px;
-    padding: 1px 18px 1px 3px;
-    min-width: 6em;
-    font-family: 'Roboto';
-    font-size: 8pt;
-    font-weight: 425;
-    background-color: #2e2e2e; /* Same as text edit areas */
-    color: #dcdcdc; /* Light grey text */
-}
-
-QComboBox::drop-down {
-    subcontrol-origin: padding;
-    subcontrol-position: top right;
-    width: 30px;
-    border-left-width: 1px;
-    border-left-color: #3a3a3a;
-    border-left-style: solid;
-    border-top-right-radius: 3px;
-    border-bottom-right-radius: 3px;
-    font-family: "Roboto";
-    font-size: 12px;
-}
-
-QComboBox::down-arrow {
-    image: url(icons/dropdown_night.svg); /* Ensure this icon is visible on a dark background */
-    width:18px;
-    height:18px;
-}
-
-QComboBox::item:selected {
-    background-color: #3d8ef8; /* Bright blue for selected item */
-    color: #FFFFFF;
+    background-color: #666666; /* Adjust color as needed */
 }
 '''
-
 
 if __name__ == "__main__":
     app = QApplication(sys.argv)
     app.setStyleSheet(stylesheet)
     mainWin = MainWindow()
     mainWin.show()
-    sys.exit(app.exec_())
+    sys.exit(app.exec())
