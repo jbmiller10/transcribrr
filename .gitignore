@@ -8,3 +8,4 @@ __pycache__
 .idea/workspace.xml
 config.json
 *.mp3
+*.m4a
