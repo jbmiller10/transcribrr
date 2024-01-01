@@ -1,9 +1,9 @@
 # Transcribrr
-Transcribrr is a desktop application that transcribes local audio/video files, youtube videos, or in-app recordings, and then summarizes/transforms the output using a variety of preset prompts via OpenAI's GPT large language models. 
+
+Transcribrr is a desktop tool that turns audio into text and then refines the output using OpenAI's GPT models. It works with audio or video files on your computer, YouTube videos via a provided URL, or recordings made directly in the app.
 
 ## Features
 
-- Transcribe audio from local video/audio files or YouTube URLs via a simple GUI application
 - fast, accurate, local transcription with optional speaker detection (via the excellent [whisperx](https://github.com/m-bain/whisperX) library)
 - GPT-4 for transcript processing & summarization
 - Manageable transcription quality settings
