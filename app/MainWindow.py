@@ -15,7 +15,7 @@ import os
 from app.RecordingListItem import RecordingListItem
 from app.MainTranscriptionWidget import  MainTranscriptionWidget
 from app.ControlPanelWidget import ControlPanelWidget
-from app.database import create_connection, get_all_recordings, create_recording, update_recording, delete_recording
+from app.database import create_connection, get_all_recordings, create_db, create_recording, update_recording, delete_recording
 from moviepy.editor import VideoFileClip, AudioFileClip
 from pydub import AudioSegment
 
@@ -235,6 +235,9 @@ class MainWindow(QMainWindow):
         # Initialize the window properties
         self.setWindowTitle('Transcribrr')
         self.setGeometry(50, 50, 1350, 768)
+
+        #create db if needed
+        create_db()
 
         # Create instances of widgets
         self.control_panel = ControlPanelWidget(self)
