@@ -13,3 +13,4 @@ config.json
 database/database.sqlite
 preset_prompts.json
 database/database.sqlite
+database/database.sqlite
