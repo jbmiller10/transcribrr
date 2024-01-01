@@ -9,3 +9,4 @@ __pycache__
 config.json
 *.mp3
 *.m4a
+.DS_Store
