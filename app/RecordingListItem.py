@@ -18,6 +18,8 @@ class RecordingListItem(QWidget):
         # Extract the filename without the extension
        # filename = os.path.basename(full_file_path)
         self.filename_no_ext = os.path.splitext(self.filename)[0]
+        self.raw_transcript_formatted_data = None
+        self.processed_text_formatted_data = None
 
         # Extract the creation date and duration from the file metadata
         self.creation_date = datetime.datetime.fromtimestamp(

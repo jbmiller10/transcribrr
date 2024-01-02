@@ -3,14 +3,15 @@ from PyQt6.QtWidgets import (
     QApplication, QMainWindow, QTextEdit, QToolBar, QColorDialog, QSpacerItem, QWidget,
     QFontDialog, QFontComboBox, QComboBox, QSizePolicy
 )
-from PyQt6.QtGui import QIcon, QFont, QColor, QTextListFormat, QAction, QActionGroup
-from PyQt6.QtCore import Qt, QSize, pyqtSignal
+from PyQt6.QtGui import QIcon, QFont, QColor, QTextListFormat, QAction, QActionGroup,QTextCursor
+from PyQt6.QtCore import Qt, QSize, pyqtSignal,QBuffer,QIODevice,QDataStream
 import markdown2
 import logging
 
 class TextEditor(QMainWindow):
     transcription_requested = pyqtSignal()
     gpt4_processing_requested = pyqtSignal()
+    save_requested = pyqtSignal()
 
     def __init__(self):
         super().__init__()
@@ -57,6 +58,14 @@ class TextEditor(QMainWindow):
 
         self.add_toolbar_action('increase_indent', './icons/TextEditor/increase_indent.svg', self.increase_indent, 'Increase Indent')
         self.add_toolbar_action('decrease_indent', './icons/TextEditor/decrease_indent.svg', self.decrease_indent, 'Decrease Indent')
+
+        self.add_toolbar_action(
+            'save',
+            './icons/save.svg',
+            self.save_requested,
+            'Save',
+            checkable=False
+        )
 
         spacer = QWidget()  # A simple widget that acts as a spacer
         spacer.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding)
@@ -143,6 +152,17 @@ class TextEditor(QMainWindow):
 
     def process_with_gpt4(self):
         self.gpt4_processing_requested.emit()
+    def serialize_text_document(self):
+        cursor = self.editor.textCursor()
+        cursor.select(QTextCursor.SelectionType.Document)
+        formatted_text = cursor.selection().toHtml()
+        return formatted_text.encode('utf-8')  # Serialize as UTF-8 bytes
+
+    def deserialize_text_document(self, text_data):
+        if text_data:  # If there's data, set it in the editor
+            self.editor.setHtml(text_data.decode('utf-8') if isinstance(text_data, bytes) else text_data)
+        else:  # If there's no data, clear the editor
+            self.editor.clear()
 
 if __name__ == "__main__":
     app = QApplication(sys.argv)

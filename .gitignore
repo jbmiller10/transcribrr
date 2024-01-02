@@ -13,3 +13,4 @@ config.json
 preset_prompts.json
 *.sqlite
 
+config.json
