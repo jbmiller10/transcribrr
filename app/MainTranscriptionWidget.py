@@ -165,13 +165,11 @@ class MainTranscriptionWidget(QWidget):
             return
 
         recording = get_recording_by_id(conn, recording_id)
-        conn.close()  # Close the database connection after fetching the data
+        conn.close()
 
         if recording is None:
             QMessageBox.warning(self, 'Recording Not Found', f'No recording found with ID: {recording_id}')
             return
-
-        # Assuming the raw transcript is at index 5 in the recording tuple
         raw_transcript = recording[5] if recording else ""
 
         selected_prompt_key = self.gpt_prompt_dropdown.currentText()
@@ -334,11 +332,9 @@ class MainTranscriptionWidget(QWidget):
             print(f"An error occurred: {e}")
             traceback.print_exc()
         finally:
-            # Ensure the database connection is closed in case of error
             if conn:
                 conn.close()
     def save_editor_state(self):
-        # Check which mode is active (raw or processed) and serialize the corresponding QTextDocument
         if self.mode_switch.value() == 0:  # Raw transcript mode
             formatted_data = self.transcript_text.serialize_text_document()
             field_to_update = 'raw_transcript_formatted'

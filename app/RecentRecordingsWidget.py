@@ -3,11 +3,10 @@ import datetime
 from PyQt6.QtCore import (
     pyqtSignal, QSize, Qt, QPropertyAnimation, QEasingCurve, QFile,
 )
-from PyQt6.QtGui import QIcon
 from PyQt6.QtWidgets import (
     QDialog, QVBoxLayout,  QMessageBox,
-    QWidget, QHBoxLayout, QLabel, QListWidget, QSizePolicy,
-    QPushButton, QSpacerItem, QFileDialog, QMenu, QListWidgetItem, QMainWindow,QComboBox,QTextEdit, QSplitter,QStatusBar
+    QWidget,  QLabel, QListWidget,
+     QMenu, QListWidgetItem
 )
 import os
 from app.RecordingListItem import RecordingListItem
@@ -82,15 +81,12 @@ class RecentRecordingsWidget(QWidget):
                 'duration': duration
             }
 
-            # Create the QListWidgetItem and set its size hint
             item = QListWidgetItem(self.recordings_list)
             item.setSizeHint(recording_item_widget.sizeHint())
 
-            # Add the QListWidgetItem to the list and set the custom widget
             self.recordings_list.addItem(item)
             self.recordings_list.setItemWidget(item, recording_item_widget)
 
-            # Set the metadata for the QListWidgetItem
             item.setData(Qt.ItemDataRole.UserRole, recording_item_widget.metadata)
 
         except Exception as e:
@@ -120,17 +116,13 @@ class RecentRecordingsWidget(QWidget):
             }
         """)
     def showRightClickMenu(self, position):
-        # Get the global position for showing the context menu
         global_pos = self.recordings_list.viewport().mapToGlobal(position)
 
-        # Create the context menu
         menu = QMenu()
         delete_action = menu.addAction("Delete")
 
-        # Show the context menu and get the selected action
         action = menu.exec(global_pos)
 
-        # If delete is clicked, call the method to delete the item
         if action == delete_action:
             self.delete_selected_recording()
 
@@ -163,9 +155,7 @@ class RecentRecordingsWidget(QWidget):
             self.add_recording_to_list(id, filename, file_path, date_created, duration, raw_transcript, processed_text)
 
     def add_recording_to_list(self, id, filename, file_path, date_created, duration, raw_transcript, processed_text):
-        recording_item_widget = RecordingListItem(id, filename, file_path, date_created, duration, raw_transcript, processed_text)  # Initialize your widget here
-        #recording_item_widget.set_raw_transcript(raw_transcript)
-        #recording_item_widget.set_processed_text(processed_text)
+        recording_item_widget = RecordingListItem(id, filename, file_path, date_created, duration, raw_transcript, processed_text)
 
         # Set metadata
         recording_item_widget.metadata = {
@@ -176,11 +166,9 @@ class RecentRecordingsWidget(QWidget):
             'duration': duration
         }
 
-        # Add item to the list
         item = QListWidgetItem(self.recordings_list)
         item.setSizeHint(recording_item_widget.sizeHint())
 
-        # Here is the crucial step: set the metadata on the QListWidgetItem
         item.setData(Qt.ItemDataRole.UserRole, recording_item_widget.metadata)
 
         self.recordings_list.addItem(item)
