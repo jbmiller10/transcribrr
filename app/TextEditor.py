@@ -73,14 +73,14 @@ class TextEditor(QMainWindow):
 
         self.add_toolbar_action(
             'start_transcription',
-            './icons/quill.svg',
+            './icons/transcribe.svg',
             self.start_transcription,
             'Start Transcription',
             checkable=False
         )
         self.add_toolbar_action(
             'process_with_gpt4',
-            './icons/lightbulb.svg',
+            './icons/magic_wand.svg',
             self.process_with_gpt4,
             'Process with GPT-4',
             checkable=False
