@@ -81,6 +81,7 @@ class MainTranscriptionWidget(QWidget):
         self.is_transcribing = False
         self.is_processing_gpt4 = False
 
+        self.transcript_text.save_requested.connect(self.save_editor_state)
 
     def toggle_transcription(self):
         if self.play_button.text() == 'Play':
@@ -228,22 +229,23 @@ class MainTranscriptionWidget(QWidget):
             recording_id = self.current_selected_item.get_id()
             conn = create_connection("./database/database.sqlite")
 
-            # Make sure to handle the case where the connection fails
             if conn is None:
                 print("Error! Cannot connect to the database.")
                 return
 
             recording = get_recording_by_id(conn, recording_id)
 
-            # Make sure to handle the case where no recording is found
             if recording is None:
                 print(f"No recording found with ID: {recording_id}")
                 return
 
+            # Deserialize formatted text if available; otherwise, fall back to raw text
             if self.mode_switch.value() == 0:  # 0 is for raw transcript
-                self.transcript_text.editor.setPlainText(recording[5])
+                raw_formatted = recording[7] if recording[7] else recording[5].encode('utf-8')
+                self.transcript_text.deserialize_text_document(raw_formatted)
             else:  # 1 is for processed text
-                self.transcript_text.editor.setPlainText(recording[6])
+                processed_formatted = recording[8] if recording[8] else recording[6].encode('utf-8')
+                self.transcript_text.deserialize_text_document(processed_formatted)
 
             # Close the database connection
             conn.close()
@@ -295,6 +297,11 @@ class MainTranscriptionWidget(QWidget):
                 "Educational Course Summary": "Summarize this educational course transcript into a study guide format, including headings, key concepts, and important explanations.",
                 "Youtube to Article": "Transform this raw transcript of a youtube video into a well-structured article, maintaining as much detail as possible. Do your best to replicate the speaker's voice and tone in your entry. Do not embelish by adding details not mentioned."
             }
+    def load_recording(self, recording_id):
+        conn = create_connection("./database/database.sqlite")
+        recording = get_recording_by_id(conn, recording_id)
+        self.textEditor.deserialize_text_document(recording['raw_transcript_formatted'], self.textEditor.editor.document())
+        self.textEditor.deserialize_text_document(recording['processed_text_formatted'], self.textEditor.editor.document())
 
     def on_recording_item_selected(self, recording_item):
         try:
@@ -309,16 +316,38 @@ class MainTranscriptionWidget(QWidget):
                 self.filepath = recording[2]
                 self.date_created = recording[3]
                 self.duration = recording[4]
-                self.raw_transcript = recording[5]  # Assuming index 5 is where raw_transcript is stored
-                self.processed_text = recording[6]  # Assuming index 6 is where processed_text is stored
 
+                # Check if formatted text is available and deserialize it; otherwise, fall back to raw text
                 if self.mode_switch.value() == 0:  # 0 is for raw transcript
-                    self.transcript_text.editor.setPlainText(self.raw_transcript)
-                elif self.mode_switch.value() == 1:  # 1 is for processed text
-                    self.transcript_text.editor.setPlainText(self.processed_text)
+                    # Use formatted text if available, otherwise fall back to raw text, or clear if none
+                    raw_formatted = recording[7] if recording[7] else recording[5]
+                    self.transcript_text.deserialize_text_document(raw_formatted)
+                else:  # 1 is for processed text
+                    # Use formatted text if available, otherwise fall back to processed text, or clear if none
+                    processed_formatted = recording[8] if recording[8] else recording[6]
+                    self.transcript_text.deserialize_text_document(processed_formatted)
+
             else:
                 print("No recording found with the provided ID.")
 
         except Exception as e:
             print(f"An error occurred: {e}")
             traceback.print_exc()
+        finally:
+            # Ensure the database connection is closed in case of error
+            if conn:
+                conn.close()
+    def save_editor_state(self):
+        # Check which mode is active (raw or processed) and serialize the corresponding QTextDocument
+        if self.mode_switch.value() == 0:  # Raw transcript mode
+            formatted_data = self.transcript_text.serialize_text_document()
+            field_to_update = 'raw_transcript_formatted'
+        else:  # Processed text mode
+            formatted_data = self.transcript_text.serialize_text_document()
+            field_to_update = 'processed_text_formatted'
+
+        # Save the binary data to the database
+        conn = create_connection("./database/database.sqlite")
+        update_recording(conn, self.current_selected_item.get_id(), **{field_to_update: formatted_data})
+        QMessageBox.information(self, "Success", "saved successfully.")
+

@@ -159,7 +159,7 @@ class RecentRecordingsWidget(QWidget):
         conn = create_connection("./database/database.sqlite")
         recordings = get_all_recordings(conn)
         for recording in recordings:
-            id, filename, file_path, date_created, duration, raw_transcript, processed_text = recording
+            id, filename, file_path, date_created, duration, raw_transcript, processed_text, raw_transcript_formatted, processed_text_formatted = recording
             self.add_recording_to_list(id, filename, file_path, date_created, duration, raw_transcript, processed_text)
 
     def add_recording_to_list(self, id, filename, file_path, date_created, duration, raw_transcript, processed_text):

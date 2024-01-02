@@ -90,7 +90,9 @@ def create_db():
                                             date_created TEXT NOT NULL,
                                             duration TEXT NOT NULL,
                                             raw_transcript TEXT,
-                                            processed_text TEXT
+                                            processed_text TEXT,
+                                            raw_transcript_formatted BLOB, 
+                                            processed_text_formatted BLOB
                                          ); """
 
         # Create a database connection and create tables
