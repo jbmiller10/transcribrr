@@ -1,9 +1,10 @@
 import sys
+
 from PyQt6.QtWidgets import (
-    QApplication, QMainWindow, QTextEdit, QToolBar, QColorDialog, QSpacerItem, QWidget,
-    QFontDialog, QFontComboBox, QComboBox, QSizePolicy
+    QApplication, QMainWindow, QTextEdit, QToolBar, QColorDialog, QSpacerItem, QWidget,QWidgetAction,
+    QFontDialog, QFontComboBox, QComboBox, QSizePolicy, QLabel
 )
-from PyQt6.QtGui import QIcon, QFont, QColor, QTextListFormat, QAction, QActionGroup,QTextCursor
+from PyQt6.QtGui import QIcon, QFont, QColor, QTextListFormat, QAction, QActionGroup,QTextCursor,QMovie
 from PyQt6.QtCore import Qt, QSize, pyqtSignal,QBuffer,QIODevice,QDataStream
 import markdown2
 import logging
@@ -71,21 +72,63 @@ class TextEditor(QMainWindow):
         spacer.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding)
         self.toolbar.addWidget(spacer)  # Add the spacer to the toolbar
 
-        self.add_toolbar_action(
+        self.transcription_button = self.add_toolbar_action(
             'start_transcription',
             './icons/transcribe.svg',
             self.start_transcription,
             'Start Transcription',
             checkable=False
         )
-        self.add_toolbar_action(
+        self.transcription_spinner_movie = QMovie('./icons/spinner.gif')
+        self.transcription_spinner_movie.setScaledSize(QSize(40, 40))
+        self.transcription_spinner_label = QLabel()
+        self.transcription_spinner_label.setMovie(self.transcription_spinner_movie)
+        self.transcription_spinner_label.setFixedSize(QSize(40, 40))
+        self.transcription_spinner_action = QWidgetAction(self.toolbar)
+        self.transcription_spinner_action.setDefaultWidget(self.transcription_spinner_label)
+        self.toolbar.addAction(self.transcription_spinner_action)
+        self.transcription_spinner_action.setVisible(False) 
+
+
+
+        self.gpt4_button = self.add_toolbar_action(
             'process_with_gpt4',
             './icons/magic_wand.svg',
             self.process_with_gpt4,
             'Process with GPT-4',
             checkable=False
         )
+        self.gpt_spinner_movie = QMovie('./icons/spinner.gif')
+        self.gpt_spinner_movie.setScaledSize(QSize(40, 40))
+        self.gpt_spinner_label = QLabel()
+        self.gpt_spinner_label.setMovie(self.gpt_spinner_movie)
+        self.gpt_spinner_label.setFixedSize(QSize(40, 40))
+        self.gpt_spinner_action = QWidgetAction(self.toolbar)
+        self.gpt_spinner_action.setDefaultWidget(self.gpt_spinner_label)
+        self.toolbar.addAction(self.gpt_spinner_action)
+        self.gpt_spinner_action.setVisible(False)
 
+
+    def toggle_gpt_spinner(self):
+
+        if self.gpt4_button.isVisible():
+            self.gpt_spinner_action.setVisible(True)
+            self.gpt_spinner_movie.start()
+            self.gpt4_button.setVisible(False)
+        else:
+            self.gpt_spinner_movie.stop()
+            self.gpt_spinner_action.setVisible(False)
+            self.gpt4_button.setVisible(True)
+
+    def toggle_transcription_spinner(self):
+        if self.transcription_button.isVisible():
+            self.transcription_spinner_action.setVisible(True)
+            self.transcription_spinner_movie.start()
+            self.transcription_button.setVisible(False)
+        else:
+            self.transcription_spinner_movie.stop()
+            self.transcription_spinner_action.setVisible(False)
+            self.transcription_button.setVisible(True)
     def add_toolbar_action(self, action_name, icon_path, callback, tooltip, checkable=False):
         action = QAction(QIcon(icon_path) if icon_path else None, tooltip, self)
         action.setCheckable(checkable)
@@ -93,6 +136,7 @@ class TextEditor(QMainWindow):
             action.triggered.connect(callback)
         self.toolbar.addAction(action)
         self._toolbar_actions[action_name] = action
+        return action
 
     def font_family_changed(self, font):
         self.editor.setCurrentFont(font)

@@ -105,6 +105,7 @@ class MainTranscriptionWidget(QWidget):
         dialog.exec()
 
     def start_transcription(self):
+        self.transcript_text.toggle_transcription_spinner()
         if self.filepath is None:
             QMessageBox.warning(self, 'No File Selected', 'Please select a file to transcribe.')
             return
@@ -138,8 +139,10 @@ class MainTranscriptionWidget(QWidget):
 
         self.is_transcribing = False
         try:
+            self.transcript_text.toggle_transcription_spinner()
             self.update_ui_state()
         except Exception as e:
+            self.transcript_text.toggle_transcription_spinner()
             print(f"An error occurred: {e}")
             traceback.print_exc()
 
@@ -153,6 +156,7 @@ class MainTranscriptionWidget(QWidget):
         self.update_ui_state()
 
     def start_gpt4_processing(self):
+
         if self.current_selected_item is None:
             QMessageBox.warning(self, 'No Recording Selected', 'Please select a recording first.')
             return
@@ -194,6 +198,7 @@ class MainTranscriptionWidget(QWidget):
         self.gpt4_processing_thread.error.connect(self.on_gpt4_processing_error)
         self.gpt4_processing_thread.start()
         self.is_processing_gpt4 = True
+        self.transcript_text.toggle_gpt_spinner()
         self.update_ui_state()
 
     def on_gpt4_processing_completed(self, processed_text):
@@ -212,12 +217,14 @@ class MainTranscriptionWidget(QWidget):
                 print(f"An error occurred: {e}")
                 traceback.print_exc()
         self.is_processing_gpt4 = False
+        self.transcript_text.toggle_gpt_spinner()
         self.update_ui_state()
 
     def on_gpt4_processing_progress(self, progress_message):
         self.update_progress.emit(progress_message)
 
     def on_gpt4_processing_error(self, error_message):
+        self.transcript_text.toggle_gpt_spinner()
         QMessageBox.critical(self, 'GPT-4 Processing Error', error_message)
         self.is_processing_gpt4 = False
         self.update_ui_state()
