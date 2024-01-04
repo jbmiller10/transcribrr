@@ -80,14 +80,14 @@ class TextEditor(QMainWindow):
             checkable=False
         )
         self.transcription_spinner_movie = QMovie('./icons/spinner.gif')
-        self.transcription_spinner_movie.setScaledSize(QSize(40, 40))
+        self.transcription_spinner_movie.setScaledSize(QSize(30, 30))
         self.transcription_spinner_label = QLabel()
         self.transcription_spinner_label.setMovie(self.transcription_spinner_movie)
-        self.transcription_spinner_label.setFixedSize(QSize(40, 40))
+        self.transcription_spinner_label.setFixedSize(QSize(30, 30))
         self.transcription_spinner_action = QWidgetAction(self.toolbar)
         self.transcription_spinner_action.setDefaultWidget(self.transcription_spinner_label)
         self.toolbar.addAction(self.transcription_spinner_action)
-        self.transcription_spinner_action.setVisible(False) 
+        self.transcription_spinner_action.setVisible(False)
 
 
 
@@ -99,10 +99,10 @@ class TextEditor(QMainWindow):
             checkable=False
         )
         self.gpt_spinner_movie = QMovie('./icons/spinner.gif')
-        self.gpt_spinner_movie.setScaledSize(QSize(40, 40))
+        self.gpt_spinner_movie.setScaledSize(QSize(30, 30))
         self.gpt_spinner_label = QLabel()
         self.gpt_spinner_label.setMovie(self.gpt_spinner_movie)
-        self.gpt_spinner_label.setFixedSize(QSize(40, 40))
+        self.gpt_spinner_label.setFixedSize(QSize(30, 30))
         self.gpt_spinner_action = QWidgetAction(self.toolbar)
         self.gpt_spinner_action.setDefaultWidget(self.gpt_spinner_label)
         self.toolbar.addAction(self.gpt_spinner_action)
