@@ -112,12 +112,12 @@ class MainTranscriptionWidget(QWidget):
 
         with open('config.json', 'r') as config_file:
             config = json.load(config_file)
-
+        self.service_id = "transcription_application"
         self.transcription_thread = TranscriptionThread(
             file_path=self.filepath,
             transcription_quality=config.get('transcription_quality', 'medium'),
             speaker_detection_enabled=config.get('speaker_detection_enabled', False),
-            hf_auth_key=config.get('hf_auth_key', '')
+            hf_auth_key=keyring.get_password(self.service_id, "HF_AUTH_TOKEN")
         )
         self.transcription_thread.completed.connect(self.on_transcription_completed)
         self.transcription_thread.update_progress.connect(self.on_transcription_progress)
