@@ -92,7 +92,7 @@ class MainWindow(QMainWindow):
         self.status_bar.setVisible(True)
         self.status_bar.showMessage("This is a status message.")
 
-        self.recent_recordings_widget.recordingSelected.connect(self.main_transcription_widget.set_file_path)
+        self.recent_recordings_widget.recordingSelected.connect(self.main_transcription_widget.on_recording_item_selected)
 
         self.recent_recordings_widget.recordingItemSelected.connect(self.main_transcription_widget.on_recording_item_selected)
 

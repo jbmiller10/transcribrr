@@ -1,1 +1,1 @@
-{"transcription_quality": "base", "gpt_model": "gpt-4-1106-preview", "max_tokens": 4096, "temperature": 1.0, "speaker_detection_enabled": false}
+{"transcription_quality": "large-v2", "gpt_model": "gpt-4-1106-preview", "max_tokens": 4096, "temperature": 1.0, "speaker_detection_enabled": false}
