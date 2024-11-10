@@ -35,12 +35,12 @@ class SettingsDialog(QDialog):
         # Transcription Quality
         self.transcription_quality_label = QLabel('Transcription Quality: (Larger = higher quality, but slower & uses more VRAM)', self)
         self.transcription_quality_dropdown = QComboBox(self)
-        self.transcription_quality_dropdown.addItems(['tiny', 'base', 'small', 'medium', 'large', 'large-v1', 'large-v2'])
+        self.transcription_quality_dropdown.addItems(['distil-whisper/distil-small.en' ,'distil-whisper/distil-medium.en',  'distil-whisper/distil-large-v2',  'distil-whisper/distil-large-v3', 'openai/whisper-tiny', 'openai/whisper-base', 'openai/whisper-small', 'openai/whisper-medium', 'openai/whisper-large-v2', 'openai/whisper-large-v3'])
 
         # GPT Model Selection
         self.gpt_model_label = QLabel('GPT Model: (GPT-4-1106-preview strongly recommended due to token limits on other models)', self)
         self.gpt_model_dropdown = QComboBox(self)
-        self.gpt_model_dropdown.addItems(['gpt-4-1106-preview', 'gpt-3.5-turbo', 'gpt-4'])
+        self.gpt_model_dropdown.addItems(['gpt-4-turbo','gpt-4-turbo-preview','gpt-4-1106-preview', 'gpt-3.5-turbo', 'gpt-4'])
 
         # Max Tokens
         self.max_tokens_label = QLabel('Max Tokens (0-4096):', self)

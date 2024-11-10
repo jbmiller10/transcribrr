@@ -1,21 +1,16 @@
-import re
-import traceback
 import datetime
-import shutil
 from PyQt6.QtCore import (
-    pyqtSignal, QSize, Qt, QPropertyAnimation, QEasingCurve, QFile,
+    Qt,
 )
-from PyQt6.QtGui import QIcon
 from PyQt6.QtWidgets import (
-    QDialog, QVBoxLayout, QLineEdit, QPushButton, QMessageBox,
-    QWidget, QHBoxLayout, QLabel, QListWidget, QSizePolicy,
-    QPushButton, QSpacerItem, QFileDialog, QMenu, QListWidgetItem, QMainWindow,QComboBox,QTextEdit, QSplitter,QStatusBar
+    QVBoxLayout,
+    QWidget, QHBoxLayout,  QSizePolicy,
+    QMainWindow, QSplitter,QStatusBar
 )
 import os
-from app.RecordingListItem import RecordingListItem
 from app.MainTranscriptionWidget import  MainTranscriptionWidget
 from app.ControlPanelWidget import ControlPanelWidget
-from app.database import create_connection, get_all_recordings, create_db, create_recording, update_recording, delete_recording
+from app.database import create_connection, create_db, create_recording
 from moviepy.editor import VideoFileClip, AudioFileClip
 from app.RecentRecordingsWidget import RecentRecordingsWidget
 
