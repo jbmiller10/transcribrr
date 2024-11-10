@@ -1,9 +1,10 @@
 import json
 from PyQt6.QtWidgets import (
-    QWidget, QVBoxLayout, QPushButton, QMessageBox, QComboBox, QHBoxLayout, QLabel, QSizePolicy
+    QWidget, QVBoxLayout, QPushButton, QMessageBox, QComboBox, QHBoxLayout, QLabel,
+    QSizePolicy, QTextEdit, QDoubleSpinBox, QSpinBox, QInputDialog, QSplitter
 )
 from PyQt6.QtGui import QIcon
-from PyQt6.QtCore import pyqtSignal, QSize
+from PyQt6.QtCore import pyqtSignal, QSize, Qt
 from app.TextEditor import TextEditor
 from app.threads.TranscriptionThread import TranscriptionThread
 from app.threads.GPT4ProcessingThread import GPT4ProcessingThread
@@ -11,9 +12,7 @@ from app.SettingsDialog import SettingsDialog
 from app.ToggleSwitch import ToggleSwitch
 import traceback
 import keyring
-
-from app.database import *
-
+from app.database import create_connection, get_recording_by_id, update_recording
 
 class MainTranscriptionWidget(QWidget):
     transcriptionStarted = pyqtSignal()
@@ -29,74 +28,241 @@ class MainTranscriptionWidget(QWidget):
         self.layout = QVBoxLayout(self)
         self.layout.setContentsMargins(0, 0, 0, 0)
 
-        self.transcription_type_combo = QComboBox()
-        self.transcription_type_combo.addItems([
-            'Journal Entry', 'Meeting Minutes', 'Interview Summary'
-        ])
-        self.play_button = QPushButton()
-        self.play_button.setIcon(QIcon('icons/play.svg'))
-        self.play_button.setFixedSize(50, 50)
-        self.save_button = QPushButton()
-        self.save_button.setIcon(QIcon('icons/save.svg'))
-        self.save_button.setFixedSize(50, 50)
+        # Initialize state variables
+        self.is_editing_existing_prompt = False
 
+        # Top toolbar layout
         self.top_toolbar = QHBoxLayout()
-        self.horizontal_spacer = QWidget()
-        self.horizontal_spacer.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Preferred)
-        #self.top_toolbar.addWidget(self.horizontal_spacer)
-
-        ###prompt dropdown
-        self.load_prompts()
-        self.gpt_prompt_dropdown = QComboBox()
-        self.top_toolbar.addWidget(self.gpt_prompt_dropdown)
-        self.top_toolbar.addWidget(self.horizontal_spacer)
-        self.gpt_prompt_dropdown.addItems(self.preset_prompts.keys())
-
-        self.raw_transcript_label = QLabel('Raw Transcript')
-        self.top_toolbar.addWidget(self.raw_transcript_label)
-        self.mode_switch = ToggleSwitch()
-        self.mode_switch.setValue(0)
-        self.top_toolbar.addWidget(self.mode_switch)
-        self.gpt_processed_label = QLabel('Processed W/ GPT')
-        self.top_toolbar.addWidget(self.gpt_processed_label)
-
-        self.settings_button = QPushButton()
-        self.settings_button.setIcon(QIcon('icons/settings.svg'))
-        self.settings_button.setIconSize(QSize(25, 25))
-        self.settings_button.setFixedSize(30, 30)
-        self.transcript_text = TextEditor()
-        self.top_toolbar.addWidget(self.horizontal_spacer)
-        self.top_toolbar.addWidget(self.settings_button)
+        self.init_top_toolbar()
         self.layout.addLayout(self.top_toolbar)
-        self.layout.addWidget(self.transcript_text)
 
-        self.play_button.clicked.connect(self.toggle_transcription)
-        self.save_button.clicked.connect(self.save_transcription)
-        self.settings_button.clicked.connect(self.request_settings)
+        # Main splitter
+        self.main_splitter = QSplitter(Qt.Orientation.Vertical)
+        self.layout.addWidget(self.main_splitter)
+
+        # Custom prompt input (hidden by default)
+        self.custom_prompt_input = QTextEdit()
+        self.custom_prompt_input.setPlaceholderText("Enter your custom prompt here...")
+        self.custom_prompt_input.setVisible(False)
+        self.custom_prompt_input.setMaximumHeight(100)  # Adjust height as needed
+
+        # Custom prompt save button (hidden by default)
+        self.custom_prompt_save_button = QPushButton("Save as Template")
+        self.custom_prompt_save_button.setVisible(False)
+        self.custom_prompt_save_button.clicked.connect(self.save_custom_prompt_as_template)
+
+        # Edit prompt button (visible when predefined prompt is selected)
+        self.edit_prompt_button = QPushButton("Edit Prompt")
+        self.edit_prompt_button.setVisible(False)
+        self.edit_prompt_button.clicked.connect(self.edit_selected_prompt)
+
+        # Create a widget to hold buttons below the custom prompt input
+        self.prompt_button_widget = QWidget()
+        self.prompt_button_layout = QHBoxLayout(self.prompt_button_widget)
+        self.prompt_button_layout.addWidget(self.custom_prompt_save_button)
+        self.prompt_button_layout.addWidget(self.edit_prompt_button)
+        self.prompt_button_layout.addStretch()
+        self.prompt_button_widget.setVisible(False)
+
+        # Add custom prompt input and buttons to a container widget
+        self.prompt_widget = QWidget()
+        self.prompt_layout = QVBoxLayout(self.prompt_widget)
+        self.prompt_layout.setContentsMargins(0, 0, 0, 0)
+        self.prompt_layout.addWidget(self.custom_prompt_input)
+        self.prompt_layout.addWidget(self.prompt_button_widget)
+
+        # Content widget
+        self.content_widget = QWidget()
+        self.content_layout = QVBoxLayout(self.content_widget)
+        self.content_layout.setContentsMargins(0, 0, 0, 0)
+
+        # Add GPT-4 parameter controls
+        self.init_gpt_parameters()
+        self.content_layout.addLayout(self.gpt_parameter_layout)
+
+        # Text editor
+        self.transcript_text = TextEditor()
+        self.content_layout.addWidget(self.transcript_text)
+
+        # Add widgets to splitter
+        self.main_splitter.addWidget(self.prompt_widget)
+        self.main_splitter.addWidget(self.content_widget)
+
+        # Initially hide the custom prompt input
+        self.custom_prompt_input.setVisible(False)
+        self.prompt_button_widget.setVisible(False)
+        self.prompt_widget.setVisible(False)
+
+        # Connect signals and slots
         self.transcript_text.transcription_requested.connect(self.start_transcription)
         self.transcript_text.gpt4_processing_requested.connect(self.start_gpt4_processing)
         self.mode_switch.valueChanged.connect(self.toggle_transcription_view)
+        self.settings_button.clicked.connect(self.request_settings)
+        self.transcript_text.save_requested.connect(self.save_editor_state)
+        self.gpt_prompt_dropdown.currentIndexChanged.connect(self.on_prompt_selection_changed)
 
         self.file_path = None
         self.is_transcribing = False
         self.is_processing_gpt4 = False
 
-        self.transcript_text.save_requested.connect(self.save_editor_state)
+    def init_top_toolbar(self):
+        # Initialize the prompt dropdown
+        self.gpt_prompt_dropdown = QComboBox()
 
-    def toggle_transcription(self):
-        if self.play_button.text() == 'Play':
-            self.play_button.setIcon(QIcon('icons/stop.svg'))
-            self.transcriptionStarted.emit()
-            self.play_button.setText('Stop')
+        # Load the prompts (this will add "Custom Prompt" as well)
+        self.load_prompts()
+
+        # Connect signals
+        self.gpt_prompt_dropdown.currentIndexChanged.connect(self.on_prompt_selection_changed)
+
+        # Mode switch and labels
+        self.raw_transcript_label = QLabel('Raw Transcript')
+        self.mode_switch = ToggleSwitch()
+        self.mode_switch.setValue(0)
+        self.gpt_processed_label = QLabel('Processed w/ GPT')
+
+        # Settings button
+        self.settings_button = QPushButton()
+        self.settings_button.setIcon(QIcon('icons/settings.svg'))
+        self.settings_button.setIconSize(QSize(25, 25))
+        self.settings_button.setFixedSize(30, 30)
+
+        # Layout adjustments
+        self.top_toolbar.addWidget(self.gpt_prompt_dropdown)
+        self.top_toolbar.addStretch()
+        self.top_toolbar.addWidget(self.raw_transcript_label)
+        self.top_toolbar.addWidget(self.mode_switch)
+        self.top_toolbar.addWidget(self.gpt_processed_label)
+        self.top_toolbar.addStretch()
+        self.top_toolbar.addWidget(self.settings_button)
+
+    def init_gpt_parameters(self):
+        # Load existing config or defaults
+        try:
+            with open('config.json', 'r') as config_file:
+                config = json.load(config_file)
+        except FileNotFoundError:
+            config = {'temperature': 1.0, 'max_tokens': 4096}
+
+        # Temperature control
+        self.temperature_label = QLabel("Temperature:")
+        self.temperature_spinbox = QDoubleSpinBox()
+        self.temperature_spinbox.setRange(0.0, 2.0)
+        self.temperature_spinbox.setSingleStep(0.1)
+        self.temperature_spinbox.setValue(config.get('temperature', 1.0))
+
+        # Max tokens control
+        self.max_tokens_label = QLabel("Max Tokens:")
+        self.max_tokens_spinbox = QSpinBox()
+        self.max_tokens_spinbox.setRange(1, 4096)
+        self.max_tokens_spinbox.setValue(config.get('max_tokens', 4096))
+
+        # GPT parameter layout
+        self.gpt_parameter_layout = QHBoxLayout()
+        self.gpt_parameter_layout.addWidget(self.temperature_label)
+        self.gpt_parameter_layout.addWidget(self.temperature_spinbox)
+        self.gpt_parameter_layout.addWidget(self.max_tokens_label)
+        self.gpt_parameter_layout.addWidget(self.max_tokens_spinbox)
+        self.gpt_parameter_layout.addStretch()
+
+    def on_prompt_selection_changed(self, index):
+        selected_prompt = self.gpt_prompt_dropdown.currentText()
+        if selected_prompt == "Custom Prompt":
+            self.is_editing_existing_prompt = False
+            self.show_custom_prompt_input()
+            self.edit_prompt_button.setVisible(False)
+            self.custom_prompt_input.clear()
+            self.custom_prompt_save_button.setText("Save as Template")
+            # Ensure the save button is connected to the correct method
+            self.custom_prompt_save_button.clicked.disconnect()
+            self.custom_prompt_save_button.clicked.connect(self.save_custom_prompt_as_template)
         else:
-            self.play_button.setIcon(QIcon('icons/play.svg'))
-            self.transcriptionStopped.emit()
-            self.play_button.setText('Play')
-    def set_file_path(self, file_path):
-        self.file_path = file_path
-    def save_transcription(self):
-        content = self.transcript_text.editor.toPlainText()
-        self.transcriptionSaved.emit(content)
+            self.hide_custom_prompt_input()
+            self.edit_prompt_button.setVisible(True)
+            self.prompt_button_widget.setVisible(True)
+            self.prompt_widget.setVisible(True)
+            self.is_editing_existing_prompt = False
+            self.edit_prompt_button.setText("Edit Prompt")
+
+    def show_custom_prompt_input(self):
+        self.prompt_widget.setVisible(True)
+        self.custom_prompt_input.setVisible(True)
+        self.prompt_button_widget.setVisible(True)
+        self.custom_prompt_input.setMaximumHeight(100)
+        self.main_splitter.setSizes([100, 400])
+        if self.is_editing_existing_prompt:
+            self.custom_prompt_save_button.setVisible(True)
+            self.custom_prompt_save_button.setText("Save")
+        else:
+            self.custom_prompt_save_button.setVisible(True)
+            self.custom_prompt_save_button.setText("Save as Template")
+
+    def hide_custom_prompt_input(self):
+        self.custom_prompt_input.setVisible(False)
+        self.custom_prompt_save_button.setVisible(False)
+        self.prompt_button_widget.setVisible(False)
+        self.prompt_widget.setVisible(False)
+        self.main_splitter.setSizes([0, 500])
+
+    def save_custom_prompt_as_template(self):
+        prompt_name, ok = QInputDialog.getText(self, 'Save Prompt', 'Enter a name for this prompt template:')
+        if ok and prompt_name:
+            prompt_text = self.custom_prompt_input.toPlainText()
+            self.preset_prompts[prompt_name] = prompt_text
+            # Save to 'preset_prompts.json'
+            with open('preset_prompts.json', 'w') as f:
+                json.dump(self.preset_prompts, f, indent=4)
+            QMessageBox.information(self, "Prompt Saved", f"Prompt '{prompt_name}' has been saved.")
+            # Reload prompts in the dropdown
+            self.load_prompts()
+            self.gpt_prompt_dropdown.setCurrentText(prompt_name)
+            # Hide the custom prompt input area
+            self.hide_custom_prompt_input()
+            self.is_editing_existing_prompt = False
+            # Ensure the save button is connected to the correct method
+            self.custom_prompt_save_button.clicked.disconnect()
+            self.custom_prompt_save_button.clicked.connect(self.save_custom_prompt_as_template)
+
+    def edit_selected_prompt(self):
+        if self.is_editing_existing_prompt:
+            # Cancel editing
+            self.hide_custom_prompt_input()
+            self.edit_prompt_button.setText("Edit Prompt")
+            self.is_editing_existing_prompt = False
+            # Reconnect the save button to default action
+            self.custom_prompt_save_button.clicked.disconnect()
+            self.custom_prompt_save_button.clicked.connect(self.save_custom_prompt_as_template)
+        else:
+            # Start editing
+            selected_prompt = self.gpt_prompt_dropdown.currentText()
+            if selected_prompt in self.preset_prompts:
+                self.is_editing_existing_prompt = True
+                self.custom_prompt_input.setPlainText(self.preset_prompts[selected_prompt])
+                self.show_custom_prompt_input()
+                self.edit_prompt_button.setText("Cancel Edit")
+                self.custom_prompt_save_button.setText("Save")
+                # Disconnect and connect save button to save_edited_prompt
+                self.custom_prompt_save_button.clicked.disconnect()
+                self.custom_prompt_save_button.clicked.connect(self.save_edited_prompt)
+
+    def save_edited_prompt(self):
+        edited_text = self.custom_prompt_input.toPlainText()
+        selected_prompt = self.gpt_prompt_dropdown.currentText()
+        self.preset_prompts[selected_prompt] = edited_text
+        # Save to 'preset_prompts.json'
+        with open('preset_prompts.json', 'w') as f:
+            json.dump(self.preset_prompts, f, indent=4)
+        QMessageBox.information(self, "Prompt Updated", f"Prompt '{selected_prompt}' has been updated.")
+        # Hide the custom prompt input area
+        self.hide_custom_prompt_input()
+        self.edit_prompt_button.setText("Edit Prompt")
+        self.is_editing_existing_prompt = False
+        # Reconnect the save button to default action
+        self.custom_prompt_save_button.clicked.disconnect()
+        self.custom_prompt_save_button.clicked.connect(self.save_custom_prompt_as_template)
+        # Reload prompts
+        self.load_prompts()
+        self.gpt_prompt_dropdown.setCurrentText(selected_prompt)
 
     def request_settings(self):
         dialog = SettingsDialog(self)
@@ -104,17 +270,38 @@ class MainTranscriptionWidget(QWidget):
         dialog.prompts_updated.connect(self.load_prompts)
         dialog.exec()
 
+    def load_prompts(self):
+        try:
+            with open('preset_prompts.json', 'r') as file:
+                self.preset_prompts = json.load(file)
+        except FileNotFoundError:
+            print('No existing prompts file found. Using Defaults.')
+            self.preset_prompts = {
+                # Default prompts
+                "Journal Entry Formatting": "Format this raw audio transcript into a clean, coherent journal entry, maintaining a first-person narrative style.",
+                "Meeting Minutes": "Convert this transcript into a structured format of meeting minutes, highlighting key points, decisions made, and action items.",
+                "Interview Summary": "Summarize this interview transcript, emphasizing the main questions, responses, and any significant insights or conclusions.",
+                # Add other default prompts as needed
+            }
+        # Clear and repopulate the dropdown
+        self.gpt_prompt_dropdown.blockSignals(True)
+        self.gpt_prompt_dropdown.clear()
+        self.gpt_prompt_dropdown.addItems(self.preset_prompts.keys())
+        self.gpt_prompt_dropdown.addItem("Custom Prompt")  # Ensure "Custom Prompt" is added here
+        self.gpt_prompt_dropdown.blockSignals(False)
+
     def start_transcription(self):
         self.transcript_text.toggle_transcription_spinner()
-        if self.filepath is None:
-            QMessageBox.warning(self, 'No File Selected', 'Please select a file to transcribe.')
+        if self.current_selected_item is None:
+            QMessageBox.warning(self, 'No Recording Selected', 'Please select a recording to transcribe.')
+            self.transcript_text.toggle_transcription_spinner()
             return
 
         with open('config.json', 'r') as config_file:
             config = json.load(config_file)
         self.service_id = "transcription_application"
         self.transcription_thread = TranscriptionThread(
-            file_path=self.filepath,
+            file_path=self.file_path,
             transcription_quality=config.get('transcription_quality', 'medium'),
             speaker_detection_enabled=config.get('speaker_detection_enabled', False),
             hf_auth_key=keyring.get_password(self.service_id, "HF_AUTH_TOKEN")
@@ -128,24 +315,16 @@ class MainTranscriptionWidget(QWidget):
 
     def on_transcription_completed(self, transcript):
         self.transcript_text.editor.setPlainText(transcript)
-
         recording_id = self.current_selected_item.get_id()
         self.mode_switch.setValue(0)
         self.transcript_text.editor.setPlainText(transcript)
-
         # Save the raw transcript to the database
         conn = create_connection("./database/database.sqlite")
-        update_recording(conn, recording_id,raw_transcript=transcript)
-
+        update_recording(conn, recording_id, raw_transcript=transcript)
+        conn.close()
         self.is_transcribing = False
-        try:
-            self.transcript_text.toggle_transcription_spinner()
-            self.update_ui_state()
-        except Exception as e:
-            self.transcript_text.toggle_transcription_spinner()
-            print(f"An error occurred: {e}")
-            traceback.print_exc()
-
+        self.transcript_text.toggle_transcription_spinner()
+        self.update_ui_state()
 
     def on_transcription_progress(self, progress_message):
         self.update_progress.emit(progress_message)
@@ -153,10 +332,10 @@ class MainTranscriptionWidget(QWidget):
     def on_transcription_error(self, error_message):
         QMessageBox.critical(self, 'Transcription Error', error_message)
         self.is_transcribing = False
+        self.transcript_text.toggle_transcription_spinner()
         self.update_ui_state()
 
     def start_gpt4_processing(self):
-
         if self.current_selected_item is None:
             QMessageBox.warning(self, 'No Recording Selected', 'Please select a recording first.')
             return
@@ -177,20 +356,28 @@ class MainTranscriptionWidget(QWidget):
         raw_transcript = recording[5] if recording else ""
 
         selected_prompt_key = self.gpt_prompt_dropdown.currentText()
-        prompt_instructions = self.preset_prompts.get(selected_prompt_key, '')
+        if selected_prompt_key == "Custom Prompt":
+            prompt_instructions = self.custom_prompt_input.toPlainText()
+            if not prompt_instructions.strip():
+                QMessageBox.warning(self, 'Empty Prompt', 'Please enter a custom prompt or select a predefined one.')
+                return
+        else:
+            prompt_instructions = self.preset_prompts.get(selected_prompt_key, '')
 
         with open('config.json', 'r') as config_file:
             config = json.load(config_file)
 
         openai_api_key = keyring.get_password("transcription_application", "OPENAI_API_KEY")
+        temperature = self.temperature_spinbox.value()
+        max_tokens = self.max_tokens_spinbox.value()
 
         # Start the GPT-4 processing thread
         self.gpt4_processing_thread = GPT4ProcessingThread(
             transcript=raw_transcript,
             prompt_instructions=prompt_instructions,
-            gpt_model=config.get('gpt_model', 'gpt-4-1106-preview'),
-            max_tokens=config.get('max_tokens', 4096),
-            temperature=config.get('temperature', 0.7),
+            gpt_model=config.get('gpt_model', 'gpt-4'),
+            max_tokens=max_tokens,
+            temperature=temperature,
             openai_api_key=openai_api_key
         )
         self.gpt4_processing_thread.completed.connect(self.on_gpt4_processing_completed)
@@ -203,19 +390,14 @@ class MainTranscriptionWidget(QWidget):
 
     def on_gpt4_processing_completed(self, processed_text):
         if self.current_selected_item:
-            recording_item = self.current_selected_item
             self.mode_switch.setValue(1)
             self.transcript_text.editor.setPlainText(processed_text)
             recording_id = self.current_selected_item.get_id()
             conn = create_connection("./database/database.sqlite")
             update_recording(conn, recording_id, processed_text=processed_text)
-
+            conn.close()
             self.is_transcribing = False
-            try:
-                self.update_ui_state()
-            except Exception as e:
-                print(f"An error occurred: {e}")
-                traceback.print_exc()
+            self.update_ui_state()
         self.is_processing_gpt4 = False
         self.transcript_text.toggle_gpt_spinner()
         self.update_ui_state()
@@ -244,19 +426,28 @@ class MainTranscriptionWidget(QWidget):
                 print(f"No recording found with ID: {recording_id}")
                 return
 
-            # Deserialize formatted text if available; otherwise, fall back to raw text
             if self.mode_switch.value() == 0:  # 0 is for raw transcript
-                raw_formatted = recording[7] if recording[7] else recording[5].encode('utf-8')
+                raw_formatted = recording[7] if recording[7] else recording[5]
                 self.transcript_text.deserialize_text_document(raw_formatted)
             else:  # 1 is for processed text
-                processed_formatted = recording[8] if recording[8] else recording[6].encode('utf-8')
+                processed_formatted = recording[8] if recording[8] else recording[6]
                 self.transcript_text.deserialize_text_document(processed_formatted)
 
-            # Close the database connection
             conn.close()
 
-    def set_file_path(self, file_path):
-        self.file_path = file_path
+    def save_editor_state(self):
+        if self.mode_switch.value() == 0:  # Raw transcript mode
+            formatted_data = self.transcript_text.serialize_text_document()
+            field_to_update = 'raw_transcript_formatted'
+        else:  # Processed text mode
+            formatted_data = self.transcript_text.serialize_text_document()
+            field_to_update = 'processed_text_formatted'
+
+        # Save the binary data to the database
+        conn = create_connection("./database/database.sqlite")
+        update_recording(conn, self.current_selected_item.get_id(), **{field_to_update: formatted_data})
+        conn.close()
+        QMessageBox.information(self, "Success", "Transcription saved successfully.")
 
     def update_ui_state(self):
         # Enable or disable buttons based on the current state
@@ -270,43 +461,9 @@ class MainTranscriptionWidget(QWidget):
             conn = create_connection("./database/database.sqlite")
             recording_id = self.current_selected_item.get_id()
             recording = get_recording_by_id(conn, recording_id)
+            conn.close()
             return bool(recording and recording[5])  # Index 5 corresponds to the raw_transcript column
         return False
-    def load_config(self):
-        pass
-
-    def load_prompts(self):
-        try:
-            with open('preset_prompts.json', 'r') as file:
-                self.preset_prompts = json.load(file)
-                try:
-                    self.gpt_prompt_dropdown.clear()
-                    self.gpt_prompt_dropdown.addItems(self.preset_prompts.keys())
-                except AttributeError:
-                    pass
-        except FileNotFoundError:
-            print('No existing prompts file found. Using Defaults.')
-            self.preset_prompts = {
-                "Journal Entry Formatting": "Format this raw audio transcript into a clean, coherent journal entry, maintaining a first-person narrative style.",
-                "Meeting Minutes": "Convert this transcript into a structured format of meeting minutes, highlighting key points, decisions made, and action items.",
-                "Interview Summary": "Summarize this interview transcript, emphasizing the main questions, responses, and any significant insights or conclusions.",
-                "Lecture Notes": "Condense this lecture transcript into concise notes, outlining the main topics, subtopics, and key points discussed.",
-                "Podcast Highlights": "Extract key highlights and interesting moments from this podcast transcript, presenting them in a bullet-point format.",
-                "Dialogue Cleanup": "Edit this dialogue transcript to remove filler words, repeated phrases, and non-verbal cues, making it more readable.",
-                "Speech to Article": "Transform this speech transcript into a well-structured article, maintaining the speaker's key messages.",
-                "Q&A Format": "Organize this transcript into a clear question-and-answer format, ensuring each question and its corresponding answer are clearly presented.",
-                "Debate Summary": "Summarize this debate transcript, outlining the main points and arguments presented by each participant.",
-                "Technical Explanation": "Rewrite this technical discussion transcript into a simpler, more understandable format for a general audience.",
-                "Legal Testimony Review": "Condense this legal testimony transcript, focusing on the key statements and evidence presented.",
-                "Conference Session Summary": "Provide a concise summary of this conference session transcript, highlighting the main themes, discussions, and conclusions.",
-                "Educational Course Summary": "Summarize this educational course transcript into a study guide format, including headings, key concepts, and important explanations.",
-                "Youtube to Article": "Transform this raw transcript of a youtube video into a well-structured article, maintaining as much detail as possible. Do your best to replicate the speaker's voice and tone in your entry. Do not embelish by adding details not mentioned."
-            }
-    def load_recording(self, recording_id):
-        conn = create_connection("./database/database.sqlite")
-        recording = get_recording_by_id(conn, recording_id)
-        self.textEditor.deserialize_text_document(recording['raw_transcript_formatted'], self.textEditor.editor.document())
-        self.textEditor.deserialize_text_document(recording['processed_text_formatted'], self.textEditor.editor.document())
 
     def on_recording_item_selected(self, recording_item):
         try:
@@ -318,39 +475,25 @@ class MainTranscriptionWidget(QWidget):
             if recording:
                 self.id = recording[0]
                 self.filename = recording[1]
-                self.filepath = recording[2]
+                self.file_path = recording[2]
                 self.date_created = recording[3]
                 self.duration = recording[4]
 
-                # Check if formatted text is available and deserialize it; otherwise, fall back to raw text
                 if self.mode_switch.value() == 0:  # 0 is for raw transcript
-                    # Use formatted text if available, otherwise fall back to raw text, or clear if none
                     raw_formatted = recording[7] if recording[7] else recording[5]
                     self.transcript_text.deserialize_text_document(raw_formatted)
                 else:  # 1 is for processed text
-                    # Use formatted text if available, otherwise fall back to processed text, or clear if none
                     processed_formatted = recording[8] if recording[8] else recording[6]
                     self.transcript_text.deserialize_text_document(processed_formatted)
-
             else:
                 print("No recording found with the provided ID.")
-
         except Exception as e:
             print(f"An error occurred: {e}")
             traceback.print_exc()
         finally:
             if conn:
                 conn.close()
-    def save_editor_state(self):
-        if self.mode_switch.value() == 0:  # Raw transcript mode
-            formatted_data = self.transcript_text.serialize_text_document()
-            field_to_update = 'raw_transcript_formatted'
-        else:  # Processed text mode
-            formatted_data = self.transcript_text.serialize_text_document()
-            field_to_update = 'processed_text_formatted'
 
-        # Save the binary data to the database
-        conn = create_connection("./database/database.sqlite")
-        update_recording(conn, self.current_selected_item.get_id(), **{field_to_update: formatted_data})
-        QMessageBox.information(self, "Success", "saved successfully.")
-
+    def load_config(self):
+        # Load configuration if needed
+        pass

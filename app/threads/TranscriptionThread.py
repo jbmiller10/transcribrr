@@ -1,3 +1,7 @@
+import subprocess
+import json
+import os
+import whisper
 from PyQt6.QtCore import QThread, pyqtSignal
 import logging
 from transformers import AutoModelForSpeechSeq2Seq, AutoProcessor, pipeline
@@ -332,7 +336,7 @@ class TranscriptionThread(QThread):
     completed = pyqtSignal(str)
     error = pyqtSignal(str)
 
-    def __init__(self, file_path, transcription_quality, speaker_detection_enabled, hf_auth_key, *args, **kwargs):
+    def __init__(self, file_path, transcription_quality, speaker_detection_enabled ,hf_auth_key,  language='en', *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.file_path = file_path
         self.transcription_quality = transcription_quality
