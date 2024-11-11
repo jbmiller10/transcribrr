@@ -2,7 +2,7 @@
 
 Transcribrr is a desktop tool that turns audio into text and then refines the output using OpenAI's GPT models. It works with audio or video files on your computer, YouTube videos via a provided URL, or recordings made directly in the app. While functional, this is a personal project that I work on in my free time and very much a work in progress.
 
-![image](https://github.com/user-attachments/assets/041e4f4a-2739-46a7-bebd-fad6c86ae03a)
+<img width="1626" alt="image" src="https://github.com/user-attachments/assets/b8336779-a554-424b-97ff-53e617bf7823">
 
 
 ## Features
