@@ -40,13 +40,13 @@ class SettingsDialog(QDialog):
         # GPT Model Selection
         self.gpt_model_label = QLabel('GPT Model: (GPT-4-1106-preview strongly recommended due to token limits on other models)', self)
         self.gpt_model_dropdown = QComboBox(self)
-        self.gpt_model_dropdown.addItems(['gpt-4-turbo','gpt-4o', 'gpt-3.5-turbo', 'gpt-4','o1-preview'])
+        self.gpt_model_dropdown.addItems(['gpt-4o','gpt-4o-mini', 'gpt-4','o1-preview'])
 
         # Max Tokens
-        self.max_tokens_label = QLabel('Max Tokens (0-4096):', self)
+        self.max_tokens_label = QLabel('Max Tokens (0-16000):', self)
         self.max_tokens_spinbox = QSpinBox(self)
-        self.max_tokens_spinbox.setRange(0, 4096)
-        self.max_tokens_spinbox.setValue(4096)  # Default value or load from config
+        self.max_tokens_spinbox.setRange(0, 16000)
+        self.max_tokens_spinbox.setValue(16000)  # Default value or load from config
 
         # Temperature
         self.temperature_label = QLabel('Temperature (0.0-2.0):', self)
@@ -110,15 +110,15 @@ class SettingsDialog(QDialog):
             with open('config.json', 'r') as config_file:
                 config = json.load(config_file)
                 self.transcription_quality_dropdown.setCurrentText(config.get('transcription_quality', 'medium'))
-                self.gpt_model_dropdown.setCurrentText(config.get('gpt_model', 'gpt-4-1106-preview'))
-                self.max_tokens_spinbox.setValue(config.get('max_tokens', 4096))
+                self.gpt_model_dropdown.setCurrentText(config.get('gpt_model', 'gpt-4o'))
+                self.max_tokens_spinbox.setValue(config.get('max_tokens', 16000))
                 self.temperature_spinbox.setValue(config.get('temperature', 0.7))
                 self.speaker_detection_checkbox.setChecked(config.get('speaker_detection_enabled', True))
         except FileNotFoundError:
             # Set default values if config file doesn't exist
             self.transcription_quality_dropdown.setCurrentText('medium')
-            self.gpt_model_dropdown.setCurrentText('gpt-4-1106-preview')
-            self.max_tokens_spinbox.setValue(4096)
+            self.gpt_model_dropdown.setCurrentText('gpt-4o')
+            self.max_tokens_spinbox.setValue(16000)
             self.temperature_spinbox.setValue(0.7)
             self.speaker_detection_checkbox.setChecked(True)
 

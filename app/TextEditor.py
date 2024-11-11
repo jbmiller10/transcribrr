@@ -1,15 +1,13 @@
 import sys
-
 from PyQt6.QtWidgets import (
-    QApplication, QMainWindow, QTextEdit, QToolBar, QColorDialog, QSpacerItem, QWidget,
+    QApplication, QMainWindow, QTextEdit, QToolBar, QColorDialog, QWidget,
     QWidgetAction, QFontComboBox, QComboBox, QSizePolicy, QLabel, QToolButton, QMenu, QFileDialog,
-    QMessageBox
+    QMessageBox,QPlainTextEdit, QPushButton
 )
-from PyQt6.QtGui import QIcon, QFont, QColor, QTextCharFormat, QTextListFormat, QActionGroup, QTextCursor, QAction, QMovie
+from PyQt6.QtGui import QIcon, QFont, QColor, QTextListFormat, QActionGroup, QTextCursor, QAction, QMovie, QTextCharFormat
 from PyQt6.QtCore import Qt, QSize, pyqtSignal
-import html2text
 import docx
-from PyPDF2 import PdfFileWriter, PdfFileReader
+from PyPDF2 import PdfFileWriter
 from PyQt6.QtPrintSupport import QPrinter
 from bs4 import BeautifulSoup
 import logging
@@ -22,6 +20,7 @@ class TextEditor(QMainWindow):
     # Define custom signals
     transcription_requested = pyqtSignal()
     gpt4_processing_requested = pyqtSignal()
+    smart_format_requested = pyqtSignal(str)  # Modified to accept text to format
     save_requested = pyqtSignal()
 
     def __init__(self):
@@ -154,6 +153,9 @@ class TextEditor(QMainWindow):
         self.toolbar.addAction(self.gpt_spinner_action)
         self.gpt_spinner_action.setVisible(False)
 
+        # Smart Format button
+        self.add_toolbar_action('smart_format', './icons/smart_format.svg', self.smart_format_text, 'Smart Format', checkable=False)
+
     def toggle_gpt_spinner(self):
         if self.gpt4_button.isVisible():
             self.gpt_spinner_action.setVisible(True)
@@ -180,7 +182,6 @@ class TextEditor(QMainWindow):
         if callback:
             # Ensure that callback is callable
             if isinstance(callback, str):
-                # Remove this condition since we're not using string callbacks
                 pass
             else:
                 action.triggered.connect(callback)
@@ -216,24 +217,6 @@ class TextEditor(QMainWindow):
     def strikethrough_text(self):
         fmt = self.editor.currentCharFormat()
         fmt.setFontStrikeOut(not fmt.fontStrikeOut())
-        self.editor.mergeCurrentCharFormat(fmt)
-
-    def subscript_text(self):
-        fmt = self.editor.currentCharFormat()
-        existing = fmt.verticalAlignment()
-        if existing == QTextCharFormat.VerticalAlignment.SubScript:
-            fmt.setVerticalAlignment(QTextCharFormat.VerticalAlignment.AlignNormal)
-        else:
-            fmt.setVerticalAlignment(QTextCharFormat.VerticalAlignment.SubScript)
-        self.editor.mergeCurrentCharFormat(fmt)
-
-    def superscript_text(self):
-        fmt = self.editor.currentCharFormat()
-        existing = fmt.verticalAlignment()
-        if existing == QTextCharFormat.VerticalAlignment.SuperScript:
-            fmt.setVerticalAlignment(QTextCharFormat.VerticalAlignment.AlignNormal)
-        else:
-            fmt.setVerticalAlignment(QTextCharFormat.VerticalAlignment.SuperScript)
         self.editor.mergeCurrentCharFormat(fmt)
 
     def highlight_text(self):
@@ -331,7 +314,6 @@ class TextEditor(QMainWindow):
             elif element.name == 'sup':
                 run = doc.paragraphs[-1].add_run(element.get_text())
                 run.font.superscript = True
-            # Extend this method to handle more HTML tags as needed
 
     def export_to_text(self):
         file_path, _ = QFileDialog.getSaveFileName(self, "Export to Plain Text", "", "Text Files (*.txt)")
@@ -355,12 +337,8 @@ class TextEditor(QMainWindow):
             self.editor.clear()
 
     def save_editor_state(self):
-        """
-        Saves the current state of the text editor to the database.
-        It differentiates between raw transcript mode and processed text mode.
-        """
+        # Save the current state of the text editor to the database
         # Assuming 'mode_switch' and 'current_selected_item' are defined elsewhere
-        # Update these references as per your MainTranscriptionWidget implementation
         if hasattr(self, 'mode_switch') and self.mode_switch.value() == 0:  # Raw transcript mode
             formatted_data = self.serialize_text_document()
             field_to_update = 'raw_transcript_formatted'
@@ -368,11 +346,9 @@ class TextEditor(QMainWindow):
             formatted_data = self.serialize_text_document()
             field_to_update = 'processed_text_formatted'
 
-        # Save the binary data to the database
-        # Assuming 'create_connection' and 'update_recording' are defined in app/database.py
         try:
             conn = create_connection("./database/database.sqlite")
-            recording_id = self.current_selected_item.get_id()  # Ensure this is correctly referenced
+            recording_id = self.current_selected_item.get_id()
             update_recording(conn, recording_id, **{field_to_update: formatted_data})
             conn.close()
             QMessageBox.information(self, "Success", "Transcription saved successfully.")
@@ -386,34 +362,6 @@ class TextEditor(QMainWindow):
     def start_transcription(self):
         self.transcription_requested.emit()
 
-    def toggle_gpt_spinner(self):
-        if self.gpt4_button.isVisible():
-            self.gpt_spinner_action.setVisible(True)
-            self.gpt_spinner_movie.start()
-            self.gpt4_button.setVisible(False)
-        else:
-            self.gpt_spinner_movie.stop()
-            self.gpt_spinner_action.setVisible(False)
-            self.gpt4_button.setVisible(True)
-
-    def toggle_transcription_spinner(self):
-        if self.transcription_button.isVisible():
-            self.transcription_spinner_action.setVisible(True)
-            self.transcription_spinner_movie.start()
-            self.transcription_button.setVisible(False)
-        else:
-            self.transcription_spinner_movie.stop()
-            self.transcription_spinner_action.setVisible(False)
-            self.transcription_button.setVisible(True)
-
-
-if __name__ == "__main__":
-    from app.database import create_connection, create_db, create_recording, update_recording
-
-    def main():
-        app = QApplication(sys.argv)
-        textEditor = TextEditor()
-        textEditor.show()
-        sys.exit(app.exec())
-
-    main()
+    def smart_format_text(self):
+        # Emit the smart_format_requested signal with the current text as argument
+        self.smart_format_requested.emit(self.editor.toPlainText())

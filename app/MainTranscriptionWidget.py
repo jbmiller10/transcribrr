@@ -1,7 +1,7 @@
 import json
 from PyQt6.QtWidgets import (
-    QWidget, QVBoxLayout, QPushButton, QMessageBox, QComboBox, QHBoxLayout, QLabel,
-    QSizePolicy, QTextEdit, QDoubleSpinBox, QSpinBox, QInputDialog, QSplitter
+    QWidget, QVBoxLayout, QMessageBox, QComboBox, QHBoxLayout, QLabel,
+    QSizePolicy, QTextEdit, QDoubleSpinBox, QSpinBox, QInputDialog, QSplitter, QPushButton
 )
 from PyQt6.QtGui import QIcon
 from PyQt6.QtCore import pyqtSignal, QSize, Qt
@@ -13,6 +13,7 @@ from app.ToggleSwitch import ToggleSwitch
 import traceback
 import keyring
 from app.database import create_connection, get_recording_by_id, update_recording
+
 
 class MainTranscriptionWidget(QWidget):
     transcriptionStarted = pyqtSignal()
@@ -101,6 +102,9 @@ class MainTranscriptionWidget(QWidget):
         self.transcript_text.save_requested.connect(self.save_editor_state)
         self.gpt_prompt_dropdown.currentIndexChanged.connect(self.on_prompt_selection_changed)
 
+        # Connect smart format signal
+        self.transcript_text.smart_format_requested.connect(self.start_smart_format_processing)
+
         self.file_path = None
         self.is_transcribing = False
         self.is_processing_gpt4 = False
@@ -142,7 +146,7 @@ class MainTranscriptionWidget(QWidget):
             with open('config.json', 'r') as config_file:
                 config = json.load(config_file)
         except FileNotFoundError:
-            config = {'temperature': 1.0, 'max_tokens': 4096}
+            config = {'temperature': 1.0, 'max_tokens': 16000}
 
         # Temperature control
         self.temperature_label = QLabel("Temperature:")
@@ -154,8 +158,8 @@ class MainTranscriptionWidget(QWidget):
         # Max tokens control
         self.max_tokens_label = QLabel("Max Tokens:")
         self.max_tokens_spinbox = QSpinBox()
-        self.max_tokens_spinbox.setRange(1, 4096)
-        self.max_tokens_spinbox.setValue(config.get('max_tokens', 4096))
+        self.max_tokens_spinbox.setRange(1, 16000)
+        self.max_tokens_spinbox.setValue(config.get('max_tokens', 16000))
 
         # GPT parameter layout
         self.gpt_parameter_layout = QHBoxLayout()
@@ -173,7 +177,6 @@ class MainTranscriptionWidget(QWidget):
             self.edit_prompt_button.setVisible(False)
             self.custom_prompt_input.clear()
             self.custom_prompt_save_button.setText("Save as Template")
-            # Ensure the save button is connected to the correct method
             self.custom_prompt_save_button.clicked.disconnect()
             self.custom_prompt_save_button.clicked.connect(self.save_custom_prompt_as_template)
         else:
@@ -219,7 +222,6 @@ class MainTranscriptionWidget(QWidget):
             # Hide the custom prompt input area
             self.hide_custom_prompt_input()
             self.is_editing_existing_prompt = False
-            # Ensure the save button is connected to the correct method
             self.custom_prompt_save_button.clicked.disconnect()
             self.custom_prompt_save_button.clicked.connect(self.save_custom_prompt_as_template)
 
@@ -241,7 +243,6 @@ class MainTranscriptionWidget(QWidget):
                 self.show_custom_prompt_input()
                 self.edit_prompt_button.setText("Cancel Edit")
                 self.custom_prompt_save_button.setText("Save")
-                # Disconnect and connect save button to save_edited_prompt
                 self.custom_prompt_save_button.clicked.disconnect()
                 self.custom_prompt_save_button.clicked.connect(self.save_edited_prompt)
 
@@ -257,7 +258,6 @@ class MainTranscriptionWidget(QWidget):
         self.hide_custom_prompt_input()
         self.edit_prompt_button.setText("Edit Prompt")
         self.is_editing_existing_prompt = False
-        # Reconnect the save button to default action
         self.custom_prompt_save_button.clicked.disconnect()
         self.custom_prompt_save_button.clicked.connect(self.save_custom_prompt_as_template)
         # Reload prompts
@@ -277,13 +277,10 @@ class MainTranscriptionWidget(QWidget):
         except FileNotFoundError:
             print('No existing prompts file found. Using Defaults.')
             self.preset_prompts = {
-                # Default prompts
                 "Journal Entry Formatting": "Format this raw audio transcript into a clean, coherent journal entry, maintaining a first-person narrative style.",
                 "Meeting Minutes": "Convert this transcript into a structured format of meeting minutes, highlighting key points, decisions made, and action items.",
                 "Interview Summary": "Summarize this interview transcript, emphasizing the main questions, responses, and any significant insights or conclusions.",
-                # Add other default prompts as needed
             }
-        # Clear and repopulate the dropdown
         self.gpt_prompt_dropdown.blockSignals(True)
         self.gpt_prompt_dropdown.clear()
         self.gpt_prompt_dropdown.addItems(self.preset_prompts.keys())
@@ -318,7 +315,6 @@ class MainTranscriptionWidget(QWidget):
         recording_id = self.current_selected_item.get_id()
         self.mode_switch.setValue(0)
         self.transcript_text.editor.setPlainText(transcript)
-        # Save the raw transcript to the database
         conn = create_connection("./database/database.sqlite")
         update_recording(conn, recording_id, raw_transcript=transcript)
         conn.close()
@@ -371,7 +367,6 @@ class MainTranscriptionWidget(QWidget):
         temperature = self.temperature_spinbox.value()
         max_tokens = self.max_tokens_spinbox.value()
 
-        # Start the GPT-4 processing thread
         self.gpt4_processing_thread = GPT4ProcessingThread(
             transcript=raw_transcript,
             prompt_instructions=prompt_instructions,
@@ -391,16 +386,19 @@ class MainTranscriptionWidget(QWidget):
     def on_gpt4_processing_completed(self, processed_text):
         if self.current_selected_item:
             self.mode_switch.setValue(1)
-            self.transcript_text.editor.setPlainText(processed_text)
+            if "<" in processed_text and ">" in processed_text:
+                self.transcript_text.editor.setHtml(processed_text)
+                formatted_field = 'processed_text_formatted'
+            else:
+                self.transcript_text.editor.setPlainText(processed_text)
+                formatted_field = 'processed_text'
             recording_id = self.current_selected_item.get_id()
             conn = create_connection("./database/database.sqlite")
-            update_recording(conn, recording_id, processed_text=processed_text)
+            update_recording(conn, recording_id, **{formatted_field: processed_text})
             conn.close()
             self.is_transcribing = False
+            self.transcript_text.toggle_gpt_spinner()
             self.update_ui_state()
-        self.is_processing_gpt4 = False
-        self.transcript_text.toggle_gpt_spinner()
-        self.update_ui_state()
 
     def on_gpt4_processing_progress(self, progress_message):
         self.update_progress.emit(progress_message)
@@ -443,7 +441,6 @@ class MainTranscriptionWidget(QWidget):
             formatted_data = self.transcript_text.serialize_text_document()
             field_to_update = 'processed_text_formatted'
 
-        # Save the binary data to the database
         conn = create_connection("./database/database.sqlite")
         update_recording(conn, self.current_selected_item.get_id(), **{field_to_update: formatted_data})
         conn.close()
@@ -462,7 +459,7 @@ class MainTranscriptionWidget(QWidget):
             recording_id = self.current_selected_item.get_id()
             recording = get_recording_by_id(conn, recording_id)
             conn.close()
-            return bool(recording and recording[5])  # Index 5 corresponds to the raw_transcript column
+            return bool(recording and recording[5])
         return False
 
     def on_recording_item_selected(self, recording_item):
@@ -497,3 +494,52 @@ class MainTranscriptionWidget(QWidget):
     def load_config(self):
         # Load configuration if needed
         pass
+
+    def start_smart_format_processing(self, text_to_format):
+        if not text_to_format.strip():
+            QMessageBox.warning(self, 'Empty Text', 'There is no text to format.')
+            return
+
+        prompt_instructions = """
+        Please intelligently format the following text in HTML based on its context. 
+        Do not change any of the text - just apply formatting as needed. 
+        Do not use a code block when returning the html, just provide the html.
+        """
+
+        with open('config.json', 'r') as config_file:
+            config = json.load(config_file)
+
+        openai_api_key = keyring.get_password("transcription_application", "OPENAI_API_KEY")
+        temperature = self.temperature_spinbox.value()
+        max_tokens = self.max_tokens_spinbox.value()
+
+        # Store the thread as an instance attribute
+        self.smart_format_thread = GPT4ProcessingThread(
+            transcript=text_to_format,
+            prompt_instructions=prompt_instructions,
+            gpt_model='gpt-4o-mini',
+            max_tokens=max_tokens,
+            temperature=temperature,
+            openai_api_key=openai_api_key
+        )
+        self.smart_format_thread.completed.connect(self.on_smart_format_completed)
+        self.smart_format_thread.update_progress.connect(self.update_progress.emit)
+        self.smart_format_thread.error.connect(self.on_gpt4_processing_error)
+        self.smart_format_thread.start()
+        self.is_processing_gpt4 = True
+        self.transcript_text.toggle_gpt_spinner()
+        self.update_ui_state()
+
+    def on_smart_format_completed(self, formatted_html):
+        if formatted_html:
+            self.transcript_text.toggle_gpt_spinner()
+            self.transcript_text.editor.setHtml(formatted_html)
+            recording_id = self.current_selected_item.get_id()
+            conn = create_connection("./database/database.sqlite")
+            # Store the formatted HTML in 'processed_text_formatted'
+            update_recording(conn, recording_id, processed_text_formatted=formatted_html)
+            conn.close()
+        else:
+            QMessageBox.warning(self, 'Formatting Failed', 'Failed to format the text.')
+        self.is_processing_gpt4 = False
+        self.update_ui_state()
