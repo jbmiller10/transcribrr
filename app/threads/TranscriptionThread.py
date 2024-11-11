@@ -1,7 +1,6 @@
 import subprocess
 import json
 import os
-import whisper
 from PyQt6.QtCore import QThread, pyqtSignal
 import logging
 from transformers import AutoModelForSpeechSeq2Seq, AutoProcessor, pipeline
