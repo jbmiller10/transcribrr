@@ -323,7 +323,7 @@ class SpeechToTextPipeline:
             tokenizer=processor.tokenizer,
             feature_extractor=processor.feature_extractor,
             model_kwargs={"use_flash_attention_2": True},
-            #generate_kwargs={"language": language},
+            generate_kwargs={"language": 'english'},
         )
         logging.info("Transcribing audio...")
         result = pipe(audio_path)
