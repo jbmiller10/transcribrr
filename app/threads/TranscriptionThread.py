@@ -1,8 +1,4 @@
-import subprocess
-import json
-import os
 from PyQt6.QtCore import QThread, pyqtSignal
-import logging
 from transformers import AutoModelForSpeechSeq2Seq, AutoProcessor, pipeline
 from typing import List, Optional, Union
 import numpy as np
@@ -11,8 +7,8 @@ import torch
 from pyannote.audio import Pipeline
 from torchaudio import functional as F
 from transformers.pipelines.audio_utils import ffmpeg_read
-import speechbrain as sb
 import time
+import logging
 
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 
@@ -128,17 +124,18 @@ class ASRDiarizationPipeline:
                 'label': label
             })
 
-        # diarizer output may contain consecutive segments from the same speaker (e.g. {(0 -> 1, speaker_1), (1 -> 1.5, speaker_1), ...})
-        # we combine these segments to give overall timestamps for each speaker's turn (e.g. {(0 -> 1.5, speaker_1), ...})
+        # Combine consecutive segments with the same speaker
         new_segments = []
+        if not segments:
+            return new_segments  # No segments found
         prev_segment = cur_segment = segments[0]
 
         for i in range(1, len(segments)):
             cur_segment = segments[i]
 
-            # check if we have changed speaker ("label")
-            if cur_segment["label"] != prev_segment["label"] and i < len(segments):
-                # add the start/end times for the super-segment to the new list
+            # Check if the speaker has changed
+            if cur_segment["label"] != prev_segment["label"]:
+                # Add the previous segment
                 new_segments.append({
                     "segment": {
                         "start": prev_segment["segment"]["start"],
@@ -146,9 +143,9 @@ class ASRDiarizationPipeline:
                     },
                     "speaker": prev_segment["label"],
                 })
-                prev_segment = segments[i]
+                prev_segment = cur_segment
 
-        # add the last segment(s) if there was no speaker change
+        # Add the last segment
         new_segments.append({
             "segment": {
                 "start": prev_segment["segment"]["start"],
@@ -157,6 +154,7 @@ class ASRDiarizationPipeline:
             "speaker": prev_segment["label"],
         })
 
+        # Perform ASR
         asr_out = self.asr_pipeline(
             {
                 "array": inputs,
@@ -167,15 +165,17 @@ class ASRDiarizationPipeline:
         )
         transcript = asr_out["chunks"]
 
-        # get the end timestamps for each chunk from the ASR output
+        # Get the end timestamps for each chunk from the ASR output
         end_timestamps = np.array([chunk["timestamp"][-1] for chunk in transcript])
         segmented_preds = []
 
-        # align the diarizer timestamps and the ASR timestamps
+        # Align the diarizer timestamps and the ASR timestamps
         for segment in new_segments:
-            # get the diarizer end timestamp
+            # Get the diarizer end timestamp
             end_time = segment["segment"]["end"]
-            # find the ASR end timestamp that is closest to the diarizer's end timestamp and cut the transcript to here
+            # Find the ASR end timestamp that is closest to the diarizer's end timestamp and cut the transcript to here
+            if len(end_timestamps) == 0:
+                break  # No more transcripts to process
             upto_idx = np.argmin(np.abs(end_timestamps - end_time))
 
             if group_by_speaker:
@@ -190,7 +190,7 @@ class ASRDiarizationPipeline:
                 for i in range(upto_idx + 1):
                     segmented_preds.append({"speaker": segment["speaker"], **transcript[i]})
 
-            # crop the transcripts and timestamp lists according to the latest timestamp (for faster argmin)
+            # Crop the transcripts and timestamp lists according to the latest timestamp (for faster argmin)
             transcript = transcript[upto_idx + 1:]
             end_timestamps = end_timestamps[upto_idx + 1:]
 
@@ -240,6 +240,7 @@ class ASRDiarizationPipeline:
 
         return inputs, diarizer_inputs
 
+
 def format_speech_to_dialogue(speech_text):
     """
     Formats the given text into a dialogue format.
@@ -251,15 +252,21 @@ def format_speech_to_dialogue(speech_text):
         str: Formatted text in dialogue format.
     """
     # Parse the given text appropriately
-    dialog_list = eval(str(speech_text))
+    try:
+        dialog_list = eval(str(speech_text))
+    except Exception as e:
+        logging.error(f"Failed to parse speech text: {e}")
+        return speech_text  # Return raw text if parsing fails
+
     dialog_text = ""
 
     for i, turn in enumerate(dialog_list):
         speaker = f"Speaker {i % 2 + 1}"
-        text = turn['text']
+        text = turn.get('text', '')
         dialog_text += f"{speaker}: {text}\n"
 
     return dialog_text
+
 
 class SpeechToTextPipeline:
     """Class for converting audio to text using a pre-trained speech recognition model."""
@@ -308,7 +315,7 @@ class SpeechToTextPipeline:
             model_id (str): Identifier of the pre-trained model to be used for transcription.
 
         Returns:
-            str: Transcribed text from the audio.
+            dict: Contains the transcribed text and other relevant information.
         """
         processor = AutoProcessor.from_pretrained(model_id)
         pipe = pipeline(
@@ -318,12 +325,12 @@ class SpeechToTextPipeline:
             chunk_length_s=15,
             max_new_tokens=128,
             batch_size=8,
-            return_timestamps=False,
+            return_timestamps=True,  # Changed to True for better integration with diarization
             device=self.device,
             tokenizer=processor.tokenizer,
             feature_extractor=processor.feature_extractor,
             model_kwargs={"use_flash_attention_2": True},
-            generate_kwargs={"language": 'english'},
+            generate_kwargs={"language": language},
         )
         logging.info("Transcribing audio...")
         result = pipe(audio_path)
@@ -335,12 +342,13 @@ class TranscriptionThread(QThread):
     completed = pyqtSignal(str)
     error = pyqtSignal(str)
 
-    def __init__(self, file_path, transcription_quality, speaker_detection_enabled ,hf_auth_key,  language='en', *args, **kwargs):
+    def __init__(self, file_path, transcription_quality, speaker_detection_enabled, hf_auth_key, language='English', *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.file_path = file_path
         self.transcription_quality = transcription_quality
         self.speaker_detection_enabled = speaker_detection_enabled
         self.hf_auth_key = hf_auth_key
+        self.language = language  # Add language attribute
 
     def run(self):
         try:
@@ -350,7 +358,7 @@ class TranscriptionThread(QThread):
 
             model_id = self.transcription_quality
             pipeline = SpeechToTextPipeline(model_id=model_id)
-            result = pipeline(self.file_path,model_id,"english")
+            result = pipeline(self.file_path, model_id, language=self.language)  # Pass language here
             transcript = result
 
             if not self.speaker_detection_enabled:
@@ -360,7 +368,7 @@ class TranscriptionThread(QThread):
                 self.completed.emit(transcript['text'])
                 return
 
-            print(self.hf_auth_key)
+            logging.info("Initializing diarization pipeline...")
             dir_pipeline = ASRDiarizationPipeline.from_pretrained(
                 asr_model=model_id,
                 diarizer_model="pyannote/speaker-diarization",
@@ -368,6 +376,7 @@ class TranscriptionThread(QThread):
                 chunk_length_s=15,
                 device=device,
             )
+            logging.info("Running diarization pipeline...")
             output_text = dir_pipeline(self.file_path, num_speakers=2, min_speaker=1, max_speaker=6)
             dialogue = format_speech_to_dialogue(output_text)
             end_time = time.time()

@@ -1,6 +1,8 @@
 import sqlite3
 from sqlite3 import Error
 import os
+import json
+
 def create_connection(db_file):
     conn = None
     try:
@@ -17,6 +19,19 @@ def create_table(conn, create_table_sql):
         c.execute(create_table_sql)
     except Error as e:
         print(e)
+
+def create_config_file():
+    config = {
+        "transcription_quality": "openai/whisper-large-v3",
+        "gpt_model": "gpt-4-1106-preview",
+        "max_tokens": 4096,
+        "temperature": 1.0,
+        "speaker_detection_enabled": False,
+        "transcription_language": "english"
+    }
+    with open('config.json', 'w') as config_file:
+        json.dump(config, config_file, indent=4)
+
 def create_recording(conn, recording):
     """
     Create a new recording into the recordings table
@@ -43,6 +58,7 @@ def get_all_recordings(conn):
     rows = cur.fetchall()
 
     return rows
+
 def get_recording_by_id(conn, id):
     """Get a single recording by its ID."""
     cur = conn.cursor()
@@ -58,6 +74,8 @@ def update_recording(conn, recording_id, **kwargs):
     :param kwargs: Dictionary of column names and their new values
     :return: None
     """
+    if not kwargs:
+        return  # Nothing to update
     parameters = [f"{key} = ?" for key in kwargs]
     values = list(kwargs.values())
     values.append(recording_id)
@@ -80,6 +98,9 @@ def delete_recording(conn, id):
 
 def create_db():
     database = "./database/database.sqlite"
+    config_path = 'config.json'
+    if not os.path.exists('./database'):
+        os.makedirs('./database')
     if os.path.exists(database):
         pass
     else:
@@ -99,8 +120,10 @@ def create_db():
         conn = create_connection(database)
         if conn is not None:
             create_table(conn, sql_create_recordings_table)
+            conn.close()
         else:
-            print("Errr.")
+            print("Error! Cannot create the database connection.")
 
-if __name__ == '__main__':
-    create_db()
+    # Create config file if it doesn't exist
+    if not os.path.exists(config_path):
+        create_config_file()
