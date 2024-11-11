@@ -279,9 +279,14 @@ class MainTranscriptionWidget(QWidget):
         except FileNotFoundError:
             print('No existing prompts file found. Using Defaults.')
             self.preset_prompts = {
+                "Youtube to article": """Transform this raw transcript of a youtube video into a well-structured article, maintaining as much detail as possible. 
+                                      Do not embelish by adding details not mentioned. 
+                                      It is extremely important you keep all details. 
+                                      Your output should come close to matching the number of words of the original transcript.""",
+                "Translate": "Translate this raw audio transcript into English. You may fix minor transcription errors based on context.",
                 "Journal Entry Formatting": "Format this raw audio transcript into a clean, coherent journal entry, maintaining a first-person narrative style.",
                 "Meeting Minutes": "Convert this transcript into a structured format of meeting minutes, highlighting key points, decisions made, and action items.",
-                "Interview Summary": "Summarize this interview transcript, emphasizing the main questions, responses, and any significant insights or conclusions.",
+                "Stream of Consciouness": "Organize the ideas in this raw transcript of a stream of consciouness brainstorm in order to capture all key points in a comprehensive and thorough manner.",
             }
         self.gpt_prompt_dropdown.blockSignals(True)
         self.gpt_prompt_dropdown.clear()
