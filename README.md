@@ -69,14 +69,9 @@ python main.py
 
 ## Configuration
 
-Before usage, configure the application with your Hugging Face Access Token (optional, required for speaker detection/diarization) and OpenAI API keys through the 'Settings' menu.
+Before usage, configure your OpenAI API keys through the 'Settings' menu.
 ll
-You can also adjust transcription quality, GPT model selection, max tokens, temperature, speaker detection settings, and your preset GPT prompts.
-
-### Speaker Detection/Diarization
-
-To **enable Speaker Detection**, you will need a Huggingface access token (generate [here](https://huggingface.co/settings/tokens)) that you can set in the settings menu. Additionally, you will need to accept the usage terms for the following models while logged into your huggingface account: [Segmentation](https://huggingface.co/pyannote/segmentation) and [Speaker-Diarization](https://huggingface.co/pyannote/speaker-diarization).
-
+You can also adjust transcription quality, GPT model selection, max tokens, temperature, and your preset GPT prompts.
 
 ## How to Use
 
