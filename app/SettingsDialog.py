@@ -40,7 +40,7 @@ class SettingsDialog(QDialog):
         # GPT Model Selection
         self.gpt_model_label = QLabel('GPT Model: (GPT-4-1106-preview strongly recommended due to token limits on other models)', self)
         self.gpt_model_dropdown = QComboBox(self)
-        self.gpt_model_dropdown.addItems(['gpt-4-turbo','gpt-4-turbo-preview','gpt-4-1106-preview', 'gpt-3.5-turbo', 'gpt-4'])
+        self.gpt_model_dropdown.addItems(['gpt-4-turbo','gpt-4o', 'gpt-3.5-turbo', 'gpt-4','o1-preview'])
 
         # Max Tokens
         self.max_tokens_label = QLabel('Max Tokens (0-4096):', self)

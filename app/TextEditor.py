@@ -1,15 +1,25 @@
 import sys
 
 from PyQt6.QtWidgets import (
-    QApplication, QMainWindow, QTextEdit, QToolBar, QColorDialog, QSpacerItem, QWidget,QWidgetAction,
-    QFontDialog, QFontComboBox, QComboBox, QSizePolicy, QLabel
+    QApplication, QMainWindow, QTextEdit, QToolBar, QColorDialog, QSpacerItem, QWidget,
+    QWidgetAction, QFontComboBox, QComboBox, QSizePolicy, QLabel, QToolButton, QMenu, QFileDialog,
+    QMessageBox
 )
-from PyQt6.QtGui import QIcon, QFont, QColor, QTextListFormat, QAction, QActionGroup,QTextCursor,QMovie
-from PyQt6.QtCore import Qt, QSize, pyqtSignal,QBuffer,QIODevice,QDataStream
-import markdown2
+from PyQt6.QtGui import QIcon, QFont, QColor, QTextCharFormat, QTextListFormat, QActionGroup, QTextCursor, QAction, QMovie
+from PyQt6.QtCore import Qt, QSize, pyqtSignal
+import html2text
+import docx
+from PyPDF2 import PdfFileWriter, PdfFileReader
+from PyQt6.QtPrintSupport import QPrinter
+from bs4 import BeautifulSoup
 import logging
 
+# Configure logging
+logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
+
+
 class TextEditor(QMainWindow):
+    # Define custom signals
     transcription_requested = pyqtSignal()
     gpt4_processing_requested = pyqtSignal()
     save_requested = pyqtSignal()
@@ -21,6 +31,7 @@ class TextEditor(QMainWindow):
         self.setCentralWidget(self.editor)
         self._toolbar_actions = {}
         self.create_toolbar()
+        self.is_markdown_mode = False  # Track current mode (removed, but kept false for completeness)
 
     def create_toolbar(self):
         self.toolbar = QToolBar("Edit")
@@ -28,11 +39,13 @@ class TextEditor(QMainWindow):
         self.toolbar.setIconSize(QSize(20, 20))
         self.addToolBar(self.toolbar)
 
+        # Font family selector
         self.font_family_combobox = QFontComboBox()
         self.font_family_combobox.setSizePolicy(QSizePolicy.Policy.Minimum, QSizePolicy.Policy.Minimum)
         self.font_family_combobox.currentFontChanged.connect(self.font_family_changed)
         self.toolbar.addWidget(self.font_family_combobox)
 
+        # Font size selector
         self.font_size_combobox = QComboBox()
         self.font_size_combobox.addItems(['8', '9', '10', '11', '12', '14', '16', '18', '20', '22', '24', '26', '28', '36', '48', '72'])
         self.font_size_combobox.setSizePolicy(QSizePolicy.Policy.Minimum, QSizePolicy.Policy.Minimum)
@@ -40,38 +53,73 @@ class TextEditor(QMainWindow):
         self.font_size_combobox.currentTextChanged.connect(self.font_size_changed)
         self.toolbar.addWidget(self.font_size_combobox)
 
-        self.add_toolbar_action('bold', './icons/TextEditor/bold.svg', self.bold_text, 'Bold (Ctrl+B)', True)
-        self.add_toolbar_action('italic', './icons/TextEditor/italic.svg', self.italic_text, 'Italic (Ctrl+I)', True)
-        self.add_toolbar_action('underline', './icons/TextEditor/underline.svg', self.underline_text, 'Underline (Ctrl+U)', True)
+        # Bold button
+        self.add_toolbar_action('bold', './icons/TextEditor/bold.svg', self.bold_text, 'Bold (Ctrl+B)', checkable=True)
+        # Italic button
+        self.add_toolbar_action('italic', './icons/TextEditor/italic.svg', self.italic_text, 'Italic (Ctrl+I)', checkable=True)
+        # Underline button
+        self.add_toolbar_action('underline', './icons/TextEditor/underline.svg', self.underline_text, 'Underline (Ctrl+U)', checkable=True)
+
+        # Strikethrough button
+        self.add_toolbar_action('strikethrough', './icons/TextEditor/strikethrough.svg', self.strikethrough_text,
+                                'Strikethrough', checkable=True)
+        # Highlight button
+        self.add_toolbar_action('highlight', './icons/TextEditor/highlight.svg', self.highlight_text,
+                                'Highlight Text')
+
+        # Font color button
         self.add_toolbar_action('font_color', './icons/TextEditor/font_color.svg', self.font_color, 'Font Color')
 
+        # Alignment actions
         alignment_group = QActionGroup(self)
-        self.add_toolbar_action('align_left', './icons/TextEditor/align_left.svg', lambda: self.set_alignment(Qt.AlignmentFlag.AlignLeft), 'Align Left (Ctrl+L)', True)
-        self.add_toolbar_action('align_center', './icons/TextEditor/align_center.svg', lambda: self.set_alignment(Qt.AlignmentFlag.AlignCenter), 'Align Center (Ctrl+E)', True)
-        self.add_toolbar_action('align_right', './icons/TextEditor/align_right.svg', lambda: self.set_alignment(Qt.AlignmentFlag.AlignRight), 'Align Right (Ctrl+R)', True)
+        self.add_toolbar_action('align_left', './icons/TextEditor/align_left.svg',
+                                lambda: self.set_alignment(Qt.AlignmentFlag.AlignLeft), 'Align Left (Ctrl+L)', checkable=True)
+        self.add_toolbar_action('align_center', './icons/TextEditor/align_center.svg',
+                                lambda: self.set_alignment(Qt.AlignmentFlag.AlignCenter), 'Align Center (Ctrl+E)', checkable=True)
+        self.add_toolbar_action('align_right', './icons/TextEditor/align_right.svg',
+                                lambda: self.set_alignment(Qt.AlignmentFlag.AlignRight), 'Align Right (Ctrl+R)', checkable=True)
+        self.add_toolbar_action('justify', './icons/TextEditor/justify.svg',
+                                lambda: self.set_alignment(Qt.AlignmentFlag.AlignJustify), 'Justify Text', checkable=True)
 
-        for alignment_action in ['align_left', 'align_center', 'align_right']:
-            action = self._toolbar_actions[alignment_action]
+        for action_name in ['align_left', 'align_center', 'align_right', 'justify']:
+            action = self._toolbar_actions[action_name]
             alignment_group.addAction(action)
 
+        # List formatting actions
         self.add_toolbar_action('bullet_list', './icons/TextEditor/bullet.svg', self.bullet_list, 'Bullet List')
         self.add_toolbar_action('numbered_list', './icons/TextEditor/numbered.svg', self.numbered_list, 'Numbered List')
-
         self.add_toolbar_action('increase_indent', './icons/TextEditor/increase_indent.svg', self.increase_indent, 'Increase Indent')
         self.add_toolbar_action('decrease_indent', './icons/TextEditor/decrease_indent.svg', self.decrease_indent, 'Decrease Indent')
 
-        self.add_toolbar_action(
-            'save',
-            './icons/save.svg',
-            self.save_requested,
-            'Save',
-            checkable=False
-        )
+        # Export menu
+        self.export_menu = QMenu()
+        export_pdf_action = QAction('Export to PDF', self)
+        export_pdf_action.triggered.connect(self.export_to_pdf)
+        self.export_menu.addAction(export_pdf_action)
 
-        spacer = QWidget()  # A simple widget that acts as a spacer
+        export_word_action = QAction('Export to Word', self)
+        export_word_action.triggered.connect(self.export_to_word)
+        self.export_menu.addAction(export_word_action)
+
+        export_text_action = QAction('Export to Plain Text', self)
+        export_text_action.triggered.connect(self.export_to_text)
+        self.export_menu.addAction(export_text_action)
+
+        export_button = QToolButton()
+        export_button.setText('Export')
+        export_button.setMenu(self.export_menu)
+        export_button.setPopupMode(QToolButton.ToolButtonPopupMode.InstantPopup)
+        self.toolbar.addWidget(export_button)
+
+        # Save button
+        self.add_toolbar_action('save', './icons/save.svg', self.save_requested, 'Save', checkable=False)
+
+        # Spacer to push toolbar items to the left
+        spacer = QWidget()
         spacer.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding)
-        self.toolbar.addWidget(spacer)  # Add the spacer to the toolbar
+        self.toolbar.addWidget(spacer)
 
+        # Transcription and GPT-4 buttons
         self.transcription_button = self.add_toolbar_action(
             'start_transcription',
             './icons/transcribe.svg',
@@ -88,8 +136,6 @@ class TextEditor(QMainWindow):
         self.transcription_spinner_action.setDefaultWidget(self.transcription_spinner_label)
         self.toolbar.addAction(self.transcription_spinner_action)
         self.transcription_spinner_action.setVisible(False)
-
-
 
         self.gpt4_button = self.add_toolbar_action(
             'process_with_gpt4',
@@ -108,9 +154,7 @@ class TextEditor(QMainWindow):
         self.toolbar.addAction(self.gpt_spinner_action)
         self.gpt_spinner_action.setVisible(False)
 
-
     def toggle_gpt_spinner(self):
-
         if self.gpt4_button.isVisible():
             self.gpt_spinner_action.setVisible(True)
             self.gpt_spinner_movie.start()
@@ -129,11 +173,17 @@ class TextEditor(QMainWindow):
             self.transcription_spinner_movie.stop()
             self.transcription_spinner_action.setVisible(False)
             self.transcription_button.setVisible(True)
+
     def add_toolbar_action(self, action_name, icon_path, callback, tooltip, checkable=False):
         action = QAction(QIcon(icon_path) if icon_path else None, tooltip, self)
         action.setCheckable(checkable)
         if callback:
-            action.triggered.connect(callback)
+            # Ensure that callback is callable
+            if isinstance(callback, str):
+                # Remove this condition since we're not using string callbacks
+                pass
+            else:
+                action.triggered.connect(callback)
         self.toolbar.addAction(action)
         self._toolbar_actions[action_name] = action
         return action
@@ -142,30 +192,75 @@ class TextEditor(QMainWindow):
         self.editor.setCurrentFont(font)
 
     def font_size_changed(self, size):
-        self.editor.setFontPointSize(float(size))
+        try:
+            size_float = float(size)
+            self.editor.setFontPointSize(size_float)
+        except ValueError:
+            QMessageBox.warning(self, "Invalid Font Size", "Please enter a valid number for font size.")
 
     def bold_text(self):
-        font = self.editor.currentFont()
-        font.setBold(not font.bold())
-        self.editor.setCurrentFont(font)
+        fmt = self.editor.currentCharFormat()
+        fmt.setFontWeight(QFont.Weight.Bold if not fmt.fontWeight() == QFont.Weight.Bold else QFont.Weight.Normal)
+        self.editor.mergeCurrentCharFormat(fmt)
 
     def italic_text(self):
-        font = self.editor.currentFont()
-        font.setItalic(not font.italic())
-        self.editor.setCurrentFont(font)
+        fmt = self.editor.currentCharFormat()
+        fmt.setFontItalic(not fmt.fontItalic())
+        self.editor.mergeCurrentCharFormat(fmt)
 
     def underline_text(self):
-        font = self.editor.currentFont()
-        font.setUnderline(not font.underline())
-        self.editor.setCurrentFont(font)
+        fmt = self.editor.currentCharFormat()
+        fmt.setFontUnderline(not fmt.fontUnderline())
+        self.editor.mergeCurrentCharFormat(fmt)
 
-    def set_alignment(self, alignment):
-        self.editor.setAlignment(alignment)
+    def strikethrough_text(self):
+        fmt = self.editor.currentCharFormat()
+        fmt.setFontStrikeOut(not fmt.fontStrikeOut())
+        self.editor.mergeCurrentCharFormat(fmt)
+
+    def subscript_text(self):
+        fmt = self.editor.currentCharFormat()
+        existing = fmt.verticalAlignment()
+        if existing == QTextCharFormat.VerticalAlignment.SubScript:
+            fmt.setVerticalAlignment(QTextCharFormat.VerticalAlignment.AlignNormal)
+        else:
+            fmt.setVerticalAlignment(QTextCharFormat.VerticalAlignment.SubScript)
+        self.editor.mergeCurrentCharFormat(fmt)
+
+    def superscript_text(self):
+        fmt = self.editor.currentCharFormat()
+        existing = fmt.verticalAlignment()
+        if existing == QTextCharFormat.VerticalAlignment.SuperScript:
+            fmt.setVerticalAlignment(QTextCharFormat.VerticalAlignment.AlignNormal)
+        else:
+            fmt.setVerticalAlignment(QTextCharFormat.VerticalAlignment.SuperScript)
+        self.editor.mergeCurrentCharFormat(fmt)
+
+    def highlight_text(self):
+        color = QColorDialog.getColor()
+        if color.isValid():
+            fmt = QTextCharFormat()
+            fmt.setBackground(color)
+            self.editor.mergeCurrentCharFormat(fmt)
 
     def font_color(self):
         color = QColorDialog.getColor()
         if color.isValid():
             self.editor.setTextColor(color)
+
+    def set_alignment(self, alignment):
+        self.editor.setAlignment(alignment)
+        # Update the checked state of alignment actions
+        for action_name in ['align_left', 'align_center', 'align_right', 'justify']:
+            self._toolbar_actions[action_name].setChecked(False)
+        if alignment == Qt.AlignmentFlag.AlignLeft:
+            self._toolbar_actions['align_left'].setChecked(True)
+        elif alignment == Qt.AlignmentFlag.AlignCenter:
+            self._toolbar_actions['align_center'].setChecked(True)
+        elif alignment == Qt.AlignmentFlag.AlignRight:
+            self._toolbar_actions['align_right'].setChecked(True)
+        elif alignment == Qt.AlignmentFlag.AlignJustify:
+            self._toolbar_actions['justify'].setChecked(True)
 
     def bullet_list(self):
         cursor = self.editor.textCursor()
@@ -191,25 +286,134 @@ class TextEditor(QMainWindow):
         list_format.setIndent(max(list_format.indent() - 1, 1))
         cursor.createList(list_format)
 
-    def start_transcription(self):
-        self.transcription_requested.emit()
+    def export_to_pdf(self):
+        file_path, _ = QFileDialog.getSaveFileName(self, "Export to PDF", "", "PDF Files (*.pdf)")
+        if file_path:
+            printer = QPrinter(QPrinter.PrinterMode.HighResolution)
+            printer.setOutputFormat(QPrinter.OutputFormat.PdfFormat)
+            printer.setOutputFileName(file_path)
+            self.editor.document().print(printer)
+            QMessageBox.information(self, "Export to PDF", f"Document successfully exported to {file_path}")
 
-    def process_with_gpt4(self):
-        self.gpt4_processing_requested.emit()
+    def export_to_word(self):
+        file_path, _ = QFileDialog.getSaveFileName(self, "Export to Word", "", "Word Documents (*.docx)")
+        if file_path:
+            doc = docx.Document()
+            html = self.editor.toHtml()
+            self.add_html_to_docx(doc, html)
+            doc.save(file_path)
+            QMessageBox.information(self, "Export to Word", f"Document successfully exported to {file_path}")
+
+    def add_html_to_docx(self, doc, html):
+        soup = BeautifulSoup(html, 'html.parser')
+        for element in soup.descendants:
+            if isinstance(element, str):
+                text = element.strip()
+                if text:
+                    doc.add_paragraph(text)
+            elif element.name == 'br':
+                doc.add_paragraph('')
+            elif element.name in ['strong', 'b']:
+                run = doc.paragraphs[-1].add_run(element.get_text())
+                run.bold = True
+            elif element.name in ['em', 'i']:
+                run = doc.paragraphs[-1].add_run(element.get_text())
+                run.italic = True
+            elif element.name == 'u':
+                run = doc.paragraphs[-1].add_run(element.get_text())
+                run.underline = True
+            elif element.name in ['s', 'strike']:
+                run = doc.paragraphs[-1].add_run(element.get_text())
+                run.font.strike = True
+            elif element.name == 'sub':
+                run = doc.paragraphs[-1].add_run(element.get_text())
+                run.font.subscript = True
+            elif element.name == 'sup':
+                run = doc.paragraphs[-1].add_run(element.get_text())
+                run.font.superscript = True
+            # Extend this method to handle more HTML tags as needed
+
+    def export_to_text(self):
+        file_path, _ = QFileDialog.getSaveFileName(self, "Export to Plain Text", "", "Text Files (*.txt)")
+        if file_path:
+            plain_text = self.editor.toPlainText()
+            with open(file_path, 'w', encoding='utf-8') as file:
+                file.write(plain_text)
+            QMessageBox.information(self, "Export to Text", f"Document successfully exported to {file_path}")
+
     def serialize_text_document(self):
+        # Always save as HTML
         cursor = self.editor.textCursor()
         cursor.select(QTextCursor.SelectionType.Document)
         formatted_text = cursor.selection().toHtml()
-        return formatted_text.encode('utf-8')  # Serialize as UTF-8 bytes
+        return formatted_text.encode('utf-8')
 
     def deserialize_text_document(self, text_data):
-        if text_data:  # If there's data, set it in the editor
+        if text_data:
             self.editor.setHtml(text_data.decode('utf-8') if isinstance(text_data, bytes) else text_data)
-        else:  # If there's no data, clear the editor
+        else:
             self.editor.clear()
 
+    def save_editor_state(self):
+        """
+        Saves the current state of the text editor to the database.
+        It differentiates between raw transcript mode and processed text mode.
+        """
+        # Assuming 'mode_switch' and 'current_selected_item' are defined elsewhere
+        # Update these references as per your MainTranscriptionWidget implementation
+        if hasattr(self, 'mode_switch') and self.mode_switch.value() == 0:  # Raw transcript mode
+            formatted_data = self.serialize_text_document()
+            field_to_update = 'raw_transcript_formatted'
+        else:  # Processed text mode
+            formatted_data = self.serialize_text_document()
+            field_to_update = 'processed_text_formatted'
+
+        # Save the binary data to the database
+        # Assuming 'create_connection' and 'update_recording' are defined in app/database.py
+        try:
+            conn = create_connection("./database/database.sqlite")
+            recording_id = self.current_selected_item.get_id()  # Ensure this is correctly referenced
+            update_recording(conn, recording_id, **{field_to_update: formatted_data})
+            conn.close()
+            QMessageBox.information(self, "Success", "Transcription saved successfully.")
+        except Exception as e:
+            logging.error(f"Failed to save transcription: {e}")
+            QMessageBox.critical(self, "Error", "Failed to save transcription.")
+
+    def process_with_gpt4(self):
+        self.gpt4_processing_requested.emit()
+
+    def start_transcription(self):
+        self.transcription_requested.emit()
+
+    def toggle_gpt_spinner(self):
+        if self.gpt4_button.isVisible():
+            self.gpt_spinner_action.setVisible(True)
+            self.gpt_spinner_movie.start()
+            self.gpt4_button.setVisible(False)
+        else:
+            self.gpt_spinner_movie.stop()
+            self.gpt_spinner_action.setVisible(False)
+            self.gpt4_button.setVisible(True)
+
+    def toggle_transcription_spinner(self):
+        if self.transcription_button.isVisible():
+            self.transcription_spinner_action.setVisible(True)
+            self.transcription_spinner_movie.start()
+            self.transcription_button.setVisible(False)
+        else:
+            self.transcription_spinner_movie.stop()
+            self.transcription_spinner_action.setVisible(False)
+            self.transcription_button.setVisible(True)
+
+
 if __name__ == "__main__":
-    app = QApplication(sys.argv)
-    textEditor = TextEditor()
-    textEditor.show()
-    sys.exit(app.exec())
+    from app.database import create_connection, create_db, create_recording, update_recording
+
+    def main():
+        app = QApplication(sys.argv)
+        textEditor = TextEditor()
+        textEditor.show()
+        sys.exit(app.exec())
+
+    main()
