@@ -7,6 +7,7 @@ from PyQt6.QtWidgets import (
 from PyQt6.QtGui import QIcon, QFont, QColor, QTextListFormat, QActionGroup, QTextCursor, QAction, QMovie, QTextCharFormat
 from PyQt6.QtCore import Qt, QSize, pyqtSignal
 import docx
+from htmldocx import HtmlToDocx
 from PyPDF2 import PdfFileWriter
 from PyQt6.QtPrintSupport import QPrinter
 from bs4 import BeautifulSoup
@@ -283,37 +284,10 @@ class TextEditor(QMainWindow):
         if file_path:
             doc = docx.Document()
             html = self.editor.toHtml()
-            self.add_html_to_docx(doc, html)
+            new_parser = HtmlToDocx()
+            new_parser.add_html_to_document(html, doc)
             doc.save(file_path)
             QMessageBox.information(self, "Export to Word", f"Document successfully exported to {file_path}")
-
-    def add_html_to_docx(self, doc, html):
-        soup = BeautifulSoup(html, 'html.parser')
-        for element in soup.descendants:
-            if isinstance(element, str):
-                text = element.strip()
-                if text:
-                    doc.add_paragraph(text)
-            elif element.name == 'br':
-                doc.add_paragraph('')
-            elif element.name in ['strong', 'b']:
-                run = doc.paragraphs[-1].add_run(element.get_text())
-                run.bold = True
-            elif element.name in ['em', 'i']:
-                run = doc.paragraphs[-1].add_run(element.get_text())
-                run.italic = True
-            elif element.name == 'u':
-                run = doc.paragraphs[-1].add_run(element.get_text())
-                run.underline = True
-            elif element.name in ['s', 'strike']:
-                run = doc.paragraphs[-1].add_run(element.get_text())
-                run.font.strike = True
-            elif element.name == 'sub':
-                run = doc.paragraphs[-1].add_run(element.get_text())
-                run.font.subscript = True
-            elif element.name == 'sup':
-                run = doc.paragraphs[-1].add_run(element.get_text())
-                run.font.superscript = True
 
     def export_to_text(self):
         file_path, _ = QFileDialog.getSaveFileName(self, "Export to Plain Text", "", "Text Files (*.txt)")

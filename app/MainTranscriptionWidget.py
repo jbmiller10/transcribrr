@@ -243,6 +243,7 @@ class MainTranscriptionWidget(QWidget):
                 self.show_custom_prompt_input()
                 self.edit_prompt_button.setText("Cancel Edit")
                 self.custom_prompt_save_button.setText("Save")
+                # Disconnect and connect save button to save_edited_prompt
                 self.custom_prompt_save_button.clicked.disconnect()
                 self.custom_prompt_save_button.clicked.connect(self.save_edited_prompt)
 
@@ -258,6 +259,7 @@ class MainTranscriptionWidget(QWidget):
         self.hide_custom_prompt_input()
         self.edit_prompt_button.setText("Edit Prompt")
         self.is_editing_existing_prompt = False
+        # Reconnect the save button to default action
         self.custom_prompt_save_button.clicked.disconnect()
         self.custom_prompt_save_button.clicked.connect(self.save_custom_prompt_as_template)
         # Reload prompts
@@ -277,9 +279,14 @@ class MainTranscriptionWidget(QWidget):
         except FileNotFoundError:
             print('No existing prompts file found. Using Defaults.')
             self.preset_prompts = {
+                "Youtube to article": """Transform this raw transcript of a youtube video into a well-structured article, maintaining as much detail as possible. 
+                                      Do not embelish by adding details not mentioned. 
+                                      It is extremely important you keep all details. 
+                                      Your output should come close to matching the number of words of the original transcript.""",
+                "Translate": "Translate this raw audio transcript into English. You may fix minor transcription errors based on context.",
                 "Journal Entry Formatting": "Format this raw audio transcript into a clean, coherent journal entry, maintaining a first-person narrative style.",
                 "Meeting Minutes": "Convert this transcript into a structured format of meeting minutes, highlighting key points, decisions made, and action items.",
-                "Interview Summary": "Summarize this interview transcript, emphasizing the main questions, responses, and any significant insights or conclusions.",
+                "Stream of Consciouness": "Organize the ideas in this raw transcript of a stream of consciouness brainstorm in order to capture all key points in a comprehensive and thorough manner.",
             }
         self.gpt_prompt_dropdown.blockSignals(True)
         self.gpt_prompt_dropdown.clear()
@@ -301,7 +308,8 @@ class MainTranscriptionWidget(QWidget):
             file_path=self.file_path,
             transcription_quality=config.get('transcription_quality', 'medium'),
             speaker_detection_enabled=config.get('speaker_detection_enabled', False),
-            hf_auth_key=keyring.get_password(self.service_id, "HF_AUTH_TOKEN")
+            hf_auth_key=keyring.get_password(self.service_id, "HF_AUTH_TOKEN"),
+            language=config.get('transcription_language', 'English')  # Pass the language here
         )
         self.transcription_thread.completed.connect(self.on_transcription_completed)
         self.transcription_thread.update_progress.connect(self.on_transcription_progress)
@@ -315,6 +323,7 @@ class MainTranscriptionWidget(QWidget):
         recording_id = self.current_selected_item.get_id()
         self.mode_switch.setValue(0)
         self.transcript_text.editor.setPlainText(transcript)
+        # Save the raw transcript to the database
         conn = create_connection("./database/database.sqlite")
         update_recording(conn, recording_id, raw_transcript=transcript)
         conn.close()
@@ -367,6 +376,7 @@ class MainTranscriptionWidget(QWidget):
         temperature = self.temperature_spinbox.value()
         max_tokens = self.max_tokens_spinbox.value()
 
+        # Start the GPT-4 processing thread
         self.gpt4_processing_thread = GPT4ProcessingThread(
             transcript=raw_transcript,
             prompt_instructions=prompt_instructions,

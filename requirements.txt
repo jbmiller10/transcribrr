@@ -116,6 +116,7 @@ autocommand~=2.2.2
 inflect~=7.3.1
 typeguard~=4.3.0
 zipp~=3.18.1
+htmldocx
 tokenizers~=0.20.3
 virtualenv~=20.27.1
 distlib~=0.3.9
