@@ -1,8 +1,8 @@
 {
-    "transcription_quality": "openai/whisper-tiny",
-    "transcription_language": "English",
+    "transcription_quality": "openai/whisper-medium",
+    "transcription_language": "Arabic",
     "gpt_model": "gpt-4-turbo",
     "max_tokens": 16000,
     "temperature": 1.0,
-    "speaker_detection_enabled": true
+    "speaker_detection_enabled": false
 }

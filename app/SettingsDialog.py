@@ -48,7 +48,7 @@ class SettingsDialog(QDialog):
                                                      'openai/whisper-large-v3'])
 
         # GPT Model Selection
-        self.gpt_model_label = QLabel('GPT Model: (GPT-4-1106-preview strongly recommended due to token limits on other models)', self)
+        self.gpt_model_label = QLabel('GPT Model: (GPT-4o strongly recommended.)', self)
         self.gpt_model_dropdown = QComboBox(self)
         self.gpt_model_dropdown.addItems(['gpt-4-turbo','gpt-4o', 'gpt-3.5-turbo', 'gpt-4','o1-preview'])
 
