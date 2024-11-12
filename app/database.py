@@ -2,6 +2,7 @@ import sqlite3
 from sqlite3 import Error
 import os
 import json
+from app.utils import resource_path
 
 def create_connection(db_file):
     conn = None
@@ -29,7 +30,7 @@ def create_config_file():
         "speaker_detection_enabled": False,
         "transcription_language": "english"
     }
-    with open('config.json', 'w') as config_file:
+    with open(resource_path('config.json'), 'w') as config_file:
         json.dump(config, config_file, indent=4)
 
 def create_recording(conn, recording):
@@ -97,10 +98,10 @@ def delete_recording(conn, id):
     conn.commit()
 
 def create_db():
-    database = "./database/database.sqlite"
-    config_path = 'config.json'
-    if not os.path.exists('./database'):
-        os.makedirs('./database')
+    database = resource_path("./database/database.sqlite")
+    config_path = resource_path('config.json')
+    if not os.path.exists(resource_path('./database')):
+        os.makedirs(resource_path('./database'))
     if os.path.exists(database):
         pass
     else:
