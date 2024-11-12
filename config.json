@@ -1,6 +1,6 @@
 {
-    "transcription_quality": "openai/whisper-medium",
-    "transcription_language": "Arabic",
+    "transcription_quality": "openai/whisper-base",
+    "transcription_language": "English",
     "gpt_model": "gpt-4o",
     "max_tokens": 16000,
     "temperature": 1.0,

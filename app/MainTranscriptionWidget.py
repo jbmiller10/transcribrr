@@ -10,6 +10,7 @@ from app.threads.TranscriptionThread import TranscriptionThread
 from app.threads.GPT4ProcessingThread import GPT4ProcessingThread
 from app.SettingsDialog import SettingsDialog
 from app.ToggleSwitch import ToggleSwitch
+from app.utils import resource_path
 import traceback
 import keyring
 from app.database import create_connection, get_recording_by_id, update_recording
@@ -127,7 +128,7 @@ class MainTranscriptionWidget(QWidget):
 
         # Settings button
         self.settings_button = QPushButton()
-        self.settings_button.setIcon(QIcon('icons/settings.svg'))
+        self.settings_button.setIcon(QIcon(resource_path('icons/settings.svg')))
         self.settings_button.setIconSize(QSize(25, 25))
         self.settings_button.setFixedSize(30, 30)
 
@@ -143,7 +144,8 @@ class MainTranscriptionWidget(QWidget):
     def init_gpt_parameters(self):
         # Load existing config or defaults
         try:
-            with open('config.json', 'r') as config_file:
+            config_path = resource_path("config.json")
+            with open(config_path, 'r') as config_file:
                 config = json.load(config_file)
         except FileNotFoundError:
             config = {'temperature': 1.0, 'max_tokens': 16000}
@@ -213,7 +215,8 @@ class MainTranscriptionWidget(QWidget):
             prompt_text = self.custom_prompt_input.toPlainText()
             self.preset_prompts[prompt_name] = prompt_text
             # Save to 'preset_prompts.json'
-            with open('preset_prompts.json', 'w') as f:
+            prompts_path = resource_path("preset_prompts.json")
+            with open(prompts_path, 'w') as f:
                 json.dump(self.preset_prompts, f, indent=4)
             QMessageBox.information(self, "Prompt Saved", f"Prompt '{prompt_name}' has been saved.")
             # Reload prompts in the dropdown
@@ -252,7 +255,8 @@ class MainTranscriptionWidget(QWidget):
         selected_prompt = self.gpt_prompt_dropdown.currentText()
         self.preset_prompts[selected_prompt] = edited_text
         # Save to 'preset_prompts.json'
-        with open('preset_prompts.json', 'w') as f:
+        prompts_path = resource_path("preset_prompts.json")
+        with open(prompts_path, 'w') as f:
             json.dump(self.preset_prompts, f, indent=4)
         QMessageBox.information(self, "Prompt Updated", f"Prompt '{selected_prompt}' has been updated.")
         # Hide the custom prompt input area
@@ -273,8 +277,9 @@ class MainTranscriptionWidget(QWidget):
         dialog.exec()
 
     def load_prompts(self):
+        prompts_path = resource_path('preset_prompts.json')
         try:
-            with open('preset_prompts.json', 'r') as file:
+            with open(prompts_path, 'r') as file:
                 self.preset_prompts = json.load(file)
         except FileNotFoundError:
             print('No existing prompts file found. Using Defaults.')
@@ -300,8 +305,8 @@ class MainTranscriptionWidget(QWidget):
             QMessageBox.warning(self, 'No Recording Selected', 'Please select a recording to transcribe.')
             self.transcript_text.toggle_transcription_spinner()
             return
-
-        with open('config.json', 'r') as config_file:
+        config_path = resource_path("config.json")
+        with open(config_path, 'r') as config_file:
             config = json.load(config_file)
         self.service_id = "transcription_application"
         self.transcription_thread = TranscriptionThread(
@@ -324,7 +329,8 @@ class MainTranscriptionWidget(QWidget):
         self.mode_switch.setValue(0)
         self.transcript_text.editor.setPlainText(transcript)
         # Save the raw transcript to the database
-        conn = create_connection("./database/database.sqlite")
+        db_path = resource_path("./database/database.sqlite")
+        conn = create_connection(db_path)
         update_recording(conn, recording_id, raw_transcript=transcript)
         conn.close()
         self.is_transcribing = False
@@ -346,7 +352,8 @@ class MainTranscriptionWidget(QWidget):
             return
 
         recording_id = self.current_selected_item.get_id()
-        conn = create_connection("./database/database.sqlite")
+        db_path = resource_path("./database/database.sqlite")
+        conn = create_connection(db_path)
 
         if conn is None:
             QMessageBox.critical(self, 'Database Error', 'Unable to connect to the database.')
@@ -368,8 +375,8 @@ class MainTranscriptionWidget(QWidget):
                 return
         else:
             prompt_instructions = self.preset_prompts.get(selected_prompt_key, '')
-
-        with open('config.json', 'r') as config_file:
+        config_path = resource_path("config.json")
+        with open(config_path, 'r') as config_file:
             config = json.load(config_file)
 
         openai_api_key = keyring.get_password("transcription_application", "OPENAI_API_KEY")
@@ -403,7 +410,8 @@ class MainTranscriptionWidget(QWidget):
                 self.transcript_text.editor.setPlainText(processed_text)
                 formatted_field = 'processed_text'
             recording_id = self.current_selected_item.get_id()
-            conn = create_connection("./database/database.sqlite")
+            db_path = resource_path("./database/database.sqlite")
+            conn = create_connection(db_path)
             update_recording(conn, recording_id, **{formatted_field: processed_text})
             conn.close()
             self.is_transcribing = False
@@ -422,7 +430,8 @@ class MainTranscriptionWidget(QWidget):
     def toggle_transcription_view(self):
         if self.current_selected_item is not None:
             recording_id = self.current_selected_item.get_id()
-            conn = create_connection("./database/database.sqlite")
+            db_path = resource_path("./database/database.sqlite")
+            conn = create_connection(db_path)
 
             if conn is None:
                 print("Error! Cannot connect to the database.")
@@ -450,8 +459,8 @@ class MainTranscriptionWidget(QWidget):
         else:  # Processed text mode
             formatted_data = self.transcript_text.serialize_text_document()
             field_to_update = 'processed_text_formatted'
-
-        conn = create_connection("./database/database.sqlite")
+        db_path = resource_path("./database/database.sqlite")
+        conn = create_connection(db_path)
         update_recording(conn, self.current_selected_item.get_id(), **{field_to_update: formatted_data})
         conn.close()
         QMessageBox.information(self, "Success", "Transcription saved successfully.")
@@ -465,7 +474,8 @@ class MainTranscriptionWidget(QWidget):
 
     def raw_transcript_available(self):
         if self.current_selected_item is not None:
-            conn = create_connection("./database/database.sqlite")
+            db_path = resource_path("./database/database.sqlite")
+            conn = create_connection(db_path)
             recording_id = self.current_selected_item.get_id()
             recording = get_recording_by_id(conn, recording_id)
             conn.close()
@@ -475,7 +485,8 @@ class MainTranscriptionWidget(QWidget):
     def on_recording_item_selected(self, recording_item):
         try:
             self.current_selected_item = recording_item
-            conn = create_connection("./database/database.sqlite")
+            db_path = resource_path("./database/database.sqlite")
+            conn = create_connection(db_path)
             recording_id = self.current_selected_item.get_id()
             recording = get_recording_by_id(conn, recording_id)
 
@@ -515,8 +526,8 @@ class MainTranscriptionWidget(QWidget):
         Do not change any of the text - just apply formatting as needed. 
         Do not use a code block when returning the html, just provide the html.
         """
-
-        with open('config.json', 'r') as config_file:
+        config_path = resource_path("config.json")
+        with open(config_path, 'r') as config_file:
             config = json.load(config_file)
 
         openai_api_key = keyring.get_password("transcription_application", "OPENAI_API_KEY")
@@ -545,7 +556,8 @@ class MainTranscriptionWidget(QWidget):
             self.transcript_text.toggle_gpt_spinner()
             self.transcript_text.editor.setHtml(formatted_html)
             recording_id = self.current_selected_item.get_id()
-            conn = create_connection("./database/database.sqlite")
+            db_path = resource_path("./database/database.sqlite")
+            conn = create_connection(db_path)
             # Store the formatted HTML in 'processed_text_formatted'
             update_recording(conn, recording_id, processed_text_formatted=formatted_html)
             conn.close()

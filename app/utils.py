@@ -1,5 +1,6 @@
 import os
 import re
+import sys
 
 def is_video_file(file_path):
     video_extensions = ['.mp4', '.mkv', '.avi', '.mov', '.webm']
@@ -16,4 +17,16 @@ def validate_url(url):
     # Use regex to validate the URL
     regex = r'(https?://)?(www\.)?(youtube|youtu|youtube-nocookie)\.(com|be)/(watch\?v=|embed/|v/|.+\?v=)?([^&=%\?]{11})'
     return re.match(regex, url) is not None
+
+
+def resource_path(relative_path, root=False):
+    try:
+        base_path = sys._MEIPASS
+    except Exception:
+        if root:
+            base_path = os.path.abspath("")
+        else:
+            base_path = os.path.abspath(".")
+
+    return os.path.join(base_path, relative_path)
 

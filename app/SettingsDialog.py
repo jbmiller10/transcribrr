@@ -5,6 +5,7 @@ from PyQt6.QtWidgets import (
 from PyQt6.QtCore import pyqtSignal
 import keyring
 import json
+from app.utils import resource_path
 from app.PromptManagerDialog import PromptManagerDialog
 
 
@@ -134,15 +135,16 @@ class SettingsDialog(QDialog):
             'temperature': self.temperature_spinbox.value(),
             'speaker_detection_enabled': self.speaker_detection_checkbox.isChecked(),
         }
-
-        with open('config.json', 'w') as config_file:
+        config_path = resource_path('config.json')
+        with open(config_path, 'w') as config_file:
             json.dump(config, config_file, indent=4)
         self.settings_changed.emit()
         super().accept()
 
     def load_config(self):
         try:
-            with open('config.json', 'r') as config_file:
+            config_path = resource_path('config.json')
+            with open(config_path, 'r') as config_file:
                 config = json.load(config_file)
                 self.transcription_quality_dropdown.setCurrentText(config.get('transcription_quality', 'distil-whisper/distil-small.en'))
                 self.gpt_model_dropdown.setCurrentText(config.get('gpt_model', 'gpt-4o'))
@@ -168,7 +170,8 @@ class SettingsDialog(QDialog):
             'speaker_detection_enabled': self.speaker_detection_checkbox.isChecked(),
             'transcription_language': self.language_dropdown.currentText()  # Ensure language is saved
         }
-        with open('config.json', 'w') as config_file:
+        config_path = resource_path('config.json')
+        with open(config_path, 'w') as config_file:
             json.dump(config, config_file, indent=4)
         self.settings_changed.emit()
 

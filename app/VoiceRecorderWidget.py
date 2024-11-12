@@ -8,7 +8,8 @@ from PyQt6.QtCore import QThread, pyqtSignal, QTimer, Qt
 from PyQt6.QtGui import QIcon
 import datetime
 from collections import deque
-from app.SVGToggleButton import SVGToggleButton  # Make sure this import is updated as well
+from app.SVGToggleButton import SVGToggleButton
+from app.utils import  resource_path
 
 import numpy as np
 
@@ -41,8 +42,8 @@ class VoiceRecorderWidget(QWidget):
         #self.layout.addWidget(self.recordButton, 0, Qt.AlignmentFlag.AlignCenter)
 
         record_button_svg_files = {
-            'record': 'icons/record.svg',
-            'pause': 'icons/pause.svg',
+            'record': resource_path('icons/record.svg'),
+            'pause': resource_path('icons/pause.svg'),
         }
         # Record button - now using SvgButton
         self.recordButton = SVGToggleButton(record_button_svg_files)

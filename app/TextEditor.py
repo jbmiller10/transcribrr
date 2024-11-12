@@ -12,6 +12,7 @@ from PyPDF2 import PdfFileWriter
 from PyQt6.QtPrintSupport import QPrinter
 from bs4 import BeautifulSoup
 import logging
+from app.utils import  resource_path
 
 # Configure logging
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
@@ -54,31 +55,31 @@ class TextEditor(QMainWindow):
         self.toolbar.addWidget(self.font_size_combobox)
 
         # Bold button
-        self.add_toolbar_action('bold', './icons/TextEditor/bold.svg', self.bold_text, 'Bold (Ctrl+B)', checkable=True)
+        self.add_toolbar_action('bold',  resource_path('./icons/TextEditor/bold.svg'), self.bold_text, 'Bold (Ctrl+B)', checkable=True)
         # Italic button
-        self.add_toolbar_action('italic', './icons/TextEditor/italic.svg', self.italic_text, 'Italic (Ctrl+I)', checkable=True)
+        self.add_toolbar_action('italic',  resource_path('./icons/TextEditor/italic.svg'), self.italic_text, 'Italic (Ctrl+I)', checkable=True)
         # Underline button
-        self.add_toolbar_action('underline', './icons/TextEditor/underline.svg', self.underline_text, 'Underline (Ctrl+U)', checkable=True)
+        self.add_toolbar_action('underline',  resource_path('./icons/TextEditor/underline.svg'), self.underline_text, 'Underline (Ctrl+U)', checkable=True)
 
         # Strikethrough button
-        self.add_toolbar_action('strikethrough', './icons/TextEditor/strikethrough.svg', self.strikethrough_text,
+        self.add_toolbar_action('strikethrough',  resource_path('./icons/TextEditor/strikethrough.svg'), self.strikethrough_text,
                                 'Strikethrough', checkable=True)
         # Highlight button
-        self.add_toolbar_action('highlight', './icons/TextEditor/highlight.svg', self.highlight_text,
+        self.add_toolbar_action('highlight',  resource_path('./icons/TextEditor/highlight.svg'), self.highlight_text,
                                 'Highlight Text')
 
         # Font color button
-        self.add_toolbar_action('font_color', './icons/TextEditor/font_color.svg', self.font_color, 'Font Color')
+        self.add_toolbar_action('font_color',  resource_path('./icons/TextEditor/font_color.svg'), self.font_color, 'Font Color')
 
         # Alignment actions
         alignment_group = QActionGroup(self)
-        self.add_toolbar_action('align_left', './icons/TextEditor/align_left.svg',
+        self.add_toolbar_action('align_left',  resource_path('./icons/TextEditor/align_left.svg'),
                                 lambda: self.set_alignment(Qt.AlignmentFlag.AlignLeft), 'Align Left (Ctrl+L)', checkable=True)
-        self.add_toolbar_action('align_center', './icons/TextEditor/align_center.svg',
+        self.add_toolbar_action('align_center',  resource_path('./icons/TextEditor/align_center.svg'),
                                 lambda: self.set_alignment(Qt.AlignmentFlag.AlignCenter), 'Align Center (Ctrl+E)', checkable=True)
-        self.add_toolbar_action('align_right', './icons/TextEditor/align_right.svg',
+        self.add_toolbar_action('align_right',  resource_path('./icons/TextEditor/align_right.svg'),
                                 lambda: self.set_alignment(Qt.AlignmentFlag.AlignRight), 'Align Right (Ctrl+R)', checkable=True)
-        self.add_toolbar_action('justify', './icons/TextEditor/justify.svg',
+        self.add_toolbar_action('justify',  resource_path('./icons/TextEditor/justify.svg'),
                                 lambda: self.set_alignment(Qt.AlignmentFlag.AlignJustify), 'Justify Text', checkable=True)
 
         for action_name in ['align_left', 'align_center', 'align_right', 'justify']:
@@ -86,10 +87,10 @@ class TextEditor(QMainWindow):
             alignment_group.addAction(action)
 
         # List formatting actions
-        self.add_toolbar_action('bullet_list', './icons/TextEditor/bullet.svg', self.bullet_list, 'Bullet List')
-        self.add_toolbar_action('numbered_list', './icons/TextEditor/numbered.svg', self.numbered_list, 'Numbered List')
-        self.add_toolbar_action('increase_indent', './icons/TextEditor/increase_indent.svg', self.increase_indent, 'Increase Indent')
-        self.add_toolbar_action('decrease_indent', './icons/TextEditor/decrease_indent.svg', self.decrease_indent, 'Decrease Indent')
+        self.add_toolbar_action('bullet_list',  resource_path('./icons/TextEditor/bullet.svg'), self.bullet_list, 'Bullet List')
+        self.add_toolbar_action('numbered_list',  resource_path('./icons/TextEditor/numbered.svg'), self.numbered_list, 'Numbered List')
+        self.add_toolbar_action('increase_indent',  resource_path('./icons/TextEditor/increase_indent.svg'), self.increase_indent, 'Increase Indent')
+        self.add_toolbar_action('decrease_indent',  resource_path('./icons/TextEditor/decrease_indent.svg'), self.decrease_indent, 'Decrease Indent')
 
         # Export menu
         self.export_menu = QMenu()
@@ -112,7 +113,7 @@ class TextEditor(QMainWindow):
         self.toolbar.addWidget(export_button)
 
         # Save button
-        self.add_toolbar_action('save', './icons/save.svg', self.save_requested, 'Save', checkable=False)
+        self.add_toolbar_action('save',  resource_path('./icons/save.svg'), self.save_requested, 'Save', checkable=False)
 
         # Spacer to push toolbar items to the left
         spacer = QWidget()
@@ -122,12 +123,12 @@ class TextEditor(QMainWindow):
         # Transcription and GPT-4 buttons
         self.transcription_button = self.add_toolbar_action(
             'start_transcription',
-            './icons/transcribe.svg',
+             resource_path('./icons/transcribe.svg'),
             self.start_transcription,
             'Start Transcription',
             checkable=False
         )
-        self.transcription_spinner_movie = QMovie('./icons/spinner.gif')
+        self.transcription_spinner_movie = QMovie( resource_path('./icons/spinner.gif'))
         self.transcription_spinner_movie.setScaledSize(QSize(30, 30))
         self.transcription_spinner_label = QLabel()
         self.transcription_spinner_label.setMovie(self.transcription_spinner_movie)
@@ -139,12 +140,12 @@ class TextEditor(QMainWindow):
 
         self.gpt4_button = self.add_toolbar_action(
             'process_with_gpt4',
-            './icons/magic_wand.svg',
+             resource_path('./icons/magic_wand.svg'),
             self.process_with_gpt4,
             'Process with GPT-4',
             checkable=False
         )
-        self.gpt_spinner_movie = QMovie('./icons/spinner.gif')
+        self.gpt_spinner_movie = QMovie( resource_path('./icons/spinner.gif'))
         self.gpt_spinner_movie.setScaledSize(QSize(30, 30))
         self.gpt_spinner_label = QLabel()
         self.gpt_spinner_label.setMovie(self.gpt_spinner_movie)
@@ -155,7 +156,7 @@ class TextEditor(QMainWindow):
         self.gpt_spinner_action.setVisible(False)
 
         # Smart Format button
-        self.add_toolbar_action('smart_format', './icons/smart_format.svg', self.smart_format_text, 'Smart Format', checkable=False)
+        self.add_toolbar_action('smart_format',  resource_path('./icons/smart_format.svg'), self.smart_format_text, 'Smart Format', checkable=False)
 
     def toggle_gpt_spinner(self):
         if self.gpt4_button.isVisible():
@@ -321,7 +322,7 @@ class TextEditor(QMainWindow):
             field_to_update = 'processed_text_formatted'
 
         try:
-            conn = create_connection("./database/database.sqlite")
+            conn = create_connection(resource_path("./database/database.sqlite"))
             recording_id = self.current_selected_item.get_id()
             update_recording(conn, recording_id, **{field_to_update: formatted_data})
             conn.close()
