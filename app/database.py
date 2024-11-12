@@ -24,8 +24,8 @@ def create_table(conn, create_table_sql):
 def create_config_file():
     config = {
         "transcription_quality": "openai/whisper-large-v3",
-        "gpt_model": "gpt-4-1106-preview",
-        "max_tokens": 4096,
+        "gpt_model": "gpt-4o",
+        "max_tokens": 16000,
         "temperature": 1.0,
         "speaker_detection_enabled": False,
         "transcription_language": "english"
