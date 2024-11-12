@@ -3,7 +3,7 @@ from PyQt6.QtGui import QIcon
 from PyQt6.QtWidgets import QWidget, QHBoxLayout, QPushButton, QMessageBox, QLineEdit, QApplication, QMainWindow, QVBoxLayout
 import os
 import sys
-from app.utils import validate_url
+from app.utils import validate_url, resource_path
 from app.threads.TranscodingThread import TranscodingThread
 from app.threads.YouTubeDownloadThread import YouTubeDownloadThread
 from app.VoiceRecorderWidget import VoiceRecorderWidget
@@ -154,7 +154,8 @@ class ControlPanelWidget(QWidget):
             widget.setVisible(False)
 
     def create_button(self, icon_path, tool_tip):
-        absolute_icon_path = os.path.abspath(icon_path)
+        # Use resource_path to get the absolute path
+        absolute_icon_path = resource_path(icon_path)
         button = QPushButton()
         button.setIcon(QIcon(absolute_icon_path))
         button.setIconSize(QSize(25, 25))

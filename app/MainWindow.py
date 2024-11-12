@@ -12,6 +12,7 @@ from app.MainTranscriptionWidget import  MainTranscriptionWidget
 from app.ControlPanelWidget import ControlPanelWidget
 from app.database import create_connection, create_db, create_recording
 from moviepy.editor import VideoFileClip, AudioFileClip
+from app.utils import resource_path
 from app.RecentRecordingsWidget import RecentRecordingsWidget
 
 
@@ -25,7 +26,7 @@ class MainWindow(QMainWindow):
     def init_ui(self):
         # Initialize the window properties
         self.setWindowTitle('Transcribrr')
-        self.setGeometry(50, 50, 1350, 768)
+        self.setGeometry(50, 50, 1690, 960)
 
         #create db if needed
         create_db()
@@ -76,7 +77,7 @@ class MainWindow(QMainWindow):
         self.control_panel.uploaded_filepath.connect(self.on_new_file)
 
         # Set the initial side ratios of the splitter (e.g., 1:2)
-        self.splitter.setSizes([400, 800])
+        self.splitter.setSizes([1, 5])
 
         self.status_bar = QStatusBar()
         #self.statusBar().setStyleSheet("QStatusBar{color: red;}")
@@ -121,7 +122,8 @@ class MainWindow(QMainWindow):
         duration = self.calculate_duration(file_path)
 
         # Create a new recording in the database
-        conn = create_connection("./database/database.sqlite")
+        db_path = resource_path("./database/database.sqlite")
+        conn = create_connection(db_path)
         recording_data = (filename, file_path, date_created, duration, "", "")
         recording_id = create_recording(conn, recording_data)
 

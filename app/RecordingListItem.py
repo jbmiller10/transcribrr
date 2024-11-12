@@ -3,6 +3,7 @@ from PyQt6.QtWidgets import QWidget, QVBoxLayout, QLabel, QLineEdit, QHBoxLayout
 from PyQt6.QtCore import Qt,pyqtSignal
 import os
 from app.database import create_connection,update_recording
+from app.utils import resource_path
 
 
 class RecordingListItem(QWidget):
@@ -67,7 +68,8 @@ class RecordingListItem(QWidget):
         # Check if name actually changed
         if new_name != self.filename_no_ext:
             # Update the database with the new name
-            conn = create_connection("./database/database.sqlite")
+            db_path = resource_path("./database/database.sqlite")
+            conn = create_connection(db_path)
             if conn is not None:
                 update_recording(conn, self.id, filename=new_name)
                 conn.close()

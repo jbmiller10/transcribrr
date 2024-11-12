@@ -4,6 +4,7 @@ from PyQt6.QtCore import Qt, pyqtSignal
 from PyQt6.QtGui import QDragEnterEvent, QDropEvent, QPainter, QPen, QFont
 import os
 import shutil
+from app.utils import resource_path
 
 class FileDropWidget(QWidget):
     fileDropped = pyqtSignal(str)
@@ -24,25 +25,25 @@ class FileDropWidget(QWidget):
         self.layout.addWidget(self.label)
         self.setLayout(self.layout)
         # Custom styling
-        self.setStyleSheet("""
-            QLabel {
+        self.setStyleSheet(f"""
+            QLabel {{
                 font-size: 16px;
-            }
-            QWidget {
+            }}
+            QWidget {{
                 border: 2px dashed #cccccc;
                 padding-top: 50px;
                 padding-bottom: 50px;
                 padding-left: 3px;
                 padding-right: 3px;
                 font-weight: medium;
-            }
-                QPushButton:hover {
-        background-color: qlineargradient(
-            x1:0, y1:0, x2:1, y2:0,
-            stop:0 gray, stop:1 darkgray
-                    );
-             }
-            
+                background-image: url({resource_path('icons/dropdown_arrow.svg')});
+            }}
+            QPushButton:hover {{
+                background-color: qlineargradient(
+                    x1:0, y1:0, x2:1, y2:0,
+                    stop:0 gray, stop:1 darkgray
+                );
+            }}
         """)
 
     def dragEnterEvent(self, event: QDragEnterEvent):

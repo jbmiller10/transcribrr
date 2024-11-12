@@ -14,3 +14,4 @@ preset_prompts.json
 *.sqlite
 
 config.json
+/output

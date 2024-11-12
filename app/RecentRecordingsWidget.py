@@ -10,7 +10,7 @@ from PyQt6.QtWidgets import (
 )
 import os
 from app.RecordingListItem import RecordingListItem
-
+from app.utils import resource_path
 from app.database import create_connection, get_all_recordings, create_db, create_recording, update_recording, delete_recording
 
 from pydub import AudioSegment
@@ -67,7 +67,8 @@ class RecentRecordingsWidget(QWidget):
             duration = str(datetime.timedelta(milliseconds=len(audio))).split('.')[0]
 
             # Create a new recording in the database
-            conn = create_connection("./database/database.sqlite")
+            db_path = resource_path("./database/database.sqlite")
+            conn = create_connection(db_path)
             recording_data = (filename, full_file_path, date_created, duration, "", "")
             recording_id = create_recording(conn, recording_data)
 
@@ -143,12 +144,14 @@ class RecentRecordingsWidget(QWidget):
                 self.recordings_list.takeItem(row)
 
     def delete_recording_from_db(self, recording_id):
-        conn = create_connection("./database/database.sqlite")
+        db_path = resource_path("./database/database.sqlite")
+        conn = create_connection(db_path)
         delete_recording(conn, recording_id)
 
     def load_recordings(self):
         """Load recordings from the database and populate the list."""
-        conn = create_connection("./database/database.sqlite")
+        db_path = resource_path("./database/database.sqlite")
+        conn = create_connection(db_path)
         recordings = get_all_recordings(conn)
         for recording in recordings:
             id, filename, file_path, date_created, duration, raw_transcript, processed_text, raw_transcript_formatted, processed_text_formatted = recording
@@ -176,7 +179,8 @@ class RecentRecordingsWidget(QWidget):
 
     def save_recordings(self):
         """Save all recordings from the list to the database."""
-        conn = create_connection("./database/database.sqlite")
+        db_path = resource_path("./database/database.sqlite")
+        conn = create_connection(db_path)
         for index in range(self.recordings_list.count()):
             item = self.recordings_list.item(index)
             recording_item_widget = self.recordings_list.itemWidget(item)

@@ -3,6 +3,7 @@ from PyQt6.QtWidgets import (
 )
 from PyQt6.QtCore import pyqtSignal
 import json
+from app.utils import resource_path
 
 
 class PromptManagerDialog(QDialog):
@@ -59,7 +60,8 @@ class PromptManagerDialog(QDialog):
             description = self.table.item(row, 1).text()
             if name:  # Ensure that the prompt name isn't empty
                 prompts[name] = description
-        with open('preset_prompts.json', 'w') as file:
+        prompts_path = resource_path("preset_prompts.json")
+        with open(prompts_path, 'w') as file:
             json.dump(prompts, file, indent=4)
         self.prompts_saved.emit()
         self.close()
