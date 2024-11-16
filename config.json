@@ -1,8 +1,8 @@
 {
     "transcription_quality": "openai/whisper-base",
     "transcription_language": "English",
-    "gpt_model": "gpt-4o",
-    "max_tokens": 16000,
+    "gpt_model": "gpt-4o-mini",
+    "max_tokens": 10000,
     "temperature": 1.0,
     "speaker_detection_enabled": false
 }
