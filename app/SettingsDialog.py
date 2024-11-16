@@ -51,7 +51,7 @@ class SettingsDialog(QDialog):
         # GPT Model Selection
         self.gpt_model_label = QLabel('GPT Model: (GPT-4o strongly recommended.)', self)
         self.gpt_model_dropdown = QComboBox(self)
-        self.gpt_model_dropdown.addItems(['gpt-4-turbo','gpt-4o', 'gpt-3.5-turbo', 'gpt-4','o1-preview'])
+        self.gpt_model_dropdown.addItems(['gpt-4-turbo','gpt-4o', 'gpt-4o-mini', 'gpt-3.5-turbo', 'gpt-4','o1-preview'])
 
         # Max Tokens
         self.max_tokens_label = QLabel('Max Tokens (0-16000):', self)
