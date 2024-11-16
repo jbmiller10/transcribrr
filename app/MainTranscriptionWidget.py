@@ -1,7 +1,7 @@
 import json
 from PyQt6.QtWidgets import (
     QWidget, QVBoxLayout, QMessageBox, QComboBox, QHBoxLayout, QLabel,
-    QSizePolicy, QTextEdit, QDoubleSpinBox, QSpinBox, QSplitter, QPushButton, QLineEdit
+    QSizePolicy, QTextEdit, QDoubleSpinBox, QSpinBox, QSplitter, QPushButton, QLineEdit, QFileDialog
 )
 from PyQt6.QtGui import QIcon
 from PyQt6.QtCore import pyqtSignal, QSize, Qt
@@ -11,6 +11,8 @@ from app.threads.GPT4ProcessingThread import GPT4ProcessingThread
 from app.SettingsDialog import SettingsDialog
 from app.ToggleSwitch import ToggleSwitch
 from app.utils import resource_path
+import docx
+import htmldocx
 import traceback
 import keyring
 from app.database import create_connection, get_recording_by_id, update_recording
@@ -496,8 +498,13 @@ class MainTranscriptionWidget(QWidget):
 
     def serialize_text_document(self):
         """Serialize the text document to HTML."""
-        formatted_text = self.transcript_text.document().toHtml()
-        return formatted_text.encode('utf-8')
+        try:
+            # Access the QTextEdit within the TextEditor component and get the HTML content
+            formatted_text = self.transcript_text.editor.toHtml()
+            return formatted_text
+        except AttributeError as e:
+            print(f"Error accessing text editor document: {e}")
+            return None
 
     def deserialize_text_document(self, text_data):
         """Deserialize and load text into the editor."""
@@ -508,9 +515,38 @@ class MainTranscriptionWidget(QWidget):
 
     def save_editor_state(self):
         """Save the current state of the text editor to the database."""
-        formatted_text = self.transcript_text.serialize_text_document()
-        return formatted_text.encode('utf-8')
+        if self.current_selected_item is None:
+            QMessageBox.warning(self, 'No Recording Selected', 'Please select a recording to save.')
+            return
 
+        # Determine if we're in raw or processed mode
+        if self.mode_switch.value() == 0:  # Raw transcript mode
+            formatted_data = self.serialize_text_document()
+            if formatted_data is None:
+                QMessageBox.critical(self, 'Save Error', 'Could not retrieve the text document. Please try again.')
+                return
+            field_to_update = 'raw_transcript_formatted'
+        else:  # Processed text mode
+            formatted_data = self.serialize_text_document()
+            if formatted_data is None:
+                QMessageBox.critical(self, 'Save Error', 'Could not retrieve the text document. Please try again.')
+                return
+            field_to_update = 'processed_text_formatted'
+
+        print(f"Formatted data to save: {formatted_data[:100]}")
+
+        recording_id = self.current_selected_item.get_id()
+        db_path = resource_path("./database/database.sqlite")
+        conn = create_connection(db_path)
+
+        try:
+            update_recording(conn, recording_id, **{field_to_update: formatted_data})
+            conn.close()
+            QMessageBox.information(self, "Success", "Transcription saved successfully.")
+        except Exception as e:
+            QMessageBox.critical(self, "Save Error", f"An error occurred while saving: {e}")
+            if conn:
+                conn.close()
     def process_with_gpt4(self):
         """Emit signal to start GPT-4 processing."""
         self.gpt4_processing_requested.emit()
@@ -633,6 +669,7 @@ class MainTranscriptionWidget(QWidget):
             f"Additional Instructions: {refinement_instructions}\n"
             f"Apply these refinements to the previous output, maintaining any necessary formatting. "
             f"Return the refined text only."
+            f"Return the refined text only. If you do include html, do not include code blocks, just return the html."
         )
 
         # Prepare the messages for OpenAI API
@@ -1711,11 +1748,6 @@ class MainTranscriptionWidget(QWidget):
     def on_gpt4_processing_progress(self, progress_message):
         """Handle GPT-4 processing progress updates."""
         self.update_progress.emit(progress_message)
-
-    def save_editor_state(self):
-        """Save the current state of the text editor to the database."""
-        formatted_text = self.serialize_text_document()
-        return formatted_text.encode('utf-8')
 
     def process_with_gpt4(self):
         """Emit signal to start GPT-4 processing."""
