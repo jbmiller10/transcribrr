@@ -9,6 +9,8 @@ from torchaudio import functional as F
 from transformers.pipelines.audio_utils import ffmpeg_read
 import time
 import logging
+from openai import OpenAI
+from app.utils import language_to_iso
 
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 
@@ -242,29 +244,6 @@ class ASRDiarizationPipeline:
 
 
 def format_speech_to_dialogue(speech_text):
-    """
-    Formats the given text into a dialogue format.
-
-    Args:
-        speech_text (str): The dialogue text to be formatted.
-
-    Returns:
-        str: Formatted text in dialogue format.
-    """
-    # Parse the given text appropriately
-    try:
-        dialog_list = eval(str(speech_text))
-    except Exception as e:
-        logging.error(f"Failed to parse speech text: {e}")
-        return speech_text  # Return raw text if parsing fails
-
-    dialog_text = ""
-
-    for i, turn in enumerate(dialog_list):
-        speaker = f"Speaker {i % 2 + 1}"
-        text = turn.get('text', '')
-        dialog_text += f"{speaker}: {text}\n"
-
     return dialog_text
 
 
@@ -342,51 +321,78 @@ class TranscriptionThread(QThread):
     completed = pyqtSignal(str)
     error = pyqtSignal(str)
 
-    def __init__(self, file_path, transcription_quality, speaker_detection_enabled, hf_auth_key, language='English', *args, **kwargs):
+    def __init__(self, file_path, transcription_quality, speaker_detection_enabled
+                 , hf_auth_key
+                 , language='English'
+                 ,transcription_method='local'
+                 , openai_api_key=None
+                 , *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.file_path = file_path
         self.transcription_quality = transcription_quality
         self.speaker_detection_enabled = speaker_detection_enabled
+        self.transcription_method = transcription_method
         self.hf_auth_key = hf_auth_key
+        self.openai_api_key = openai_api_key
         self.language = language  # Add language attribute
+
+
 
     def run(self):
         try:
+            client = OpenAI()
             start_time = time.time()
             self.update_progress.emit('Transcription started...')
-            device = "cuda" if torch.cuda.is_available() else "mps"
+            if self.transcription_method.lower() == 'local':
+                device = "cuda" if torch.cuda.is_available() else "mps"
+                model_id = self.transcription_quality
+                pipeline = SpeechToTextPipeline(model_id=model_id)
+                result = pipeline(self.file_path, model_id, language=self.language)  # Pass language here
+                transcript = result
 
-            model_id = self.transcription_quality
-            pipeline = SpeechToTextPipeline(model_id=model_id)
-            result = pipeline(self.file_path, model_id, language=self.language)  # Pass language here
-            transcript = result
+                if not self.speaker_detection_enabled:
+                    end_time = time.time()
+                    runtime = end_time - start_time
+                    print(f"Runtime: {runtime:.2f} seconds")
+                    self.completed.emit(transcript['text'])
+                    return
 
-            if not self.speaker_detection_enabled:
+                logging.info("Initializing diarization pipeline...")
+                dir_pipeline = ASRDiarizationPipeline.from_pretrained(
+                    asr_model=model_id,
+                    diarizer_model="pyannote/speaker-diarization",
+                    use_auth_token=self.hf_auth_key,
+                    chunk_length_s=15,
+                    device=device,
+                )
+                logging.info("Running diarization pipeline...")
+                output_text = dir_pipeline(self.file_path, num_speakers=2, min_speaker=1, max_speaker=6)
+                dialogue = format_speech_to_dialogue(output_text)
                 end_time = time.time()
                 runtime = end_time - start_time
                 print(f"Runtime: {runtime:.2f} seconds")
-                self.completed.emit(transcript['text'])
-                return
+                print(dialogue)
 
-            logging.info("Initializing diarization pipeline...")
-            dir_pipeline = ASRDiarizationPipeline.from_pretrained(
-                asr_model=model_id,
-                diarizer_model="pyannote/speaker-diarization",
-                use_auth_token=self.hf_auth_key,
-                chunk_length_s=15,
-                device=device,
-            )
-            logging.info("Running diarization pipeline...")
-            output_text = dir_pipeline(self.file_path, num_speakers=2, min_speaker=1, max_speaker=6)
-            dialogue = format_speech_to_dialogue(output_text)
-            end_time = time.time()
-            runtime = end_time - start_time
-            print(f"Runtime: {runtime:.2f} seconds")
-            print(dialogue)
+                self.completed.emit(dialogue)
+                self.update_progress.emit('Transcription finished.')
+            elif self.transcription_method=='API':
+                self.update_progress.emit('OpenAI Whisper transcription started...')
+                try:
+                    with open(self.file_path, 'rb') as audio_file:
+                        response = client.audio.transcriptions.create(
+                            model="whisper-1",
+                            file=audio_file,
+                            language=language_to_iso(self.language)
+                        )
+                        print(response.text)
+                        self.completed.emit(response.text)
+                        logging.info("OpenAI Whisper transcription completed.")
+                except Exception as e:
+                    logging.error(f"OpenAI Whisper transcription failed: {e}")
+                    raise Exception(f"OpenAI Whisper transcription failed: {e}")
 
-            self.completed.emit(dialogue)
-            self.update_progress.emit('Transcription finished.')
         except Exception as e:
             self.error.emit(str(e))
             self.update_progress.emit('Error encountered; stopping...')
-            self.completed.emit("")  # Signal completion with an empty string to handle the spinner
+            self.completed.emit("")
+

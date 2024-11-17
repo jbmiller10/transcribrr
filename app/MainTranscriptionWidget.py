@@ -558,16 +558,26 @@ class MainTranscriptionWidget(QWidget):
             QMessageBox.warning(self, 'No Recording Selected', 'Please select a recording to transcribe.')
             self.transcript_text.toggle_transcription_spinner()
             return
+
         config_path = resource_path("config.json")
         with open(config_path, 'r') as config_file:
             config = json.load(config_file)
-        self.service_id = "transcription_application"
+
+        transcription_method = config.get('transcription_method', 'local')
+        transcription_quality = config.get('transcription_quality', 'openai/whisper-base')
+        speaker_detection_enabled = config.get('speaker_detection_enabled', False)
+        language = config.get('transcription_language', 'English')
+        openai_api_key = keyring.get_password("transcription_application", "OPENAI_API_KEY")  # Ensure correct retrieval
+
         self.transcription_thread = TranscriptionThread(
             file_path=self.file_path,
-            transcription_quality=config.get('transcription_quality', 'medium'),
-            speaker_detection_enabled=config.get('speaker_detection_enabled', False),
-            hf_auth_key=keyring.get_password(self.service_id, "HF_AUTH_TOKEN"),
-            language=config.get('transcription_language', 'English')  # Pass the language here
+            transcription_method=transcription_method,
+            openai_api_key=openai_api_key,
+            transcription_quality = transcription_quality,
+            speaker_detection_enabled = config.get('speaker_detection_enabled', False),
+            hf_auth_key = keyring.get_password("transcription_application", "HF_AUTH_TOKEN"),
+            language = config.get('transcription_language', 'English')
+
         )
         self.transcription_thread.completed.connect(self.on_transcription_completed)
         self.transcription_thread.update_progress.connect(self.on_transcription_progress)
