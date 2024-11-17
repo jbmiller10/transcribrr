@@ -1,30 +1,29 @@
 # Transcribrr
 
-Transcribrr is a desktop tool that turns audio into text and then refines the output using OpenAI's GPT models. It works with audio or video files on your computer, YouTube videos via a provided URL, or recordings made directly in the app. While functional, this is a personal project that I work on in my free time and very much a work in progress.
+Transcribrr is a desktop application designed for converting audio into text and refining it using OpenAI's GPT models. It's a versatile tool that handles local audio or video files, YouTube videos through URL links, and recordings captured directly in the app. This is a personal project that I am continually developing in my spare time, so expect ongoing improvements.
 
-<img width="1626" alt="image" src="https://github.com/user-attachments/assets/b8336779-a554-424b-97ff-53e617bf7823">
-
+![Transcribrr Screenshot](https://github.com/user-attachments/assets/b8336779-a554-424b-97ff-53e617bf7823)
 
 ## Features
 
-- fast, accurate, local transcription with optional speaker detection (via the excellent [whisperx](https://github.com/m-bain/whisperX) library)
-- GPT-4 for transcript processing & summarization
-- Manageable transcription quality settings
-- Preset prompt management for GPT processing
+- **Local Transcription**: Fast and accurate transcription using `whisperx` with optional speaker detection.
+- **GPT-4 Processing**: Use OpenAI's GPT-4 for text processing, summarization, and refinement.
+- **Transcription Management**: Adjust quality settings, manage preset prompts, and customize GPT processing parameters.
+- **Multiple Input Options**: Support for local files, YouTube URLs, or direct recordings.
 
 ## Installation
 
 ### Prerequisites
 
-Before installing the application, ensure you have the following dependencies:
+Ensure you have the following before installing the application:
 
-- Python 3.10
-- [Cuda 11.8 or higher](https://docs.nvidia.com/cuda/cuda-quick-start-guide/index.html) (optional, though highly recommended, for hardware acceleration. Requires a supported Nvidia GPU.)
-- [ffmpeg](https://ffmpeg.org/download.html)
+- Python 3.10+
+- [Cuda 11.8 or higher](https://docs.nvidia.com/cuda/cuda-quick-start-guide/index.html) (optional for GPU acceleration)
+- [FFmpeg](https://ffmpeg.org/download.html)
 
 ### Clone the Repository
 
-Clone the repository to your local machine:
+Clone the project repository to your local machine:
 
 ```bash
 git clone https://github.com/jbmiller10/transcribrr.git
@@ -33,11 +32,14 @@ cd transcribrr
 
 ### Create a Virtual Environment
 
+Create a virtual environment to manage dependencies:
+
 #### Windows
 ```bash
 python -m venv venv
 .\venv\Scripts\activate
 ```
+
 #### MacOS/Linux
 ```bash
 python -m venv venv
@@ -46,22 +48,21 @@ source venv/bin/activate
 
 ### Install Dependencies
 
-#### Install Torch w/ Cuda (optional, though highly recommended, for hardware acceleration. Requires an Nvidia GPU and cuda toolkit)
+#### Optional: Install Torch with Cuda for GPU
+
 ```bash
-pip3 install torch~=2.0.0 torchaudio~=2.0.0 --index-url https://download.pytorch.org/whl/cu118
+pip install torch~=2.0.0 torchaudio~=2.0.0 --index-url https://download.pytorch.org/whl/cu118
 ```
 
-#### Install requirements.txt
+#### Install Required Packages
 
 ```bash
 pip install -r requirements.txt
 ```
 
+## Usage
 
-
-### Usage
-
-Run the main script to start the application:
+To start the application, run:
 
 ```bash
 python main.py
@@ -69,14 +70,11 @@ python main.py
 
 ## Configuration
 
-Before usage, configure your OpenAI API keys through the 'Settings' menu.
-ll
-You can also adjust transcription quality, GPT model selection, max tokens, temperature, and your preset GPT prompts.
+Before using Transcribrr, configure your OpenAI API keys through the 'Settings' menu. You can also adjust settings such as transcription quality, GPT model, max tokens, temperature, and manage your preset GPT prompts.
 
 ## How to Use
 
-1. Choose the mode of transcription (File Upload or YouTube URL).
-2. If using File Upload, select your video/audio file using the "Open Audio/Video File" button.
-3. If using the YouTube URL mode, paste the YouTube link into the corresponding field.
-4. Click the "Start Transcription" button to begin processing.
-5. After transcription, you can process the text with GPT-4 using the "Process with GPT-4" button after setting your prompts.
+1. Select your transcription mode: File Upload, YouTube URL, or Direct Recording.
+2. Upload a file or paste a YouTube URL into the app to begin.
+3. Click "Start Transcription" to convert audio to text.
+4. Utilize the "Process with GPT-4" button for refining transcripts with GPT settings.
