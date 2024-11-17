@@ -1,6 +1,6 @@
 from PyQt6.QtWidgets import (
     QPushButton, QComboBox, QDoubleSpinBox, QSpinBox, QCheckBox, QDialog,
-    QVBoxLayout, QLabel, QLineEdit, QDialogButtonBox
+    QVBoxLayout, QLabel, QLineEdit, QDialogButtonBox, QHBoxLayout
 )
 from PyQt6.QtCore import pyqtSignal
 import keyring
@@ -37,21 +37,30 @@ class SettingsDialog(QDialog):
         # Transcription Quality
         self.transcription_quality_label = QLabel('Transcription Quality: (Larger = higher quality, but slower & uses more VRAM)', self)
         self.transcription_quality_dropdown = QComboBox(self)
-        self.transcription_quality_dropdown.addItems(['distil-whisper/distil-small.en',
-                                                     'distil-whisper/distil-medium.en',
-                                                     'distil-whisper/distil-large-v2',
-                                                     'distil-whisper/distil-large-v3',
-                                                     'openai/whisper-tiny',
-                                                     'openai/whisper-base',
-                                                     'openai/whisper-small',
-                                                     'openai/whisper-medium',
-                                                     'openai/whisper-large-v2',
-                                                     'openai/whisper-large-v3'])
+        self.transcription_quality_dropdown.addItems([
+            'distil-whisper/distil-small.en',
+            'distil-whisper/distil-medium.en',
+            'distil-whisper/distil-large-v2',
+            'distil-whisper/distil-large-v3',
+            'openai/whisper-tiny',
+            'openai/whisper-base',
+            'openai/whisper-small',
+            'openai/whisper-medium',
+            'openai/whisper-large-v2',
+            'openai/whisper-large-v3'
+        ])
 
         # GPT Model Selection
         self.gpt_model_label = QLabel('GPT Model: (GPT-4o strongly recommended.)', self)
         self.gpt_model_dropdown = QComboBox(self)
-        self.gpt_model_dropdown.addItems(['gpt-4-turbo','gpt-4o', 'gpt-4o-mini', 'gpt-3.5-turbo', 'gpt-4','o1-preview'])
+        self.gpt_model_dropdown.addItems([
+            'gpt-4-turbo',
+            'gpt-4o',
+            'gpt-4o-mini',
+            'gpt-3.5-turbo',
+            'gpt-4',
+            'o1-preview'
+        ])
 
         # Max Tokens
         self.max_tokens_label = QLabel('Max Tokens (0-16000):', self)
@@ -76,9 +85,20 @@ class SettingsDialog(QDialog):
             # Add more languages as needed
         ])
 
+        layout.addWidget(self.hf_api_key_label)
+        layout.addWidget(self.hf_api_key_edit)
+        layout.addWidget(self.openai_api_key_label)
+        layout.addWidget(self.openai_api_key_edit)
         # Speaker detection/diarization
         self.speaker_detection_checkbox = QCheckBox('Enable Speaker Detection (Requires HF Auth Token)')
         self.toggle_speaker_detection_checkbox()
+
+        # Transcription Method Selection
+        self.transcription_method_label = QLabel('Transcription Method:', self)
+        self.transcription_method_dropdown = QComboBox(self)
+        self.transcription_method_dropdown.addItems(['Local', 'API'])
+        layout.addWidget(self.transcription_method_label)
+        layout.addWidget(self.transcription_method_dropdown)
 
         # Prompt manager
         self.manage_prompts_button = QPushButton('Manage Prompts')
@@ -94,12 +114,10 @@ class SettingsDialog(QDialog):
         layout.addWidget(self.language_label)  # Add language label
         layout.addWidget(self.language_dropdown)  # Add language dropdown
         layout.addWidget(self.speaker_detection_checkbox)
-        layout.addWidget(self.hf_api_key_label)
-        layout.addWidget(self.hf_api_key_edit)
-        layout.addWidget(self.openai_api_key_label)
-        layout.addWidget(self.openai_api_key_edit)
         layout.addWidget(self.transcription_quality_label)
         layout.addWidget(self.transcription_quality_dropdown)
+        layout.addWidget(self.transcription_method_label)  # Add transcription method label
+        layout.addWidget(self.transcription_method_dropdown)  # Add transcription method dropdown
         layout.addWidget(self.manage_prompts_button)
 
         # Load the config file
@@ -120,16 +138,18 @@ class SettingsDialog(QDialog):
         hf_api_key = self.hf_api_key_edit.text()
         openai_api_key = self.openai_api_key_edit.text()
         transcription_quality = self.transcription_quality_dropdown.currentText()
-        transcription_language = self.language_dropdown.currentText()  # Get selected language
+        transcription_language = self.language_dropdown.currentText()
+        transcription_method = self.transcription_method_dropdown.currentText()  # "local" or "openai_whisper"
 
         # Save the API keys
         keyring.set_password(self.service_id, "HF_AUTH_TOKEN", hf_api_key)
         keyring.set_password(self.service_id, "OPENAI_API_KEY", openai_api_key)
 
-        # Save the transcription quality and language
+        # Save the transcription quality, language, and method
         config = {
             'transcription_quality': transcription_quality,
             'transcription_language': transcription_language,  # Save language
+            'transcription_method': transcription_method,      # Save transcription method
             'gpt_model': self.gpt_model_dropdown.currentText(),
             'max_tokens': self.max_tokens_spinbox.value(),
             'temperature': self.temperature_spinbox.value(),
@@ -152,6 +172,13 @@ class SettingsDialog(QDialog):
                 self.temperature_spinbox.setValue(config.get('temperature', 0.7))
                 self.language_dropdown.setCurrentText(config.get('transcription_language', 'English'))  # Load language
                 self.speaker_detection_checkbox.setChecked(config.get('speaker_detection_enabled', True))
+                # Set transcription method
+                transcription_method = config.get('transcription_method', 'local')
+                index = self.transcription_method_dropdown.findText(transcription_method)
+                if index != -1:
+                    self.transcription_method_dropdown.setCurrentIndex(index)
+                else:
+                    self.transcription_method_dropdown.setCurrentIndex(0)  # Default to 'Local'
         except FileNotFoundError:
             # Set default values if config file doesn't exist
             self.transcription_quality_dropdown.setCurrentText('distil-whisper/distil-small.en')
@@ -160,10 +187,12 @@ class SettingsDialog(QDialog):
             self.temperature_spinbox.setValue(0.7)
             self.language_dropdown.setCurrentText('English')  # Default language
             self.speaker_detection_checkbox.setChecked(True)
+            self.transcription_method_dropdown.setCurrentIndex(0)  # Default to 'Local'
 
     def save_config(self):
         config = {
             'transcription_quality': self.transcription_quality_dropdown.currentText(),
+            'transcription_method': self.transcription_method_dropdown.currentText().lower().replace(" ", "_"),
             'gpt_model': self.gpt_model_dropdown.currentText(),
             'max_tokens': self.max_tokens_spinbox.value(),
             'temperature': self.temperature_spinbox.value(),
