@@ -32,6 +32,7 @@ class YouTubeDownloadThread(QThread):
                     'preferredcodec': 'wav',
                     'preferredquality': '192',
                 }],
+                'res':'480',
                 'outtmpl': output_template,
                 'quiet': True
             }

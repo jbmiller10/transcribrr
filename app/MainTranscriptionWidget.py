@@ -1,9 +1,10 @@
 import json
 from PyQt6.QtWidgets import (
     QWidget, QVBoxLayout, QMessageBox, QComboBox, QHBoxLayout, QLabel,
-    QSizePolicy, QTextEdit, QDoubleSpinBox, QSpinBox, QSplitter, QPushButton, QLineEdit, QFileDialog,QInputDialog
+    QSizePolicy, QTextEdit, QDoubleSpinBox, QSpinBox, QSplitter, QPushButton,
+    QLineEdit, QFileDialog, QInputDialog, QColorDialog
 )
-from PyQt6.QtGui import QIcon
+from PyQt6.QtGui import QIcon, QFont, QTextCharFormat, QTextListFormat, QFontDatabase
 from PyQt6.QtCore import pyqtSignal, QSize, Qt
 from app.TextEditor import TextEditor
 from app.threads.TranscriptionThread import TranscriptionThread
@@ -16,7 +17,6 @@ import htmldocx
 import traceback
 import keyring
 from app.database import create_connection, get_recording_by_id, update_recording
-
 
 class MainTranscriptionWidget(QWidget):
     transcriptionStarted = pyqtSignal()
@@ -61,6 +61,20 @@ class MainTranscriptionWidget(QWidget):
         self.is_transcribing = False
         self.is_processing_gpt4 = False
 
+
+    def on_mode_switch_changed(self, value):
+        """Handle changes in the mode switch to show/hide refinement controls."""
+        if not isinstance(value, int):
+            return
+        # Log the switch value change for debugging
+        print(f"Mode switch value changed to: {value}")
+
+        # Show or hide the refinement widget based on the mode and content
+        if value == 1 and self.has_processed_text() and not self.is_processing_gpt4:
+            self.refinement_widget.setVisible(True)
+        else:
+            self.refinement_widget.setVisible(False)
+        self.toggle_transcription_view()
     def load_config(self):
         """Load configuration from config.json."""
         config_path = resource_path('config.json')
@@ -101,8 +115,7 @@ class MainTranscriptionWidget(QWidget):
         self.settings_button.setIconSize(QSize(25, 25))
         self.settings_button.setFixedSize(30, 30)
 
-
-        #edit prompt button
+        # Edit prompt button
         self.edit_prompt_button = QPushButton("Edit Prompt")
         self.edit_prompt_button.clicked.connect(self.edit_selected_prompt)
 
@@ -132,7 +145,6 @@ class MainTranscriptionWidget(QWidget):
 
         # Custom prompt save button (hidden by default)
         self.custom_prompt_save_button = QPushButton("Save as Template")
-        self.custom_prompt_save_button.setVisible(False)
         self.custom_prompt_save_button.clicked.connect(self.save_custom_prompt_as_template)
 
         # Create a widget to hold buttons below the custom prompt input
@@ -238,8 +250,11 @@ class MainTranscriptionWidget(QWidget):
                 "Stream of Consciousness": "Organize the ideas in this raw transcript of a stream of consciousness brainstorm in order to capture all key points in a comprehensive and thorough manner.",
             }
             # Optionally, save the default prompts to the file
-            with open(prompts_path, 'w') as file:
-                json.dump(self.preset_prompts, file, indent=4, sort_keys=True)
+            try:
+                with open(prompts_path, 'w') as file:
+                    json.dump(self.preset_prompts, file, indent=4, sort_keys=True)
+            except Exception as e:
+                QMessageBox.critical(self, "Error Saving Prompts", f"Could not save default prompts: {e}")
 
         self.gpt_prompt_dropdown.blockSignals(True)
         self.gpt_prompt_dropdown.clear()
@@ -257,9 +272,11 @@ class MainTranscriptionWidget(QWidget):
             self.custom_prompt_save_button.setText("Save as Template")
             self.custom_prompt_save_button.clicked.disconnect()
             self.custom_prompt_save_button.clicked.connect(self.save_custom_prompt_as_template)
+            # Hide edit_prompt_button
+            self.edit_prompt_button.hide()
         else:
             self.hide_custom_prompt_input()
-            self.edit_prompt_button.setVisible(True)
+            self.edit_prompt_button.show()
             self.is_editing_existing_prompt = False
             self.edit_prompt_button.setText("Edit Prompt")
 
@@ -284,12 +301,49 @@ class MainTranscriptionWidget(QWidget):
         self.prompt_button_widget.setVisible(False)
         self.prompt_widget.setVisible(False)
         self.main_splitter.setSizes([0, 500])
+        # Ensure edit_prompt_button is in top_toolbar
+        if not self.edit_prompt_button.isHidden():
+            return  # Already in top_toolbar
+        self.prompt_button_layout.removeWidget(self.edit_prompt_button)
+        self.top_toolbar.insertWidget(1, self.edit_prompt_button)
+        self.edit_prompt_button.show()
 
-    def add_formatting_actions(self):
-        """Add text formatting actions to the toolbar."""
-        # Implementation remains the same as your existing TextEditor.py
+    def edit_selected_prompt(self):
+        """Enable editing of the selected prompt."""
+        if self.is_editing_existing_prompt:
+            # Cancel editing
+            self.hide_custom_prompt_input()
+            self.edit_prompt_button.setText("Edit Prompt")
+            self.is_editing_existing_prompt = False
 
-        pass  # Placeholder if needed
+            # Move 'edit_prompt_button' back to top_toolbar
+            self.prompt_button_layout.removeWidget(self.edit_prompt_button)
+            self.top_toolbar.insertWidget(1, self.edit_prompt_button)
+            self.edit_prompt_button.show()
+
+            # Reconnect the save button to default action
+            self.custom_prompt_save_button.clicked.disconnect()
+            self.custom_prompt_save_button.clicked.connect(self.save_custom_prompt_as_template)
+        else:
+            # Start editing
+            selected_prompt = self.gpt_prompt_dropdown.currentText()
+            if selected_prompt in self.preset_prompts:
+                self.is_editing_existing_prompt = True
+                self.custom_prompt_input.setPlainText(self.preset_prompts[selected_prompt])
+                self.show_custom_prompt_input()
+                self.edit_prompt_button.setText("Cancel Edit")
+
+                # Move 'edit_prompt_button' to prompt_button_layout next to save button
+                self.top_toolbar.removeWidget(self.edit_prompt_button)
+                self.prompt_button_layout.insertWidget(1, self.edit_prompt_button)
+                self.edit_prompt_button.show()
+
+                self.custom_prompt_save_button.setText("Save")
+                # Disconnect and connect save button to save_edited_prompt
+                self.custom_prompt_save_button.clicked.disconnect()
+                self.custom_prompt_save_button.clicked.connect(self.save_edited_prompt)
+            else:
+                QMessageBox.warning(self, "Edit Prompt", "Cannot edit the 'Custom Prompt' option directly.")
 
     def save_custom_prompt_as_template(self):
         """Save the custom prompt as a new template."""
@@ -317,31 +371,6 @@ class MainTranscriptionWidget(QWidget):
             except Exception as e:
                 QMessageBox.critical(self, "Error Saving Prompt", f"An error occurred while saving the prompt: {e}")
 
-    def edit_selected_prompt(self):
-        """Enable editing of the selected prompt."""
-        if self.is_editing_existing_prompt:
-            # Cancel editing
-            self.hide_custom_prompt_input()
-            self.edit_prompt_button.setText("Edit Prompt")
-            self.is_editing_existing_prompt = False
-            # Reconnect the save button to default action
-            self.custom_prompt_save_button.clicked.disconnect()
-            self.custom_prompt_save_button.clicked.connect(self.save_custom_prompt_as_template)
-        else:
-            # Start editing
-            selected_prompt = self.gpt_prompt_dropdown.currentText()
-            if selected_prompt in self.preset_prompts:
-                self.is_editing_existing_prompt = True
-                self.custom_prompt_input.setPlainText(self.preset_prompts[selected_prompt])
-                self.show_custom_prompt_input()
-                self.edit_prompt_button.setText("Cancel Edit")
-                self.custom_prompt_save_button.setText("Save")
-                # Disconnect and connect save button to save_edited_prompt
-                self.custom_prompt_save_button.clicked.disconnect()
-                self.custom_prompt_save_button.clicked.connect(self.save_edited_prompt)
-            else:
-                QMessageBox.warning(self, "Edit Prompt", "Cannot edit the 'Custom Prompt' option directly.")
-
     def save_edited_prompt(self):
         """Save the edited prompt."""
         edited_text = self.custom_prompt_input.toPlainText()
@@ -360,6 +389,12 @@ class MainTranscriptionWidget(QWidget):
             self.hide_custom_prompt_input()
             self.edit_prompt_button.setText("Edit Prompt")
             self.is_editing_existing_prompt = False
+
+            # Move 'edit_prompt_button' back to top_toolbar
+            self.prompt_button_layout.removeWidget(self.edit_prompt_button)
+            self.top_toolbar.insertWidget(1, self.edit_prompt_button)
+            self.edit_prompt_button.show()
+
             # Reconnect the save button to default action
             self.custom_prompt_save_button.clicked.disconnect()
             self.custom_prompt_save_button.clicked.connect(self.save_custom_prompt_as_template)
@@ -479,7 +514,7 @@ class MainTranscriptionWidget(QWidget):
         if file_path:
             doc = docx.Document()
             html = self.transcript_text.toHtml()
-            new_parser = HtmlToDocx()
+            new_parser = htmldocx.HtmlToDocx()
             new_parser.add_html_to_document(html, doc)
             doc.save(file_path)
             QMessageBox.information(self, "Export to Word", f"Document successfully exported to {file_path}")
@@ -489,9 +524,12 @@ class MainTranscriptionWidget(QWidget):
         file_path, _ = QFileDialog.getSaveFileName(self, "Export to Plain Text", "", "Text Files (*.txt)")
         if file_path:
             plain_text = self.transcript_text.toPlainText()
-            with open(file_path, 'w', encoding='utf-8') as file:
-                file.write(plain_text)
-            QMessageBox.information(self, "Export to Text", f"Document successfully exported to {file_path}")
+            try:
+                with open(file_path, 'w', encoding='utf-8') as file:
+                    file.write(plain_text)
+                QMessageBox.information(self, "Export to Text", f"Document successfully exported to {file_path}")
+            except Exception as e:
+                QMessageBox.critical(self, "Export Error", f"An error occurred while exporting: {e}")
 
     def serialize_text_document(self):
         """Serialize the text document to HTML."""
@@ -544,9 +582,10 @@ class MainTranscriptionWidget(QWidget):
             QMessageBox.critical(self, "Save Error", f"An error occurred while saving: {e}")
             if conn:
                 conn.close()
+
     def process_with_gpt4(self):
         """Emit signal to start GPT-4 processing."""
-        self.gpt4_processing_requested.emit()
+        self.start_gpt4_processing()
 
     def start_transcription(self):
         """Start the transcription process."""
@@ -557,8 +596,12 @@ class MainTranscriptionWidget(QWidget):
             return
 
         config_path = resource_path("config.json")
-        with open(config_path, 'r') as config_file:
-            config = json.load(config_file)
+        try:
+            with open(config_path, 'r') as config_file:
+                config = json.load(config_file)
+        except FileNotFoundError:
+            QMessageBox.critical(self, "Configuration Error", f"config.json not found at {config_path}.")
+            return
 
         transcription_method = config.get('transcription_method', 'local')
         transcription_quality = config.get('transcription_quality', 'openai/whisper-base')
@@ -566,15 +609,25 @@ class MainTranscriptionWidget(QWidget):
         language = config.get('transcription_language', 'English')
         openai_api_key = keyring.get_password("transcription_application", "OPENAI_API_KEY")  # Ensure correct retrieval
 
+        recording_id = self.current_selected_item.get_id()
+        db_path = resource_path("./database/database.sqlite")
+        conn = create_connection(db_path)
+        recording = get_recording_by_id(conn, recording_id)
+        conn.close()
+
+        if not recording:
+            QMessageBox.warning(self, 'Recording Not Found', f'No recording found with ID: {recording_id}')
+            self.transcript_text.toggle_transcription_spinner()
+            return
+
         self.transcription_thread = TranscriptionThread(
             file_path=self.file_path,
             transcription_method=transcription_method,
             openai_api_key=openai_api_key,
-            transcription_quality = transcription_quality,
-            speaker_detection_enabled = config.get('speaker_detection_enabled', False),
-            hf_auth_key = keyring.get_password("transcription_application", "HF_AUTH_TOKEN"),
-            language = config.get('transcription_language', 'English')
-
+            transcription_quality=transcription_quality,
+            speaker_detection_enabled=speaker_detection_enabled,
+            hf_auth_key=keyring.get_password("transcription_application", "HF_AUTH_TOKEN"),
+            language=language
         )
         self.transcription_thread.completed.connect(self.on_transcription_completed)
         self.transcription_thread.update_progress.connect(self.on_transcription_progress)
@@ -669,25 +722,24 @@ class MainTranscriptionWidget(QWidget):
 
         # Prepare the system prompt
         system_prompt = (
-            f"You are an AI assistant that has previously transformed raw transcribed from audio text according to a user's prompt. "
+            f"You are an AI assistant that has previously transformed text according to a user's prompt. "
             f"The user now wants to refine the output based on additional instructions. "
-            f"The text may have html formatting. If so, you should try to maintain this formatting and return html accordingly."
             f"Original Prompt: {self.initial_prompt_instructions}\n"
             f"Additional Instructions: {refinement_instructions}\n"
-            f"Apply these refinements to the previous output, maintaining any necessary formatting. "
-            f"Return the refined text only."
-            f"Return the refined text only. If you do include html, do not include code blocks, just return the html."
+            f"Apply these refinements to the previous output. "
+            f"If the text that is provided to you it formatted in html, you should maintain this formatting and return the text with html."
+            f"You should always return similarly formatted html  if you receive html formatted text as one of the inputs. Otherwise, don't bother. "
+            f"Return the refined text only and formatting if applicable. Do not use code blocks"
         )
 
         # Prepare the messages for OpenAI API
         messages = [
             {'role': 'system', 'content': system_prompt},
             {'role': 'user', 'content': self.original_transcript},
-            {'role': 'assistant', 'content': self.initial_processed_text},
-            {'role': 'user', 'content':f"Additional Instructions: {refinement_instructions}"}
+            {'role': 'assistant', 'content': self.initial_processed_text}
         ]
 
-        # Start the GPT-4 processing thread
+        # Start the GPT-4 refinement thread
         self.gpt4_refinement_thread = GPT4ProcessingThread(
             transcript=self.original_transcript,
             prompt_instructions=system_prompt,
@@ -726,10 +778,6 @@ class MainTranscriptionWidget(QWidget):
 
             # Update the stored processed text for potential further refinements
             self.initial_processed_text = refined_text
-
-            # Optional: Update conversation history if needed
-            # self.conversation_history.append({'sender': 'Assistant', 'message': refined_text})
-
         else:
             QMessageBox.warning(self, "No Refined Text", "GPT-4 did not return any text.")
 
@@ -747,7 +795,7 @@ class MainTranscriptionWidget(QWidget):
 
     def on_gpt4_processing_error(self, error_message):
         """Handle GPT-4 processing errors."""
-        QMessageBox.critical(self, "GPT-4 Processing Error", error_message)
+        QMessageBox.critical(self, 'GPT-4 Processing Error', error_message)
         # Re-enable the refinement input fields
         self.refinement_input.setEnabled(True)
         self.refinement_submit_button.setEnabled(True)
@@ -769,6 +817,7 @@ class MainTranscriptionWidget(QWidget):
 
             if recording is None:
                 QMessageBox.warning(self, 'Recording Not Found', f'No recording found with ID: {recording_id}')
+                conn.close()
                 return
 
             if self.mode_switch.value() == 0:  # 0 is for raw transcript
@@ -838,315 +887,14 @@ class MainTranscriptionWidget(QWidget):
                 return
         else:
             prompt_instructions = self.preset_prompts.get(selected_prompt_key, '')
+
         config_path = resource_path("config.json")
-        with open(config_path, 'r') as config_file:
-            config = json.load(config_file)
-
-        openai_api_key = keyring.get_password("transcription_application", "OPENAI_API_KEY")
-        if not openai_api_key:
-            QMessageBox.critical(self, "API Key Missing", "Please set your OpenAI API key in the settings.")
+        try:
+            with open(config_path, 'r') as config_file:
+                config = json.load(config_file)
+        except FileNotFoundError:
+            QMessageBox.critical(self, "Configuration Error", f"config.json not found at {config_path}.")
             return
-
-        temperature = self.temperature_spinbox.value()
-        max_tokens = self.max_tokens_spinbox.value()
-
-        # Start the GPT-4 processing thread
-        self.gpt4_processing_thread = GPT4ProcessingThread(
-            transcript=raw_transcript,
-            prompt_instructions=prompt_instructions,
-            gpt_model=self.config.get('gpt_model', 'gpt-4'),
-            max_tokens=max_tokens,
-            temperature=temperature,
-            openai_api_key=openai_api_key
-        )
-        self.gpt4_processing_thread.completed.connect(self.on_gpt4_processing_completed)
-        self.gpt4_processing_thread.update_progress.connect(self.on_gpt4_processing_progress)
-        self.gpt4_processing_thread.error.connect(self.on_gpt4_processing_error)
-        self.gpt4_processing_thread.start()
-        self.is_processing_gpt4 = True
-        self.transcript_text.toggle_gpt_spinner()
-        self.update_ui_state()
-
-    def on_gpt4_processing_completed(self, processed_text):
-        """Handle completion of GPT-4 processing."""
-        if self.current_selected_item:
-            # Update the editor with the new processed text
-            self.mode_switch.setValue(1)
-            if self.is_text_html(processed_text):
-                self.transcript_text.editor.setHtml(processed_text)
-                formatted_field = 'processed_text_formatted'
-            else:
-                self.transcript_text.editor.setPlainText(processed_text)
-                formatted_field = 'processed_text'
-            recording_id = self.current_selected_item.get_id()
-            db_path = resource_path("./database/database.sqlite")
-            conn = create_connection(db_path)
-            update_recording(conn, recording_id, **{formatted_field: processed_text})
-            conn.close()
-            self.is_processing_gpt4 = False
-            self.transcript_text.toggle_gpt_spinner()
-            self.update_ui_state()
-
-            # Store necessary data for refinement
-            self.initial_processed_text = processed_text
-            self.original_transcript = self.raw_transcript_text
-            self.initial_prompt_instructions = self.get_current_prompt_instructions()
-
-            # Show the refinement input area
-            if self.has_processed_text():
-                self.refinement_widget.setVisible(True)
-
-    def on_gpt4_processing_progress(self, progress_message):
-        """Handle GPT-4 processing progress updates."""
-        self.update_progress.emit(progress_message)
-
-    def on_gpt4_processing_error(self, error_message):
-        """Handle GPT-4 processing errors."""
-        QMessageBox.critical(self, 'GPT-4 Processing Error', error_message)
-        # Re-enable the processing flag and update UI
-        self.is_processing_gpt4 = False
-        self.transcript_text.toggle_gpt_spinner()
-        self.update_ui_state()
-
-    def start_smart_format_processing(self, text_to_format):
-        """Start smart formatting of the transcript."""
-        if not text_to_format.strip():
-            QMessageBox.warning(self, 'Empty Text', 'There is no text to format.')
-            return
-
-        prompt_instructions = """
-        Please intelligently format the following text in HTML based on its context.
-        Do not change any of the text - just apply formatting as needed.
-        Do not use a code block when returning the html, just provide the html.
-        """
-        config_path = resource_path("config.json")
-        with open(config_path, 'r') as config_file:
-            config = json.load(config_file)
-
-        openai_api_key = keyring.get_password("transcription_application", "OPENAI_API_KEY")
-        if not openai_api_key:
-            QMessageBox.critical(self, "API Key Missing", "Please set your OpenAI API key in the settings.")
-            return
-
-        temperature = self.temperature_spinbox.value()
-        max_tokens = self.max_tokens_spinbox.value()
-
-        # Start the GPT-4 processing thread
-        self.gpt4_smart_format_thread = GPT4ProcessingThread(
-            transcript=text_to_format,
-            prompt_instructions=prompt_instructions,
-            gpt_model=self.config.get('gpt_model', 'gpt-4'),
-            max_tokens=max_tokens,
-            temperature=temperature,
-            openai_api_key=openai_api_key
-        )
-        self.gpt4_smart_format_thread.completed.connect(self.on_smart_format_completed)
-        self.gpt4_smart_format_thread.update_progress.connect(self.update_progress.emit)
-        self.gpt4_smart_format_thread.error.connect(self.on_gpt4_processing_error)
-        self.gpt4_smart_format_thread.start()
-        self.is_processing_gpt4 = True
-        self.transcript_text.toggle_gpt_spinner()
-        self.update_ui_state()
-
-    def on_smart_format_completed(self, formatted_html):
-        """Handle completion of smart formatting."""
-        if formatted_html:
-            self.transcript_text.editor.setHtml(formatted_html)
-            recording_id = self.current_selected_item.get_id()
-            db_path = resource_path("./database/database.sqlite")
-            conn = create_connection(db_path)
-            update_recording(conn, recording_id, processed_text_formatted=formatted_html)
-            conn.close()
-            self.is_processing_gpt4 = False
-            self.transcript_text.toggle_gpt_spinner()
-            self.update_ui_state()
-        else:
-            QMessageBox.warning(self, 'Formatting Failed', 'Failed to format the text.')
-        # Re-enable the smart format controls if any
-
-    def start_refinement_processing(self):
-        """Start the refinement processing with additional user instructions."""
-        refinement_instructions = self.refinement_input.text().strip()
-        if not refinement_instructions:
-            QMessageBox.warning(self, "Refinement Instructions", "Please enter refinement instructions.")
-            return
-
-        # Ensure necessary variables are initialized
-        if not hasattr(self, 'original_transcript') or not self.original_transcript:
-            # Try to set self.original_transcript from self.raw_transcript_text
-            if hasattr(self, 'raw_transcript_text') and self.raw_transcript_text:
-                self.original_transcript = self.raw_transcript_text
-            else:
-                QMessageBox.critical(self, "Error", "Original transcript is not available.")
-                return
-
-        if not hasattr(self, 'initial_processed_text') or not self.initial_processed_text:
-            QMessageBox.critical(self, "Error", "Processed text is not available.")
-            return
-
-        if not hasattr(self, 'initial_prompt_instructions') or not self.initial_prompt_instructions:
-            self.initial_prompt_instructions = self.get_current_prompt_instructions()
-            if not self.initial_prompt_instructions:
-                QMessageBox.critical(self, "Error", "Initial prompt instructions are not available.")
-                return
-
-        # Retrieve the processed text from the editor, preserving HTML if present
-        current_processed_text = (
-            self.transcript_text.editor.toHtml()
-            if self.is_text_html(self.initial_processed_text)
-            else self.transcript_text.editor.toPlainText()
-        )
-
-        # Update initial_processed_text with current content
-        self.initial_processed_text = current_processed_text
-
-        # Start the GPT-4 refinement thread
-        openai_api_key = keyring.get_password("transcription_application", "OPENAI_API_KEY")
-        if not openai_api_key:
-            QMessageBox.critical(self, "API Key Missing", "Please set your OpenAI API key in the settings.")
-            return
-
-        temperature = self.temperature_spinbox.value()
-        max_tokens = self.max_tokens_spinbox.value()
-
-        # Prepare the system prompt
-        system_prompt = (
-            f"You are an AI assistant that has previously transformed text according to a user's prompt. "
-            f"The user now wants to refine the output based on additional instructions. "
-            f"Original Prompt: {self.initial_prompt_instructions}\n"
-            f"Additional Instructions: {refinement_instructions}\n"
-            f"Apply these refinements to the previous output, maintaining any necessary formatting. "
-            f"Return the refined text only."
-        )
-
-        # Prepare the messages for OpenAI API
-        messages = [
-            {'role': 'system', 'content': system_prompt},
-            {'role': 'user', 'content': self.original_transcript},
-            {'role': 'assistant', 'content': self.initial_processed_text}
-        ]
-
-        # Start the GPT-4 processing thread
-        self.gpt4_refinement_thread = GPT4ProcessingThread(
-            transcript=self.original_transcript,
-            prompt_instructions=system_prompt,
-            gpt_model=self.config.get('gpt_model', 'gpt-4'),
-            max_tokens=max_tokens,
-            temperature=temperature,
-            openai_api_key=openai_api_key,
-            messages=messages  # Pass the conversation messages
-        )
-        self.gpt4_refinement_thread.completed.connect(self.on_refinement_completed)
-        self.gpt4_refinement_thread.error.connect(self.on_gpt4_processing_error)
-        self.gpt4_refinement_thread.start()
-
-        # Disable the refinement input and button until processing is complete
-        self.refinement_input.setEnabled(False)
-        self.refinement_submit_button.setEnabled(False)
-
-    def on_refinement_completed(self, refined_text):
-        """Handle the refined text received from GPT-4."""
-        if refined_text:
-            # Update the editor with the new refined text
-            if self.is_text_html(refined_text):
-                self.transcript_text.editor.setHtml(refined_text)
-                formatted_field = 'processed_text_formatted'
-            else:
-                self.transcript_text.editor.setPlainText(refined_text)
-                formatted_field = 'processed_text'
-
-            # Update the processed text in the database
-            if self.current_selected_item:
-                recording_id = self.current_selected_item.get_id()
-                db_path = resource_path("./database/database.sqlite")
-                conn = create_connection(db_path)
-                update_recording(conn, recording_id, **{formatted_field: refined_text})
-                conn.close()
-
-            # Update the stored processed text for potential further refinements
-            self.initial_processed_text = refined_text
-
-        else:
-            QMessageBox.warning(self, "No Refined Text", "GPT-4 did not return any text.")
-
-        # Re-enable the refinement input fields
-        self.refinement_input.setEnabled(True)
-        self.refinement_input.clear()
-        self.refinement_submit_button.setEnabled(True)
-
-        self.is_processing_gpt4 = False
-        self.update_ui_state()
-
-    def on_gpt4_processing_error(self, error_message):
-        """Handle GPT-4 processing errors."""
-        QMessageBox.critical(self, 'GPT-4 Processing Error', error_message)
-        # Re-enable the refinement input fields
-        self.refinement_input.setEnabled(True)
-        self.refinement_submit_button.setEnabled(True)
-        self.is_processing_gpt4 = False
-        self.update_ui_state()
-
-    def on_mode_switch_changed(self):
-        """Handle changes in the mode switch to show/hide refinement controls."""
-        # Show or hide the refinement widget based on the mode and content
-        if self.mode_switch.value() == 1 and self.has_processed_text() and not self.is_processing_gpt4:
-            self.refinement_widget.setVisible(True)
-        else:
-            self.refinement_widget.setVisible(False)
-        self.toggle_transcription_view()
-
-    def has_processed_text(self):
-        """Check if there's processed text available."""
-        if self.current_selected_item is not None:
-            db_path = resource_path("./database/database.sqlite")
-            conn = create_connection(db_path)
-            recording_id = self.current_selected_item.get_id()
-            recording = get_recording_by_id(conn, recording_id)
-            conn.close()
-            return bool(recording and (recording[6] or recording[8]))  # processed_text or processed_text_formatted
-        return False
-
-    def request_settings(self):
-        """Open the settings dialog."""
-        dialog = SettingsDialog(self)
-        dialog.settings_changed.connect(self.load_config)
-        dialog.prompts_updated.connect(self.load_prompts)
-        dialog.exec()
-
-    def start_gpt4_processing(self):
-        """Start the initial GPT-4 processing of the transcript."""
-        if self.current_selected_item is None:
-            QMessageBox.warning(self, 'No Recording Selected', 'Please select a recording first.')
-            return
-
-        recording_id = self.current_selected_item.get_id()
-        db_path = resource_path("./database/database.sqlite")
-        conn = create_connection(db_path)
-
-        if conn is None:
-            QMessageBox.critical(self, 'Database Error', 'Unable to connect to the database.')
-            return
-
-        recording = get_recording_by_id(conn, recording_id)
-        conn.close()
-
-        if recording is None:
-            QMessageBox.warning(self, 'Recording Not Found', f'No recording found with ID: {recording_id}')
-            return
-
-        raw_transcript = recording[5] if recording else ""
-
-        selected_prompt_key = self.gpt_prompt_dropdown.currentText()
-        if selected_prompt_key == "Custom Prompt":
-            prompt_instructions = self.custom_prompt_input.toPlainText()
-            if not prompt_instructions.strip():
-                QMessageBox.warning(self, 'Empty Prompt', 'Please enter a custom prompt or select a predefined one.')
-                return
-        else:
-            prompt_instructions = self.preset_prompts.get(selected_prompt_key, '')
-        config_path = resource_path("config.json")
-        with open(config_path, 'r') as config_file:
-            config = json.load(config_file)
 
         openai_api_key = keyring.get_password("transcription_application", "OPENAI_API_KEY")
         if not openai_api_key:
@@ -1214,16 +962,172 @@ class MainTranscriptionWidget(QWidget):
         self.transcript_text.toggle_gpt_spinner()
         self.update_ui_state()
 
-    def has_processed_text(self):
-        """Check if there's processed text available."""
-        if self.current_selected_item is not None:
+    def start_smart_format_processing(self, text_to_format):
+        """Start smart formatting of the transcript."""
+        if not text_to_format.strip():
+            QMessageBox.warning(self, 'Empty Text', 'There is no text to format.')
+            return
+
+        prompt_instructions = """
+        Please intelligently format the following text in HTML based on its context.
+        Do not change any of the text - just apply formatting as needed.
+        Do not use a code block when returning the html, just provide the html.
+        """
+
+        config_path = resource_path("config.json")
+        try:
+            with open(config_path, 'r') as config_file:
+                config = json.load(config_file)
+        except FileNotFoundError:
+            QMessageBox.critical(self, "Configuration Error", f"config.json not found at {config_path}.")
+            return
+
+        openai_api_key = keyring.get_password("transcription_application", "OPENAI_API_KEY")
+        if not openai_api_key:
+            QMessageBox.critical(self, "API Key Missing", "Please set your OpenAI API key in the settings.")
+            return
+
+        temperature = self.temperature_spinbox.value()
+        max_tokens = self.max_tokens_spinbox.value()
+
+        # Start the GPT-4 processing thread
+        self.gpt4_smart_format_thread = GPT4ProcessingThread(
+            transcript=text_to_format,
+            prompt_instructions=prompt_instructions,
+            gpt_model='gpt-4o-mini',
+            max_tokens=max_tokens,
+            temperature=temperature,
+            openai_api_key=openai_api_key
+        )
+        self.gpt4_smart_format_thread.completed.connect(self.on_smart_format_completed)
+        self.gpt4_smart_format_thread.update_progress.connect(self.update_progress.emit)
+        self.gpt4_smart_format_thread.error.connect(self.on_gpt4_processing_error)
+        self.gpt4_smart_format_thread.start()
+        self.is_processing_gpt4 = True
+        self.transcript_text.toggle_gpt_spinner()
+        self.update_ui_state()
+
+    def on_smart_format_completed(self, formatted_html):
+        """Handle completion of smart formatting."""
+        if formatted_html:
+            self.transcript_text.editor.setHtml(formatted_html)
+            recording_id = self.current_selected_item.get_id()
             db_path = resource_path("./database/database.sqlite")
             conn = create_connection(db_path)
-            recording_id = self.current_selected_item.get_id()
-            recording = get_recording_by_id(conn, recording_id)
+            update_recording(conn, recording_id, processed_text_formatted=formatted_html)
             conn.close()
-            return bool(recording and (recording[6] or recording[8]))  # processed_text or processed_text_formatted
-        return False
+            self.is_processing_gpt4 = False
+            self.transcript_text.toggle_gpt_spinner()
+            self.update_ui_state()
+        else:
+            QMessageBox.warning(self, 'Formatting Failed', 'Failed to format the text.')
+        # Re-enable the smart format controls if any
+
+    def start_gpt4_processing(self):
+        """Start the initial GPT-4 processing of the transcript."""
+        if self.current_selected_item is None:
+            QMessageBox.warning(self, 'No Recording Selected', 'Please select a recording first.')
+            return
+
+        recording_id = self.current_selected_item.get_id()
+        db_path = resource_path("./database/database.sqlite")
+        conn = create_connection(db_path)
+
+        if conn is None:
+            QMessageBox.critical(self, 'Database Error', 'Unable to connect to the database.')
+            return
+
+        recording = get_recording_by_id(conn, recording_id)
+        conn.close()
+
+        if recording is None:
+            QMessageBox.warning(self, 'Recording Not Found', f'No recording found with ID: {recording_id}')
+            return
+
+        raw_transcript = recording[5] if recording else ""
+
+        selected_prompt_key = self.gpt_prompt_dropdown.currentText()
+        if selected_prompt_key == "Custom Prompt":
+            prompt_instructions = self.custom_prompt_input.toPlainText()
+            if not prompt_instructions.strip():
+                QMessageBox.warning(self, 'Empty Prompt', 'Please enter a custom prompt or select a predefined one.')
+                return
+        else:
+            prompt_instructions = self.preset_prompts.get(selected_prompt_key, '')
+
+        config_path = resource_path("config.json")
+        try:
+            with open(config_path, 'r') as config_file:
+                config = json.load(config_file)
+        except FileNotFoundError:
+            QMessageBox.critical(self, "Configuration Error", f"config.json not found at {config_path}.")
+            return
+
+        openai_api_key = keyring.get_password("transcription_application", "OPENAI_API_KEY")
+        if not openai_api_key:
+            QMessageBox.critical(self, "API Key Missing", "Please set your OpenAI API key in the settings.")
+            return
+
+        temperature = self.temperature_spinbox.value()
+        max_tokens = self.max_tokens_spinbox.value()
+
+        # Start the GPT-4 processing thread
+        self.gpt4_processing_thread = GPT4ProcessingThread(
+            transcript=raw_transcript,
+            prompt_instructions=prompt_instructions,
+            gpt_model=self.config.get('gpt_model', 'gpt-4'),
+            max_tokens=max_tokens,
+            temperature=temperature,
+            openai_api_key=openai_api_key
+        )
+        self.gpt4_processing_thread.completed.connect(self.on_gpt4_processing_completed)
+        self.gpt4_processing_thread.update_progress.connect(self.on_gpt4_processing_progress)
+        self.gpt4_processing_thread.error.connect(self.on_gpt4_processing_error)
+        self.gpt4_processing_thread.start()
+        self.is_processing_gpt4 = True
+        self.transcript_text.toggle_gpt_spinner()
+        self.update_ui_state()
+
+    def on_gpt4_processing_completed(self, processed_text):
+        """Handle completion of GPT-4 processing."""
+        if self.current_selected_item:
+            # Update the editor with the new processed text
+            self.mode_switch.setValue(1)
+            if self.is_text_html(processed_text):
+                self.transcript_text.editor.setHtml(processed_text)
+                formatted_field = 'processed_text_formatted'
+            else:
+                self.transcript_text.editor.setPlainText(processed_text)
+                formatted_field = 'processed_text'
+            recording_id = self.current_selected_item.get_id()
+            db_path = resource_path("./database/database.sqlite")
+            conn = create_connection(db_path)
+            update_recording(conn, recording_id, **{formatted_field: processed_text})
+            conn.close()
+            self.is_processing_gpt4 = False
+            self.transcript_text.toggle_gpt_spinner()
+            self.update_ui_state()
+
+            # Store necessary data for refinement
+            self.initial_processed_text = processed_text
+            self.original_transcript = self.raw_transcript_text
+            self.initial_prompt_instructions = self.get_current_prompt_instructions()
+
+            # Show the refinement input area if processed text exists
+            if self.has_processed_text():
+                self.refinement_widget.setVisible(True)
+
+    def on_gpt4_processing_progress(self, progress_message):
+        """Handle GPT-4 processing progress updates."""
+        self.update_progress.emit(progress_message)
+
+    def on_gpt4_processing_error(self, error_message):
+        """Handle GPT-4 processing errors."""
+        QMessageBox.critical(self, 'GPT-4 Processing Error', error_message)
+        # Re-enable the processing flag and update UI
+        self.is_processing_gpt4 = False
+        self.transcript_text.toggle_gpt_spinner()
+        self.update_ui_state()
 
     def start_smart_format_processing(self, text_to_format):
         """Start smart formatting of the transcript."""
@@ -1236,9 +1140,14 @@ class MainTranscriptionWidget(QWidget):
         Do not change any of the text - just apply formatting as needed.
         Do not use a code block when returning the html, just provide the html.
         """
+
         config_path = resource_path("config.json")
-        with open(config_path, 'r') as config_file:
-            config = json.load(config_file)
+        try:
+            with open(config_path, 'r') as config_file:
+                config = json.load(config_file)
+        except FileNotFoundError:
+            QMessageBox.critical(self, "Configuration Error", f"config.json not found at {config_path}.")
+            return
 
         openai_api_key = keyring.get_password("transcription_application", "OPENAI_API_KEY")
         if not openai_api_key:
@@ -1341,6 +1250,13 @@ class MainTranscriptionWidget(QWidget):
             if conn:
                 conn.close()
 
+        # Ensure edit_prompt_button is in the correct location based on selection
+        selected_prompt = self.gpt_prompt_dropdown.currentText()
+        if selected_prompt == "Custom Prompt":
+            self.edit_prompt_button.hide()
+        else:
+            self.edit_prompt_button.show()
+
     def update_ui_state(self):
         """Update the UI state based on current processing flags."""
         # Enable or disable buttons based on the current state
@@ -1365,244 +1281,6 @@ class MainTranscriptionWidget(QWidget):
             conn.close()
             return bool(recording and recording[5])
         return False
-
-    def on_refinement_completed(self, refined_text):
-        """Handle the refined text received from GPT-4."""
-        if refined_text:
-            # Update the editor with the new refined text
-            if self.is_text_html(refined_text):
-                self.transcript_text.editor.setHtml(refined_text)
-                formatted_field = 'processed_text_formatted'
-            else:
-                self.transcript_text.editor.setPlainText(refined_text)
-                formatted_field = 'processed_text'
-
-            # Update the processed text in the database
-            if self.current_selected_item:
-                recording_id = self.current_selected_item.get_id()
-                db_path = resource_path("./database/database.sqlite")
-                conn = create_connection(db_path)
-                update_recording(conn, recording_id, **{formatted_field: refined_text})
-                conn.close()
-
-            # Update the stored processed text for potential further refinements
-            self.initial_processed_text = refined_text
-
-        else:
-            QMessageBox.warning(self, 'No Refined Text', 'GPT-4 did not return any text.')
-
-        # Re-enable the refinement input fields
-        self.refinement_input.setEnabled(True)
-        self.refinement_input.clear()
-        self.refinement_submit_button.setEnabled(True)
-
-        self.is_processing_gpt4 = False
-        self.update_ui_state()
-
-    def on_gpt4_processing_error(self, error_message):
-        """Handle GPT-4 processing errors."""
-        QMessageBox.critical(self, 'GPT-4 Processing Error', error_message)
-        # Re-enable the refinement input fields
-        self.refinement_input.setEnabled(True)
-        self.refinement_submit_button.setEnabled(True)
-        self.is_processing_gpt4 = False
-        self.update_ui_state()
-
-    def on_refinement_submit(self):
-        """Handle the refinement submission."""
-        # This method is already handled by start_refinement_processing
-        pass
-
-    def is_text_html(self, text):
-        """Check if the given text is HTML formatted."""
-        return bool("<" in text and ">" in text)
-
-    def get_current_prompt_instructions(self):
-        """Retrieve the current prompt instructions based on selected prompt."""
-        selected_prompt_key = self.gpt_prompt_dropdown.currentText()
-        if selected_prompt_key == "Custom Prompt":
-            prompt_instructions = self.custom_prompt_input.toPlainText()
-        else:
-            prompt_instructions = self.preset_prompts.get(selected_prompt_key, '')
-        return prompt_instructions
-
-    def start_refinement_processing(self):
-        """Start the refinement processing with additional user instructions."""
-        refinement_instructions = self.refinement_input.text().strip()
-        if not refinement_instructions:
-            QMessageBox.warning(self, "Refinement Instructions", "Please enter refinement instructions.")
-            return
-
-        # Ensure necessary variables are initialized
-        if not hasattr(self, 'original_transcript') or not self.original_transcript:
-            # Try to set self.original_transcript from self.raw_transcript_text
-            if hasattr(self, 'raw_transcript_text') and self.raw_transcript_text:
-                self.original_transcript = self.raw_transcript_text
-            else:
-                QMessageBox.critical(self, "Error", "Original transcript is not available.")
-                return
-
-        if not hasattr(self, 'initial_processed_text') or not self.initial_processed_text:
-            QMessageBox.critical(self, "Error", "Processed text is not available.")
-            return
-
-        if not hasattr(self, 'initial_prompt_instructions') or not self.initial_prompt_instructions:
-            self.initial_prompt_instructions = self.get_current_prompt_instructions()
-            if not self.initial_prompt_instructions:
-                QMessageBox.critical(self, "Error", "Initial prompt instructions are not available.")
-                return
-
-        # Retrieve the processed text from the editor, preserving HTML if present
-        current_processed_text = (
-            self.transcript_text.editor.toHtml()
-            if self.is_text_html(self.initial_processed_text)
-            else self.transcript_text.editor.toPlainText()
-        )
-
-        # Update initial_processed_text with current content
-        self.initial_processed_text = current_processed_text
-
-        # Start the GPT-4 refinement thread
-        openai_api_key = keyring.get_password("transcription_application", "OPENAI_API_KEY")
-        if not openai_api_key:
-            QMessageBox.critical(self, "API Key Missing", "Please set your OpenAI API key in the settings.")
-            return
-
-        temperature = self.temperature_spinbox.value()
-        max_tokens = self.max_tokens_spinbox.value()
-
-        # Prepare the system prompt
-        system_prompt = (
-            f"You are an AI assistant that has previously transformed text according to a user's prompt. "
-            f"The user now wants to refine the output based on additional instructions. "
-            f"Original Prompt: {self.initial_prompt_instructions}\n"
-            f"Additional Instructions: {refinement_instructions}\n"
-            f"Apply these refinements to the previous output, maintaining any necessary formatting. "
-            f"Return the refined text only."
-        )
-
-        # Prepare the messages for OpenAI API
-        messages = [
-            {'role': 'system', 'content': system_prompt},
-            {'role': 'user', 'content': self.original_transcript},
-            {'role': 'assistant', 'content': self.initial_processed_text}
-        ]
-
-        # Start the GPT-4 processing thread
-        self.gpt4_refinement_thread = GPT4ProcessingThread(
-            transcript=self.original_transcript,
-            prompt_instructions=system_prompt,
-            gpt_model=self.config.get('gpt_model', 'gpt-4'),
-            max_tokens=max_tokens,
-            temperature=temperature,
-            openai_api_key=openai_api_key,
-            messages=messages  # Pass the conversation messages
-        )
-        self.gpt4_refinement_thread.completed.connect(self.on_refinement_completed)
-        self.gpt4_refinement_thread.error.connect(self.on_gpt4_processing_error)
-        self.gpt4_refinement_thread.start()
-
-        # Disable the refinement input and button until processing is complete
-        self.refinement_input.setEnabled(False)
-        self.refinement_submit_button.setEnabled(False)
-
-    def on_refinement_completed(self, refined_text):
-        """Handle the refined text received from GPT-4."""
-        if refined_text:
-            # Update the editor with the new refined text
-            if self.is_text_html(refined_text):
-                self.transcript_text.editor.setHtml(refined_text)
-                formatted_field = 'processed_text_formatted'
-            else:
-                self.transcript_text.editor.setPlainText(refined_text)
-                formatted_field = 'processed_text'
-
-            # Update the processed text in the database
-            if self.current_selected_item:
-                recording_id = self.current_selected_item.get_id()
-                db_path = resource_path("./database/database.sqlite")
-                conn = create_connection(db_path)
-                update_recording(conn, recording_id, **{formatted_field: refined_text})
-                conn.close()
-
-            # Update the stored processed text for potential further refinements
-            self.initial_processed_text = refined_text
-
-        else:
-            QMessageBox.warning(self, 'No Refined Text', 'GPT-4 did not return any text.')
-
-        # Re-enable the refinement input fields
-        self.refinement_input.setEnabled(True)
-        self.refinement_input.clear()
-        self.refinement_submit_button.setEnabled(True)
-
-        self.is_processing_gpt4 = False
-        self.update_ui_state()
-
-    def on_gpt4_processing_error(self, error_message):
-        """Handle GPT-4 processing errors."""
-        QMessageBox.critical(self, 'GPT-4 Processing Error', error_message)
-        # Re-enable the refinement input fields
-        self.refinement_input.setEnabled(True)
-        self.refinement_submit_button.setEnabled(True)
-        self.is_processing_gpt4 = False
-        self.update_ui_state()
-
-    def on_mode_switch_changed(self):
-        """Handle changes in the mode switch to show/hide refinement controls."""
-        # Show or hide the refinement widget based on the mode and content
-        if self.mode_switch.value() == 1 and self.has_processed_text() and not self.is_processing_gpt4:
-            self.refinement_widget.setVisible(True)
-        else:
-            self.refinement_widget.setVisible(False)
-        self.toggle_transcription_view()
-
-    def has_processed_text(self):
-        """Check if there's processed text available."""
-        if self.current_selected_item is not None:
-            db_path = resource_path("./database/database.sqlite")
-            conn = create_connection(db_path)
-            recording_id = self.current_selected_item.get_id()
-            recording = get_recording_by_id(conn, recording_id)
-            conn.close()
-            return bool(recording and (recording[6] or recording[8]))  # processed_text or processed_text_formatted
-        return False
-
-    def toggle_transcription_view(self):
-        """Toggle between raw and processed transcript views."""
-        if self.current_selected_item is not None:
-            recording_id = self.current_selected_item.get_id()
-            db_path = resource_path("./database/database.sqlite")
-            conn = create_connection(db_path)
-
-            if conn is None:
-                QMessageBox.critical(self, "Database Error", "Unable to connect to the database.")
-                return
-
-            recording = get_recording_by_id(conn, recording_id)
-
-            if recording is None:
-                QMessageBox.warning(self, 'Recording Not Found', f'No recording found with ID: {recording_id}')
-                conn.close()
-                return
-
-            if self.mode_switch.value() == 0:  # 0 is for raw transcript
-                raw_formatted = recording[7] if recording[7] else recording[5]
-                self.transcript_text.deserialize_text_document(raw_formatted)
-                self.refinement_widget.setVisible(False)
-            else:  # 1 is for processed text
-                processed_formatted = recording[8] if recording[8] else recording[6]
-                if processed_formatted:
-                    self.transcript_text.deserialize_text_document(processed_formatted)
-                    if self.has_processed_text():
-                        self.refinement_widget.setVisible(True)
-                    else:
-                        self.refinement_widget.setVisible(False)
-                else:
-                    self.transcript_text.editor.clear()
-                    self.refinement_widget.setVisible(False)
-
-            conn.close()
 
     def request_settings(self):
         """Open the settings dialog."""
@@ -1642,9 +1320,14 @@ class MainTranscriptionWidget(QWidget):
                 return
         else:
             prompt_instructions = self.preset_prompts.get(selected_prompt_key, '')
+
         config_path = resource_path("config.json")
-        with open(config_path, 'r') as config_file:
-            config = json.load(config_file)
+        try:
+            with open(config_path, 'r') as config_file:
+                config = json.load(config_file)
+        except FileNotFoundError:
+            QMessageBox.critical(self, "Configuration Error", f"config.json not found at {config_path}.")
+            return
 
         openai_api_key = keyring.get_password("transcription_application", "OPENAI_API_KEY")
         if not openai_api_key:
@@ -1671,104 +1354,7 @@ class MainTranscriptionWidget(QWidget):
         self.transcript_text.toggle_gpt_spinner()
         self.update_ui_state()
 
-    def on_transcription_completed(self, transcript):
-        """Handle completion of transcription."""
-        self.transcript_text.editor.setPlainText(transcript)
-        recording_id = self.current_selected_item.get_id()
-        self.mode_switch.setValue(0)
-        self.transcript_text.editor.setPlainText(transcript)
-        # Save the raw transcript to the database
-        db_path = resource_path("./database/database.sqlite")
-        conn = create_connection(db_path)
-        update_recording(conn, recording_id, raw_transcript=transcript)
-        conn.close()
+    def on_refinement_submit(self):
+        """Handle the refinement submission."""
+        self.start_refinement_processing()
 
-        # Store the raw transcript text for refinement
-        self.raw_transcript_text = transcript
-
-        self.is_transcribing = False
-        self.transcript_text.toggle_transcription_spinner()
-        self.update_ui_state()
-
-    def on_refinement_completed(self, refined_text):
-        """Handle the refined text received from GPT-4."""
-        if refined_text:
-            # Update the editor with the new refined text
-            if self.is_text_html(refined_text):
-                self.transcript_text.editor.setHtml(refined_text)
-                formatted_field = 'processed_text_formatted'
-            else:
-                self.transcript_text.editor.setPlainText(refined_text)
-                formatted_field = 'processed_text'
-
-            # Update the processed text in the database
-            if self.current_selected_item:
-                recording_id = self.current_selected_item.get_id()
-                db_path = resource_path("./database/database.sqlite")
-                conn = create_connection(db_path)
-                update_recording(conn, recording_id, **{formatted_field: refined_text})
-                conn.close()
-
-            # Update the stored processed text for potential further refinements
-            self.initial_processed_text = refined_text
-
-        else:
-            QMessageBox.warning(self, 'No Refined Text', 'GPT-4 did not return any text.')
-
-        # Re-enable the refinement input fields
-        self.refinement_input.setEnabled(True)
-        self.refinement_input.clear()
-        self.refinement_submit_button.setEnabled(True)
-
-        self.is_processing_gpt4 = False
-        self.update_ui_state()
-
-    def on_gpt4_processing_completed(self, processed_text):
-        """Handle completion of GPT-4 processing."""
-        if self.current_selected_item:
-            # Update the editor with the new processed text
-            self.mode_switch.setValue(1)
-            if self.is_text_html(processed_text):
-                self.transcript_text.editor.setHtml(processed_text)
-                formatted_field = 'processed_text_formatted'
-            else:
-                self.transcript_text.editor.setPlainText(processed_text)
-                formatted_field = 'processed_text'
-            recording_id = self.current_selected_item.get_id()
-            db_path = resource_path("./database/database.sqlite")
-            conn = create_connection(db_path)
-            update_recording(conn, recording_id, **{formatted_field: processed_text})
-            conn.close()
-            self.is_processing_gpt4 = False
-            self.transcript_text.toggle_gpt_spinner()
-            self.update_ui_state()
-
-            # Store necessary data for refinement
-            self.initial_processed_text = processed_text
-            self.original_transcript = self.raw_transcript_text
-            self.initial_prompt_instructions = self.get_current_prompt_instructions()
-
-            # Show the refinement input area if processed text exists
-            if self.has_processed_text():
-                self.refinement_widget.setVisible(True)
-
-    def on_gpt4_processing_progress(self, progress_message):
-        """Handle GPT-4 processing progress updates."""
-        self.update_progress.emit(progress_message)
-
-    def process_with_gpt4(self):
-        """Emit signal to start GPT-4 processing."""
-        self.start_gpt4_processing()
-
-    def toggle_transcription_spinner(self):
-        """Toggle transcription spinner (implementation depends on UI)."""
-        self.toggle_spinner('transcription_spinner')
-
-    def toggle_gpt_spinner(self):
-        """Toggle GPT-4 spinner (implementation depends on UI)."""
-        self.toggle_spinner('gpt_spinner')
-
-    def toggle_spinner(self, spinner_name):
-        """Toggle spinner visibility if implemented."""
-        # Placeholder for spinner functionality
-        pass
