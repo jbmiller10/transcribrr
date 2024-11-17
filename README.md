@@ -7,7 +7,8 @@ Transcribrr is a desktop application designed for converting audio into text and
 ## Features
 
 - **Local Transcription**: Fast and accurate transcription using `whisperx` with optional speaker detection.
-- **GPT-4 Processing**: Use OpenAI's GPT-4 for text processing, summarization, and refinement.
+  - Alternatively, you may opt to use the OpenAI Whisper API.
+- **GPT Processing**: Use OpenAI's GPT models for text processing, summarization, and refinement.
 - **Transcription Management**: Adjust quality settings, manage preset prompts, and customize GPT processing parameters.
 - **Multiple Input Options**: Support for local files, YouTube URLs, or direct recordings.
 
