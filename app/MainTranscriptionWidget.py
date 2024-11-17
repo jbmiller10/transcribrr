@@ -1,7 +1,7 @@
 import json
 from PyQt6.QtWidgets import (
     QWidget, QVBoxLayout, QMessageBox, QComboBox, QHBoxLayout, QLabel,
-    QSizePolicy, QTextEdit, QDoubleSpinBox, QSpinBox, QSplitter, QPushButton, QLineEdit, QFileDialog
+    QSizePolicy, QTextEdit, QDoubleSpinBox, QSpinBox, QSplitter, QPushButton, QLineEdit, QFileDialog,QInputDialog
 )
 from PyQt6.QtGui import QIcon
 from PyQt6.QtCore import pyqtSignal, QSize, Qt
@@ -101,8 +101,14 @@ class MainTranscriptionWidget(QWidget):
         self.settings_button.setIconSize(QSize(25, 25))
         self.settings_button.setFixedSize(30, 30)
 
-        # Layout adjustments
+
+        #edit prompt button
+        self.edit_prompt_button = QPushButton("Edit Prompt")
+        self.edit_prompt_button.clicked.connect(self.edit_selected_prompt)
+
+        # Add widgets to toolbar
         self.top_toolbar.addWidget(self.gpt_prompt_dropdown)
+        self.top_toolbar.addWidget(self.edit_prompt_button)
         self.top_toolbar.addStretch()
 
         self.top_toolbar.addWidget(self.raw_transcript_label)
@@ -129,16 +135,10 @@ class MainTranscriptionWidget(QWidget):
         self.custom_prompt_save_button.setVisible(False)
         self.custom_prompt_save_button.clicked.connect(self.save_custom_prompt_as_template)
 
-        # Edit prompt button (visible when predefined prompt is selected)
-        self.edit_prompt_button = QPushButton("Edit Prompt")
-        self.edit_prompt_button.setVisible(False)
-        self.edit_prompt_button.clicked.connect(self.edit_selected_prompt)
-
         # Create a widget to hold buttons below the custom prompt input
         self.prompt_button_widget = QWidget()
         self.prompt_button_layout = QHBoxLayout(self.prompt_button_widget)
         self.prompt_button_layout.addWidget(self.custom_prompt_save_button)
-        self.prompt_button_layout.addWidget(self.edit_prompt_button)
         self.prompt_button_layout.addStretch()
         self.prompt_button_widget.setVisible(False)
 
@@ -244,7 +244,7 @@ class MainTranscriptionWidget(QWidget):
         self.gpt_prompt_dropdown.blockSignals(True)
         self.gpt_prompt_dropdown.clear()
         self.gpt_prompt_dropdown.addItems(self.preset_prompts.keys())
-        self.gpt_prompt_dropdown.addItem("Custom Prompt")  # Ensure "Custom Prompt" is added here
+        self.gpt_prompt_dropdown.addItem("Custom Prompt")
         self.gpt_prompt_dropdown.blockSignals(False)
 
     def on_prompt_selection_changed(self, index):
@@ -253,7 +253,6 @@ class MainTranscriptionWidget(QWidget):
         if selected_prompt == "Custom Prompt":
             self.is_editing_existing_prompt = False
             self.show_custom_prompt_input()
-            self.edit_prompt_button.setVisible(False)
             self.custom_prompt_input.clear()
             self.custom_prompt_save_button.setText("Save as Template")
             self.custom_prompt_save_button.clicked.disconnect()
@@ -261,8 +260,6 @@ class MainTranscriptionWidget(QWidget):
         else:
             self.hide_custom_prompt_input()
             self.edit_prompt_button.setVisible(True)
-            self.prompt_button_widget.setVisible(True)
-            self.prompt_widget.setVisible(True)
             self.is_editing_existing_prompt = False
             self.edit_prompt_button.setText("Edit Prompt")
 
