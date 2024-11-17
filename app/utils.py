@@ -30,3 +30,71 @@ def resource_path(relative_path, root=False):
 
     return os.path.join(base_path, relative_path)
 
+
+def language_to_iso(language_name):
+    """
+    Convert a fully spelled-out language name to its ISO 639-1 code.
+
+    Args:
+        language_name (str): The full name of the language (e.g., "English").
+
+    Returns:
+        str: The ISO 639-1 code (e.g., "en") or None if the language is not recognized.
+    """
+    language_map = {
+        "Afrikaans": "af",
+        "Albanian": "sq",
+        "Arabic": "ar",
+        "Armenian": "hy",
+        "Bengali": "bn",
+        "Bosnian": "bs",
+        "Bulgarian": "bg",
+        "Catalan": "ca",
+        "Chinese": "zh",
+        "Croatian": "hr",
+        "Czech": "cs",
+        "Danish": "da",
+        "Dutch": "nl",
+        "English": "en",
+        "Estonian": "et",
+        "Finnish": "fi",
+        "French": "fr",
+        "Georgian": "ka",
+        "German": "de",
+        "Greek": "el",
+        "Hebrew": "he",
+        "Hindi": "hi",
+        "Hungarian": "hu",
+        "Icelandic": "is",
+        "Indonesian": "id",
+        "Italian": "it",
+        "Japanese": "ja",
+        "Kazakh": "kk",
+        "Korean": "ko",
+        "Latvian": "lv",
+        "Lithuanian": "lt",
+        "Macedonian": "mk",
+        "Malay": "ms",
+        "Mongolian": "mn",
+        "Norwegian": "no",
+        "Persian": "fa",
+        "Polish": "pl",
+        "Portuguese": "pt",
+        "Romanian": "ro",
+        "Russian": "ru",
+        "Serbian": "sr",
+        "Slovak": "sk",
+        "Slovenian": "sl",
+        "Spanish": "es",
+        "Swahili": "sw",
+        "Swedish": "sv",
+        "Thai": "th",
+        "Turkish": "tr",
+        "Ukrainian": "uk",
+        "Urdu": "ur",
+        "Vietnamese": "vi",
+        "Welsh": "cy",
+    }
+
+    return language_map.get(language_name.strip().title())
+

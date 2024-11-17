@@ -10,6 +10,7 @@ from transformers.pipelines.audio_utils import ffmpeg_read
 import time
 import logging
 from openai import OpenAI
+from app.utils import language_to_iso
 
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 
@@ -342,7 +343,7 @@ class TranscriptionThread(QThread):
             client = OpenAI()
             start_time = time.time()
             self.update_progress.emit('Transcription started...')
-            if self.transcription_method == 'local':
+            if self.transcription_method.lower() == 'local':
                 device = "cuda" if torch.cuda.is_available() else "mps"
                 model_id = self.transcription_quality
                 pipeline = SpeechToTextPipeline(model_id=model_id)
@@ -381,7 +382,7 @@ class TranscriptionThread(QThread):
                         response = client.audio.transcriptions.create(
                             model="whisper-1",
                             file=audio_file,
-                            language='en'
+                            language=language_to_iso(self.language)
                         )
                         print(response.text)
                         self.completed.emit(response.text)
