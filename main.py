@@ -1,309 +1,594 @@
 import sys
 import os
-from PyQt6.QtWidgets import QApplication
+import logging
+import json
+import traceback
+from PyQt6.QtWidgets import (
+    QApplication, QMainWindow, QMessageBox, QSplashScreen, QVBoxLayout,
+    QLabel, QProgressBar, QWidget, QStyleFactory
+)
+from PyQt6.QtGui import QPixmap, QFont, QIcon
+from PyQt6.QtCore import Qt, QTimer, QSize
 from app.MainWindow import MainWindow
-from app.utils import resource_path
+from app.utils import resource_path, check_system_requirements, cleanup_temp_files
+
+# Configure logging
+LOG_FORMAT = '%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+log_dir = os.path.join(os.getcwd(), 'logs')
+os.makedirs(log_dir, exist_ok=True)
+log_file = os.path.join(log_dir, 'transcribrr.log')
+
+logging.basicConfig(
+    level=logging.INFO,
+    format=LOG_FORMAT,
+    handlers=[
+        logging.StreamHandler(),
+        logging.FileHandler(log_file)
+    ]
+)
+
+logger = logging.getLogger('transcribrr')
+
+# Create Recordings directory if it doesn't exist
+os.makedirs(os.path.join(os.getcwd(), 'Recordings'), exist_ok=True)
+
+# Global variables for stylesheet handling
+APP_STYLE = None
+APP_STYLESHEET = None
 
 
-dropdown_arrow = resource_path('icons/dropdown_arrow.svg').replace('\\', '/')
-stylesheet = f'''/* Main window background */
-QMainWindow {{
-    background-color: #FFFFFF;  
-}}
+def load_stylesheet(style_name='light'):
+    """Load application stylesheet."""
+    global APP_STYLE, APP_STYLESHEET
 
-QToolBar {{
-    border: none;
-    background-color: #E1E1E1;
-    spacing: 5px;
-}}
-QLabel#RecentRecordingHeader {{
-color:black;
-font-family: Helvetica;
-font-size:22pt;
+    APP_STYLE = style_name.lower()
 
-}}
+    # Base stylesheet variables
+    base_variables = {
+        # Common colors
+        'primary': '#3366CC',
+        'secondary': '#6699CC',
+        'accent': '#FF9900',
+        'error': '#FF5252',
+        'success': '#4CAF50',
+        'warning': '#FFC107',
+        'info': '#2196F3',
 
-QLabel {{
-color:black;
-font-family: Helvetica;
-font-weight: medium;
-font-size:12pt;
+        # Font settings
+        'font-family': 'Arial, Helvetica, sans-serif',
+        'font-size-small': '10px',
+        'font-size-normal': '12px',
+        'font-size-large': '14px',
+        'font-size-xlarge': '16px',
 
-}}
-QPushButton {{
-    background-color: transparent;
-    color: #000000; /* Black*/
-    border: 1px solid transparent;
-    border-radius: 1px;
-    padding: 1px;
-    margin: 0 1px;
-}}
+        # Spacing
+        'spacing-small': '5px',
+        'spacing-normal': '10px',
+        'spacing-large': '15px',
 
-QPushButton:hover {{
-    background-color: #F0F0F0; /* Light grey background on hover */
-    color: #005A9C; /* Blue text on hover */
-    border: 1px solid #005A9C; /* Blue border on hover */
-    padding: 1px;
-    margin: 0 2px;
-}}
+        # Borders
+        'border-radius': '4px',
+        'border-width': '1px',
+    }
 
-QPushButton:checked {{
-    background-color: rgba(0, 0, 0, 0.05); /* Slightly darker transparent overlay*/
-    color: #000000;
-    border: 2px solid transparent;
-    border-radius: 1px;
-    padding: 1px;
-    margin: 0 1px;
-}}
+    # Light theme variables
+    light_variables = {
+        'background': '#FFFFFF',
+        'background-secondary': '#F5F5F5',
+        'background-tertiary': '#EEEEEE',
+        'foreground': '#202020',
+        'foreground-secondary': '#505050',
+        'border': '#DDDDDD',
+        'inactive': '#AAAAAA',
+    }
 
-QPushButton:pressed {{
-    background-color: rgba(0, 0, 0, 0.1); 
-}}
+    # Dark theme variables
+    dark_variables = {
+        'background': '#2B2B2B',
+        'background-secondary': '#333333',
+        'background-tertiary': '#3A3A3A',
+        'foreground': '#EEEEEE',
+        'foreground-secondary': '#BBBBBB',
+        'border': '#555555',
+        'inactive': '#777777',
+    }
 
-/* Toolbar button styling */
-QToolButton {{
-    background-color: #E1E1E1;
-    color: #000000;
-    border-radius: 4px; /* Rounded corners */
-    padding: 4px;
-    margin: 0 2px;
-}}
+    # Select theme variables
+    variables = {**base_variables}
+    if style_name.lower() == 'dark':
+        variables.update(dark_variables)
+    else:
+        variables.update(light_variables)
 
-QToolButton:checked, QToolButton:hover {{
-    background-color: #D0D0D0; 
-}}
+    # Common stylesheet for all themes
+    common_css = f"""
+        /* Global styles */
+        QWidget {{
+            font-family: {variables['font-family']};
+            font-size: {variables['font-size-normal']};
+            color: {variables['foreground']};
+        }}
 
-QComboBox {{
-    background-color: #E1E1E1;
-    color: #000000;
-    border-radius: 4px;
-    font-weight: medium;
-    padding: 1px 15px 1px 5px; 
-    margin-right: 5px;
-}}
+        QMainWindow {{
+            background-color: {variables['background']};
+        }}
 
-QComboBox::drop-down {{
-    width: 15px; 
-    border: none;
-}}
+        /* Toolbars */
+        QToolBar {{
+            border: none;
+            background-color: {variables['background-secondary']};
+            spacing: {variables['spacing-normal']};
+            padding: {variables['spacing-small']};
+        }}
 
-QComboBox::down-arrow {{
-    image: url({dropdown_arrow}); 
-    height: 17;
-    width: 17;
-}}
+        /* Headers */
+        QLabel#RecentRecordingHeader {{
+            color: {variables['foreground']};
+            font-family: {variables['font-family']};
+            font-size: {variables['font-size-xlarge']};
+            font-weight: bold;
+        }}
 
-QSlider::groove:horizontal {{
-    border: 1px solid #999999;
-    height: 8px; 
-    background: #E1E1E1;
-    margin: 2px 0;
-}}
+        /* Labels */
+        QLabel {{
+            color: {variables['foreground']};
+            font-family: {variables['font-family']};
+            font-weight: normal;
+            font-size: {variables['font-size-normal']};
+        }}
 
-QSlider::handle:horizontal {{
-    background: #000000;
-    border: 1px solid #5c5c5c;
-    width: 18px; 
-    margin: -2px 0; 
-    border-radius: 3px;
-}}
+        /* Buttons */
+        QPushButton {{
+            background-color: {variables['background-secondary']};
+            color: {variables['foreground']};
+            border: {variables['border-width']} solid {variables['border']};
+            border-radius: {variables['border-radius']};
+            padding: {variables['spacing-small']};
+            min-height: 25px;
+        }}
 
-/* TextEdit where the transcription is displayed */
-QTextEdit {{
-    background-color: #FFFFFF;
-    color: #000000; /* Black text for visibility */
-    border: 1px solid #CCCCCC; /* Light visible border */
-    padding: 5px;
-    font-family: 'Helvetica'; 
-}}
+        QPushButton:hover {{
+            background-color: {variables['background-tertiary']};
+            border: {variables['border-width']} solid {variables['primary']};
+        }}
 
-/* ListWidget styling for the recordings list */
-QListWidget {{
-    background-color: #F7F7F7;
-    border: none;
-    color: #000000;
-    padding: 10px; 
-}}
+        QPushButton:pressed {{
+            background-color: {variables['primary']};
+            color: {'white' if style_name == 'dark' else 'white'};
+        }}
 
-QListWidget::item {{
-    background-color: #F7F7F7;
-    color: #000000;
-    border-bottom: 1px solid #CCCCCC; 
-    padding: 5px;
-}}
+        QPushButton:disabled {{
+            background-color: {variables['background-secondary']};
+            color: {variables['inactive']};
+            border: {variables['border-width']} solid {variables['border']};
+        }}
 
-QListWidget::item:selected {{
-    background-color: #E1E1E1;
-    color: #000000;
-}}
+        /* Dropdowns */
+        QComboBox {{
+            background-color: {variables['background-secondary']};
+            color: {variables['foreground']};
+            border: {variables['border-width']} solid {variables['border']};
+            border-radius: {variables['border-radius']};
+            padding: {variables['spacing-small']};
+            min-height: 25px;
+        }}
 
-/* Scroll bars for a modern look */
-QScrollBar:vertical {{
-    background: #FFFFFF;
-    width: 10px; 
-    margin: 10px 0px 10px 0px;
-    border: 1px solid #CCCCCC;
-}}
+        QComboBox::drop-down {{
+            width: 20px;
+            border: none;
+        }}
 
-QScrollBar::handle:vertical {{
-    background-color: #D0D0D0; 
-    min-height: 10px; 
-    border-radius: 5px;
-}}
+        QComboBox QAbstractItemView {{
+            background-color: {variables['background']};
+            color: {variables['foreground']};
+            border: {variables['border-width']} solid {variables['border']};
+            selection-background-color: {variables['primary']};
+            selection-color: {'white' if style_name == 'dark' else 'white'};
+        }}
 
-QScrollBar::handle:vertical:hover {{
-    background-color: #C0C0C0;
-}}
-'''
+        /* Sliders */
+        QSlider::groove:horizontal {{
+            border: {variables['border-width']} solid {variables['border']};
+            height: 8px;
+            background: {variables['background-tertiary']};
+            margin: 2px 0;
+            border-radius: 4px;
+        }}
 
-stylesheet_night = '''/* Main window background */
-QMainWindow {{
-    background-color: #2B2B2B; 
-}}
+        QSlider::handle:horizontal {{
+            background: {variables['primary']};
+            border: {variables['border-width']} solid {variables['primary']};
+            width: 18px;
+            height: 18px;
+            margin: -5px 0;
+            border-radius: 9px;
+        }}
 
-/* Toolbar styling */
-QToolBar {{
-    border: none;
-    background-color: #333333; /* Dark grey background */
-    spacing: 5px; 
-}}
+        /* Text Editor */
+        QTextEdit {{
+            background-color: {variables['background']};
+            color: {variables['foreground']};
+            border: {variables['border-width']} solid {variables['border']};
+            selection-background-color: {variables['primary']};
+            selection-color: {'white' if style_name == 'dark' else 'white'};
+            padding: {variables['spacing-small']};
+        }}
 
-QPushButton {{
-    background-color: transparent;
-    color: #FFFFFF;
-    border: 1px solid transparent;
-    border-radius: 1px;
-    padding: 1px;
-    margin: 0 1px;
-}}
+        /* List Widget */
+        QListWidget {{
+            background-color: {variables['background']};
+            color: {variables['foreground']};
+            border: none;
+            outline: none;
+        }}
 
-QPushButton:hover {{
-    background-color: transparent;
-    color: #214223;
-    border: 1px solid blue; /* Blue border on hover */
-    /*border-radius: 1px;*/
-    padding: 1px;
-    margin: 0 2px;
-}}
+        QListWidget::item {{
+            background-color: {variables['background']};
+            color: {variables['foreground']};
+            border-bottom: 1px solid {variables['border']};
+            padding: {variables['spacing-small']};
+        }}
 
-QPushButton:checked {{
-    background-color: rgba(0, 0, 0, 0.1); /* Slightly darker transparent overlay */
-    color: #111111;
-    border: 2px solid transparent;
-    border-radius: 1px;
-    padding: 1px;
-    margin: 0 1px;
-}}
+        QListWidget::item:selected {{
+            background-color: {variables['background-tertiary']};
+            color: {variables['foreground']};
+        }}
 
-QPushButton:pressed {{
-    background-color: rgba(0, 0, 0, 0.2); /* dark for the pressed state */
-}}
-QLabel#RecentRecordingHeader {{
-color:white;
-font-family: Helvetica;
-font-size:22pt;
+        QListWidget::item:hover {{
+            background-color: {variables['background-secondary']};
+        }}
 
-}}
+        /* Scroll bars */
+        QScrollBar:vertical {{
+            background: {variables['background']};
+            width: 10px;
+            margin: 10px 0px 10px 0px;
+            border: 1px solid {variables['border']};
+        }}
+
+        QScrollBar::handle:vertical {{
+            background-color: {variables['background-tertiary']};
+            min-height: 20px;
+            border-radius: 5px;
+        }}
+
+        QScrollBar::handle:vertical:hover {{
+            background-color: {variables['primary']};
+        }}
+
+        QScrollBar::add-line:vertical, QScrollBar::sub-line:vertical {{
+            height: 0px;
+        }}
+
+        QScrollBar:horizontal {{
+            background: {variables['background']};
+            height: 10px;
+            margin: 0px 10px 0px 10px;
+            border: 1px solid {variables['border']};
+        }}
+
+        QScrollBar::handle:horizontal {{
+            background-color: {variables['background-tertiary']};
+            min-width: 20px;
+            border-radius: 5px;
+        }}
+
+        QScrollBar::handle:horizontal:hover {{
+            background-color: {variables['primary']};
+        }}
+
+        QScrollBar::add-line:horizontal, QScrollBar::sub-line:horizontal {{
+            width: 0px;
+        }}
+
+        /* Tab Widget */
+        QTabWidget::pane {{
+            border: 1px solid {variables['border']};
+        }}
+
+        QTabBar::tab {{
+            background-color: {variables['background-secondary']};
+            color: {variables['foreground']};
+            padding: 8px 12px;
+            border: 1px solid {variables['border']};
+            border-bottom-color: {'transparent' if style_name == 'dark' else variables['border']};
+            border-top-left-radius: {variables['border-radius']};
+            border-top-right-radius: {variables['border-radius']};
+        }}
+
+        QTabBar::tab:selected {{
+            background-color: {variables['background']};
+            border-bottom-color: transparent;
+        }}
+
+        QTabBar::tab:!selected {{
+            margin-top: 2px;
+        }}
+
+        /* Dialog buttons */
+        QDialogButtonBox > QPushButton {{
+            min-width: 80px;
+        }}
+    """
+
+    # Set the global stylesheet
+    APP_STYLESHEET = common_css
+    return APP_STYLESHEET
 
 
-/* Toolbar button styling */
-QToolButton {{
-    background-color: #333333;
-    color: #FFFFFF;
-    border-radius: 4px; /* Rounded corners */
-    padding: 4px;
-    margin: 0 2px; 
-}}
+def toggle_theme():
+    """Toggle between light and dark theme."""
+    global APP_STYLE
 
-QToolButton:checked, QToolButton:hover {{
-    background-color: #3A3A3A; /* slightly lighter shade of grey */
-}}
+    if APP_STYLE == 'light':
+        new_style = 'dark'
+    else:
+        new_style = 'light'
 
-QComboBox {{
-    background-color: #333333;
-    color: grey;
-    border-radius: 4px;
-    font-weight: medium;
-    padding: 1px 15px 1px 5px;
-    margin-right: 5px; 
-}}
+    # Save preference to config
+    save_theme_preference(new_style)
 
-QComboBox::drop-down {{
-    width: 15px; /* Adjust as needed */
-    border: none;
-}}
+    # Apply new stylesheet
+    stylesheet = load_stylesheet(new_style)
+    QApplication.instance().setStyleSheet(stylesheet)
 
-QComboBox::down-arrow {{
-    image: url(icons/dropdown_arrow.svg); 
-    height: 17;
-    width: 17;
-}}
 
-QSlider::groove:horizontal {{
-    border: 1px solid #999999;
-    height: 8px; /* Adjust to match your design */
-    background: #333333;
-    margin: 2px 0;
-}}
+def save_theme_preference(theme):
+    """Save theme preference to config file."""
+    config_path = resource_path('config.json')
 
-QSlider::handle:horizontal {{
-    background: #FFFFFF;
-    border: 1px solid #5c5c5c;
-    width: 18px; /* Adjust to match your design */
-    margin: -2px 0; 
-    border-radius: 3px;
-}}
+    try:
+        if os.path.exists(config_path):
+            with open(config_path, 'r') as config_file:
+                config = json.load(config_file)
+        else:
+            config = {}
 
-QTextEdit {{
-    background-color: #2B2B2B;
-    color: #FFFFFF; /* White*/
-    border: 1px solid #444;
-    padding: 5px;
-    font-family: 'Helvetica'; 
-}}
+        config['theme'] = theme
 
-/* ListWidget styling for the recordings list */
-QListWidget {{
-    background-color: #1E1E1E;
-    border: none;
-    color: #FFFFFF;
-    padding: 10px; 
-}}
+        with open(config_path, 'w') as config_file:
+            json.dump(config, config_file, indent=4)
 
-QListWidget::item {{
-    background-color: #1E1E1E;
-    color: #FFFFFF;'
-    border-bottom: 1px solid #333; 
-    padding: 5px;
-}}
+    except Exception as e:
+        logger.error(f"Error saving theme preference: {e}")
 
-QListWidget::item:selected {{
-    background-color: #333333;
-    color: #FFFFFF;
-}}
 
-/* Scroll bars*/
-QScrollBar:vertical {{
-    background: #2B2B2B;
-    width: 10px; 
-    margin: 10px 0px 10px 0px;
-    border: 1px solid #333333;
-}}
+def get_theme_preference():
+    """Get theme preference from config file."""
+    config_path = resource_path('config.json')
 
-QScrollBar::handle:vertical {{
-    background-color: #555555; 
-    min-height: 10px; 
-    border-radius: 5px;
-}}
+    try:
+        if os.path.exists(config_path):
+            with open(config_path, 'r') as config_file:
+                config = json.load(config_file)
+                return config.get('theme', 'light')
+    except Exception as e:
+        logger.error(f"Error reading theme preference: {e}")
 
-QScrollBar::handle:vertical:hover {{
-    background-color: #666666; /* Adjust color as needed */
-}}
-'''
+    return 'light'  # Default theme
+
+
+def apply_high_dpi_scaling():
+    """Configure high DPI scaling for the application."""
+    # Enable high DPI scaling
+    if hasattr(Qt, 'AA_EnableHighDpiScaling'):
+        QApplication.setAttribute(Qt.AA_EnableHighDpiScaling, True)
+    if hasattr(Qt, 'AA_UseHighDpiPixmaps'):
+        QApplication.setAttribute(Qt.AA_UseHighDpiPixmaps, True)
+
+
+def check_dependencies():
+    """Check if required dependencies are available."""
+    # Check FFmpeg availability
+    try:
+        import subprocess
+        result = subprocess.run(
+            ["ffmpeg", "-version"],
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            text=True
+        )
+        ffmpeg_available = result.returncode == 0
+    except:
+        ffmpeg_available = False
+
+    # Check PyAudio
+    try:
+        import pyaudio
+        pyaudio_available = True
+    except ImportError:
+        pyaudio_available = False
+
+    return {
+        'ffmpeg': ffmpeg_available,
+        'pyaudio': pyaudio_available
+    }
+
+
+def check_cuda_availability():
+    """Check if CUDA is available and return GPU info."""
+    try:
+        import torch
+        cuda_available = torch.cuda.is_available()
+
+        if cuda_available:
+            gpu_count = torch.cuda.device_count()
+            gpu_info = []
+
+            for i in range(gpu_count):
+                gpu_name = torch.cuda.get_device_name(i)
+                gpu_info.append(f"  • {gpu_name}")
+
+            return True, gpu_info
+        else:
+            return False, []
+    except:
+        return False, []
+
+
+def create_splash_screen():
+    """Create a splash screen with progress bar."""
+    splash_pixmap = QPixmap(resource_path('./icons/splash.png'))
+    if splash_pixmap.isNull():
+        # Create a default splash screen if image not found
+        splash_pixmap = QPixmap(400, 300)
+        splash_pixmap.fill(Qt.GlobalColor.white)
+
+    splash = QSplashScreen(splash_pixmap, Qt.WindowType.WindowStaysOnTopHint)
+
+    # Create a widget to overlay on the splash screen
+    overlay = QWidget(splash)
+    layout = QVBoxLayout(overlay)
+
+    # Add app name
+    app_name = QLabel("Transcribrr")
+    app_name.setStyleSheet("font-size: 22px; font-weight: bold; color: #333;")
+    app_name.setAlignment(Qt.AlignmentFlag.AlignCenter)
+    layout.addWidget(app_name)
+
+    # Add version
+    version = QLabel("v1.0.0")
+    version.setStyleSheet("font-size: 12px; color: #666;")
+    version.setAlignment(Qt.AlignmentFlag.AlignCenter)
+    layout.addWidget(version)
+
+    # Add progress bar
+    progress = QProgressBar()
+    progress.setRange(0, 100)
+    progress.setValue(0)
+    progress.setTextVisible(False)
+    progress.setFixedHeight(10)
+    layout.addWidget(progress)
+
+    # Add status label
+    status = QLabel("Initializing...")
+    status.setStyleSheet("font-size: 10px; color: #666;")
+    status.setAlignment(Qt.AlignmentFlag.AlignCenter)
+    layout.addWidget(status)
+
+    # Position the overlay
+    overlay.setGeometry(10, splash_pixmap.height() - 120, splash_pixmap.width() - 20, 100)
+
+    return splash, progress, status
+
+
+def initialize_app():
+    """Initialize the application with proper error handling."""
+    try:
+        # Enable high DPI scaling
+        apply_high_dpi_scaling()
+
+        # Create application
+        app = QApplication(sys.argv)
+        app.setApplicationName("Transcribrr")
+        app.setApplicationVersion("1.0.0")
+        app.setWindowIcon(QIcon(resource_path('./icons/app_icon.png')))
+
+        # Create splash screen
+        splash, progress_bar, status_label = create_splash_screen()
+        splash.show()
+
+        # Update splash screen
+        def update_splash(value, message):
+            status_label.setText(message)
+            progress_bar.setValue(value)
+            app.processEvents()
+
+        # Process events to show splash screen
+        app.processEvents()
+
+        # Initialization steps
+        update_splash(10, "Checking dependencies...")
+        dependencies = check_dependencies()
+
+        update_splash(20, "Checking CUDA availability...")
+        cuda_available, gpu_info = check_cuda_availability()
+
+        update_splash(30, "Cleaning temporary files...")
+        cleanup_temp_files()
+
+        update_splash(40, "Creating necessary directories...")
+        os.makedirs(os.path.join(os.getcwd(), 'Recordings'), exist_ok=True)
+
+        update_splash(50, "Loading configuration...")
+        theme = get_theme_preference()
+        stylesheet = load_stylesheet(theme)
+        app.setStyleSheet(stylesheet)
+
+        update_splash(70, "Initializing main window...")
+        main_window = MainWindow()
+
+        # Check for critical dependencies
+        if not dependencies['ffmpeg']:
+            QMessageBox.warning(main_window, "Missing Dependency",
+                                "FFmpeg is not installed or not in PATH. Some features may not work properly.")
+
+        if not dependencies['pyaudio']:
+            QMessageBox.warning(main_window, "Missing Dependency",
+                                "PyAudio is not properly installed. Recording functionality may not work.")
+
+        # Log system information
+        logger.info(f"Application started")
+        logger.info(f"Python version: {sys.version}")
+        logger.info(f"CUDA available: {cuda_available}")
+        if gpu_info:
+            logger.info("GPU Information:")
+            for gpu in gpu_info:
+                logger.info(gpu)
+
+        update_splash(90, "Ready to start...")
+
+        # Add delay for splash screen to be visible
+        QTimer.singleShot(1500, lambda: (
+            update_splash(100, "Starting application..."),
+            QTimer.singleShot(500, lambda: (
+                main_window.show(),
+                splash.finish(main_window)
+            ))
+        ))
+
+        return app, main_window
+
+    except Exception as e:
+        # Show error message in case of critical failure
+        error_message = f"Failed to initialize application: {str(e)}\n\n{traceback.format_exc()}"
+        logger.critical(error_message)
+
+        # Try to show error dialog, fallback to print if QApplication not initialized
+        try:
+            if QApplication.instance():
+                QMessageBox.critical(None, "Critical Error", error_message)
+            else:
+                app = QApplication(sys.argv)
+                QMessageBox.critical(None, "Critical Error", error_message)
+        except:
+            print(error_message)
+
+        sys.exit(1)
+
+
+def main():
+    try:
+        # Initialize application
+        app, main_window = initialize_app()
+
+        # Run application main loop
+        return app.exec()
+
+    except Exception as e:
+        # Handle any uncaught exceptions
+        error_message = f"Unhandled exception: {str(e)}\n\n{traceback.format_exc()}"
+        logger.critical(error_message)
+
+        # Try to show error dialog
+        try:
+            if QApplication.instance():
+                QMessageBox.critical(None, "Unhandled Error", error_message)
+        except:
+            print(error_message)
+
+        return 1
+
 
 if __name__ == "__main__":
-    app = QApplication(sys.argv)
-    app.setStyleSheet(stylesheet)
-    mainWin = MainWindow()
-    mainWin.show()
-    sys.exit(app.exec())
+    sys.exit(main())

@@ -18,6 +18,7 @@ import traceback
 import keyring
 from app.database import create_connection, get_recording_by_id, update_recording
 
+
 class MainTranscriptionWidget(QWidget):
     transcriptionStarted = pyqtSignal()
     transcriptionCompleted = pyqtSignal(str)
@@ -34,6 +35,13 @@ class MainTranscriptionWidget(QWidget):
 
         # Initialize state variables
         self.is_editing_existing_prompt = False
+        self.file_path = None
+        self.is_transcribing = False
+        self.is_processing_gpt4 = False
+        self.raw_transcript_text = None
+        self.initial_processed_text = None
+        self.original_transcript = None
+        self.initial_prompt_instructions = None
 
         # Load configuration
         self.load_config()
@@ -47,25 +55,24 @@ class MainTranscriptionWidget(QWidget):
         self.init_main_content()
 
         # Connect signals and slots
+        self.connect_signals()
+
+    def connect_signals(self):
+        """Connect signals and slots for UI interactions."""
         self.transcript_text.transcription_requested.connect(self.start_transcription)
         self.transcript_text.gpt4_processing_requested.connect(self.start_gpt4_processing)
         self.mode_switch.valueChanged.connect(self.on_mode_switch_changed)
         self.settings_button.clicked.connect(self.request_settings)
         self.transcript_text.save_requested.connect(self.save_editor_state)
         self.gpt_prompt_dropdown.currentIndexChanged.connect(self.on_prompt_selection_changed)
-
         # Connect smart format signal
         self.transcript_text.smart_format_requested.connect(self.start_smart_format_processing)
-
-        self.file_path = None
-        self.is_transcribing = False
-        self.is_processing_gpt4 = False
-
 
     def on_mode_switch_changed(self, value):
         """Handle changes in the mode switch to show/hide refinement controls."""
         if not isinstance(value, int):
             return
+
         # Log the switch value change for debugging
         print(f"Mode switch value changed to: {value}")
 
@@ -75,14 +82,15 @@ class MainTranscriptionWidget(QWidget):
         else:
             self.refinement_widget.setVisible(False)
         self.toggle_transcription_view()
+
     def load_config(self):
         """Load configuration from config.json."""
         config_path = resource_path('config.json')
         try:
             with open(config_path, 'r') as config_file:
                 self.config = json.load(config_file)
-        except FileNotFoundError:
-            QMessageBox.critical(self, "Configuration Error", f"config.json not found at {config_path}.")
+        except (FileNotFoundError, json.JSONDecodeError) as e:
+            QMessageBox.critical(self, "Configuration Error", f"Error loading config.json: {e}")
             self.config = {
                 "transcription_quality": "openai/whisper-base",
                 "transcription_language": "English",
@@ -99,9 +107,6 @@ class MainTranscriptionWidget(QWidget):
 
         # Load the prompts (this will add "Custom Prompt" as well)
         self.load_prompts()
-
-        # Connect signals
-        self.gpt_prompt_dropdown.currentIndexChanged.connect(self.on_prompt_selection_changed)
 
         # Mode switch and labels
         self.raw_transcript_label = QLabel('Raw Transcript')
@@ -206,8 +211,8 @@ class MainTranscriptionWidget(QWidget):
             config_path = resource_path("config.json")
             with open(config_path, 'r') as config_file:
                 config = json.load(config_file)
-        except FileNotFoundError:
-            # Default values if config.json not found
+        except (FileNotFoundError, json.JSONDecodeError):
+            # Default values if config.json not found or invalid
             config = {
                 'temperature': 1.0,
                 'max_tokens': 16000
@@ -240,8 +245,9 @@ class MainTranscriptionWidget(QWidget):
         try:
             with open(prompts_path, 'r') as file:
                 self.preset_prompts = json.load(file)
-        except FileNotFoundError:
-            QMessageBox.warning(self, "Prompts File Not Found", "preset_prompts.json not found. Using default prompts.")
+        except (FileNotFoundError, json.JSONDecodeError) as e:
+            QMessageBox.warning(self, "Prompts File Error",
+                                f"Error loading preset_prompts.json: {e}. Using default prompts.")
             self.preset_prompts = {
                 "Youtube to article": "Transform this raw transcript of a youtube video into a well-structured article, maintaining as much detail as possible. Do not embellish by adding details not mentioned. It is extremely important you keep all details. Your output should come close to matching the number of words of the original transcript.",
                 "Translate": "Translate this raw audio transcript into English. You may fix minor transcription errors based on context.",
@@ -404,267 +410,13 @@ class MainTranscriptionWidget(QWidget):
         except Exception as e:
             QMessageBox.critical(self, "Error Saving Prompt", f"An error occurred while saving the prompt: {e}")
 
-    def toggle_spinner(self, spinner_name):
-        """Toggle spinner visibility if implemented."""
-        # Implementation depends on Spinner Widget
-        pass  # Placeholder if needed
-
     def toggle_transcription_spinner(self):
         """Toggle transcription spinner."""
-        self.toggle_spinner('transcription_spinner')
+        self.transcript_text.toggle_transcription_spinner()
 
     def toggle_gpt_spinner(self):
         """Toggle GPT-4 spinner."""
-        self.toggle_spinner('gpt_spinner')
-
-    def font_family_changed(self, font):
-        """Handle font family changes."""
-        self.transcript_text.editor.setCurrentFont(font)
-
-    def font_size_changed(self, size):
-        """Handle font size changes."""
-        try:
-            size_float = float(size)
-            self.transcript_text.editor.setFontPointSize(size_float)
-        except ValueError:
-            QMessageBox.warning(self, "Invalid Font Size", "Please enter a valid number for font size.")
-
-    def bold_text(self):
-        """Toggle bold formatting."""
-        weight = QFont.Weight.Bold if not self.transcript_text.editor.fontWeight() == QFont.Weight.Bold else QFont.Weight.Normal
-        self.transcript_text.editor.setFontWeight(weight)
-
-    def italic_text(self):
-        """Toggle italic formatting."""
-        state = not self.transcript_text.editor.fontItalic()
-        self.transcript_text.editor.setFontItalic(state)
-
-    def underline_text(self):
-        """Toggle underline formatting."""
-        state = not self.transcript_text.editor.fontUnderline()
-        self.transcript_text.editor.setFontUnderline(state)
-
-    def strikethrough_text(self):
-        """Toggle strikethrough formatting."""
-        fmt = self.transcript_text.editor.currentCharFormat()
-        fmt.setFontStrikeOut(not fmt.fontStrikeOut())
-        self.transcript_text.editor.mergeCurrentCharFormat(fmt)
-
-    def highlight_text(self):
-        """Highlight selected text."""
-        color = QColorDialog.getColor()
-        if color.isValid():
-            fmt = QTextCharFormat()
-            fmt.setBackground(color)
-            self.transcript_text.editor.mergeCurrentCharFormat(fmt)
-
-    def font_color(self):
-        """Change font color."""
-        color = QColorDialog.getColor()
-        if color.isValid():
-            self.transcript_text.editor.setTextColor(color)
-
-    def set_alignment(self, alignment):
-        """Set text alignment."""
-        self.transcript_text.editor.setAlignment(alignment)
-
-    def bullet_list(self):
-        """Create a bullet list."""
-        cursor = self.transcript_text.editor.textCursor()
-        list_format = QTextListFormat()
-        list_format.setStyle(QTextListFormat.Style.ListDisc)
-        cursor.createList(list_format)
-
-    def numbered_list(self):
-        """Create a numbered list."""
-        cursor = self.transcript_text.editor.textCursor()
-        list_format = QTextListFormat()
-        list_format.setStyle(QTextListFormat.Style.ListDecimal)
-        cursor.createList(list_format)
-
-    def increase_indent(self):
-        """Increase indent."""
-        cursor = self.transcript_text.editor.textCursor()
-        if cursor.blockFormat().indent() < 15:
-            block_format = cursor.blockFormat()
-            block_format.setIndent(block_format.indent() + 1)
-            cursor.setBlockFormat(block_format)
-
-    def decrease_indent(self):
-        """Decrease indent."""
-        cursor = self.transcript_text.editor.textCursor()
-        if cursor.blockFormat().indent() > 0:
-            block_format = cursor.blockFormat()
-            block_format.setIndent(block_format.indent() - 1)
-            cursor.setBlockFormat(block_format)
-
-    def export_to_pdf(self):
-        """Export transcript to PDF."""
-        file_path, _ = QFileDialog.getSaveFileName(self, "Export to PDF", "", "PDF Files (*.pdf)")
-        if file_path:
-            printer = QPrinter(QPrinter.PrinterMode.HighResolution)
-            printer.setOutputFormat(QPrinter.OutputFormat.PdfFormat)
-            printer.setOutputFileName(file_path)
-            self.transcript_text.document().print(printer)
-            QMessageBox.information(self, "Export to PDF", f"Document successfully exported to {file_path}")
-
-    def export_to_word(self):
-        """Export transcript to Word document."""
-        file_path, _ = QFileDialog.getSaveFileName(self, "Export to Word", "", "Word Documents (*.docx)")
-        if file_path:
-            doc = docx.Document()
-            html = self.transcript_text.toHtml()
-            new_parser = htmldocx.HtmlToDocx()
-            new_parser.add_html_to_document(html, doc)
-            doc.save(file_path)
-            QMessageBox.information(self, "Export to Word", f"Document successfully exported to {file_path}")
-
-    def export_to_text(self):
-        """Export transcript to plain text."""
-        file_path, _ = QFileDialog.getSaveFileName(self, "Export to Plain Text", "", "Text Files (*.txt)")
-        if file_path:
-            plain_text = self.transcript_text.toPlainText()
-            try:
-                with open(file_path, 'w', encoding='utf-8') as file:
-                    file.write(plain_text)
-                QMessageBox.information(self, "Export to Text", f"Document successfully exported to {file_path}")
-            except Exception as e:
-                QMessageBox.critical(self, "Export Error", f"An error occurred while exporting: {e}")
-
-    def serialize_text_document(self):
-        """Serialize the text document to HTML."""
-        try:
-            # Access the QTextEdit within the TextEditor component and get the HTML content
-            formatted_text = self.transcript_text.editor.toHtml()
-            return formatted_text
-        except AttributeError as e:
-            print(f"Error accessing text editor document: {e}")
-            return None
-
-    def deserialize_text_document(self, text_data):
-        """Deserialize and load text into the editor."""
-        if text_data:
-            self.transcript_text.setHtml(text_data.decode('utf-8') if isinstance(text_data, bytes) else text_data)
-        else:
-            self.transcript_text.clear()
-
-    def save_editor_state(self):
-        """Save the current state of the text editor to the database."""
-        if self.current_selected_item is None:
-            QMessageBox.warning(self, 'No Recording Selected', 'Please select a recording to save.')
-            return
-
-        # Determine if we're in raw or processed mode
-        if self.mode_switch.value() == 0:  # Raw transcript mode
-            formatted_data = self.serialize_text_document()
-            if formatted_data is None:
-                QMessageBox.critical(self, 'Save Error', 'Could not retrieve the text document. Please try again.')
-                return
-            field_to_update = 'raw_transcript_formatted'
-        else:  # Processed text mode
-            formatted_data = self.serialize_text_document()
-            if formatted_data is None:
-                QMessageBox.critical(self, 'Save Error', 'Could not retrieve the text document. Please try again.')
-                return
-            field_to_update = 'processed_text_formatted'
-
-        print(f"Formatted data to save: {formatted_data[:100]}")
-
-        recording_id = self.current_selected_item.get_id()
-        db_path = resource_path("./database/database.sqlite")
-        conn = create_connection(db_path)
-
-        try:
-            update_recording(conn, recording_id, **{field_to_update: formatted_data})
-            conn.close()
-            QMessageBox.information(self, "Success", "Transcription saved successfully.")
-        except Exception as e:
-            QMessageBox.critical(self, "Save Error", f"An error occurred while saving: {e}")
-            if conn:
-                conn.close()
-
-    def process_with_gpt4(self):
-        """Emit signal to start GPT-4 processing."""
-        self.start_gpt4_processing()
-
-    def start_transcription(self):
-        """Start the transcription process."""
-        self.transcript_text.toggle_transcription_spinner()
-        if self.current_selected_item is None:
-            QMessageBox.warning(self, 'No Recording Selected', 'Please select a recording to transcribe.')
-            self.transcript_text.toggle_transcription_spinner()
-            return
-
-        config_path = resource_path("config.json")
-        try:
-            with open(config_path, 'r') as config_file:
-                config = json.load(config_file)
-        except FileNotFoundError:
-            QMessageBox.critical(self, "Configuration Error", f"config.json not found at {config_path}.")
-            return
-
-        transcription_method = config.get('transcription_method', 'local')
-        transcription_quality = config.get('transcription_quality', 'openai/whisper-base')
-        speaker_detection_enabled = config.get('speaker_detection_enabled', False)
-        language = config.get('transcription_language', 'English')
-        openai_api_key = keyring.get_password("transcription_application", "OPENAI_API_KEY")  # Ensure correct retrieval
-
-        recording_id = self.current_selected_item.get_id()
-        db_path = resource_path("./database/database.sqlite")
-        conn = create_connection(db_path)
-        recording = get_recording_by_id(conn, recording_id)
-        conn.close()
-
-        if not recording:
-            QMessageBox.warning(self, 'Recording Not Found', f'No recording found with ID: {recording_id}')
-            self.transcript_text.toggle_transcription_spinner()
-            return
-
-        self.transcription_thread = TranscriptionThread(
-            file_path=self.file_path,
-            transcription_method=transcription_method,
-            openai_api_key=openai_api_key,
-            transcription_quality=transcription_quality,
-            speaker_detection_enabled=speaker_detection_enabled,
-            hf_auth_key=keyring.get_password("transcription_application", "HF_AUTH_TOKEN"),
-            language=language
-        )
-        self.transcription_thread.completed.connect(self.on_transcription_completed)
-        self.transcription_thread.update_progress.connect(self.on_transcription_progress)
-        self.transcription_thread.error.connect(self.on_transcription_error)
-        self.transcription_thread.start()
-        self.is_transcribing = True
-        self.update_ui_state()
-
-    def on_transcription_completed(self, transcript):
-        """Handle completion of transcription."""
-        self.transcript_text.editor.setPlainText(transcript)
-        recording_id = self.current_selected_item.get_id()
-        self.mode_switch.setValue(0)
-        self.transcript_text.editor.setPlainText(transcript)
-        # Save the raw transcript to the database
-        db_path = resource_path("./database/database.sqlite")
-        conn = create_connection(db_path)
-        update_recording(conn, recording_id, raw_transcript=transcript)
-        conn.close()
-
-        # Store the raw transcript text for refinement
-        self.raw_transcript_text = transcript
-
-        self.is_transcribing = False
-        self.transcript_text.toggle_transcription_spinner()
-        self.update_ui_state()
-
-    def on_transcription_progress(self, progress_message):
-        """Handle transcription progress updates."""
-        self.update_progress.emit(progress_message)
-
-    def on_transcription_error(self, error_message):
-        """Handle transcription errors."""
-        QMessageBox.critical(self, 'Transcription Error', error_message)
-        self.is_transcribing = False
-        self.transcript_text.toggle_transcription_spinner()
-        self.update_ui_state()
+        self.transcript_text.toggle_gpt_spinner()
 
     def get_current_prompt_instructions(self):
         """Retrieve the current prompt instructions based on selected prompt."""
@@ -727,8 +479,8 @@ class MainTranscriptionWidget(QWidget):
             f"Original Prompt: {self.initial_prompt_instructions}\n"
             f"Additional Instructions: {refinement_instructions}\n"
             f"Apply these refinements to the previous output. "
-            f"If the text that is provided to you it formatted in html, you should maintain this formatting and return the text with html."
-            f"You should always return similarly formatted html  if you receive html formatted text as one of the inputs. Otherwise, don't bother. "
+            f"If the text that is provided to you is formatted in html, you should maintain this formatting and return the text with html."
+            f"You should always return similarly formatted html if you receive html formatted text as one of the inputs. Otherwise, don't bother. "
             f"Return the refined text only and formatting if applicable. Do not use code blocks"
         )
 
@@ -756,6 +508,8 @@ class MainTranscriptionWidget(QWidget):
         # Disable the refinement input and button until processing is complete
         self.refinement_input.setEnabled(False)
         self.refinement_submit_button.setEnabled(False)
+        self.is_processing_gpt4 = True
+        self.update_ui_state()
 
     def on_refinement_completed(self, refined_text):
         """Handle the refined text received from GPT-4."""
@@ -773,8 +527,13 @@ class MainTranscriptionWidget(QWidget):
                 recording_id = self.current_selected_item.get_id()
                 db_path = resource_path("./database/database.sqlite")
                 conn = create_connection(db_path)
-                update_recording(conn, recording_id, **{formatted_field: refined_text})
-                conn.close()
+                if conn:
+                    try:
+                        update_recording(conn, recording_id, **{formatted_field: refined_text})
+                    except Exception as e:
+                        QMessageBox.critical(self, "Database Error", f"Failed to update recording: {e}")
+                    finally:
+                        conn.close()
 
             # Update the stored processed text for potential further refinements
             self.initial_processed_text = refined_text
@@ -791,15 +550,19 @@ class MainTranscriptionWidget(QWidget):
 
     def is_text_html(self, text):
         """Check if the given text is HTML formatted."""
+        if not text:
+            return False
         return bool("<" in text and ">" in text)
 
     def on_gpt4_processing_error(self, error_message):
         """Handle GPT-4 processing errors."""
         QMessageBox.critical(self, 'GPT-4 Processing Error', error_message)
-        # Re-enable the refinement input fields
-        self.refinement_input.setEnabled(True)
-        self.refinement_submit_button.setEnabled(True)
+        # Re-enable the refinement input fields if needed
+        if hasattr(self, 'refinement_input') and hasattr(self, 'refinement_submit_button'):
+            self.refinement_input.setEnabled(True)
+            self.refinement_submit_button.setEnabled(True)
         self.is_processing_gpt4 = False
+        self.toggle_gpt_spinner()
         self.update_ui_state()
 
     def toggle_transcription_view(self):
@@ -843,10 +606,17 @@ class MainTranscriptionWidget(QWidget):
         if self.current_selected_item is not None:
             db_path = resource_path("./database/database.sqlite")
             conn = create_connection(db_path)
-            recording_id = self.current_selected_item.get_id()
-            recording = get_recording_by_id(conn, recording_id)
-            conn.close()
-            return bool(recording and (recording[6] or recording[8]))  # processed_text or processed_text_formatted
+            if conn:
+                try:
+                    recording_id = self.current_selected_item.get_id()
+                    recording = get_recording_by_id(conn, recording_id)
+                    conn.close()
+                    return bool(
+                        recording and (recording[6] or recording[8]))  # processed_text or processed_text_formatted
+                except Exception as e:
+                    print(f"Error checking processed text: {e}")
+                    conn.close()
+            return False
         return False
 
     def request_settings(self):
@@ -857,7 +627,7 @@ class MainTranscriptionWidget(QWidget):
         dialog.exec()
 
     def start_gpt4_processing(self):
-        """Start the initial GPT-4 processing of the transcript."""
+        """Start the GPT-4 processing of the transcript."""
         if self.current_selected_item is None:
             QMessageBox.warning(self, 'No Recording Selected', 'Please select a recording first.')
             return
@@ -870,7 +640,13 @@ class MainTranscriptionWidget(QWidget):
             QMessageBox.critical(self, 'Database Error', 'Unable to connect to the database.')
             return
 
-        recording = get_recording_by_id(conn, recording_id)
+        try:
+            recording = get_recording_by_id(conn, recording_id)
+        except Exception as e:
+            QMessageBox.critical(self, "Database Error", f"Failed to retrieve recording: {e}")
+            conn.close()
+            return
+
         conn.close()
 
         if recording is None:
@@ -878,6 +654,14 @@ class MainTranscriptionWidget(QWidget):
             return
 
         raw_transcript = recording[5] if recording else ""
+        if not raw_transcript:
+            QMessageBox.warning(self, 'No Transcript',
+                                'No transcript found for this recording. Please transcribe first.')
+            return
+
+        # Store the raw transcript for refinement purposes
+        self.raw_transcript_text = raw_transcript
+        self.original_transcript = raw_transcript
 
         selected_prompt_key = self.gpt_prompt_dropdown.currentText()
         if selected_prompt_key == "Custom Prompt":
@@ -888,12 +672,15 @@ class MainTranscriptionWidget(QWidget):
         else:
             prompt_instructions = self.preset_prompts.get(selected_prompt_key, '')
 
+        # Store the initial prompt instructions for refinement
+        self.initial_prompt_instructions = prompt_instructions
+
         config_path = resource_path("config.json")
         try:
             with open(config_path, 'r') as config_file:
                 config = json.load(config_file)
-        except FileNotFoundError:
-            QMessageBox.critical(self, "Configuration Error", f"config.json not found at {config_path}.")
+        except (FileNotFoundError, json.JSONDecodeError) as e:
+            QMessageBox.critical(self, "Configuration Error", f"Error loading config.json: {e}")
             return
 
         openai_api_key = keyring.get_password("transcription_application", "OPENAI_API_KEY")
@@ -918,7 +705,7 @@ class MainTranscriptionWidget(QWidget):
         self.gpt4_processing_thread.error.connect(self.on_gpt4_processing_error)
         self.gpt4_processing_thread.start()
         self.is_processing_gpt4 = True
-        self.transcript_text.toggle_gpt_spinner()
+        self.toggle_gpt_spinner()
         self.update_ui_state()
 
     def on_gpt4_processing_completed(self, processed_text):
@@ -932,19 +719,24 @@ class MainTranscriptionWidget(QWidget):
             else:
                 self.transcript_text.editor.setPlainText(processed_text)
                 formatted_field = 'processed_text'
+
             recording_id = self.current_selected_item.get_id()
             db_path = resource_path("./database/database.sqlite")
             conn = create_connection(db_path)
-            update_recording(conn, recording_id, **{formatted_field: processed_text})
-            conn.close()
+            if conn:
+                try:
+                    update_recording(conn, recording_id, **{formatted_field: processed_text})
+                except Exception as e:
+                    QMessageBox.critical(self, "Database Error", f"Failed to update recording: {e}")
+                finally:
+                    conn.close()
+
             self.is_processing_gpt4 = False
-            self.transcript_text.toggle_gpt_spinner()
+            self.toggle_gpt_spinner()
             self.update_ui_state()
 
             # Store necessary data for refinement
             self.initial_processed_text = processed_text
-            self.original_transcript = self.raw_transcript_text
-            self.initial_prompt_instructions = self.get_current_prompt_instructions()
 
             # Show the refinement input area if processed text exists
             if self.has_processed_text():
@@ -953,14 +745,6 @@ class MainTranscriptionWidget(QWidget):
     def on_gpt4_processing_progress(self, progress_message):
         """Handle GPT-4 processing progress updates."""
         self.update_progress.emit(progress_message)
-
-    def on_gpt4_processing_error(self, error_message):
-        """Handle GPT-4 processing errors."""
-        QMessageBox.critical(self, 'GPT-4 Processing Error', error_message)
-        # Re-enable the processing flag and update UI
-        self.is_processing_gpt4 = False
-        self.transcript_text.toggle_gpt_spinner()
-        self.update_ui_state()
 
     def start_smart_format_processing(self, text_to_format):
         """Start smart formatting of the transcript."""
@@ -974,14 +758,6 @@ class MainTranscriptionWidget(QWidget):
         Do not use a code block when returning the html, just provide the html.
         """
 
-        config_path = resource_path("config.json")
-        try:
-            with open(config_path, 'r') as config_file:
-                config = json.load(config_file)
-        except FileNotFoundError:
-            QMessageBox.critical(self, "Configuration Error", f"config.json not found at {config_path}.")
-            return
-
         openai_api_key = keyring.get_password("transcription_application", "OPENAI_API_KEY")
         if not openai_api_key:
             QMessageBox.critical(self, "API Key Missing", "Please set your OpenAI API key in the settings.")
@@ -994,7 +770,7 @@ class MainTranscriptionWidget(QWidget):
         self.gpt4_smart_format_thread = GPT4ProcessingThread(
             transcript=text_to_format,
             prompt_instructions=prompt_instructions,
-            gpt_model='gpt-4o-mini',
+            gpt_model='gpt-4o-mini',  # Using a smaller model for formatting
             max_tokens=max_tokens,
             temperature=temperature,
             openai_api_key=openai_api_key
@@ -1004,191 +780,143 @@ class MainTranscriptionWidget(QWidget):
         self.gpt4_smart_format_thread.error.connect(self.on_gpt4_processing_error)
         self.gpt4_smart_format_thread.start()
         self.is_processing_gpt4 = True
-        self.transcript_text.toggle_gpt_spinner()
+        self.toggle_gpt_spinner()
         self.update_ui_state()
 
     def on_smart_format_completed(self, formatted_html):
         """Handle completion of smart formatting."""
         if formatted_html:
             self.transcript_text.editor.setHtml(formatted_html)
-            recording_id = self.current_selected_item.get_id()
-            db_path = resource_path("./database/database.sqlite")
-            conn = create_connection(db_path)
-            update_recording(conn, recording_id, processed_text_formatted=formatted_html)
-            conn.close()
+            if self.current_selected_item:
+                recording_id = self.current_selected_item.get_id()
+                db_path = resource_path("./database/database.sqlite")
+                conn = create_connection(db_path)
+                if conn:
+                    try:
+                        update_recording(conn, recording_id, processed_text_formatted=formatted_html)
+                    except Exception as e:
+                        QMessageBox.critical(self, "Database Error", f"Failed to update recording: {e}")
+                    finally:
+                        conn.close()
+
             self.is_processing_gpt4 = False
-            self.transcript_text.toggle_gpt_spinner()
+            self.toggle_gpt_spinner()
             self.update_ui_state()
         else:
             QMessageBox.warning(self, 'Formatting Failed', 'Failed to format the text.')
-        # Re-enable the smart format controls if any
 
-    def start_gpt4_processing(self):
-        """Start the initial GPT-4 processing of the transcript."""
+    def start_transcription(self):
+        """Start the transcription process."""
+        self.toggle_transcription_spinner()
         if self.current_selected_item is None:
-            QMessageBox.warning(self, 'No Recording Selected', 'Please select a recording first.')
+            QMessageBox.warning(self, 'No Recording Selected', 'Please select a recording to transcribe.')
+            self.toggle_transcription_spinner()
             return
+
+        config_path = resource_path("config.json")
+        try:
+            with open(config_path, 'r') as config_file:
+                config = json.load(config_file)
+        except (FileNotFoundError, json.JSONDecodeError) as e:
+            QMessageBox.critical(self, "Configuration Error", f"Error loading config.json: {e}")
+            self.toggle_transcription_spinner()
+            return
+
+        transcription_method = config.get('transcription_method', 'local')
+        transcription_quality = config.get('transcription_quality', 'openai/whisper-base')
+        speaker_detection_enabled = config.get('speaker_detection_enabled', False)
+        language = config.get('transcription_language', 'English')
+        openai_api_key = keyring.get_password("transcription_application", "OPENAI_API_KEY")
 
         recording_id = self.current_selected_item.get_id()
         db_path = resource_path("./database/database.sqlite")
         conn = create_connection(db_path)
-
-        if conn is None:
-            QMessageBox.critical(self, 'Database Error', 'Unable to connect to the database.')
-            return
-
-        recording = get_recording_by_id(conn, recording_id)
-        conn.close()
-
-        if recording is None:
-            QMessageBox.warning(self, 'Recording Not Found', f'No recording found with ID: {recording_id}')
-            return
-
-        raw_transcript = recording[5] if recording else ""
-
-        selected_prompt_key = self.gpt_prompt_dropdown.currentText()
-        if selected_prompt_key == "Custom Prompt":
-            prompt_instructions = self.custom_prompt_input.toPlainText()
-            if not prompt_instructions.strip():
-                QMessageBox.warning(self, 'Empty Prompt', 'Please enter a custom prompt or select a predefined one.')
+        if conn:
+            try:
+                recording = get_recording_by_id(conn, recording_id)
+            except Exception as e:
+                QMessageBox.critical(self, "Database Error", f"Failed to retrieve recording: {e}")
+                conn.close()
+                self.toggle_transcription_spinner()
                 return
+            finally:
+                conn.close()
         else:
-            prompt_instructions = self.preset_prompts.get(selected_prompt_key, '')
-
-        config_path = resource_path("config.json")
-        try:
-            with open(config_path, 'r') as config_file:
-                config = json.load(config_file)
-        except FileNotFoundError:
-            QMessageBox.critical(self, "Configuration Error", f"config.json not found at {config_path}.")
+            QMessageBox.critical(self, "Database Error", "Failed to connect to database.")
+            self.toggle_transcription_spinner()
             return
 
-        openai_api_key = keyring.get_password("transcription_application", "OPENAI_API_KEY")
-        if not openai_api_key:
-            QMessageBox.critical(self, "API Key Missing", "Please set your OpenAI API key in the settings.")
+        if not recording:
+            QMessageBox.warning(self, 'Recording Not Found', f'No recording found with ID: {recording_id}')
+            self.toggle_transcription_spinner()
             return
 
-        temperature = self.temperature_spinbox.value()
-        max_tokens = self.max_tokens_spinbox.value()
+        # Set the file path from the recording
+        self.file_path = recording[2]
+        if not self.file_path or not os.path.exists(self.file_path):
+            QMessageBox.critical(self, "File Error", f"Audio file not found: {self.file_path}")
+            self.toggle_transcription_spinner()
+            return
 
-        # Start the GPT-4 processing thread
-        self.gpt4_processing_thread = GPT4ProcessingThread(
-            transcript=raw_transcript,
-            prompt_instructions=prompt_instructions,
-            gpt_model=self.config.get('gpt_model', 'gpt-4'),
-            max_tokens=max_tokens,
-            temperature=temperature,
-            openai_api_key=openai_api_key
+        self.transcription_thread = TranscriptionThread(
+            file_path=self.file_path,
+            transcription_method=transcription_method,
+            openai_api_key=openai_api_key,
+            transcription_quality=transcription_quality,
+            speaker_detection_enabled=speaker_detection_enabled,
+            hf_auth_key=keyring.get_password("transcription_application", "HF_AUTH_TOKEN"),
+            language=language
         )
-        self.gpt4_processing_thread.completed.connect(self.on_gpt4_processing_completed)
-        self.gpt4_processing_thread.update_progress.connect(self.on_gpt4_processing_progress)
-        self.gpt4_processing_thread.error.connect(self.on_gpt4_processing_error)
-        self.gpt4_processing_thread.start()
-        self.is_processing_gpt4 = True
-        self.transcript_text.toggle_gpt_spinner()
+        self.transcription_thread.completed.connect(self.on_transcription_completed)
+        self.transcription_thread.update_progress.connect(self.on_transcription_progress)
+        self.transcription_thread.error.connect(self.on_transcription_error)
+        self.transcription_thread.start()
+        self.is_transcribing = True
         self.update_ui_state()
 
-    def on_gpt4_processing_completed(self, processed_text):
-        """Handle completion of GPT-4 processing."""
-        if self.current_selected_item:
-            # Update the editor with the new processed text
-            self.mode_switch.setValue(1)
-            if self.is_text_html(processed_text):
-                self.transcript_text.editor.setHtml(processed_text)
-                formatted_field = 'processed_text_formatted'
-            else:
-                self.transcript_text.editor.setPlainText(processed_text)
-                formatted_field = 'processed_text'
-            recording_id = self.current_selected_item.get_id()
-            db_path = resource_path("./database/database.sqlite")
-            conn = create_connection(db_path)
-            update_recording(conn, recording_id, **{formatted_field: processed_text})
-            conn.close()
-            self.is_processing_gpt4 = False
-            self.transcript_text.toggle_gpt_spinner()
+    def on_transcription_completed(self, transcript):
+        """Handle completion of transcription."""
+        if not transcript:
+            QMessageBox.warning(self, "Transcription Result", "No transcript was generated.")
+            self.is_transcribing = False
+            self.toggle_transcription_spinner()
             self.update_ui_state()
+            return
 
-            # Store necessary data for refinement
-            self.initial_processed_text = processed_text
-            self.original_transcript = self.raw_transcript_text
-            self.initial_prompt_instructions = self.get_current_prompt_instructions()
+        self.transcript_text.editor.setPlainText(transcript)
+        recording_id = self.current_selected_item.get_id()
+        self.mode_switch.setValue(0)
 
-            # Show the refinement input area if processed text exists
-            if self.has_processed_text():
-                self.refinement_widget.setVisible(True)
+        # Save the raw transcript to the database
+        db_path = resource_path("./database/database.sqlite")
+        conn = create_connection(db_path)
+        if conn:
+            try:
+                update_recording(conn, recording_id, raw_transcript=transcript)
+            except Exception as e:
+                QMessageBox.critical(self, "Database Error", f"Failed to update recording: {e}")
+            finally:
+                conn.close()
 
-    def on_gpt4_processing_progress(self, progress_message):
-        """Handle GPT-4 processing progress updates."""
+        # Store the raw transcript text for refinement
+        self.raw_transcript_text = transcript
+
+        self.is_transcribing = False
+        self.toggle_transcription_spinner()
+        self.update_ui_state()
+
+        QMessageBox.information(self, "Transcription Complete", "The audio has been successfully transcribed.")
+
+    def on_transcription_progress(self, progress_message):
+        """Handle transcription progress updates."""
         self.update_progress.emit(progress_message)
 
-    def on_gpt4_processing_error(self, error_message):
-        """Handle GPT-4 processing errors."""
-        QMessageBox.critical(self, 'GPT-4 Processing Error', error_message)
-        # Re-enable the processing flag and update UI
-        self.is_processing_gpt4 = False
-        self.transcript_text.toggle_gpt_spinner()
+    def on_transcription_error(self, error_message):
+        """Handle transcription errors."""
+        QMessageBox.critical(self, 'Transcription Error', error_message)
+        self.is_transcribing = False
+        self.toggle_transcription_spinner()
         self.update_ui_state()
-
-    def start_smart_format_processing(self, text_to_format):
-        """Start smart formatting of the transcript."""
-        if not text_to_format.strip():
-            QMessageBox.warning(self, 'Empty Text', 'There is no text to format.')
-            return
-
-        prompt_instructions = """
-        Please intelligently format the following text in HTML based on its context.
-        Do not change any of the text - just apply formatting as needed.
-        Do not use a code block when returning the html, just provide the html.
-        """
-
-        config_path = resource_path("config.json")
-        try:
-            with open(config_path, 'r') as config_file:
-                config = json.load(config_file)
-        except FileNotFoundError:
-            QMessageBox.critical(self, "Configuration Error", f"config.json not found at {config_path}.")
-            return
-
-        openai_api_key = keyring.get_password("transcription_application", "OPENAI_API_KEY")
-        if not openai_api_key:
-            QMessageBox.critical(self, "API Key Missing", "Please set your OpenAI API key in the settings.")
-            return
-
-        temperature = self.temperature_spinbox.value()
-        max_tokens = self.max_tokens_spinbox.value()
-
-        # Start the GPT-4 processing thread
-        self.gpt4_smart_format_thread = GPT4ProcessingThread(
-            transcript=text_to_format,
-            prompt_instructions=prompt_instructions,
-            gpt_model=self.config.get('gpt_model', 'gpt-4'),
-            max_tokens=max_tokens,
-            temperature=temperature,
-            openai_api_key=openai_api_key
-        )
-        self.gpt4_smart_format_thread.completed.connect(self.on_smart_format_completed)
-        self.gpt4_smart_format_thread.update_progress.connect(self.update_progress.emit)
-        self.gpt4_smart_format_thread.error.connect(self.on_gpt4_processing_error)
-        self.gpt4_smart_format_thread.start()
-        self.is_processing_gpt4 = True
-        self.transcript_text.toggle_gpt_spinner()
-        self.update_ui_state()
-
-    def on_smart_format_completed(self, formatted_html):
-        """Handle completion of smart formatting."""
-        if formatted_html:
-            self.transcript_text.editor.setHtml(formatted_html)
-            recording_id = self.current_selected_item.get_id()
-            db_path = resource_path("./database/database.sqlite")
-            conn = create_connection(db_path)
-            update_recording(conn, recording_id, processed_text_formatted=formatted_html)
-            conn.close()
-            self.is_processing_gpt4 = False
-            self.transcript_text.toggle_gpt_spinner()
-            self.update_ui_state()
-        else:
-            QMessageBox.warning(self, 'Formatting Failed', 'Failed to format the text.')
-        # Re-enable the smart format controls if any
 
     def on_recording_item_selected(self, recording_item):
         """Handle the event when a recording item is selected."""
@@ -1196,8 +924,13 @@ class MainTranscriptionWidget(QWidget):
             self.current_selected_item = recording_item
             db_path = resource_path("./database/database.sqlite")
             conn = create_connection(db_path)
+            if not conn:
+                QMessageBox.critical(self, "Database Error", "Unable to connect to the database.")
+                return
+
             recording_id = self.current_selected_item.get_id()
             recording = get_recording_by_id(conn, recording_id)
+            conn.close()
 
             if recording:
                 self.id = recording[0]
@@ -1240,15 +973,13 @@ class MainTranscriptionWidget(QWidget):
 
                 # Store the prompt instructions
                 self.initial_prompt_instructions = self.get_current_prompt_instructions()
+                self.original_transcript = self.raw_transcript_text
 
             else:
                 QMessageBox.warning(self, 'Recording Not Found', "No recording found with the provided ID.")
         except Exception as e:
             QMessageBox.critical(self, 'Error', f"An error occurred: {e}")
             traceback.print_exc()
-        finally:
-            if conn:
-                conn.close()
 
         # Ensure edit_prompt_button is in the correct location based on selection
         selected_prompt = self.gpt_prompt_dropdown.currentText()
@@ -1257,13 +988,17 @@ class MainTranscriptionWidget(QWidget):
         else:
             self.edit_prompt_button.show()
 
+        # Update UI state based on the selected recording
+        self.update_ui_state()
+
     def update_ui_state(self):
         """Update the UI state based on current processing flags."""
         # Enable or disable buttons based on the current state
-        self.transcript_text._toolbar_actions['start_transcription'].setEnabled(not self.is_transcribing)
-        self.transcript_text._toolbar_actions['process_with_gpt4'].setEnabled(
-            not self.is_transcribing and not self.is_processing_gpt4 and self.raw_transcript_available()
-        )
+        if hasattr(self.transcript_text, '_toolbar_actions'):
+            self.transcript_text._toolbar_actions['start_transcription'].setEnabled(not self.is_transcribing)
+            self.transcript_text._toolbar_actions['process_with_gpt4'].setEnabled(
+                not self.is_transcribing and not self.is_processing_gpt4 and self.raw_transcript_available()
+            )
 
         # Update Refinement widget visibility
         if self.mode_switch.value() == 1 and self.has_processed_text() and not self.is_processing_gpt4:
@@ -1276,85 +1011,49 @@ class MainTranscriptionWidget(QWidget):
         if self.current_selected_item is not None:
             db_path = resource_path("./database/database.sqlite")
             conn = create_connection(db_path)
-            recording_id = self.current_selected_item.get_id()
-            recording = get_recording_by_id(conn, recording_id)
-            conn.close()
-            return bool(recording and recording[5])
+            if conn:
+                try:
+                    recording_id = self.current_selected_item.get_id()
+                    recording = get_recording_by_id(conn, recording_id)
+                    conn.close()
+                    return bool(recording and recording[5])
+                except Exception as e:
+                    print(f"Error checking raw transcript: {e}")
+                    conn.close()
+            return False
         return False
 
-    def request_settings(self):
-        """Open the settings dialog."""
-        dialog = SettingsDialog(self)
-        dialog.settings_changed.connect(self.load_config)
-        dialog.prompts_updated.connect(self.load_prompts)
-        dialog.exec()
-
-    def start_gpt4_processing(self):
-        """Start the initial GPT-4 processing of the transcript."""
+    def save_editor_state(self):
+        """Save the current state of the text editor to the database."""
         if self.current_selected_item is None:
-            QMessageBox.warning(self, 'No Recording Selected', 'Please select a recording first.')
+            QMessageBox.warning(self, 'No Recording Selected', 'Please select a recording to save.')
             return
+
+        # Determine if we're in raw or processed mode
+        if self.mode_switch.value() == 0:  # Raw transcript mode
+            formatted_data = self.transcript_text.editor.toHtml()
+            if not formatted_data:
+                QMessageBox.critical(self, 'Save Error', 'Could not retrieve the text document. Please try again.')
+                return
+            field_to_update = 'raw_transcript_formatted'
+        else:  # Processed text mode
+            formatted_data = self.transcript_text.editor.toHtml()
+            if not formatted_data:
+                QMessageBox.critical(self, 'Save Error', 'Could not retrieve the text document. Please try again.')
+                return
+            field_to_update = 'processed_text_formatted'
 
         recording_id = self.current_selected_item.get_id()
         db_path = resource_path("./database/database.sqlite")
         conn = create_connection(db_path)
 
-        if conn is None:
-            QMessageBox.critical(self, 'Database Error', 'Unable to connect to the database.')
-            return
-
-        recording = get_recording_by_id(conn, recording_id)
-        conn.close()
-
-        if recording is None:
-            QMessageBox.warning(self, 'Recording Not Found', f'No recording found with ID: {recording_id}')
-            return
-
-        raw_transcript = recording[5] if recording else ""
-
-        selected_prompt_key = self.gpt_prompt_dropdown.currentText()
-        if selected_prompt_key == "Custom Prompt":
-            prompt_instructions = self.custom_prompt_input.toPlainText()
-            if not prompt_instructions.strip():
-                QMessageBox.warning(self, 'Empty Prompt', 'Please enter a custom prompt or select a predefined one.')
-                return
+        if conn:
+            try:
+                update_recording(conn, recording_id, **{field_to_update: formatted_data})
+                QMessageBox.information(self, "Success", "Transcription saved successfully.")
+            except Exception as e:
+                QMessageBox.critical(self, "Save Error", f"An error occurred while saving: {e}")
+            finally:
+                conn.close()
         else:
-            prompt_instructions = self.preset_prompts.get(selected_prompt_key, '')
-
-        config_path = resource_path("config.json")
-        try:
-            with open(config_path, 'r') as config_file:
-                config = json.load(config_file)
-        except FileNotFoundError:
-            QMessageBox.critical(self, "Configuration Error", f"config.json not found at {config_path}.")
-            return
-
-        openai_api_key = keyring.get_password("transcription_application", "OPENAI_API_KEY")
-        if not openai_api_key:
-            QMessageBox.critical(self, "API Key Missing", "Please set your OpenAI API key in the settings.")
-            return
-
-        temperature = self.temperature_spinbox.value()
-        max_tokens = self.max_tokens_spinbox.value()
-
-        # Start the GPT-4 processing thread
-        self.gpt4_processing_thread = GPT4ProcessingThread(
-            transcript=raw_transcript,
-            prompt_instructions=prompt_instructions,
-            gpt_model=self.config.get('gpt_model', 'gpt-4'),
-            max_tokens=max_tokens,
-            temperature=temperature,
-            openai_api_key=openai_api_key
-        )
-        self.gpt4_processing_thread.completed.connect(self.on_gpt4_processing_completed)
-        self.gpt4_processing_thread.update_progress.connect(self.on_gpt4_processing_progress)
-        self.gpt4_processing_thread.error.connect(self.on_gpt4_processing_error)
-        self.gpt4_processing_thread.start()
-        self.is_processing_gpt4 = True
-        self.transcript_text.toggle_gpt_spinner()
-        self.update_ui_state()
-
-    def on_refinement_submit(self):
-        """Handle the refinement submission."""
-        self.start_refinement_processing()
-
+            QMessageBox.critical(self, "Database Error", "Could not connect to the database.")

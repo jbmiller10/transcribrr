@@ -25,7 +25,7 @@ class TranscodingThread(QThread):
                 self.update_progress.emit('Extracting audio from video file...')
                 self.extract_audio_from_video(self.file_path, self.recordings_dir)
             else:
-                raise ValueError("Unsupported file type")
+                raise ValueError("Unsupported file type for transcoding.")
         except Exception as e:
             error_message = f'Error: {e}'
             self.handle_error(error_message)
@@ -34,19 +34,19 @@ class TranscodingThread(QThread):
         self.update_progress.emit('Transcoding audio file...')
         target_file_path = self.generate_unique_target_path(target_dir, self.target_format)
         self.reencode_audio(source_path, target_file_path)
+        # Optionally remove the original source file
         if os.path.exists(target_file_path):
             os.remove(source_path)
         self.completed.emit(target_file_path)
 
-
     def extract_audio_from_video(self, video_path, target_dir):
-        self.update_progress.emit('Extracting audio from video file...')
+        self.update_progress.emit('Extracting audio from video...')
+        audio_path = self.generate_unique_target_path(target_dir, 'mp3', audio_only=True)
         with VideoFileClip(video_path) as video:
-            audio_path = self.generate_unique_target_path(target_dir, 'mp3', audio_only=True)
             video.audio.write_audiofile(audio_path)
+        # Optionally remove the original video file
         if os.path.exists(audio_path):
             os.remove(video_path)
-        print(audio_path)
         self.completed.emit(audio_path)
 
     def generate_unique_target_path(self, target_dir, target_format, audio_only=False):
@@ -61,13 +61,10 @@ class TranscodingThread(QThread):
             counter += 1
         return target_file_path
 
-        return target_file_path
-
     def reencode_audio(self, source_path, target_path):
-        self.update_progress.emit('Transcoding audio file...')
-        source_audio = AudioSegment.from_file(source_path)
-        source_audio.export(target_path, format=self.target_format)
-
+        self.update_progress.emit('Re-encoding audio...')
+        audio = AudioSegment.from_file(source_path)
+        audio.export(target_path, format=self.target_format)
 
     def handle_error(self, error_message):
         traceback.print_exc()

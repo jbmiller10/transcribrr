@@ -9,18 +9,20 @@ from torchaudio import functional as F
 from transformers.pipelines.audio_utils import ffmpeg_read
 import time
 import logging
+import os
 from openai import OpenAI
 from app.utils import language_to_iso
 
+# Configure logging
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 
 
 class ASRDiarizationPipeline:
 
     def __init__(
-        self,
-        asr_pipeline,
-        diarization_pipeline,
+            self,
+            asr_pipeline,
+            diarization_pipeline,
     ):
         self.asr_pipeline = asr_pipeline
         self.sampling_rate = asr_pipeline.feature_extractor.sampling_rate
@@ -29,13 +31,13 @@ class ASRDiarizationPipeline:
 
     @classmethod
     def from_pretrained(
-        cls,
-        asr_model: Optional[str] = "openai/whisper-large-v3",
-        *,
-        diarizer_model: Optional[str] = "pyannote/speaker-diarization",
-        chunk_length_s: Optional[int] = 30,
-        use_auth_token: Optional[Union[str, bool]] = False,
-        **kwargs,
+            cls,
+            asr_model: Optional[str] = "openai/whisper-large-v3",
+            *,
+            diarizer_model: Optional[str] = "pyannote/speaker-diarization",
+            chunk_length_s: Optional[int] = 30,
+            use_auth_token: Optional[Union[str, bool]] = False,
+            **kwargs,
     ):
         asr_pipeline = pipeline(
             "automatic-speech-recognition",
@@ -50,10 +52,10 @@ class ASRDiarizationPipeline:
         return cls(asr_pipeline, diarization_pipeline)
 
     def __call__(
-        self,
-        inputs: Union[np.ndarray, List[np.ndarray]],
-        group_by_speaker: bool = True,
-        **kwargs,
+            self,
+            inputs: Union[np.ndarray, List[np.ndarray]],
+            group_by_speaker: bool = True,
+            **kwargs,
     ):
         """
         Transcribe the audio sequence(s) given as inputs to text and label with speaker information. The input
@@ -183,9 +185,9 @@ class ASRDiarizationPipeline:
             if group_by_speaker:
                 segmented_preds.append({
                     "speaker":
-                    segment["speaker"],
+                        segment["speaker"],
                     "text":
-                    "".join([chunk["text"] for chunk in transcript[:upto_idx + 1]]),
+                        "".join([chunk["text"] for chunk in transcript[:upto_idx + 1]]),
                     "timestamp": (transcript[0]["timestamp"][0], transcript[upto_idx]["timestamp"][1]),
                 })
             else:
@@ -244,7 +246,18 @@ class ASRDiarizationPipeline:
 
 
 def format_speech_to_dialogue(speech_text):
-    return dialog_text
+    """Format the speech segments into a readable dialogue."""
+    if not speech_text or len(speech_text) == 0:
+        return "No dialogue detected."
+
+    dialogue = ""
+    for segment in speech_text:
+        speaker = segment.get("speaker", "Unknown")
+        text = segment.get("text", "").strip()
+        if text:
+            dialogue += f"{speaker}: {text}\n\n"
+
+    return dialogue
 
 
 class SpeechToTextPipeline:
@@ -253,20 +266,32 @@ class SpeechToTextPipeline:
     def __init__(self, model_id: str = "openai/whisper-large-v3"):
         self.model = None
         self.device = None
+        self.model_id = model_id
+
+        # Set device first
+        self.set_device()
 
         if self.model is None:
             self.load_model(model_id)
         else:
             logging.info("Model already loaded.")
 
-        self.set_device()
-
     def set_device(self):
         """Sets the device to be used for inference based on availability."""
         if torch.backends.mps.is_available():
             self.device = "mps"
+        elif torch.cuda.is_available():
+            # Check available GPU memory before setting device to cuda
+            gpu_memory = torch.cuda.get_device_properties(0).total_memory / (1024 ** 3)  # Convert to GB
+            free_memory = torch.cuda.memory_reserved(0) / (1024 ** 3)  # Convert to GB
+
+            if free_memory > 2.0:  # If at least 2GB is available
+                self.device = "cuda"
+            else:
+                logging.warning(f"Insufficient GPU memory. Available: {free_memory:.2f}GB. Using CPU instead.")
+                self.device = "cpu"
         else:
-            self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+            self.device = "cpu"
 
         logging.info(f"Using device: {self.device}")
 
@@ -277,43 +302,64 @@ class SpeechToTextPipeline:
         Args:
             model_id (str): Identifier of the pre-trained model to be loaded.
         """
-        logging.info("Loading model...")
-        model = AutoModelForSpeechSeq2Seq.from_pretrained(
-            model_id, torch_dtype=torch.float16, low_cpu_mem_usage=False, use_safetensors=True)
-        model.to(self.device)
-        logging.info("Model loaded successfully.")
+        logging.info(f"Loading model: {model_id}...")
+        try:
+            model = AutoModelForSpeechSeq2Seq.from_pretrained(
+                model_id,
+                torch_dtype=torch.float16 if self.device != "cpu" else torch.float32,
+                low_cpu_mem_usage=True,
+                use_safetensors=True
+            )
+            model.to(self.device)
+            logging.info("Model loaded successfully.")
+            self.model = model
+        except Exception as e:
+            logging.error(f"Error loading model: {e}")
+            raise RuntimeError(f"Failed to load the speech recognition model: {e}")
 
-        self.model = model
-
-    def __call__(self, audio_path: str, model_id: str = "openai/whisper-large-v3", language: str = "english"):
+    def __call__(self, audio_path: str, model_id: str = None, language: str = "english"):
         """
         Converts audio to text using the pre-trained speech recognition model.
 
         Args:
             audio_path (str): Path to the audio file to be transcribed.
             model_id (str): Identifier of the pre-trained model to be used for transcription.
+            language (str): Language of the audio for better recognition.
 
         Returns:
             dict: Contains the transcribed text and other relevant information.
         """
-        processor = AutoProcessor.from_pretrained(model_id)
-        pipe = pipeline(
-            "automatic-speech-recognition",
-            model=self.model,
-            torch_dtype=torch.float16,
-            chunk_length_s=15,
-            max_new_tokens=128,
-            batch_size=8,
-            return_timestamps=True,  # Changed to True for better integration with diarization
-            device=self.device,
-            tokenizer=processor.tokenizer,
-            feature_extractor=processor.feature_extractor,
-            model_kwargs={"use_flash_attention_2": True},
-            generate_kwargs={"language": language},
-        )
-        logging.info("Transcribing audio...")
-        result = pipe(audio_path)
-        return result
+        if model_id is None:
+            model_id = self.model_id
+
+        try:
+            processor = AutoProcessor.from_pretrained(model_id)
+            pipe = pipeline(
+                "automatic-speech-recognition",
+                model=self.model,
+                torch_dtype=torch.float16 if self.device != "cpu" else torch.float32,
+                chunk_length_s=30,  # Increased from 15 to better handle longer segments
+                max_new_tokens=128,
+                batch_size=8,
+                return_timestamps=True,
+                device=self.device,
+                tokenizer=processor.tokenizer,
+                feature_extractor=processor.feature_extractor,
+                model_kwargs={"use_flash_attention_2": self.device == "cuda"},
+                generate_kwargs={"language": language.lower()},
+            )
+            logging.info(f"Transcribing audio from {audio_path}...")
+
+            # Check if file exists
+            if not os.path.exists(audio_path):
+                raise FileNotFoundError(f"Audio file not found: {audio_path}")
+
+            result = pipe(audio_path)
+            logging.info("Transcription completed successfully.")
+            return result
+        except Exception as e:
+            logging.error(f"Transcription error: {e}")
+            raise RuntimeError(f"Failed to transcribe audio: {e}")
 
 
 class TranscriptionThread(QThread):
@@ -321,12 +367,9 @@ class TranscriptionThread(QThread):
     completed = pyqtSignal(str)
     error = pyqtSignal(str)
 
-    def __init__(self, file_path, transcription_quality, speaker_detection_enabled
-                 , hf_auth_key
-                 , language='English'
-                 ,transcription_method='local'
-                 , openai_api_key=None
-                 , *args, **kwargs):
+    def __init__(self, file_path, transcription_quality, speaker_detection_enabled,
+                 hf_auth_key, language='English', transcription_method='local',
+                 openai_api_key=None, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.file_path = file_path
         self.transcription_quality = transcription_quality
@@ -334,65 +377,139 @@ class TranscriptionThread(QThread):
         self.transcription_method = transcription_method
         self.hf_auth_key = hf_auth_key
         self.openai_api_key = openai_api_key
-        self.language = language  # Add language attribute
+        self.language = language
 
+        # Validate inputs
+        if not os.path.exists(file_path):
+            self.error.emit(f"Audio file not found: {file_path}")
+            return
 
+        # Check file size to prevent processing extremely large files
+        file_size_mb = os.path.getsize(file_path) / (1024 * 1024)  # Convert to MB
+        if file_size_mb > 300:  # Limit to 300MB
+            self.error.emit(f"File size too large: {file_size_mb:.1f}MB. Maximum allowed is 300MB.")
+            return
 
     def run(self):
         try:
-            client = OpenAI()
             start_time = time.time()
+
+            # Check if file exists
+            if not os.path.exists(self.file_path):
+                raise FileNotFoundError(f"Audio file not found: {self.file_path}")
+
             self.update_progress.emit('Transcription started...')
+
             if self.transcription_method.lower() == 'local':
-                device = "cuda" if torch.cuda.is_available() else "mps"
-                model_id = self.transcription_quality
-                pipeline = SpeechToTextPipeline(model_id=model_id)
-                result = pipeline(self.file_path, model_id, language=self.language)  # Pass language here
-                transcript = result
+                self.update_progress.emit(f'Using local transcription with model: {self.transcription_quality}')
+
+                # Check if CUDA is available
+                if torch.cuda.is_available():
+                    self.update_progress.emit('CUDA is available, using GPU acceleration.')
+                    # Check GPU memory
+                    gpu_memory = torch.cuda.get_device_properties(0).total_memory / (1024 ** 3)  # Convert to GB
+                    self.update_progress.emit(f'GPU memory: {gpu_memory:.2f}GB')
+                else:
+                    self.update_progress.emit('CUDA not available, using CPU for transcription (this may be slower).')
+
+                # Initialize the pipeline
+                pipeline = SpeechToTextPipeline(model_id=self.transcription_quality)
+
+                # Start transcription
+                self.update_progress.emit('Processing audio file...')
+                result = pipeline(self.file_path, self.transcription_quality, language=self.language)
 
                 if not self.speaker_detection_enabled:
                     end_time = time.time()
                     runtime = end_time - start_time
-                    print(f"Runtime: {runtime:.2f} seconds")
-                    self.completed.emit(transcript['text'])
+                    self.update_progress.emit(f"Transcription completed in {runtime:.2f} seconds.")
+
+                    # Check if result is empty or unsuccessful
+                    if not result or not result.get('text'):
+                        raise ValueError("Failed to extract text from audio. Result was empty.")
+
+                    self.completed.emit(result['text'])
                     return
 
-                logging.info("Initializing diarization pipeline...")
-                dir_pipeline = ASRDiarizationPipeline.from_pretrained(
-                    asr_model=model_id,
-                    diarizer_model="pyannote/speaker-diarization",
-                    use_auth_token=self.hf_auth_key,
-                    chunk_length_s=15,
-                    device=device,
-                )
-                logging.info("Running diarization pipeline...")
-                output_text = dir_pipeline(self.file_path, num_speakers=2, min_speaker=1, max_speaker=6)
-                dialogue = format_speech_to_dialogue(output_text)
-                end_time = time.time()
-                runtime = end_time - start_time
-                print(f"Runtime: {runtime:.2f} seconds")
-                print(dialogue)
+                # If speaker detection is enabled
+                self.update_progress.emit('Initializing speaker detection...')
+                if not self.hf_auth_key:
+                    raise ValueError(
+                        "Speaker detection requires a HuggingFace authentication token. Please add it in settings.")
 
-                self.completed.emit(dialogue)
-                self.update_progress.emit('Transcription finished.')
-            elif self.transcription_method=='API':
-                self.update_progress.emit('OpenAI Whisper transcription started...')
                 try:
+                    dir_pipeline = ASRDiarizationPipeline.from_pretrained(
+                        asr_model=self.transcription_quality,
+                        diarizer_model="pyannote/speaker-diarization",
+                        use_auth_token=self.hf_auth_key,
+                        chunk_length_s=15,
+                        device="cuda" if torch.cuda.is_available() else "cpu",
+                    )
+
+                    self.update_progress.emit('Running speaker diarization...')
+                    output_text = dir_pipeline(self.file_path, num_speakers=2, min_speaker=1, max_speaker=6)
+
+                    dialogue = format_speech_to_dialogue(output_text)
+
+                    end_time = time.time()
+                    runtime = end_time - start_time
+                    self.update_progress.emit(
+                        f"Transcription with speaker detection completed in {runtime:.2f} seconds.")
+
+                    if not dialogue or dialogue == "No dialogue detected.":
+                        self.update_progress.emit(
+                            "Speaker detection produced no results. Falling back to normal transcription.")
+                        self.completed.emit(result['text'])
+                    else:
+                        self.completed.emit(dialogue)
+
+                except Exception as e:
+                    self.update_progress.emit(f"Speaker detection failed: {e}. Falling back to normal transcription.")
+                    self.completed.emit(result['text'])
+
+            elif self.transcription_method.lower() == 'api':
+                self.update_progress.emit('Using OpenAI Whisper API for transcription...')
+                if not self.openai_api_key:
+                    raise ValueError("OpenAI API transcription requires an API key. Please add it in settings.")
+
+                try:
+                    client = OpenAI(api_key=self.openai_api_key)
                     with open(self.file_path, 'rb') as audio_file:
+                        language_code = language_to_iso(self.language)
+                        self.update_progress.emit(f'Sending file to OpenAI Whisper API (language: {language_code})...')
+
                         response = client.audio.transcriptions.create(
                             model="whisper-1",
                             file=audio_file,
-                            language=language_to_iso(self.language)
+                            language=language_code
                         )
-                        print(response.text)
+
+                        if not response or not response.text:
+                            raise ValueError("OpenAI API returned empty response.")
+
+                        end_time = time.time()
+                        runtime = end_time - start_time
+                        self.update_progress.emit(f"API transcription completed in {runtime:.2f} seconds.")
                         self.completed.emit(response.text)
-                        logging.info("OpenAI Whisper transcription completed.")
+
                 except Exception as e:
-                    logging.error(f"OpenAI Whisper transcription failed: {e}")
-                    raise Exception(f"OpenAI Whisper transcription failed: {e}")
+                    logging.error(f"OpenAI Whisper API error: {e}")
+                    raise RuntimeError(f"OpenAI Whisper API transcription failed: {e}")
+            else:
+                raise ValueError(f"Unknown transcription method: {self.transcription_method}")
 
+            self.update_progress.emit('Transcription finished successfully.')
+
+        except FileNotFoundError as e:
+            self.error.emit(f"File error: {str(e)}")
+            self.update_progress.emit('Transcription failed: File not found')
+        except ValueError as e:
+            self.error.emit(f"Configuration error: {str(e)}")
+            self.update_progress.emit('Transcription failed: Configuration issue')
+        except RuntimeError as e:
+            self.error.emit(f"Processing error: {str(e)}")
+            self.update_progress.emit('Transcription failed: Processing issue')
         except Exception as e:
-            self.error.emit(str(e))
-            self.update_progress.emit('Error encountered; stopping...')
-            self.completed.emit("")
-
+            self.error.emit(f"Unexpected error: {str(e)}")
+            self.update_progress.emit('Transcription failed: Unexpected error')
+            logging.error(f"Transcription error: {e}", exc_info=True)
