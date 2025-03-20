@@ -6,7 +6,10 @@ import platform
 import subprocess
 import torch
 import shutil
+import json
+from typing import Dict, Any, Optional, List, Union, Tuple
 from PyQt6.QtWidgets import QMessageBox
+from PyQt6.QtCore import QObject, pyqtSignal
 
 # Configure logging
 logging.basicConfig(
@@ -384,17 +387,141 @@ def cleanup_temp_files(directory=None, file_pattern=None, max_age_days=7):
     return deleted_count
 
 
-def estimate_transcription_time(file_path, model_name, is_gpu=False):
+class ConfigManager(QObject):
+    """Centralized configuration management for the application."""
+    
+    config_updated = pyqtSignal(dict)
+    
+    _instance = None
+    
+    @classmethod
+    def instance(cls) -> 'ConfigManager':
+        """Get the singleton instance of ConfigManager."""
+        if cls._instance is None:
+            cls._instance = ConfigManager()
+        return cls._instance
+    
+    def __init__(self):
+        """Initialize the configuration manager."""
+        super().__init__()
+        self._config: Dict[str, Any] = {}
+        self._config_path = resource_path('config.json')
+        self._load_config()
+        
+    def _load_config(self) -> None:
+        """Load configuration from config.json file."""
+        try:
+            if os.path.exists(self._config_path):
+                with open(self._config_path, 'r') as config_file:
+                    self._config = json.load(config_file)
+                logger.info("Configuration loaded successfully")
+            else:
+                logger.warning("Config file not found, creating default")
+                self._create_default_config()
+        except Exception as e:
+            logger.error(f"Error loading config: {e}")
+            self._create_default_config()
+            
+    def _create_default_config(self) -> None:
+        """Create default configuration file."""
+        self._config = {
+            "transcription_quality": "openai/whisper-large-v3",
+            "transcription_method": "local",
+            "gpt_model": "gpt-4o",
+            "max_tokens": 16000,
+            "temperature": 1.0,
+            "speaker_detection_enabled": False,
+            "transcription_language": "english",
+            "theme": "light",
+            "chunk_enabled": True,
+            "chunk_duration": 5
+        }
+        self._save_config()
+        
+    def _save_config(self) -> None:
+        """Save configuration to config.json file."""
+        try:
+            with open(self._config_path, 'w') as config_file:
+                json.dump(self._config, config_file, indent=4)
+            logger.info("Configuration saved successfully")
+        except Exception as e:
+            logger.error(f"Error saving config: {e}")
+            
+    def get(self, key: str, default: Any = None) -> Any:
+        """
+        Get a configuration value by key.
+        
+        Args:
+            key: The configuration key to retrieve
+            default: Default value if key doesn't exist
+            
+        Returns:
+            The configuration value or default
+        """
+        return self._config.get(key, default)
+        
+    def set(self, key: str, value: Any) -> None:
+        """
+        Set a configuration value.
+        
+        Args:
+            key: The configuration key to set
+            value: The value to set
+        """
+        if key in self._config and self._config[key] == value:
+            return  # No change, don't emit signal
+            
+        self._config[key] = value
+        self._save_config()
+        self.config_updated.emit(self._config)
+        
+    def update(self, config_dict: Dict[str, Any]) -> None:
+        """
+        Update multiple configuration values at once.
+        
+        Args:
+            config_dict: Dictionary of configuration key-value pairs to update
+        """
+        changed = False
+        for key, value in config_dict.items():
+            if key not in self._config or self._config[key] != value:
+                self._config[key] = value
+                changed = True
+                
+        if changed:
+            self._save_config()
+            self.config_updated.emit(self._config)
+            
+    def get_all(self) -> Dict[str, Any]:
+        """
+        Get the entire configuration dictionary.
+        
+        Returns:
+            A copy of the configuration dictionary
+        """
+        return self._config.copy()
+    
+    def create_backup(self) -> Optional[str]:
+        """
+        Create a backup of the current configuration.
+        
+        Returns:
+            Path to the backup file or None if failed
+        """
+        return create_backup(self._config_path)
+
+
+def estimate_transcription_time(file_path: str, model_name: str, is_gpu: bool = False) -> Optional[int]:
     """
     Estimate transcription time based on file size and model.
 
     Args:
-        file_path (str): Path to audio file
-        model_name (str): Name of the model
-        is_gpu (bool): Whether GPU acceleration is available
+        file_path: Path to audio file
+        model_name: Name of the model
+        is_gpu: Whether GPU acceleration is available
 
     Returns:
-        int: Estimated time in seconds
+        Estimated time in seconds
     """
     if not os.path.exists(file_path):
         return None
