@@ -79,7 +79,7 @@ class StartupThread(QThread):
             # Initialize theme manager with config
             self.update_progress.emit(60, "Setting up theme...")
             theme = config.get("theme", "light")
-            ThemeManager.instance().set_theme(theme)
+            ThemeManager.instance().apply_theme(theme)
             
             # Pre-initialize model manager without loading models
             self.update_progress.emit(70, "Initializing model manager...")
@@ -275,7 +275,6 @@ def initialize_app():
 
         # Initialize and apply theme using ThemeManager
         theme_manager = ThemeManager.instance()
-        theme_manager.apply_theme(theme_manager.current_theme)
 
         # Initialize the responsive UI manager
         responsive_manager = ResponsiveUIManager.instance()
@@ -354,7 +353,7 @@ def on_initialization_done(results: Dict[str, Any], main_window: MainWindow, spl
     # Set application theme from config
     if "config" in results:
         theme = results["config"].get("theme", "light")
-        ThemeManager.instance().set_theme(theme)
+        ThemeManager.instance().apply_theme(theme)
         
         # Log configuration information
         logger.info(f"Loaded configuration with {len(results['config'])} settings")
