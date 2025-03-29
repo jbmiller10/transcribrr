@@ -4,26 +4,32 @@ import os
 import logging
 from PyQt6.QtCore import (
     pyqtSignal, QSize, Qt, QPropertyAnimation, QEasingCurve, QSortFilterProxyModel, QTimer,
-    QThread, QUrl
+    QThread, QUrl, QMimeData, QPoint
 )
 from PyQt6.QtWidgets import (
     QDialog, QVBoxLayout, QMessageBox, QWidget, QLabel, QListWidget, QMenu, QListWidgetItem,
     QHBoxLayout, QPushButton, QLineEdit, QComboBox, QInputDialog, QApplication, QSplitter,
-    QFrame, QProgressDialog, QFileDialog, QToolButton, QToolBar, QStatusBar, QSizePolicy
+    QFrame, QProgressDialog, QFileDialog, QToolButton, QToolBar, QStatusBar, QSizePolicy,
+    QTreeWidget, QTreeWidgetItem, QAbstractItemView
 )
-from PyQt6.QtGui import QIcon, QFont, QColor, QDesktopServices, QAction
+from PyQt6.QtGui import QIcon, QFont, QColor, QDesktopServices, QAction, QDrag
 from app.RecordingListItem import RecordingListItem
-from app.utils import resource_path, create_backup, format_time_duration
-from app.database import (
-    create_connection, get_all_recordings, create_db, create_recording,
-    update_recording, delete_recording
-)
+from app.utils import resource_path, create_backup, format_time_duration, PromptManager # Added PromptManager
+# Use ui_utils for messages
+from app.ui_utils import show_error_message, show_info_message, show_confirmation_dialog
+from app.DatabaseManager import DatabaseManager
+from app.ResponsiveUI import ResponsiveWidget, ResponsiveSizePolicy
+from app.FolderManager import FolderManager
+from app.file_utils import calculate_duration
 
 # Configure logging
-logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
+# logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s') # Configured in main
+logger = logging.getLogger('transcribrr')
+
 
 class SearchWidget(QWidget):
     """Widget for searching and filtering recordings."""
+    # (Content mostly unchanged)
     searchTextChanged = pyqtSignal(str)
     filterCriteriaChanged = pyqtSignal(str)
 
@@ -34,1124 +40,1032 @@ class SearchWidget(QWidget):
     def initUI(self):
         layout = QHBoxLayout(self)
         layout.setContentsMargins(5, 5, 5, 5)
-
-        # Search field
         self.search_field = QLineEdit()
         self.search_field.setPlaceholderText("Search recordings...")
         self.search_field.textChanged.connect(self.searchTextChanged.emit)
-        self.search_field.setStyleSheet("""
-            QLineEdit {
-                border: 1px solid #ccc;
-                border-radius: 4px;
-                padding: 4px 8px;
-            }
-        """)
-
-        # Filter dropdown
+        self.search_field.setStyleSheet("QLineEdit { border: 1px solid #ccc; border-radius: 4px; padding: 4px 8px; }")
         self.filter_combo = QComboBox()
         self.filter_combo.addItems(["All", "Has Transcript", "No Transcript", "Recent (24h)", "This Week"])
         self.filter_combo.currentTextChanged.connect(self.filterCriteriaChanged.emit)
-
-        # Layout
         layout.addWidget(self.search_field, 3)
         layout.addWidget(self.filter_combo, 1)
 
-    def clear_search(self):
-        """Clear the search field."""
-        self.search_field.clear()
-
-    def get_search_text(self):
-        """Get current search text."""
-        return self.search_field.text()
-
-    def get_filter_criteria(self):
-        """Get current filter criteria."""
-        return self.filter_combo.currentText()
+    def clear_search(self): self.search_field.clear()
+    def get_search_text(self): return self.search_field.text()
+    def get_filter_criteria(self): return self.filter_combo.currentText()
 
 
 class BatchProcessWorker(QThread):
     """Worker thread for batch processing recordings."""
+    # TODO: Implement actual batch processing logic by integrating
+    #       with TranscriptionThread and GPT4ProcessingThread.
+    #       This currently only simulates progress.
     progress = pyqtSignal(int, str)
     finished = pyqtSignal(bool, str)
 
-    def __init__(self, recordings, process_type, parent=None):
+    def __init__(self, recordings_data, process_type, parent=None): # Pass data, not widgets
         super().__init__(parent)
-        self.recordings = recordings
+        self.recordings_data = recordings_data # List of dicts or tuples
         self.process_type = process_type
-        self.is_canceled = False
+        self._is_canceled = False
 
     def run(self):
         try:
-            total = len(self.recordings)
-            completed = 0
+            total = len(self.recordings_data)
+            logger.info(f"Starting batch '{self.process_type}' for {total} recordings.")
 
-            for recording in self.recordings:
-                if self.is_canceled:
+            for i, rec_data in enumerate(self.recordings_data):
+                if self._is_canceled:
                     self.finished.emit(False, "Operation canceled")
                     return
 
-                # Process recording based on type
+                rec_id = rec_data['id']
+                rec_name = rec_data['filename']
+                progress_val = int(((i + 1) / total) * 100)
+                status_msg = f"Processing {rec_name} ({i+1}/{total})"
+                self.progress.emit(progress_val, status_msg)
+                logger.debug(status_msg)
+
+                # --- Placeholder for Actual Processing ---
                 if self.process_type == "transcribe":
-                    # Placeholder for actual transcription
-                    # This would call the transcription code
-                    self.progress.emit(int((completed / total) * 100), f"Transcribing {recording.filename}")
-
+                    # Example: Start TranscriptionThread for rec_data['file_path']
+                    # Need to handle thread management, config, keys etc.
+                    # Wait for completion or manage multiple threads.
+                    self.msleep(300) # Simulate work
+                    pass
                 elif self.process_type == "process":
-                    # Placeholder for GPT processing
-                    # This would call the GPT processing code
-                    self.progress.emit(int((completed / total) * 100), f"Processing {recording.filename}")
+                    # Example: Start GPT4ProcessingThread for rec_data['raw_transcript']
+                    # Need to handle thread management, config, keys, prompts etc.
+                    self.msleep(500) # Simulate work
+                    pass
+                # -----------------------------------------
 
-                # Simulate processing time for demo
-                self.msleep(500)
-
-                completed += 1
-
-            self.finished.emit(True, f"Completed {self.process_type} for {completed} recordings")
+            if not self._is_canceled:
+                self.finished.emit(True, f"Batch '{self.process_type}' complete for {total} recordings.")
+                logger.info(f"Batch '{self.process_type}' complete.")
 
         except Exception as e:
-            error_msg = f"Error in batch {self.process_type}: {str(e)}"
-            logging.error(error_msg, exc_info=True)
-            self.finished.emit(False, error_msg)
+            error_msg = f"Error during batch {self.process_type}: {e}"
+            logger.error(error_msg, exc_info=True)
+            if not self._is_canceled:
+                 self.finished.emit(False, error_msg)
 
     def cancel(self):
-        """Cancel the operation."""
-        self.is_canceled = True
+        logger.info(f"Cancellation requested for batch '{self.process_type}'.")
+        self._is_canceled = True
 
 
-class RecentRecordingsWidget(QWidget):
-    recordingSelected = pyqtSignal(str)
-    recordButtonPressed = pyqtSignal()
-    recordingItemSelected = pyqtSignal(RecordingListItem)
+class UnifiedFolderListWidget(QTreeWidget):
+    """Combined folder tree and recordings list."""
+    # Signals
+    folderSelected = pyqtSignal(int, str)
+    recordingSelected = pyqtSignal(RecordingListItem) # Keep emitting item for compatibility
+    recordingNameChanged = pyqtSignal(int, str) # Signal for rename request
 
-    def __init__(self, parent=None):
+    def __init__(self, db_manager, parent=None):
+        super().__init__(parent)
+        self.db_manager = db_manager
+        self.folder_manager = FolderManager.instance()
+        self.current_folder_id = -1
+        self.recordings_map = {} # Store RecordingListItem widgets by ID
+
+        self.init_ui()
+
+    def init_ui(self):
+        self.setHeaderHidden(True)
+        self.setIndentation(15) # Slightly reduced indentation
+        self.setSelectionMode(QAbstractItemView.SelectionMode.ExtendedSelection) # Allow multi-select
+        self.setDragEnabled(True)
+        self.setAcceptDrops(True)
+        self.setDropIndicatorShown(True)
+        self.setDragDropMode(QAbstractItemView.DragDropMode.InternalMove)
+        self.setContextMenuPolicy(Qt.ContextMenuPolicy.CustomContextMenu)
+        self.customContextMenuRequested.connect(self.show_context_menu)
+        self.itemClicked.connect(self.on_item_clicked)
+        self.itemDoubleClicked.connect(self.on_item_double_clicked) # Handle double click for rename
+        self.itemExpanded.connect(self.on_item_expanded)
+        self.itemCollapsed.connect(self.on_item_collapsed)
+
+        # Icons
+        folder_icon_path = resource_path('icons/folder.svg')
+        folder_open_icon_path = resource_path('icons/folder_open.svg')
+        self.folder_icon = QIcon(folder_icon_path) if os.path.exists(folder_icon_path) else QIcon.fromTheme("folder")
+        self.folder_open_icon = QIcon(folder_open_icon_path) if os.path.exists(folder_open_icon_path) else QIcon.fromTheme("folder-open")
+        self.audio_icon = QIcon(resource_path('icons/audio.svg'))
+        self.video_icon = QIcon(resource_path('icons/video.svg'))
+        self.file_icon = QIcon(resource_path('icons/file.svg'))
+
+        self.load_structure() # Initial load
+
+    def load_structure(self, select_item_id=None, item_type=None):
+        """Load folder structure and recordings for the current view."""
+        self.clear()
+        self.recordings_map.clear()
+        self._is_loading = True # Flag to prevent signals during load
+
+        # Add "All Recordings" root
+        root_item = QTreeWidgetItem(self)
+        root_item.setText(0, "All Recordings")
+        root_item.setIcon(0, self.folder_icon)
+        root_item.setData(0, Qt.ItemDataRole.UserRole, {"type": "folder", "id": -1, "name": "All Recordings"})
+        root_item.setFlags(root_item.flags() | Qt.ItemFlag.ItemIsDropEnabled) # Allow drop on root
+
+        # Load folders
+        root_folders = self.folder_manager.get_all_root_folders()
+        for folder in sorted(root_folders, key=lambda f: f['name'].lower()): # Sort folders alphabetically
+            self.add_folder_to_tree(folder, root_item)
+
+        # Expand root initially
+        root_item.setExpanded(True)
+
+        # Load recordings for the root ("All Recordings")
+        self.load_recordings_for_item(root_item, initial_load=True)
+
+         # Restore selection if provided
+        item_to_select = root_item # Default to root
+        if select_item_id is not None:
+             found_item = self.find_item_by_id(select_item_id, item_type)
+             if found_item:
+                  item_to_select = found_item
+                  # Ensure parent is expanded
+                  parent = item_to_select.parent()
+                  while parent:
+                       parent.setExpanded(True)
+                       parent = parent.parent()
+
+
+        self.setCurrentItem(item_to_select)
+        self._is_loading = False
+
+    def find_item_by_id(self, target_id, target_type):
+         """Recursively find an item by ID and type."""
+         def search_recursive(parent_item):
+             for i in range(parent_item.childCount()):
+                  child = parent_item.child(i)
+                  data = child.data(0, Qt.ItemDataRole.UserRole)
+                  if data and data.get("id") == target_id and data.get("type") == target_type:
+                       return child
+                  # Recurse
+                  found = search_recursive(child)
+                  if found:
+                       return found
+             return None
+
+         # Search from the invisible root item
+         return search_recursive(self.invisibleRootItem())
+
+
+    def add_folder_to_tree(self, folder_data, parent_item):
+        """Add folder and its subfolders recursively."""
+        recording_count = self.get_folder_recording_count(folder_data['id'])
+        item = QTreeWidgetItem(parent_item)
+        display_name = folder_data['name']
+        if recording_count > 0:
+             # display_name += f" ({recording_count})" # Keep display clean, maybe add tooltip later
+             item.setForeground(0, QColor("#333333")) # Slightly darker for non-empty
+        else:
+             # display_name += " (empty)"
+             item.setForeground(0, QColor("#888888")) # Lighter for empty
+
+        item.setText(0, display_name)
+        item.setIcon(0, self.folder_icon)
+        item.setData(0, Qt.ItemDataRole.UserRole, {"type": "folder", "id": folder_data['id'], "name": folder_data['name']})
+        item.setFlags(item.flags() | Qt.ItemFlag.ItemIsDropEnabled | Qt.ItemFlag.ItemIsDragEnabled) # Allow drop/drag
+
+        # Add placeholder if it has children or might have recordings
+        # Only add placeholder if not already expanded during initial load strategy
+        if folder_data['children'] or recording_count > 0:
+            placeholder = QTreeWidgetItem(item)
+            placeholder.setText(0, "loading...") # Placeholder text
+            placeholder.setData(0, Qt.ItemDataRole.UserRole, {"type": "placeholder"})
+            placeholder.setFlags(Qt.ItemFlag.NoItemFlags) # Non-interactive
+
+        # Recursively add children folders (sorted)
+        for child_folder in sorted(folder_data['children'], key=lambda f: f['name'].lower()):
+            self.add_folder_to_tree(child_folder, item)
+
+    def load_recordings_for_item(self, folder_item, initial_load=False):
+        """Load recordings for the specified folder item."""
+        folder_data = folder_item.data(0, Qt.ItemDataRole.UserRole)
+        if not folder_data or folder_data.get("type") != "folder": return
+
+        folder_id = folder_data.get("id")
+
+        # Remove existing placeholders and recording items
+        items_to_remove = []
+        for i in range(folder_item.childCount()):
+             child = folder_item.child(i)
+             child_data = child.data(0, Qt.ItemDataRole.UserRole)
+             if child_data and child_data.get("type") in ["recording", "placeholder"]:
+                  items_to_remove.append(child)
+        for item in items_to_remove:
+             folder_item.removeChild(item)
+
+        # Define callback to add recordings to the UI
+        def _add_recordings_to_ui(recordings):
+             if self.is_loading() and not initial_load: return # Abort if loading cancelled
+             # Check if folder_item is still valid
+             try: folder_item.text(0)
+             except RuntimeError: return # Item was deleted
+
+             if not recordings: return
+
+             # Sort recordings (e.g., by date descending)
+             try:
+                 sorted_recs = sorted(recordings, key=lambda r: datetime.datetime.strptime(r[3], "%Y-%m-%d %H:%M:%S"), reverse=True)
+             except Exception as e:
+                  logger.warning(f"Could not sort recordings for folder {folder_id}: {e}")
+                  sorted_recs = recordings
+
+             # Add recordings to the folder item
+             for rec in sorted_recs:
+                  # Check if folder_item is still valid before adding each child
+                  try: folder_item.text(0)
+                  except RuntimeError: return # Item was deleted
+
+                  rec_id = rec[0]
+                  # Avoid adding duplicates if already present (can happen with async loads)
+                  if rec_id in self.recordings_map and self.recordings_map[rec_id].parent() == folder_item:
+                       continue
+
+                  list_item_widget = RecordingListItem(*rec) # Create widget
+                  # Connect rename signal
+                  list_item_widget.nameChanged.connect(self.recordingNameChanged.emit)
+
+                  tree_item = QTreeWidgetItem(folder_item)
+                  tree_item.setSizeHint(0, list_item_widget.sizeHint())
+                  tree_item.setData(0, Qt.ItemDataRole.UserRole, {
+                        "type": "recording",
+                        "id": rec_id,
+                        "widget": list_item_widget # Store widget ref
+                  })
+                  tree_item.setFlags(tree_item.flags() | Qt.ItemFlag.ItemIsDragEnabled) # Make draggable
+                  self.setItemWidget(tree_item, 0, list_item_widget)
+                  self.recordings_map[rec_id] = list_item_widget # Map ID to widget
+
+             # Update folder count visually if needed (maybe tooltip)
+             folder_item.setText(0, f"{folder_data['name']} ({len(recordings)})")
+
+
+        # Fetch recordings based on folder_id
+        if folder_id == -1: # All Recordings
+            self.db_manager.get_all_recordings(_add_recordings_to_ui)
+        else: # Specific folder
+             self.folder_manager.get_recordings_in_folder(folder_id, lambda success, result: _add_recordings_to_ui(result) if success else None)
+
+
+    def get_folder_recording_count(self, folder_id):
+         # Simplified - actual count loaded async
+         return FolderManager.instance().get_folder_recording_count(folder_id)
+
+    def on_item_clicked(self, item, column):
+        if self._is_loading: return # Ignore clicks during load
+
+        item_data = item.data(0, Qt.ItemDataRole.UserRole)
+        if not item_data: return
+
+        item_type = item_data.get("type")
+        if item_type == "folder":
+            self.folderSelected.emit(item_data.get("id", -1), item_data.get("name", "Unknown"))
+            # Clear selection from recordings if a folder is clicked
+            # Or emit a signal indicating folder selection?
+            # Let parent handle clearing selection if needed.
+        elif item_type == "recording":
+            widget = item_data.get("widget")
+            if widget:
+                self.recordingSelected.emit(widget) # Emit the widget instance
+
+    def on_item_double_clicked(self, item, column):
+         """Handle double-click to initiate rename for recordings."""
+         item_data = item.data(0, Qt.ItemDataRole.UserRole)
+         if item_data and item_data.get("type") == "recording":
+              widget = item_data.get("widget")
+              if widget and hasattr(widget, 'name_editable'):
+                   widget.name_editable.mouseDoubleClickEvent(QApplication.instance().mouseButtons()) # Simulate double-click
+
+    def on_item_expanded(self, item):
+        item_data = item.data(0, Qt.ItemDataRole.UserRole)
+        if item_data and item_data.get("type") == "folder":
+            item.setIcon(0, self.folder_open_icon)
+            # If it only contains a placeholder, load recordings now
+            has_only_placeholder = False
+            if item.childCount() == 1:
+                 child_data = item.child(0).data(0, Qt.ItemDataRole.UserRole)
+                 if child_data and child_data.get("type") == "placeholder":
+                      has_only_placeholder = True
+
+            if has_only_placeholder:
+                self.load_recordings_for_item(item)
+
+    def on_item_collapsed(self, item):
+        item_data = item.data(0, Qt.ItemDataRole.UserRole)
+        if item_data and item_data.get("type") == "folder":
+            item.setIcon(0, self.folder_icon)
+            # Optional: Could remove recording items here to save memory,
+            # but might cause flicker on re-expand. For now, keep them loaded.
+
+    # --- Context Menu Logic ---
+    def show_context_menu(self, position):
+        item = self.itemAt(position)
+        if not item: return
+        item_data = item.data(0, Qt.ItemDataRole.UserRole)
+        if not item_data: return
+
+        menu = QMenu()
+        item_type = item_data.get("type")
+
+        if item_type == "folder":
+            self._populate_folder_context_menu(menu, item, item_data)
+        elif item_type == "recording":
+            self._populate_recording_context_menu(menu, item, item_data)
+
+        menu.exec(self.viewport().mapToGlobal(position))
+
+    def _populate_folder_context_menu(self, menu: QMenu, item: QTreeWidgetItem, data: dict):
+        folder_id = data.get("id")
+        folder_name = data.get("name")
+
+        # Actions applicable to all folders (including root "All Recordings")
+        menu.addAction(QIcon(resource_path('icons/add.svg')), "New Subfolder", lambda: self.create_subfolder(item, folder_id))
+        menu.addAction(QIcon(resource_path('icons/refresh.svg')), "Refresh", self.load_structure)
+
+        if folder_id != -1: # Actions for specific folders only
+            menu.addSeparator()
+            menu.addAction(QIcon(resource_path('icons/rename.svg')), "Rename", lambda: self.rename_folder(item, folder_id))
+            menu.addAction(QIcon(resource_path('icons/delete.svg')), "Delete", lambda: self.delete_folder(item, folder_id))
+
+
+    def _populate_recording_context_menu(self, menu: QMenu, item: QTreeWidgetItem, data: dict):
+        widget: RecordingListItem = data.get("widget")
+        if not widget: return
+
+        recording_id = widget.get_id()
+        file_path = widget.get_filepath()
+        filename = widget.get_filename() # Full filename
+        has_transcript = widget.has_transcript()
+        has_processed = widget.has_processed_text()
+
+        # Common Actions
+        menu.addAction(QIcon(resource_path('icons/folder_open.svg')), "Show in File Explorer", lambda: self.open_containing_folder(file_path))
+        menu.addAction(QIcon(resource_path('icons/rename.svg')), "Rename", lambda: widget.name_editable.mouseDoubleClickEvent(QApplication.instance().mouseButtons())) # Trigger edit
+
+        # Folder Management Submenu
+        folder_menu = menu.addMenu(QIcon(resource_path('icons/folder.svg')), "Folder")
+        folder_menu.addAction("Add to Folder...", lambda: self.add_recording_to_folder_dialog(widget))
+
+        # Add "Remove from <Folder>" actions
+        current_folders = widget.folders
+        if current_folders:
+             remove_menu = folder_menu.addMenu("Remove from Folder")
+             for folder_info in current_folders:
+                  folder_id = folder_info['id']
+                  folder_name = folder_info['name']
+                  remove_menu.addAction(f"{folder_name}", lambda fid=folder_id, fname=folder_name: self.remove_recording_from_folder_action(widget, fid, fname))
+
+        # Transcript/Processing Actions
+        menu.addSeparator()
+        if has_transcript:
+            menu.addAction(QIcon(resource_path('icons/clear.svg')), "Clear Transcript", lambda: self.clear_transcript(widget))
+        if has_processed:
+            menu.addAction(QIcon(resource_path('icons/clear.svg')), "Clear Processed Text", lambda: self.clear_processed_text(widget))
+
+        # Export/Delete
+        menu.addSeparator()
+        menu.addAction(QIcon(resource_path('icons/export.svg')), "Export Recording File...", lambda: self.export_recording(file_path, filename))
+        menu.addSeparator()
+        menu.addAction(QIcon(resource_path('icons/delete.svg')), "Delete Recording", lambda: self.delete_recording_action(widget))
+
+
+    # --- Action Handlers ---
+    def create_subfolder(self, parent_item, parent_id):
+        folder_name, ok = QInputDialog.getText(self, "Create Folder", "Enter folder name:", QLineEdit.EchoMode.Normal, "New Folder")
+        if ok and folder_name:
+            def on_folder_created(success, result):
+                if success: self.load_structure() # Reload tree
+                else: show_error_message(self, "Error", f"Failed to create folder: {result}")
+            self.folder_manager.create_folder(folder_name, parent_id if parent_id != -1 else None, on_folder_created)
+
+    def rename_folder(self, item, folder_id):
+        current_name = item.data(0, Qt.ItemDataRole.UserRole)['name']
+        new_name, ok = QInputDialog.getText(self, "Rename Folder", "Enter new folder name:", QLineEdit.EchoMode.Normal, current_name)
+        if ok and new_name and new_name != current_name:
+            def on_folder_renamed(success, result):
+                if success: self.load_structure() # Reload tree
+                else: show_error_message(self, "Error", f"Failed to rename folder: {result}")
+            self.folder_manager.rename_folder(folder_id, new_name, on_folder_renamed)
+
+    def delete_folder(self, item, folder_id):
+        folder_name = item.data(0, Qt.ItemDataRole.UserRole)['name']
+        if show_confirmation_dialog(self, "Delete Folder", f"Delete folder '{folder_name}' and remove its recordings?"):
+            def on_folder_deleted(success, result):
+                if success:
+                     self.load_structure() # Reload tree
+                     # Select root after delete
+                     self.setCurrentItem(self.topLevelItem(0))
+                else: show_error_message(self, "Error", f"Failed to delete folder: {result}")
+            self.folder_manager.delete_folder(folder_id, on_folder_deleted)
+
+    def open_containing_folder(self, file_path):
+        if not file_path or not os.path.exists(os.path.dirname(file_path)):
+            show_error_message(self, "Folder Not Found", f"Could not find folder for: {file_path}")
+            return
+        try:
+            QDesktopServices.openUrl(QUrl.fromLocalFile(os.path.dirname(file_path)))
+        except Exception as e:
+             show_error_message(self, "Error", f"Could not open folder: {e}")
+
+    def add_recording_to_folder_dialog(self, recording_widget: RecordingListItem):
+        recording_id = recording_widget.get_id()
+        recording_name = recording_widget.filename_no_ext
+
+        folders = self.folder_manager.folders # Get flat list
+        if not folders:
+            show_info_message(self, "No Folders", "Create a folder first to organize recordings.")
+            return
+
+        folder_dict = {f"{folder['name']} (ID: {folder['id']})": folder['id'] for folder in folders}
+        folder_display_names = sorted(folder_dict.keys())
+
+        folder_display_name, ok = QInputDialog.getItem(self, "Add to Folder", f"Select folder for '{recording_name}':", folder_display_names, 0, False)
+        if ok and folder_display_name:
+            folder_id = folder_dict[folder_display_name]
+            folder_name = folder_display_name.split(" (ID:")[0] # Extract name for message
+
+            def on_add_complete(success, result):
+                if success:
+                     # Refresh this specific item's folder display
+                     recording_widget.refresh_folders()
+                     # Reloading the whole tree might be too disruptive here
+                     # self.load_structure(recording_id, "recording") # Optionally reload and reselect
+                     # TODO: Need a way to update folder counts without full reload
+                     if self.parent():
+                        self.parent().show_status_message(f"Added '{recording_name}' to '{folder_name}'")
+                     else:
+                        logger.info(f"Added '{recording_name}' to '{folder_name}'") # Log if no parent
+                else: 
+                     show_error_message(self, "Error", f"Failed to add to folder: {result}")
+            self.folder_manager.add_recording_to_folder(recording_id, folder_id, on_add_complete)
+
+
+    def remove_recording_from_folder_action(self, recording_widget: RecordingListItem, folder_id: int, folder_name: str):
+         recording_id = recording_widget.get_id()
+         recording_name = recording_widget.filename_no_ext
+         if show_confirmation_dialog(self, "Remove from Folder", f"Remove '{recording_name}' from folder '{folder_name}'?"):
+              def on_remove_complete(success, result):
+                   if success:
+                        recording_widget.refresh_folders()
+                        # TODO: Update folder counts without full reload
+                        if self.parent():
+                            self.parent().show_status_message(f"Removed '{recording_name}' from '{folder_name}'")
+                        else:
+                            logger.info(f"Removed '{recording_name}' from '{folder_name}'") # Log if no parent
+                   else: show_error_message(self, "Error", f"Failed to remove from folder: {result}")
+              self.folder_manager.remove_recording_from_folder(recording_id, folder_id, on_remove_complete)
+
+
+    def clear_transcript(self, recording_widget: RecordingListItem):
+        recording_id = recording_widget.get_id()
+        if show_confirmation_dialog(self, "Clear Transcript", "Clear the transcript for this recording?"):
+            def on_update_complete():
+                 recording_widget.update_data({'raw_transcript': '', 'raw_transcript_formatted': None})
+                 if self.parent():
+                     self.parent().show_status_message("Transcript cleared")
+                 else:
+                     logger.info("Transcript cleared")
+            self.db_manager.update_recording(recording_id, on_update_complete, raw_transcript="", raw_transcript_formatted=None)
+
+    def clear_processed_text(self, recording_widget: RecordingListItem):
+        recording_id = recording_widget.get_id()
+        if show_confirmation_dialog(self, "Clear Processed Text", "Clear the processed text for this recording?"):
+             def on_update_complete():
+                  recording_widget.update_data({'processed_text': '', 'processed_text_formatted': None})
+                  if self.parent():
+                      self.parent().show_status_message("Processed text cleared")
+                  else:
+                      logger.info("Processed text cleared")
+             self.db_manager.update_recording(recording_id, on_update_complete, processed_text="", processed_text_formatted=None)
+
+
+    def export_recording(self, file_path, filename):
+        if not file_path or not os.path.exists(file_path):
+            show_error_message(self, "File Not Found", f"Original file not found at: {file_path}")
+            return
+        save_path, _ = QFileDialog.getSaveFileName(self, "Export Recording File", filename, "Audio/Video Files (*.mp3 *.wav *.m4a *.mp4 *.mov *.mkv)")
+        if save_path:
+            try:
+                import shutil
+                shutil.copy2(file_path, save_path)
+                show_info_message(self, "Export Successful", f"Recording exported to:\n{save_path}")
+                if self.parent():
+                    self.parent().show_status_message(f"Exported to {os.path.basename(save_path)}")
+                else:
+                    logger.info(f"Exported to {os.path.basename(save_path)}")
+            except Exception as e:
+                show_error_message(self, "Export Error", f"Failed to export: {e}")
+
+    def delete_recording_action(self, recording_widget: RecordingListItem):
+        recording_id = recording_widget.get_id()
+        file_path = recording_widget.get_filepath()
+        filename = recording_widget.get_filename()
+
+        if show_confirmation_dialog(self, 'Delete Recording', f"Delete '{filename}'? This also deletes the file and cannot be undone."):
+            def on_delete_complete():
+                try:
+                    if file_path and os.path.exists(file_path):
+                        # Optionally create backup before deleting file
+                        # create_backup(file_path)
+                        os.remove(file_path)
+                        logger.info(f"Deleted file: {file_path}")
+                except OSError as e:
+                    logger.warning(f"Could not delete file {file_path}: {e}")
+                    show_error_message(self, "File Deletion Error", f"Could not delete file:\n{file_path}\nError: {e}\n\nDatabase entry removed.")
+
+                # Remove item from tree visually
+                item = self.find_item_by_id(recording_id, "recording")
+                if item:
+                     parent = item.parent()
+                     if parent: parent.removeChild(item)
+                del self.recordings_map[recording_id] # Remove from map
+
+                if self.parent():
+                    self.parent().show_status_message(f"Deleted '{filename}'")
+                else:
+                    logger.info(f"Deleted '{filename}'")
+                # TODO: Update folder counts without full reload
+
+            # Delete from DB first
+            self.db_manager.delete_recording(recording_id, on_delete_complete)
+
+
+    # --- Drag and Drop ---
+    def mimeTypes(self):
+        return ['application/x-transcribrr-recording-id']
+
+    def mimeData(self, items):
+        if not items: return None
+        # Only allow dragging recordings
+        item = items[0]
+        data = item.data(0, Qt.ItemDataRole.UserRole)
+        if data and data.get("type") == "recording":
+             mime_data = QMimeData()
+             mime_data.setData('application/x-transcribrr-recording-id', str(data['id']).encode())
+             return mime_data
+        return None
+
+    def supportedDropActions(self):
+        return Qt.DropAction.MoveAction
+
+    def dragEnterEvent(self, event):
+        if event.mimeData().hasFormat('application/x-transcribrr-recording-id'):
+            event.acceptProposedAction()
+        else:
+            event.ignore()
+
+    def dragMoveEvent(self, event):
+         # Check if dropping onto a folder
+         target_item = self.itemAt(event.position().toPoint())
+         if target_item:
+              target_data = target_item.data(0, Qt.ItemDataRole.UserRole)
+              if target_data and target_data.get("type") == "folder":
+                   event.acceptProposedAction()
+                   return
+         event.ignore() # Ignore drop elsewhere
+
+    def dropEvent(self, event):
+        if not event.mimeData().hasFormat('application/x-transcribrr-recording-id'):
+             event.ignore()
+             return
+
+        target_item = self.itemAt(event.position().toPoint())
+        if not target_item:
+             event.ignore()
+             return
+
+        target_data = target_item.data(0, Qt.ItemDataRole.UserRole)
+        if not target_data or target_data.get("type") != "folder":
+             event.ignore()
+             return
+
+        # Get recording ID being dragged
+        recording_id = int(event.mimeData().data('application/x-transcribrr-recording-id').data().decode())
+        target_folder_id = target_data.get("id")
+        target_folder_name = target_data.get("name")
+
+        # Find the source item (optional, for visual move later)
+        source_item = self.find_item_by_id(recording_id, "recording")
+        source_widget = None
+        if source_item:
+            try:
+                source_widget = source_item.data(0, Qt.ItemDataRole.UserRole)['widget']
+            except (AttributeError, KeyError, TypeError) as e:
+                logger.warning(f"Error getting source widget data: {e}")
+
+        if source_widget and target_folder_id in [f['id'] for f in source_widget.folders]:
+             show_info_message(self, "Already in Folder", f"Recording is already in '{target_folder_name}'.")
+             event.ignore()
+             return
+
+        logger.info(f"Moving recording {recording_id} to folder {target_folder_id}")
+
+        # Add to new folder in DB
+        def on_add_complete(success, result):
+             if success:
+                  if source_widget: source_widget.refresh_folders()
+                  # TODO: Update folder counts without full reload
+                  if self.parent():
+                      self.parent().show_status_message(f"Moved recording to '{target_folder_name}'")
+                  else:
+                      logger.info(f"Moved recording to '{target_folder_name}'")
+                  # Visually move item in tree (or just reload?) - Reload is simpler for now
+                  self.load_structure(recording_id, "recording")
+
+             else:
+                  show_error_message(self, "Error", f"Failed to move recording: {result}")
+        self.folder_manager.add_recording_to_folder(recording_id, target_folder_id, on_add_complete)
+        event.acceptProposedAction()
+
+    def is_loading(self):
+         """Check the loading flag."""
+         return getattr(self, '_is_loading', False)
+
+
+class RecentRecordingsWidget(ResponsiveWidget):
+    # recordingSelected = pyqtSignal(str) # Replaced by recordingItemSelected
+    # recordButtonPressed = pyqtSignal() # Handled internally by controls now
+    recordingItemSelected = pyqtSignal(RecordingListItem) # Emit the item widget
+
+    def __init__(self, parent=None, db_manager=None):
         super().__init__(parent)
         self.layout = QVBoxLayout(self)
-        self.layout.setContentsMargins(5, 5, 5, 5)
-        self.layout.setSpacing(5)
+        self.layout.setContentsMargins(8, 8, 8, 8)
+        self.layout.setSpacing(8)
+        self.setSizePolicy(ResponsiveSizePolicy.preferred()) # Changed policy
 
-        # Toolbar
-        self.init_toolbar()
+        self.db_manager = db_manager or DatabaseManager(self)
+        self.current_folder_id = -1 # Default to "All Recordings"
 
-        # Header with title and action buttons
-        self.header_layout = QHBoxLayout()
+        self.init_toolbar() # Add toolbar
 
-        self.header_label = QLabel("Recent Recordings")
+        # Header (Simplified - folder name updated by Unified view selection)
+        self.header_label = QLabel("Recordings") # Static header
         self.header_label.setObjectName("RecentRecordingHeader")
-        self.header_label.setAlignment(Qt.AlignmentFlag.AlignLeft)
-        self.header_label.setFont(QFont("Arial", 12, QFont.Weight.Bold))
+        self.header_label.setFont(QFont("Arial", 14, QFont.Weight.Bold)) # Slightly larger
+        self.layout.addWidget(self.header_label)
 
-        # Add refresh button
-        self.refresh_button = QPushButton()
-        self.refresh_button.setIcon(QIcon(resource_path('icons/refresh.svg')))
-        self.refresh_button.setToolTip("Refresh Recordings")
-        self.refresh_button.setFixedSize(30, 30)
-        self.refresh_button.clicked.connect(self.refresh_recordings)
+        # Search and filter
+        # self.search_widget = SearchWidget() # Integrate search directly?
+        # self.search_widget.searchTextChanged.connect(self.filter_recordings)
+        # self.search_widget.filterCriteriaChanged.connect(self.filter_recordings)
+        # self.layout.addWidget(self.search_widget)
+        # TODO: Implement search/filter for the Unified view
 
-        self.header_layout.addWidget(self.header_label, 1)
-        self.header_layout.addWidget(self.refresh_button, 0)
-
-        self.layout.addLayout(self.header_layout)
-
-        # Search and filter widget
-        self.search_widget = SearchWidget()
-        self.search_widget.searchTextChanged.connect(self.filter_recordings)
-        self.search_widget.filterCriteriaChanged.connect(self.filter_recordings)
-        self.layout.addWidget(self.search_widget)
-
-        # Recordings list
-        self.recordings_list = QListWidget()
-        self.recordings_list.setSelectionMode(QListWidget.SelectionMode.SingleSelection)
-        self.recordings_list.itemClicked.connect(self.recording_clicked)
-
-        # Empty state message
-        self.empty_label = QLabel("No recordings found. Upload or record audio to get started.")
-        self.empty_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        self.empty_label.setStyleSheet("color: #888; font-style: italic;")
-        self.empty_label.setVisible(False)
-
-        self.layout.addWidget(self.recordings_list)
-        self.layout.addWidget(self.empty_label)
+        # Unified folder and recordings view
+        self.unified_view = UnifiedFolderListWidget(self.db_manager, self)
+        self.unified_view.folderSelected.connect(self.on_folder_selected)
+        self.unified_view.recordingSelected.connect(self.recordingItemSelected.emit) # Pass signal through
+        self.unified_view.recordingNameChanged.connect(self.handle_recording_rename) # Connect rename handler
+        self.layout.addWidget(self.unified_view, 1) # Allow view to stretch
 
         # Status bar
         self.status_bar = QStatusBar()
         self.status_bar.setSizeGripEnabled(False)
         self.layout.addWidget(self.status_bar)
-        self.status_bar.hide()  # Initially hidden
+        self.status_bar.hide()
 
-        # Set up right-click context menu for recordings
-        self.recordings_list.setContextMenuPolicy(Qt.ContextMenuPolicy.CustomContextMenu)
-        self.recordings_list.customContextMenuRequested.connect(self.showRightClickMenu)
-
-        # Batch processing worker
+        # Batch processing (Keep worker reference)
         self.batch_worker = None
         self.progress_dialog = None
 
-        # Load recordings initially
-        self.timer = QTimer()
-        self.timer.timeout.connect(self.update_recording_display)
-        self.timer.start(60000)  # Update relative times every minute
-
-        # Set up styling
-        self.style_updated()
+        # Load initial data
+        self.load_recordings()
 
     def init_toolbar(self):
-        """Initialize toolbar with action buttons."""
         toolbar = QToolBar()
-        toolbar.setIconSize(QSize(16, 16))
+        toolbar.setIconSize(QSize(18, 18)) # Slightly larger icons
         toolbar.setMovable(False)
 
-        # New Folder action
         new_folder_action = QAction(QIcon(resource_path('icons/folder.svg')), "New Folder", self)
-        new_folder_action.setToolTip("Create new folder for organizing recordings")
         new_folder_action.triggered.connect(self.create_new_folder)
         toolbar.addAction(new_folder_action)
 
-        # Batch actions dropdown
-        batch_button = QToolButton()
-        batch_button.setText("Batch")
-        batch_button.setIcon(QIcon(resource_path('icons/batch.svg')))
-        batch_button.setToolTip("Batch operations")
-        batch_button.setPopupMode(QToolButton.ToolButtonPopupMode.InstantPopup)
+        refresh_action = QAction(QIcon(resource_path('icons/refresh.svg')), "Refresh", self)
+        refresh_action.triggered.connect(self.refresh_recordings)
+        toolbar.addAction(refresh_action)
 
-        batch_menu = QMenu()
-
-        # Batch transcribe action
-        batch_transcribe_action = QAction("Transcribe Selected", self)
-        batch_transcribe_action.triggered.connect(lambda: self.batch_process("transcribe"))
-        batch_menu.addAction(batch_transcribe_action)
-
-        # Batch GPT process action
-        batch_process_action = QAction("Process with GPT", self)
-        batch_process_action.triggered.connect(lambda: self.batch_process("process"))
-        batch_menu.addAction(batch_process_action)
-
-        # Batch export action
-        batch_export_action = QAction("Export Selected", self)
-        batch_export_action.triggered.connect(self.batch_export)
-        batch_menu.addAction(batch_export_action)
-
-        batch_button.setMenu(batch_menu)
-        toolbar.addWidget(batch_button)
-
-        # Add separator
         toolbar.addSeparator()
 
-        # Sort options
-        sort_button = QToolButton()
-        sort_button.setText("Sort")
-        sort_button.setIcon(QIcon(resource_path('icons/sort.svg')))
-        sort_button.setToolTip("Sort recordings")
-        sort_button.setPopupMode(QToolButton.ToolButtonPopupMode.InstantPopup)
-
-        sort_menu = QMenu()
-
-        # Sort by date (newest)
-        sort_date_new_action = QAction("Date (Newest First)", self)
-        sort_date_new_action.triggered.connect(lambda: self.sort_recordings("date", False))
-        sort_menu.addAction(sort_date_new_action)
-
-        # Sort by date (oldest)
-        sort_date_old_action = QAction("Date (Oldest First)", self)
-        sort_date_old_action.triggered.connect(lambda: self.sort_recordings("date", True))
-        sort_menu.addAction(sort_date_old_action)
-
-        # Sort by name (A-Z)
-        sort_name_az_action = QAction("Name (A-Z)", self)
-        sort_name_az_action.triggered.connect(lambda: self.sort_recordings("name", False))
-        sort_menu.addAction(sort_name_az_action)
-
-        # Sort by name (Z-A)
-        sort_name_za_action = QAction("Name (Z-A)", self)
-        sort_name_za_action.triggered.connect(lambda: self.sort_recordings("name", True))
-        sort_menu.addAction(sort_name_za_action)
-
-        # Sort by duration
-        sort_duration_action = QAction("Duration", self)
-        sort_duration_action.triggered.connect(lambda: self.sort_recordings("duration", False))
-        sort_menu.addAction(sort_duration_action)
-
-        sort_button.setMenu(sort_menu)
-        toolbar.addWidget(sort_button)
-
-        # Import from file
-        import_action = QAction(QIcon(resource_path('icons/import.svg')), "Import", self)
-        import_action.setToolTip("Import recordings from file system")
+        import_action = QAction(QIcon(resource_path('icons/import.svg')), "Import Files", self)
         import_action.triggered.connect(self.import_recordings)
         toolbar.addAction(import_action)
 
-        # Spacer to push help to right side
-        spacer = QWidget()
-        spacer.setSizePolicy(QSizePolicy.Policy.Expanding,
-                             QSizePolicy.Policy.Expanding)  # Fixed: QSizePolicy instead of QSize
-        toolbar.addWidget(spacer)
-
-        # Help action
-        help_action = QAction(QIcon(resource_path('icons/help.svg')), "Help", self)
-        help_action.setToolTip("Show help for recordings")
-        help_action.triggered.connect(self.show_help)
-        toolbar.addAction(help_action)
+        # TODO: Add Batch Actions Dropdown, Sort Dropdown, Help Button similar to previous implementation if needed
 
         self.layout.addWidget(toolbar)
-    def style_updated(self):
-        """Update widget styling."""
-        self.recordings_list.setStyleSheet("""
-            QListWidget {
-                border: none;
-                outline: none;
-            }
-            QListWidget::item {
-                border-bottom: 1px solid #eee;
-                padding: 4px;
-            }
-            QListWidget::item:selected {
-                background-color: #f0f0f0;
-                color: #000;
-            }
-            QListWidget::item:hover {
-                background-color: #f8f8f8;
-            }
-        """)
 
+    # --- Actions ---
     def create_new_folder(self):
-        """Create a new folder for organizing recordings."""
-        folder_name, ok = QInputDialog.getText(
-            self, "Create Folder", "Enter folder name:", QLineEdit.EchoMode.Normal, "New Folder"
-        )
+        """Trigger folder creation in the unified view."""
+        # Let the unified view handle the dialog and DB interaction
+        root_item = self.unified_view.topLevelItem(0)
+        if root_item:
+            self.unified_view.create_subfolder(root_item, -1) # Create at root level
 
-        if ok and folder_name:
-            # This implementation would need to be expanded to actually support folders in the UI
-            # For now, just show a message indicating this is a placeholder
-            QMessageBox.information(
-                self, "Feature Coming Soon",
-                f"Creating folder: {folder_name}\n\nThis feature will be implemented in a future update."
-            )
+    def refresh_recordings(self):
+        """Refresh the recordings list."""
+        self.show_status_message("Refreshing recordings...")
+        # Get current selection to restore it after reload
+        selected_item = self.unified_view.currentItem()
+        selected_id = None
+        selected_type = None
+        if selected_item:
+             data = selected_item.data(0, Qt.ItemDataRole.UserRole)
+             if data:
+                  selected_id = data.get("id")
+                  selected_type = data.get("type")
 
+        self.unified_view.load_structure(selected_id, selected_type)
+        self.show_status_message("Recordings refreshed", 2000)
+
+    def import_recordings(self):
+        file_dialog = QFileDialog(self)
+        file_dialog.setWindowTitle("Import Audio/Video Files")
+        file_dialog.setFileMode(QFileDialog.FileMode.ExistingFiles)
+        file_dialog.setNameFilter("Media Files (*.mp3 *.wav *.m4a *.ogg *.mp4 *.mkv *.avi *.mov *.flac *.aac *.aiff *.wma *.webm *.flv *.wmv)")
+        if file_dialog.exec() != QFileDialog.DialogCode.Accepted: return
+
+        selected_files = file_dialog.selectedFiles()
+        if not selected_files: return
+
+        imported_count = 0
+        error_count = 0
+        # TODO: Add progress dialog for large imports
+        self.show_status_message(f"Importing {len(selected_files)} files...")
+
+        for file_path in selected_files:
+            try:
+                 # Ensure the recordings directory exists
+                 recordings_dir = os.path.join(os.getcwd(), "Recordings")
+                 os.makedirs(recordings_dir, exist_ok=True)
+
+                 # Generate a unique destination path
+                 dest_filename = os.path.basename(file_path)
+                 name, ext = os.path.splitext(dest_filename)
+                 counter = 1
+                 dest_path = os.path.join(recordings_dir, dest_filename)
+                 while os.path.exists(dest_path):
+                      dest_path = os.path.join(recordings_dir, f"{name}_{counter}{ext}")
+                      counter += 1
+
+                 # Copy the file
+                 import shutil
+                 shutil.copy2(file_path, dest_path)
+                 logger.info(f"Copied imported file to {dest_path}")
+
+                 # Add the copied file to the database via the io_complete handler
+                 # This assumes MainTranscriptionWidget is listening and will add it.
+                 # A more direct way would be better.
+                 # self.parent().on_new_file(dest_path) # Assuming parent is MainWindow
+                 self.add_imported_file_to_db(dest_path) # Add directly here
+
+                 imported_count += 1
+            except Exception as e:
+                 logger.error(f"Error importing {file_path}: {e}", exc_info=True)
+                 error_count += 1
+                 show_error_message(self, "Import Error", f"Failed to import {os.path.basename(file_path)}: {e}")
+
+        # Update status after import loop
+        if error_count == 0:
+            self.show_status_message(f"Import complete: {imported_count} files added.", 5000)
+        else:
+            self.show_status_message(f"Import complete: {imported_count} added, {error_count} failed.", 5000)
+
+        self.refresh_recordings() # Refresh list after import
+
+
+    def add_imported_file_to_db(self, file_path):
+         """Adds an imported file record to the database."""
+         try:
+              filename = os.path.basename(file_path)
+              date_created = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+              # Calculate duration (potential performance hit for many files)
+              from app.file_utils import calculate_duration
+              duration = calculate_duration(file_path) # Returns "HH:MM:SS" or "MM:SS"
+
+              recording_data = (filename, file_path, date_created, duration, "", "")
+
+              # Define callback (optional, can just refresh later)
+              def on_import_added(recording_id):
+                   if recording_id:
+                        logger.info(f"Imported file '{filename}' added to DB with ID {recording_id}")
+                   else:
+                        logger.error(f"Failed to add imported file '{filename}' to DB")
+
+              self.db_manager.create_recording(recording_data, on_import_added)
+         except Exception as e:
+              logger.error(f"Error preparing imported file '{file_path}' for DB: {e}", exc_info=True)
+              show_error_message(self, "Import DB Error", f"Could not add '{os.path.basename(file_path)}' to database: {e}")
+
+    # --- Signal Handlers ---
+    def on_folder_selected(self, folder_id, folder_name):
+        self.current_folder_id = folder_id
+        # The header might not be needed if the unified view makes the selection clear
+        # self.header_label.setText(folder_name)
+        self.show_status_message(f"Selected folder: {folder_name}")
+        # TODO: Implement filtering of recordings based on the selected folder
+        self.filter_recordings()
+
+
+    def handle_recording_rename(self, recording_id: int, new_name_no_ext: str):
+         """Handle the rename request from a RecordingListItem."""
+         logger.info(f"Handling rename for ID {recording_id} to '{new_name_no_ext}'")
+
+         # Construct new full filename (keep original extension)
+         widget = self.unified_view.recordings_map.get(recording_id)
+         if not widget:
+              logger.error(f"Cannot rename: RecordingListItem widget not found for ID {recording_id}")
+              return
+
+         _ , ext = os.path.splitext(widget.get_filename())
+         new_full_filename = new_name_no_ext + ext
+
+         # --- Database Update ---
+         def on_rename_complete():
+              logger.info(f"Successfully renamed recording {recording_id} in DB.")
+              # Update the widget's internal state and UI
+              widget.update_data({'filename': new_name_no_ext}) # Pass only the base name
+              self.show_status_message(f"Renamed to '{new_name_no_ext}'")
+
+         def on_rename_error(op_name, error_msg):
+              logger.error(f"Failed to rename recording {recording_id} in DB: {error_msg}")
+              show_error_message(self, "Rename Failed", f"Could not rename recording: {error_msg}")
+              # Revert UI change if necessary (optional)
+              widget.name_editable.setText(widget.filename_no_ext) # Revert the line edit
+
+         # Disconnect existing error handler for this specific operation if necessary
+         # Or use unique operation IDs in DatabaseManager if implementing that pattern
+         try: self.db_manager.error_occurred.disconnect(on_rename_error)
+         except TypeError: pass
+         self.db_manager.error_occurred.connect(on_rename_error)
+
+         self.db_manager.update_recording(
+             recording_id,
+             on_rename_complete,
+             filename=new_full_filename # Save full filename to DB
+         )
+
+
+    def filter_recordings(self):
+         """Filter recordings displayed in the unified view."""
+         # search_text = self.search_widget.get_search_text().lower()
+         # filter_criteria = self.search_widget.get_filter_criteria()
+         # folder_id = self.current_folder_id
+         logger.warning("Filtering/Sorting not yet implemented for UnifiedFolderListWidget")
+         # TODO: Implement filtering logic:
+         # 1. Get all items (folders and recordings).
+         # 2. Iterate through items.
+         # 3. Show/hide items based on search text match (name, transcript?),
+         #    filter criteria (Has Transcript, Date), and selected folder.
+         # 4. This is complex with a direct QTreeWidget. Consider QTreeView + QAbstractItemModel
+         #    or simpler show/hide logic on existing items.
+         self.unified_view.load_structure() # Temporary: just reload everything on filter change
+
+    def load_recordings(self):
+        """Load initial recordings."""
+        self.unified_view.load_structure()
+
+    def show_status_message(self, message, timeout=3000):
+        self.status_bar.showMessage(message, timeout)
+        if not self.status_bar.isVisible():
+            self.status_bar.show()
+            QTimer.singleShot(timeout + 100, lambda: self.status_bar.hide() if self.status_bar.currentMessage() == message else None)
+
+    # --- Batch Processing Methods (Placeholders/Connections) ---
     def batch_process(self, process_type):
-        """Process multiple recordings in batch."""
-        # Get selected recordings
-        selected_items = self.recordings_list.selectedItems()
-
-        if not selected_items:
-            QMessageBox.information(self, "No Selection", "Please select recordings to process.")
-            return
-
-        # Get corresponding RecordingListItem widgets
-        selected_recordings = []
+        selected_items = self.unified_view.selectedItems()
+        selected_data = []
         for item in selected_items:
-            recording_widget = self.recordings_list.itemWidget(item)
-            selected_recordings.append(recording_widget)
+             data = item.data(0, Qt.ItemDataRole.UserRole)
+             if data and data.get("type") == "recording":
+                  widget = data.get("widget")
+                  if widget:
+                       # Collect necessary data for processing
+                       selected_data.append({
+                            'id': widget.get_id(),
+                            'filename': widget.get_filename(),
+                            'file_path': widget.get_filepath(),
+                            'raw_transcript': widget.get_raw_transcript() # Needed for GPT processing
+                       })
 
-        # Confirm with user
-        action_text = "transcribe" if process_type == "transcribe" else "process with GPT"
-        confirm = QMessageBox.question(
-            self,
-            f"Batch {action_text.capitalize()}",
-            f"Are you sure you want to {action_text} {len(selected_recordings)} recording(s)?",
-            QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No
-        )
-
-        if confirm != QMessageBox.StandardButton.Yes:
+        if not selected_data:
+            show_info_message(self, "No Selection", f"Please select recordings to {process_type}.")
             return
 
-        # Create and configure progress dialog
-        self.progress_dialog = QProgressDialog(
-            f"Starting batch {action_text}...", "Cancel", 0, 100, self
-        )
-        self.progress_dialog.setWindowTitle(f"Batch {action_text.capitalize()}")
+        action_text = "Transcribe" if process_type == "transcribe" else "Process with GPT"
+        if not show_confirmation_dialog(self, f"Batch {action_text}", f"{action_text} {len(selected_data)} recording(s)?"):
+            return
+
+        self.progress_dialog = QProgressDialog(f"Starting batch {process_type}...", "Cancel", 0, 100, self)
+        self.progress_dialog.setWindowTitle(f"Batch {action_text}")
         self.progress_dialog.setWindowModality(Qt.WindowModality.WindowModal)
         self.progress_dialog.setAutoClose(False)
         self.progress_dialog.canceled.connect(self.cancel_batch_process)
 
-        # Create and start worker thread
-        self.batch_worker = BatchProcessWorker(selected_recordings, process_type)
+        # TODO: Replace BatchProcessWorker with actual calls to Transcription/GPT threads
+        # This requires more complex logic to manage multiple threads, API keys, config etc.
+        self.batch_worker = BatchProcessWorker(selected_data, process_type)
         self.batch_worker.progress.connect(self.update_batch_progress)
         self.batch_worker.finished.connect(self.on_batch_process_finished)
         self.batch_worker.start()
-
-        # Show progress dialog
         self.progress_dialog.show()
 
     def cancel_batch_process(self):
-        """Cancel the current batch process."""
-        if self.batch_worker and self.batch_worker.isRunning():
-            self.batch_worker.cancel()
+         if self.batch_worker and self.batch_worker.isRunning():
+              self.batch_worker.cancel()
+              if self.progress_dialog: self.progress_dialog.setLabelText("Cancelling...")
+
 
     def update_batch_progress(self, value, message):
-        """Update batch process progress."""
-        if self.progress_dialog:
-            self.progress_dialog.setValue(value)
-            self.progress_dialog.setLabelText(message)
+         if self.progress_dialog:
+              self.progress_dialog.setValue(value)
+              self.progress_dialog.setLabelText(message)
+
 
     def on_batch_process_finished(self, success, message):
-        """Handle batch process completion."""
-        if self.progress_dialog:
-            self.progress_dialog.setValue(100)
-            self.progress_dialog.setLabelText(message)
+         if self.progress_dialog:
+              self.progress_dialog.close()
+              self.progress_dialog = None
 
-            # Allow user to read the message
-            QTimer.singleShot(2000, self.progress_dialog.close)
+         if success:
+              show_info_message(self, "Batch Complete", message)
+         else:
+              show_error_message(self, "Batch Error", message)
 
-        if success:
-            self.show_status_message(message, 5000)
-        else:
-            QMessageBox.warning(self, "Batch Process", message)
+         self.refresh_recordings() # Refresh list after batch operation
+         self.batch_worker = None # Clear worker
 
-        # Refresh recordings
-        self.refresh_recordings()
 
     def batch_export(self):
-        """Export multiple recordings in batch."""
-        # Get selected recordings
-        selected_items = self.recordings_list.selectedItems()
+         selected_items = self.unified_view.selectedItems()
+         files_to_export = []
+         for item in selected_items:
+              data = item.data(0, Qt.ItemDataRole.UserRole)
+              if data and data.get("type") == "recording":
+                   widget = data.get("widget")
+                   if widget and widget.get_filepath():
+                        files_to_export.append((widget.get_filepath(), widget.get_filename()))
 
-        if not selected_items:
-            QMessageBox.information(self, "No Selection", "Please select recordings to export.")
-            return
+         if not files_to_export:
+              show_info_message(self, "No Selection", "Select recordings with associated files to export.")
+              return
 
-        # Ask for export directory
-        export_dir = QFileDialog.getExistingDirectory(
-            self, "Select Export Directory", os.getcwd(),
-            QFileDialog.Option.ShowDirsOnly | QFileDialog.Option.DontResolveSymlinks
-        )
+         export_dir = QFileDialog.getExistingDirectory(self, "Select Export Directory")
+         if not export_dir: return
 
-        if not export_dir:
-            return
+         exported_count = 0
+         error_count = 0
+         # TODO: Add progress dialog for export
+         self.show_status_message(f"Exporting {len(files_to_export)} files...")
 
-        # Process each selected recording
-        exported_count = 0
-        error_count = 0
+         for source_path, original_filename in files_to_export:
+              try:
+                   # Generate unique target path
+                   target_path = os.path.join(export_dir, original_filename)
+                   counter = 1
+                   name, ext = os.path.splitext(original_filename)
+                   while os.path.exists(target_path):
+                        target_path = os.path.join(export_dir, f"{name}_{counter}{ext}")
+                        counter += 1
+                   # Copy
+                   import shutil
+                   shutil.copy2(source_path, target_path)
+                   exported_count += 1
+              except Exception as e:
+                   logger.error(f"Error exporting {source_path} to {export_dir}: {e}")
+                   error_count += 1
 
-        progress = QProgressDialog(
-            "Preparing export...", "Cancel", 0, len(selected_items), self
-        )
-        progress.setWindowTitle("Batch Export")
-        progress.setWindowModality(Qt.WindowModality.WindowModal)
+         result_message = f"Exported {exported_count} files."
+         if error_count > 0:
+              result_message += f" Failed to export {error_count} files."
+              show_error_message(self, "Export Complete with Errors", result_message)
+         else:
+              show_info_message(self, "Export Complete", result_message)
+         self.show_status_message(result_message, 5000)
 
-        for i, item in enumerate(selected_items):
-            if progress.wasCanceled():
-                break
-
-            recording_widget = self.recordings_list.itemWidget(item)
-            file_path = recording_widget.file_path
-            file_name = os.path.basename(file_path)
-
-            progress.setValue(i)
-            progress.setLabelText(f"Exporting {file_name}...")
-
-            # Create export path
-            export_path = os.path.join(export_dir, file_name)
-
-            # Check if file exists
-            if os.path.exists(export_path):
-                # Append number to filename
-                name, ext = os.path.splitext(file_name)
-                counter = 1
-                while os.path.exists(export_path):
-                    export_path = os.path.join(export_dir, f"{name}_{counter}{ext}")
-                    counter += 1
-
-            try:
-                # Copy file
-                import shutil
-                shutil.copy2(file_path, export_path)
-                exported_count += 1
-            except Exception as e:
-                logging.error(f"Error exporting {file_path}: {e}")
-                error_count += 1
-
-        progress.setValue(len(selected_items))
-
-        # Show results
-        if error_count == 0:
-            QMessageBox.information(
-                self, "Export Complete",
-                f"Successfully exported {exported_count} recording(s) to {export_dir}"
-            )
-        else:
-            QMessageBox.warning(
-                self, "Export Complete with Errors",
-                f"Exported {exported_count} recording(s) to {export_dir}\n"
-                f"Failed to export {error_count} recording(s). See log for details."
-            )
 
     def sort_recordings(self, sort_by, reverse=False):
-        """Sort recordings by various criteria."""
-        items = []
-
-        # Get all items from the list
-        for i in range(self.recordings_list.count()):
-            items.append(self.recordings_list.item(i))
-
-        # Sort items based on criteria
-        if sort_by == "date":
-            items.sort(
-                key=lambda item: datetime.datetime.strptime(
-                    item.data(Qt.ItemDataRole.UserRole)['date_created'],
-                    "%Y-%m-%d %H:%M:%S"
-                ),
-                reverse=reverse
-            )
-        elif sort_by == "name":
-            items.sort(
-                key=lambda item: item.data(Qt.ItemDataRole.UserRole)['filename'].lower(),
-                reverse=reverse
-            )
-        elif sort_by == "duration":
-            # Parse duration string (HH:MM:SS) to sort properly
-            def parse_duration(duration_str):
-                try:
-                    parts = duration_str.split(':')
-                    if len(parts) == 3:  # HH:MM:SS
-                        return int(parts[0]) * 3600 + int(parts[1]) * 60 + int(parts[2])
-                    elif len(parts) == 2:  # MM:SS
-                        return int(parts[0]) * 60 + int(parts[1])
-                    else:
-                        return 0
-                except:
-                    return 0
-
-            items.sort(
-                key=lambda item: parse_duration(item.data(Qt.ItemDataRole.UserRole)['duration']),
-                reverse=reverse
-            )
-
-        # Clear and re-add items in sorted order
-        self.recordings_list.clear()
-        for item in items:
-            self.recordings_list.addItem(item)
-
-            # Re-add the widget
-            metadata = item.data(Qt.ItemDataRole.UserRole)
-            recording_widget = RecordingListItem(
-                metadata['id'], metadata['filename'], metadata['full_path'],
-                metadata['date_created'], metadata['duration'], "", ""  # Raw/processed text will be loaded when needed
-            )
-            self.recordings_list.setItemWidget(item, recording_widget)
-
-        # Update the UI
-        self.update_empty_state()
-
-        # Show status message
-        sort_name = {
-            "date": "date",
-            "name": "name",
-            "duration": "duration"
-        }.get(sort_by, sort_by)
-
-        direction = "descending" if reverse else "ascending"
-        self.show_status_message(f"Sorted by {sort_name} ({direction})")
-
-    def import_recordings(self):
-        """Import recordings from external files."""
-        # Open file dialog to select audio/video files
-        file_dialog = QFileDialog(self)
-        file_dialog.setWindowTitle("Import Audio/Video Files")
-        file_dialog.setFileMode(QFileDialog.FileMode.ExistingFiles)
-        file_dialog.setNameFilter(
-            "Audio/Video Files (*.mp3 *.wav *.m4a *.ogg *.mp4 *.mkv *.avi *.mov *.flac)"
-        )
-
-        if file_dialog.exec() != QFileDialog.DialogCode.Accepted:
-            return
-
-        # Get selected files
-        selected_files = file_dialog.selectedFiles()
-
-        if not selected_files:
-            return
-
-        # Process each file
-        imported_count = 0
-        error_count = 0
-
-        progress = QProgressDialog(
-            "Importing files...", "Cancel", 0, len(selected_files), self
-        )
-        progress.setWindowTitle("Import Recordings")
-        progress.setWindowModality(Qt.WindowModality.WindowModal)
-
-        for i, file_path in enumerate(selected_files):
-            if progress.wasCanceled():
-                break
-
-            progress.setValue(i)
-            progress.setLabelText(f"Importing {os.path.basename(file_path)}...")
-
-            try:
-                # Copy file to Recordings directory
-                recordings_dir = os.path.join(os.getcwd(), "Recordings")
-                os.makedirs(recordings_dir, exist_ok=True)
-
-                # Create destination path
-                dest_file = os.path.join(recordings_dir, os.path.basename(file_path))
-
-                # Check if file exists
-                if os.path.exists(dest_file):
-                    # Append number to filename
-                    name, ext = os.path.splitext(os.path.basename(file_path))
-                    counter = 1
-                    while os.path.exists(dest_file):
-                        dest_file = os.path.join(recordings_dir, f"{name}_{counter}{ext}")
-                        counter += 1
-
-                # Copy file
-                import shutil
-                shutil.copy2(file_path, dest_file)
-
-                # Add to list
-                self.on_io_complete(dest_file)
-
-                imported_count += 1
-
-            except Exception as e:
-                logging.error(f"Error importing {file_path}: {e}")
-                error_count += 1
-
-        progress.setValue(len(selected_files))
-
-        # Show results
-        if error_count == 0:
-            QMessageBox.information(
-                self, "Import Complete",
-                f"Successfully imported {imported_count} file(s)"
-            )
-        else:
-            QMessageBox.warning(
-                self, "Import Complete with Errors",
-                f"Imported {imported_count} file(s)\n"
-                f"Failed to import {error_count} file(s). See log for details."
-            )
-
-        # Refresh the list
-        self.refresh_recordings()
+         """Placeholder for sorting logic in UnifiedFolderListWidget."""
+         show_info_message(self, "Not Implemented", "Sorting within the unified view is not yet implemented.")
+         # TODO: Implement sorting. This likely requires modifying how items are added
+         # in `load_recordings_for_item` or using QTreeView with a sortable model.
 
     def show_help(self):
-        """Show help information for recordings management."""
-        help_text = """
-        <h3>Managing Recordings</h3>
-        <p><b>Search & Filter:</b> Use the search box to find recordings by name or content. Use the filter dropdown to show specific types of recordings.</p>
-        <p><b>Sort:</b> Click the Sort button to organize recordings by date, name, or duration.</p>
-        <p><b>Batch Operations:</b> Select multiple recordings by holding Ctrl while clicking, then use the Batch menu for bulk actions.</p>
-        <p><b>Context Menu:</b> Right-click on any recording for more options, including rename, export, and delete.</p>
-        <p><b>Import:</b> Use the Import button to add existing audio or video files to your recordings.</p>
-        """
-
-        QMessageBox.information(self, "Recordings Help", help_text)
-
-    def refresh_recordings(self):
-        """Refresh the recordings list from database."""
-        # Store currently selected item
-        current_item = self.recordings_list.currentItem()
-        current_id = None
-        if current_item:
-            current_id = current_item.data(Qt.ItemDataRole.UserRole)['id']
-
-        # Clear and reload recordings
-        self.recordings_list.clear()
-        self.load_recordings()
-
-        # Restore selection if possible
-        if current_id:
-            for i in range(self.recordings_list.count()):
-                item = self.recordings_list.item(i)
-                if item.data(Qt.ItemDataRole.UserRole)['id'] == current_id:
-                    self.recordings_list.setCurrentItem(item)
-                    break
-
-        # Filter recordings based on current criteria
-        self.filter_recordings()
-
-        # Show confirmation
-        self.show_status_message("Recordings refreshed")
-
-    def filter_recordings(self):
-        """Filter recordings based on search text and filter criteria."""
-        search_text = self.search_widget.get_search_text().lower()
-        filter_criteria = self.search_widget.get_filter_criteria()
-
-        # Clear the search filter when both are empty
-        if not search_text and filter_criteria == "All":
-            for i in range(self.recordings_list.count()):
-                self.recordings_list.item(i).setHidden(False)
-            self.update_empty_state()
-            return
-
-        now = datetime.datetime.now()
-        item_count = self.recordings_list.count()
-        visible_count = 0
-
-        for i in range(item_count):
-            item = self.recordings_list.item(i)
-            item_widget = self.recordings_list.itemWidget(item)
-            metadata = item.data(Qt.ItemDataRole.UserRole)
-
-            # Search by text
-            text_match = (
-                    not search_text or
-                    search_text in metadata.get('filename', '').lower() or
-                    search_text in item_widget.get_raw_transcript().lower()
-            )
-
-            # Filter by criteria
-            criteria_match = True
-
-            if filter_criteria == "Has Transcript":
-                criteria_match = bool(item_widget.get_raw_transcript())
-            elif filter_criteria == "No Transcript":
-                criteria_match = not bool(item_widget.get_raw_transcript())
-            elif filter_criteria == "Recent (24h)":
-                try:
-                    date_created = datetime.datetime.strptime(metadata.get('date_created', ''), "%Y-%m-%d %H:%M:%S")
-                    time_diff = now - date_created
-                    criteria_match = time_diff.total_seconds() < 86400  # 24 hours in seconds
-                except (ValueError, TypeError):
-                    criteria_match = False
-            elif filter_criteria == "This Week":
-                try:
-                    date_created = datetime.datetime.strptime(metadata.get('date_created', ''), "%Y-%m-%d %H:%M:%S")
-                    time_diff = now - date_created
-                    criteria_match = time_diff.total_seconds() < 604800  # 7 days in seconds
-                except (ValueError, TypeError):
-                    criteria_match = False
-
-            # Show/hide based on both conditions
-            should_show = text_match and criteria_match
-            item.setHidden(not should_show)
-
-            if should_show:
-                visible_count += 1
-
-        # Show empty state message if no items visible
-        self.empty_label.setVisible(visible_count == 0)
-        if visible_count == 0:
-            if search_text:
-                self.empty_label.setText(f"No recordings found matching '{search_text}'")
-            else:
-                self.empty_label.setText(f"No recordings match the filter: {filter_criteria}")
-        else:
-            self.empty_label.setVisible(False)
-            self.show_status_message(f"Showing {visible_count} of {item_count} recordings")
-
-    def update_recording_display(self):
-        """Update the relative time display in recording items."""
-        for i in range(self.recordings_list.count()):
-            item = self.recordings_list.item(i)
-            item_widget = self.recordings_list.itemWidget(item)
-            if hasattr(item_widget, 'update_relative_time'):
-                item_widget.update_relative_time()
-
-    def recording_clicked(self, item: QListWidgetItem):
-        """Handle recording selection event."""
-        recording_item_widget = self.recordings_list.itemWidget(item)
-        self.recordingItemSelected.emit(recording_item_widget)
-
-        # Update UI to show this item is selected
-        for i in range(self.recordings_list.count()):
-            curr_item = self.recordings_list.item(i)
-            curr_widget = self.recordings_list.itemWidget(curr_item)
-            if curr_widget == recording_item_widget:
-                curr_widget.setStyleSheet("background-color: #e0e0e0; border-radius: 4px;")
-            else:
-                curr_widget.setStyleSheet("")
-
-        # Show recording details in status bar
-        recording_name = recording_item_widget.filename_no_ext
-        date_created = datetime.datetime.strptime(
-            recording_item_widget.date_created, "%Y-%m-%d %H:%M:%S"
-        ).strftime("%b %d, %Y %H:%M")
-
-        self.show_status_message(f"{recording_name} - {date_created} - {recording_item_widget.duration}")
-
-    def showRightClickMenu(self, position):
-        """Display context menu for recordings."""
-        global_pos = self.recordings_list.viewport().mapToGlobal(position)
-        item = self.recordings_list.itemAt(position)
-
-        # Only show menu if there's an item
-        if item:
-            menu = QMenu()
-            recording_widget = self.recordings_list.itemWidget(item)
-
-            # Add actions based on recording state
-            open_folder_action = menu.addAction("Show in Folder")
-            open_folder_action.setIcon(QIcon(resource_path('icons/folder_open.svg')))
-
-            rename_action = menu.addAction("Rename")
-            rename_action.setIcon(QIcon(resource_path('icons/rename.svg')))
-            menu.addSeparator()
-
-            if recording_widget.has_transcript():
-                clear_transcript_action = menu.addAction("Clear Transcript")
-                clear_transcript_action.setIcon(QIcon(resource_path('icons/clear.svg')))
-            else:
-                clear_transcript_action = None
-
-            if recording_widget.has_processed_text():
-                clear_processed_action = menu.addAction("Clear Processed Text")
-                clear_processed_action.setIcon(QIcon(resource_path('icons/clear.svg')))
-            else:
-                clear_processed_action = None
-
-            menu.addSeparator()
-            export_action = menu.addAction("Export Recording")
-            export_action.setIcon(QIcon(resource_path('icons/export.svg')))
-            menu.addSeparator()
-            delete_action = menu.addAction("Delete")
-            delete_action.setIcon(QIcon(resource_path('icons/delete.svg')))
-
-            # Show menu and handle action selection
-            action = menu.exec(global_pos)
-
-            if action == open_folder_action:
-                self.open_containing_folder(item)
-            elif action == rename_action:
-                self.rename_recording(item)
-            elif clear_transcript_action and action == clear_transcript_action:
-                self.clear_transcript(item)
-            elif clear_processed_action and action == clear_processed_action:
-                self.clear_processed_text(item)
-            elif action == export_action:
-                self.export_recording(item)
-            elif action == delete_action:
-                self.delete_selected_recording(item)
-
-    def open_containing_folder(self, item):
-        """Open the folder containing the recording file."""
-        recording_widget = self.recordings_list.itemWidget(item)
-        file_path = recording_widget.file_path
-
-        if not os.path.exists(file_path):
-            QMessageBox.warning(self, "File Not Found", f"The file could not be found at: {file_path}")
-            return
-
-        # Open file explorer to the containing folder
-        folder_path = os.path.dirname(file_path)
-        QDesktopServices.openUrl(QUrl.fromLocalFile(folder_path))
-
-    def rename_recording(self, item):
-        """Rename a recording."""
-        recording_widget = self.recordings_list.itemWidget(item)
-        current_name = recording_widget.filename_no_ext
-
-        new_name, ok = QInputDialog.getText(
-            self, 'Rename Recording', 'Enter new name:', QLineEdit.EchoMode.Normal, current_name
-        )
-
-        if ok and new_name and new_name != current_name:
-            try:
-                # Update database
-                recording_id = recording_widget.get_id()
-                db_path = resource_path("./database/database.sqlite")
-                conn = create_connection(db_path)
-                if conn:
-                    update_recording(conn, recording_id, filename=new_name)
-                    conn.close()
-
-                    # Update UI
-                    recording_widget.filename = new_name
-                    recording_widget.filename_no_ext = new_name
-                    recording_widget.name_editable.setText(new_name)
-
-                    # Update metadata
-                    metadata = item.data(Qt.ItemDataRole.UserRole)
-                    metadata['filename'] = new_name
-                    item.setData(Qt.ItemDataRole.UserRole, metadata)
-
-                    self.show_status_message(f"Recording renamed to {new_name}")
-            except Exception as e:
-                QMessageBox.critical(self, "Error", f"Failed to rename recording: {e}")
-                logging.error(f"Error renaming recording: {e}", exc_info=True)
-
-    def clear_transcript(self, item):
-        """Clear the transcript of a recording."""
-        recording_widget = self.recordings_list.itemWidget(item)
-
-        # Confirm with user
-        confirm = QMessageBox.question(
-            self, "Clear Transcript",
-            "Are you sure you want to clear the transcript? This cannot be undone.",
-            QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No
-        )
-
-        if confirm == QMessageBox.StandardButton.Yes:
-            try:
-                # Update database
-                recording_id = recording_widget.get_id()
-                db_path = resource_path("./database/database.sqlite")
-                conn = create_connection(db_path)
-                if conn:
-                    update_recording(conn, recording_id, raw_transcript="", raw_transcript_formatted=None)
-                    conn.close()
-
-                    # Update recording widget
-                    recording_widget.raw_transcript = ""
-                    recording_widget.raw_transcript_formatted_data = None
-
-                    # Update status indicator
-                    recording_widget.status_indicator.set_status(False, recording_widget.has_processed_text())
-                    recording_widget.update_status_label()
-
-                    self.show_status_message("Transcript cleared successfully")
-
-                    # Notify that recording was modified
-                    self.recordingItemSelected.emit(recording_widget)
-            except Exception as e:
-                QMessageBox.critical(self, "Error", f"Failed to clear transcript: {e}")
-                logging.error(f"Error clearing transcript: {e}", exc_info=True)
-
-    def clear_processed_text(self, item):
-        """Clear the processed text of a recording."""
-        recording_widget = self.recordings_list.itemWidget(item)
-
-        # Confirm with user
-        confirm = QMessageBox.question(
-            self, "Clear Processed Text",
-            "Are you sure you want to clear the processed text? This cannot be undone.",
-            QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No
-        )
-
-        if confirm == QMessageBox.StandardButton.Yes:
-            try:
-                # Update database
-                recording_id = recording_widget.get_id()
-                db_path = resource_path("./database/database.sqlite")
-                conn = create_connection(db_path)
-                if conn:
-                    update_recording(conn, recording_id, processed_text="", processed_text_formatted=None)
-                    conn.close()
-
-                    # Update recording widget
-                    recording_widget.processed_text = ""
-                    recording_widget.processed_text_formatted_data = None
-
-                    # Update status indicator
-                    recording_widget.status_indicator.set_status(recording_widget.has_transcript(), False)
-                    recording_widget.update_status_label()
-
-                    self.show_status_message("Processed text cleared successfully")
-
-                    # Notify that recording was modified
-                    self.recordingItemSelected.emit(recording_widget)
-            except Exception as e:
-                QMessageBox.critical(self, "Error", f"Failed to clear processed text: {e}")
-                logging.error(f"Error clearing processed text: {e}", exc_info=True)
-
-    def export_recording(self, item):
-        """Export a recording file to another location."""
-        recording_widget = self.recordings_list.itemWidget(item)
-        file_path = recording_widget.file_path
-
-        if not os.path.exists(file_path):
-            QMessageBox.warning(self, "File Not Found", f"The audio file could not be found at: {file_path}")
-            return
-
-        # Ask for save location
-        file_name = os.path.basename(file_path)
-        save_path, _ = QFileDialog.getSaveFileName(
-            self, "Export Recording", file_name, "Audio Files (*.mp3 *.wav *.m4a)"
-        )
-
-        if save_path:
-            try:
-                import shutil
-                shutil.copy2(file_path, save_path)
-                self.show_status_message(f"Exported to {os.path.basename(save_path)}")
-                QMessageBox.information(self, "Success", f"Recording exported to: {save_path}")
-            except Exception as e:
-                QMessageBox.critical(self, "Export Error", f"Failed to export recording: {e}")
-                logging.error(f"Error exporting recording: {e}", exc_info=True)
-
-    def delete_selected_recording(self, item=None):
-        """Delete a recording from the list and database."""
-        # If no item provided, use current selection
-        if item is None:
-            item = self.recordings_list.currentItem()
-
-        if item is not None:
-            # Confirm deletion
-            response = QMessageBox.question(
-                self, 'Delete Recording',
-                'Are you sure you want to delete this recording? This cannot be undone.',
-                QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No
-            )
-
-            if response == QMessageBox.StandardButton.Yes:
-                recording_id = item.data(Qt.ItemDataRole.UserRole)['id']
-                file_path = item.data(Qt.ItemDataRole.UserRole)['full_path']
-
-                try:
-                    # Delete from database
-                    db_path = resource_path("./database/database.sqlite")
-                    conn = create_connection(db_path)
-                    delete_recording(conn, recording_id)
-                    conn.close()
-
-                    # Try to delete the actual file, but continue if it fails
-                    try:
-                        if os.path.exists(file_path):
-                            os.remove(file_path)
-                    except Exception as e:
-                        logging.warning(f"Could not delete file {file_path}: {e}")
-
-                    # Remove from list widget
-                    row = self.recordings_list.row(item)
-                    self.recordings_list.takeItem(row)
-
-                    # Update empty state
-                    self.update_empty_state()
-
-                    self.show_status_message("Recording deleted")
-
-                except Exception as e:
-                    QMessageBox.critical(self, "Error", f"Failed to delete recording: {e}")
-                    logging.error(f"Error deleting recording: {e}", exc_info=True)
-
-    def update_empty_state(self):
-        """Update empty state visibility."""
-        has_visible_items = False
-        for i in range(self.recordings_list.count()):
-            if not self.recordings_list.item(i).isHidden():
-                has_visible_items = True
-                break
-
-        self.empty_label.setVisible(not has_visible_items)
-        if not has_visible_items:
-            self.empty_label.setText("No recordings found. Upload or record audio to get started.")
-
-    def load_recordings(self):
-        """Load recordings from the database and populate the list."""
-        db_path = resource_path("./database/database.sqlite")
-        conn = create_connection(db_path)
-
-        if not conn:
-            QMessageBox.critical(self, "Database Error", "Could not connect to the database.")
-            return
-
-        try:
-            recordings = get_all_recordings(conn)
-            conn.close()
-
-            if not recordings:
-                self.empty_label.setText("No recordings found. Upload or record audio to get started.")
-                self.empty_label.setVisible(True)
-                return
-
-            # Sort recordings by date, newest first
-            sorted_recordings = sorted(
-                recordings,
-                key=lambda r: datetime.datetime.strptime(r[3], "%Y-%m-%d %H:%M:%S"),
-                reverse=True
-            )
-
-            for recording in sorted_recordings:
-                id, filename, file_path, date_created, duration, raw_transcript, processed_text, raw_transcript_formatted, processed_text_formatted = recording
-                self.add_recording_to_list(id, filename, file_path, date_created, duration, raw_transcript,
-                                           processed_text, raw_transcript_formatted, processed_text_formatted)
-
-            # Update empty state
-            self.update_empty_state()
-
-            # Show count in status bar
-            self.show_status_message(f"Loaded {len(recordings)} recording(s)")
-
-        except Exception as e:
-            QMessageBox.critical(self, "Error", f"Failed to load recordings: {e}")
-            logging.error(f"Error loading recordings: {e}", exc_info=True)
-            if conn:
-                conn.close()
-
-    def add_recording_to_list(self, id, filename, file_path, date_created, duration, raw_transcript, processed_text,
-                              raw_transcript_formatted=None, processed_text_formatted=None):
-        """Add a recording to the list widget."""
-        recording_item_widget = RecordingListItem(
-            id, filename, file_path, date_created, duration,
-            raw_transcript, processed_text, raw_transcript_formatted, processed_text_formatted
-        )
-
-        # Set metadata
-        recording_item_widget.metadata = {
-            'id': id,
-            'filename': filename,
-            'full_path': file_path,
-            'date_created': date_created,
-            'duration': duration
-        }
-
-        item = QListWidgetItem(self.recordings_list)
-        item.setSizeHint(recording_item_widget.sizeHint())
-        item.setData(Qt.ItemDataRole.UserRole, recording_item_widget.metadata)
-
-        self.recordings_list.addItem(item)
-        self.recordings_list.setItemWidget(item, recording_item_widget)
-
-    def on_io_complete(self, file_path):
-        """Handle new file addition."""
-        try:
-            # Extract metadata from the file
-            filename = os.path.basename(file_path)
-            date_created = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-
-            # Calculate duration
-            from moviepy.editor import AudioFileClip
-            audio = AudioFileClip(file_path)
-            duration = format_time_duration(audio.duration)
-            audio.close()
-
-            # Add to database
-            db_path = resource_path("./database/database.sqlite")
-            conn = create_connection(db_path)
-            recording_data = (filename, file_path, date_created, duration, "", "")
-            recording_id = create_recording(conn, recording_data)
-            conn.close()
-
-            # Add to UI
-            self.add_recording_to_list(recording_id, filename, file_path, date_created, duration, "", "")
-
-            # Update empty state
-            self.update_empty_state()
-
-            self.show_status_message(f"Added {filename}")
-
-        except Exception as e:
-            QMessageBox.critical(self, "Error", f"Failed to add recording: {e}")
-            logging.error(f"Error adding recording: {e}", exc_info=True)
-
-    def save_recordings(self):
-        """Save all recordings from the list to the database."""
-        db_path = resource_path("./database/database.sqlite")
-        conn = create_connection(db_path)
-
-        if not conn:
-            QMessageBox.critical(self, "Database Error", "Could not connect to the database.")
-            return
-
-        try:
-            for index in range(self.recordings_list.count()):
-                item = self.recordings_list.item(index)
-                recording_item_widget = self.recordings_list.itemWidget(item)
-
-                # Get data from widget
-                raw_transcript = recording_item_widget.get_raw_transcript()
-                processed_text = recording_item_widget.get_processed_text()
-                recording_id = recording_item_widget.get_id()
-
-                # Update database
-                update_recording(conn, recording_id, raw_transcript=raw_transcript, processed_text=processed_text)
-
-            conn.close()
-            logging.info("All recordings saved to database")
-            self.show_status_message("All recordings saved")
-
-        except Exception as e:
-            QMessageBox.critical(self, "Error", f"Failed to save recordings: {e}")
-            logging.error(f"Error saving recordings: {e}", exc_info=True)
-            if conn:
-                conn.close()
-
-    def show_status_message(self, message, timeout=3000):
-        """Show a message in the status bar."""
-        self.status_bar.showMessage(message, timeout)
-        if not self.status_bar.isVisible():
-            self.status_bar.show()
-            # Hide after timeout
-            QTimer.singleShot(timeout, lambda: self.status_bar.hide() if not self.status_bar.currentMessage() else None)
+         # Content unchanged, using ui_utils
+         help_text = """
+         <h3>Managing Recordings</h3>
+         <p><b>Folders:</b> Use the tree view to organize recordings. Drag recordings onto folders. Right-click for options like New Folder, Rename, Delete.</p>
+         <p><b>Search/Filter:</b> (Coming Soon) Use controls above the list to find specific recordings.</p>
+         <p><b>Actions:</b> Right-click a recording for options like Rename, Show in Explorer, Export, Clear Transcript/Processed Text, Delete.</p>
+         <p><b>Import:</b> Use the Import button in the toolbar to add existing media files.</p>
+         <p><b>Batch Actions:</b> (Coming Soon) Select multiple recordings (Ctrl+Click or Shift+Click) and use toolbar actions.</p>
+         """
+         show_info_message(self, "Recordings Help", help_text)

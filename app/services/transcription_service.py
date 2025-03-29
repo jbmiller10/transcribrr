@@ -1,10 +1,15 @@
 import os
 import torch
 import logging
+import warnings
 from typing import Optional, List, Dict, Any, Union, Tuple
 from transformers import AutoModelForSpeechSeq2Seq, AutoProcessor, pipeline
 from pyannote.audio import Pipeline
+
+# Filter torchaudio warning about set_audio_backend
+warnings.filterwarnings("ignore", message="torchaudio._backend.set_audio_backend has been deprecated")
 from torchaudio import functional as F
+
 import numpy as np
 import requests
 from openai import OpenAI

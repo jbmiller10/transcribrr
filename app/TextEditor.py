@@ -1,26 +1,28 @@
 import sys
+import os
+import logging
 from PyQt6.QtWidgets import (
     QApplication, QMainWindow, QTextEdit, QToolBar, QColorDialog, QWidget,
     QWidgetAction, QFontComboBox, QComboBox, QSizePolicy, QLabel, QToolButton, QMenu, QFileDialog,
     QMessageBox, QPlainTextEdit, QPushButton, QStatusBar, QDialog, QVBoxLayout,
-    QHBoxLayout, QCheckBox, QTabWidget, QScrollArea
+    QHBoxLayout, QCheckBox, QTabWidget, QScrollArea, QLineEdit
 )
 from PyQt6.QtGui import (
     QIcon, QFont, QColor, QTextListFormat, QActionGroup, QTextCursor, QAction, QMovie,
     QTextCharFormat, QKeySequence, QPixmap, QTextDocument, QTextDocumentWriter,
-    QShortcut  # Import QShortcut from QtGui, not QtWidgets
+    QShortcut
 )
 from PyQt6.QtCore import Qt, QSize, pyqtSignal, QUrl, QTimer, QMimeData
 from PyQt6.QtPrintSupport import QPrinter, QPrintDialog, QPrintPreviewDialog
 import docx
 from htmldocx import HtmlToDocx
 from PyPDF2 import PdfFileWriter
-import logging
+
 from app.utils import resource_path
-import os
+from app.ui_utils import SpinnerManager, show_error_message, show_info_message
 
 # Configure logging
-logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
+logger = logging.getLogger('transcribrr')
 
 
 class FindReplaceDialog(QDialog):
@@ -117,7 +119,7 @@ class FindReplaceDialog(QDialog):
             found = self.editor.editor.find(text, flags)
 
             if not found:
-                QMessageBox.information(self, "Search Result", f"No occurrences of '{text}' found.")
+                show_info_message(self, "Search Result", f"No occurrences of '{text}' found.")
 
         return found
 
@@ -162,9 +164,9 @@ class FindReplaceDialog(QDialog):
             count += 1
 
         if count == 0:
-            QMessageBox.information(self, "Replace Result", f"No occurrences of '{text}' found.")
+            show_info_message(self, "Replace Result", f"No occurrences of '{text}' found.")
         else:
-            QMessageBox.information(self, "Replace Result", f"Replaced {count} occurrence(s) of '{text}'.")
+            show_info_message(self, "Replace Result", f"Replaced {count} occurrence(s) of '{text}'.")
 
         # Restore position
         cursor = self.editor.editor.textCursor()
@@ -187,6 +189,9 @@ class TextEditor(QMainWindow):
         self._toolbar_actions = {}
         self.is_markdown_mode = False  # Track current mode (unused but kept for completeness)
         self.find_replace_dialog = None
+        
+        # Initialize spinner manager
+        self.spinner_manager = SpinnerManager(self)
 
         # Setup the toolbar and connect formatting updates
         self.create_toolbar()
@@ -253,7 +258,7 @@ class TextEditor(QMainWindow):
     def create_toolbar(self):
         self.toolbar = QToolBar("Edit")
         self.toolbar.setMovable(False)
-        self.toolbar.setIconSize(QSize(20, 20))
+        self.toolbar.setIconSize(QSize(16, 16))
         self.addToolBar(self.toolbar)
 
         # Font family selector
@@ -314,19 +319,26 @@ class TextEditor(QMainWindow):
         # Transcription and GPT-4 buttons
         self.add_action_with_spinner(
             'start_transcription', resource_path('./icons/transcribe.svg'), self.start_transcription,
-            'Start Transcription (Ctrl+T)', './icons/spinner.gif', 'transcription_spinner'
+            'Start Transcription (Ctrl+T)', './icons/spinner.gif', 'transcription'
         )
 
         self.add_action_with_spinner(
             'process_with_gpt4', resource_path('./icons/magic_wand.svg'), self.process_with_gpt4,
-            'Process with GPT-4 (Ctrl+G)', './icons/spinner.gif', 'gpt_spinner'
+            'Process with GPT-4 (Ctrl+G)', './icons/spinner.gif', 'gpt'
         )
 
-        # Smart Format button
-        self.add_toolbar_action(
-            'smart_format', resource_path('./icons/smart_format.svg'), self.smart_format_text,
-            'Smart Format (Ctrl+Shift+F)', checkable=False
-        )
+        # Smart Format button - using custom widget action for consistency with other control buttons
+        smart_format_button = QPushButton()
+        smart_format_button.setIcon(QIcon(resource_path('./icons/smart_format.svg')))
+        smart_format_button.setIconSize(QSize(18, 18))
+        smart_format_button.setFixedSize(28, 28)
+        smart_format_button.setToolTip('Smart Format (Ctrl+Shift+F)')
+        smart_format_button.clicked.connect(self.smart_format_text)
+        
+        smart_format_action = QWidgetAction(self.toolbar)
+        smart_format_action.setDefaultWidget(smart_format_button)
+        self.toolbar.addAction(smart_format_action)
+        self._toolbar_actions['smart_format'] = smart_format_action
 
         # Word count display
         self.word_count_label = QLabel("Words: 0")
@@ -442,50 +454,47 @@ class TextEditor(QMainWindow):
         self.toolbar.addWidget(export_button)
 
     def add_action_with_spinner(self, action_name, icon_path, callback, tooltip, spinner_icon, spinner_name):
-        action_button = self.add_toolbar_action(
-            action_name, resource_path(icon_path), callback, tooltip, checkable=False
+        """Add an action with a spinner to the toolbar using SpinnerManager."""
+        # Use the SpinnerManager to create the spinner
+        action = self.spinner_manager.create_spinner(
+            spinner_name,
+            self.toolbar,
+            icon_path,
+            tooltip,
+            callback,
+            spinner_icon
         )
-        spinner_movie = QMovie(resource_path(spinner_icon))
-        spinner_movie.setScaledSize(QSize(30, 30))
-        spinner_label = QLabel()
-        spinner_label.setMovie(spinner_movie)
-        spinner_label.setFixedSize(QSize(30, 30))
-        spinner_action = QWidgetAction(self.toolbar)
-        spinner_action.setDefaultWidget(spinner_label)
-        self.toolbar.addAction(spinner_action)
-        spinner_action.setVisible(False)
-        setattr(self, f"{spinner_name}_button", action_button)
-        setattr(self, f"{spinner_name}_movie", spinner_movie)
-        setattr(self, f"{spinner_name}_action", spinner_action)
+        
+        # Store reference in toolbar actions
+        self._toolbar_actions[action_name] = action
 
     def toggle_spinner(self, spinner_name):
-        button = getattr(self, f"{spinner_name}_button", None)
-        spinner_action = getattr(self, f"{spinner_name}_action", None)
-        spinner_movie = getattr(self, f"{spinner_name}_movie", None)
-
-        if not all([button, spinner_action, spinner_movie]):
-            logging.error(f"Spinner components not found for {spinner_name}")
-            return
-
-        if button.isVisible():
-            spinner_action.setVisible(True)
-            spinner_movie.start()
-            button.setVisible(False)
+        """Toggle spinner visibility using SpinnerManager."""
+        is_active = self.spinner_manager.toggle_spinner(spinner_name)
+        
+        if is_active:
             self.show_status_message("Processing...")
         else:
-            spinner_movie.stop()
-            spinner_action.setVisible(False)
-            button.setVisible(True)
             self.hide_status_message()
 
     def toggle_gpt_spinner(self):
-        self.toggle_spinner('gpt_spinner')
+        """Toggle the GPT spinner."""
+        self.toggle_spinner('gpt')
 
     def toggle_transcription_spinner(self):
-        self.toggle_spinner('transcription_spinner')
+        """Toggle the transcription spinner."""
+        self.toggle_spinner('transcription')
 
     def add_toolbar_action(self, action_name, icon_path, callback, tooltip, checkable=False):
-        action = QAction(QIcon(icon_path) if icon_path else None, tooltip, self)
+        # Check if icon file exists
+        if icon_path and os.path.exists(icon_path):
+            action = QAction(QIcon(icon_path), tooltip, self)
+        else:
+            # Use text-only action if icon is missing
+            action = QAction(tooltip, self)
+            if icon_path:
+                logger.warning(f"Icon not found: {icon_path}")
+                
         action.setCheckable(checkable)
         if callable(callback):
             action.triggered.connect(callback)
@@ -503,7 +512,7 @@ class TextEditor(QMainWindow):
             self.editor.setFontPointSize(size_float)
             self.show_status_message(f"Font size set to {size}")
         except ValueError:
-            QMessageBox.warning(self, "Invalid Font Size", "Please enter a valid number for font size.")
+            show_error_message(self, "Invalid Font Size", "Please enter a valid number for font size.")
 
     def bold_text(self):
         weight = QFont.Weight.Bold if not self.editor.fontWeight() == QFont.Weight.Bold else QFont.Weight.Normal
@@ -622,10 +631,10 @@ class TextEditor(QMainWindow):
                 self.editor.document().print(printer)
 
                 self.show_status_message(f"Document exported to {os.path.basename(file_path)}")
-                QMessageBox.information(self, "Export to PDF", f"Document successfully exported to {file_path}")
+                show_info_message(self, "Export to PDF", f"Document successfully exported to {file_path}")
             except Exception as e:
-                QMessageBox.critical(self, "Export Error", f"Failed to export to PDF: {e}")
-                logging.error(f"PDF export error: {e}")
+                show_error_message(self, "Export Error", f"Failed to export to PDF: {e}")
+                logger.error(f"PDF export error: {e}")
 
     def export_to_word(self):
         file_path, _ = QFileDialog.getSaveFileName(self, "Export to Word", "", "Word Documents (*.docx)")
@@ -641,10 +650,10 @@ class TextEditor(QMainWindow):
                 doc.save(file_path)
 
                 self.show_status_message(f"Document exported to {os.path.basename(file_path)}")
-                QMessageBox.information(self, "Export to Word", f"Document successfully exported to {file_path}")
+                show_info_message(self, "Export to Word", f"Document successfully exported to {file_path}")
             except Exception as e:
-                QMessageBox.critical(self, "Export Error", f"Failed to export to Word: {e}")
-                logging.error(f"Word export error: {e}")
+                show_error_message(self, "Export Error", f"Failed to export to Word: {e}")
+                logger.error(f"Word export error: {e}")
 
     def export_to_text(self):
         file_path, _ = QFileDialog.getSaveFileName(self, "Export to Plain Text", "", "Text Files (*.txt)")
@@ -658,10 +667,10 @@ class TextEditor(QMainWindow):
                     file.write(plain_text)
 
                 self.show_status_message(f"Document exported to {os.path.basename(file_path)}")
-                QMessageBox.information(self, "Export to Text", f"Document successfully exported to {file_path}")
+                show_info_message(self, "Export to Text", f"Document successfully exported to {file_path}")
             except Exception as e:
-                QMessageBox.critical(self, "Export Error", f"Failed to export to text: {e}")
-                logging.error(f"Text export error: {e}")
+                show_error_message(self, "Export Error", f"Failed to export to text: {e}")
+                logger.error(f"Text export error: {e}")
 
     def export_to_html(self):
         """Export document to HTML file."""
@@ -676,10 +685,10 @@ class TextEditor(QMainWindow):
                     file.write(html)
 
                 self.show_status_message(f"Document exported to {os.path.basename(file_path)}")
-                QMessageBox.information(self, "Export to HTML", f"Document successfully exported to {file_path}")
+                show_info_message(self, "Export to HTML", f"Document successfully exported to {file_path}")
             except Exception as e:
-                QMessageBox.critical(self, "Export Error", f"Failed to export to HTML: {e}")
-                logging.error(f"HTML export error: {e}")
+                show_error_message(self, "Export Error", f"Failed to export to HTML: {e}")
+                logger.error(f"HTML export error: {e}")
 
     def show_status_message(self, message, timeout=3000):
         """Show a temporary status message."""
@@ -704,7 +713,7 @@ class TextEditor(QMainWindow):
             formatted_text = self.editor.toHtml()
             return formatted_text
         except Exception as e:
-            logging.error(f"Error serializing text document: {e}")
+            logger.error(f"Error serializing text document: {e}")
             return None
 
     def deserialize_text_document(self, text_data):
@@ -721,7 +730,7 @@ class TextEditor(QMainWindow):
                 else:
                     self.editor.setPlainText(text_data)
             except Exception as e:
-                logging.error(f"Error deserializing text document: {e}")
+                logger.error(f"Error deserializing text document: {e}")
                 self.editor.clear()
                 self.editor.setPlainText("Error loading document.")
         else:
@@ -764,7 +773,7 @@ class TextEditor(QMainWindow):
         """Emit signal to request smart formatting with the current text."""
         current_text = self.editor.toPlainText()
         if not current_text.strip():
-            QMessageBox.warning(self, "Empty Text", "Please add some text before formatting.")
+            show_error_message(self, "Empty Text", "Please add some text before formatting.")
             return
 
         # Confirm with user if text is long
@@ -878,12 +887,12 @@ class TextEditor(QMainWindow):
                 self.show_status_message(f"Loaded file: {os.path.basename(file_path)}")
 
             else:
-                QMessageBox.warning(self, "Unsupported File",
-                                    f"The file type {extension} is not supported for direct editing.")
+                show_error_message(self, "Unsupported File",
+                            f"The file type {extension} is not supported for direct editing.")
 
         except Exception as e:
-            QMessageBox.critical(self, "Error Loading File", f"Failed to load file: {e}")
-            logging.error(f"Error loading file {file_path}: {e}")
+            show_error_message(self, "Error Loading File", f"Failed to load file: {e}")
+            logger.error(f"Error loading file {file_path}: {e}")
 
 
 # For standalone testing

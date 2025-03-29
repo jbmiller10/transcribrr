@@ -3,7 +3,12 @@ import os
 import logging
 import json
 import traceback
+import warnings
 from typing import Tuple, Dict, Any, List, Optional
+
+# Filter urllib3 LibreSSL warning
+warnings.filterwarnings("ignore", message="urllib3 v2 only supports OpenSSL 1.1.1+, currently the 'ssl' module is compiled with")
+
 from PyQt6.QtWidgets import (
     QApplication, QMainWindow, QMessageBox, QSplashScreen, QVBoxLayout,
     QLabel, QProgressBar, QWidget, QStyleFactory
