@@ -11,6 +11,9 @@ Transcribrr is a desktop application designed for converting audio into text and
 - **GPT Processing**: Use OpenAI's GPT models for text processing, summarization, and refinement.
 - **Transcription Management**: Adjust quality settings, manage preset prompts, and customize GPT processing parameters.
 - **Multiple Input Options**: Support for local files, YouTube URLs, or direct recordings.
+- **Recent Recordings**: Easily access and manage your previous transcriptions.
+- **Text Editor**: Built-in rich text editor with formatting options for your transcripts.
+- **Database Integration**: Improved storage and retrieval of transcriptions and settings.
 
 ## Installation
 
@@ -79,3 +82,17 @@ Before using Transcribrr, configure your OpenAI API keys through the 'Settings' 
 2. Upload a file or paste a YouTube URL into the app to begin.
 3. Click "Start Transcription" to convert audio to text.
 4. Utilize the "Process with GPT-4" button for refining transcripts with GPT settings.
+5. Save and manage your transcriptions through the Recent Recordings panel.
+6. Format and edit your transcripts using the built-in text editor.
+
+## Project Status
+
+This project is currently undergoing a major refactoring to improve:
+- Database management with a dedicated DatabaseManager
+- Service-oriented architecture with clear separation of concerns
+- Enhanced UI components with better reusability
+- Improved file and recording management
+
+## Contributing
+
+Contributions are welcome! Feel free to submit pull requests or open issues for bugs and feature requests.
