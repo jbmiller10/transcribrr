@@ -71,14 +71,9 @@ class MainTranscriptionWidget(ResponsiveWidget):
         self._load_gpt_params_from_config()
 
         # UI Initialization - Create UI elements first before connecting signals or using them
-        self.top_toolbar = QHBoxLayout()
-        
-        # Initialize all UI components
-        self.init_main_content()  # This defines prompt_widget
-        self.init_top_toolbar()   # This refers to prompt_widget in signals
-        
-        # Add to layout after initialization
-        self.layout.addLayout(self.top_toolbar)
+        # Initialize all UI components - first create controls, then add to main content
+        self.init_top_toolbar()   # Create the controls first
+        self.init_main_content()  # Use the controls in the main content
         
         # Connect signals after UI is fully initialized
         self.connect_signals()
@@ -132,6 +127,8 @@ class MainTranscriptionWidget(ResponsiveWidget):
             self.refinement_submit_button.clicked.connect(self.start_refinement_processing)
 
     def init_top_toolbar(self):
+        # Create the elements but do not add them to layout here
+        # They will be added directly to the editor widget in init_main_content
         self.gpt_prompt_dropdown = QComboBox()
         
         self.edit_prompt_button = QPushButton("Edit") # Shorter text
@@ -150,16 +147,6 @@ class MainTranscriptionWidget(ResponsiveWidget):
         self.settings_button.setToolTip("Open Settings")
         self.settings_button.setIconSize(QSize(18, 18))
         self.settings_button.setFixedSize(28, 28)
-
-        self.top_toolbar.addWidget(QLabel("Prompt:"))
-        self.top_toolbar.addWidget(self.gpt_prompt_dropdown, 1) # Allow dropdown to stretch
-        self.top_toolbar.addWidget(self.edit_prompt_button)
-        self.top_toolbar.addStretch(1)
-        self.top_toolbar.addWidget(self.raw_transcript_label)
-        self.top_toolbar.addWidget(self.mode_switch)
-        self.top_toolbar.addWidget(self.gpt_processed_label)
-        self.top_toolbar.addStretch(1)
-        self.top_toolbar.addWidget(self.settings_button)
         
         # Load prompts only after all UI elements are created
         self.load_prompts_to_dropdown()
@@ -193,12 +180,36 @@ class MainTranscriptionWidget(ResponsiveWidget):
         content_layout = QVBoxLayout(self.content_widget)
         content_layout.setContentsMargins(0, 0, 0, 0)
         content_layout.setSpacing(5)
+        
+        # Editor widget with its own controls above
+        editor_widget = QWidget()
+        editor_layout = QVBoxLayout(editor_widget)
+        editor_layout.setContentsMargins(0, 0, 0, 0)
+        editor_layout.setSpacing(5)
+        
+        # Control bar above the editor
+        control_bar = QHBoxLayout()
+        control_bar.addWidget(QLabel("Prompt:"))
+        control_bar.addWidget(self.gpt_prompt_dropdown, 1)  # Allow dropdown to stretch
+        control_bar.addWidget(self.edit_prompt_button)
+        control_bar.addStretch(1)
+        control_bar.addWidget(self.raw_transcript_label)
+        control_bar.addWidget(self.mode_switch)
+        control_bar.addWidget(self.gpt_processed_label)
+        control_bar.addStretch(1)
+        control_bar.addWidget(self.settings_button)
+        editor_layout.addLayout(control_bar)
 
+        # GPT parameters
         self.init_gpt_parameters() # Initialize GPT param UI
-        content_layout.addLayout(self.gpt_parameter_layout)
-
+        editor_layout.addLayout(self.gpt_parameter_layout)
+        
+        # Main text editor
         self.transcript_text = TextEditor() # The rich text editor
-        content_layout.addWidget(self.transcript_text)
+        editor_layout.addWidget(self.transcript_text)
+        
+        # Add the editor widget to the main content layout
+        content_layout.addWidget(editor_widget)
 
         # --- Refinement Input Area ---
         self.refinement_widget = QWidget()

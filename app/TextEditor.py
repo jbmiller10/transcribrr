@@ -33,15 +33,24 @@ class FindReplaceDialog(QDialog):
         self.editor = editor
         self.setWindowTitle("Find and Replace")
         self.setModal(False)
-        self.setFixedWidth(400)
-
+        self.setMinimumWidth(450)
+        
+        # Track whether we've wrapped around in the search
+        self.search_wrapped = False
+        
+        # Store the start position when beginning a search
+        self.search_start_position = None
+        
         layout = QVBoxLayout(self)
+        layout.setSpacing(8)
 
         # Find section
         find_layout = QHBoxLayout()
         find_label = QLabel("Find:")
         self.find_text = QLineEdit()
         self.find_text.setPlaceholderText("Enter text to find")
+        # Return key in find field triggers find
+        self.find_text.returnPressed.connect(self.find_next)
         find_layout.addWidget(find_label)
         find_layout.addWidget(self.find_text)
         layout.addLayout(find_layout)
@@ -51,75 +60,175 @@ class FindReplaceDialog(QDialog):
         replace_label = QLabel("Replace:")
         self.replace_text = QLineEdit()
         self.replace_text.setPlaceholderText("Enter replacement text")
+        # Return key in replace field triggers replace
+        self.replace_text.returnPressed.connect(self.replace)
         replace_layout.addWidget(replace_label)
         replace_layout.addWidget(self.replace_text)
         layout.addLayout(replace_layout)
 
-        # Options
-        options_layout = QHBoxLayout()
+        # Advanced options layout
+        options_layout = QVBoxLayout()
+        
+        # Basic options (first row)
+        basic_options_layout = QHBoxLayout()
         self.case_sensitive = QCheckBox("Case sensitive")
         self.whole_words = QCheckBox("Whole words only")
-        options_layout.addWidget(self.case_sensitive)
-        options_layout.addWidget(self.whole_words)
+        self.search_backwards = QCheckBox("Search backwards")
+        basic_options_layout.addWidget(self.case_sensitive)
+        basic_options_layout.addWidget(self.whole_words)
+        basic_options_layout.addWidget(self.search_backwards)
+        options_layout.addLayout(basic_options_layout)
+        
+        # Additional options (second row)
+        adv_options_layout = QHBoxLayout()
+        self.highlight_all = QCheckBox("Highlight matches")
+        self.highlight_all.stateChanged.connect(self.toggle_highlight_all)
+        adv_options_layout.addWidget(self.highlight_all)
+        options_layout.addLayout(adv_options_layout)
+        
         layout.addLayout(options_layout)
 
         # Buttons
         button_layout = QHBoxLayout()
         self.find_button = QPushButton("Find Next")
+        self.find_prev_button = QPushButton("Find Previous")
         self.replace_button = QPushButton("Replace")
         self.replace_all_button = QPushButton("Replace All")
         self.close_button = QPushButton("Close")
 
         button_layout.addWidget(self.find_button)
+        button_layout.addWidget(self.find_prev_button)
         button_layout.addWidget(self.replace_button)
         button_layout.addWidget(self.replace_all_button)
         button_layout.addWidget(self.close_button)
         layout.addLayout(button_layout)
+        
+        # Status message
+        self.status_label = QLabel("")
+        self.status_label.setStyleSheet("color: gray;")
+        layout.addWidget(self.status_label)
 
         # Connect signals
         self.find_button.clicked.connect(self.find_next)
+        self.find_prev_button.clicked.connect(self.find_previous)
         self.replace_button.clicked.connect(self.replace)
         self.replace_all_button.clicked.connect(self.replace_all)
         self.close_button.clicked.connect(self.close)
         self.find_text.textChanged.connect(self.update_buttons)
+        
+        # Connect checkbox signals
+        self.case_sensitive.stateChanged.connect(self.reset_search)
+        self.whole_words.stateChanged.connect(self.reset_search)
+        
+        # Track if dialog was closed directly
+        self.finished.connect(self.cleanup_on_close)
 
         # Initial button state
         self.update_buttons()
+        
+        # Extra format for highlight
+        self.highlight_format = QTextCharFormat()
+        self.highlight_format.setBackground(QColor(255, 255, 0, 100))  # Light yellow with transparency
+        
+        # Store original selection formats for restore
+        self.original_selection_formats = []
+        
+    def reset_search(self):
+        """Reset the search state when options change."""
+        self.search_wrapped = False
+        self.search_start_position = None
+        self.status_label.clear()
+        
+        # If highlight all is active, refresh the highlights
+        if self.highlight_all.isChecked():
+            self.toggle_highlight_all(self.highlight_all.checkState())
 
     def update_buttons(self):
         """Enable/disable buttons based on input."""
         has_find_text = bool(self.find_text.text())
         self.find_button.setEnabled(has_find_text)
+        self.find_prev_button.setEnabled(has_find_text)
         self.replace_button.setEnabled(has_find_text)
         self.replace_all_button.setEnabled(has_find_text)
+        
+        if has_find_text:
+            self.status_label.setText("Ready to search")
+        else:
+            self.status_label.clear()
 
-    def find_next(self):
-        """Find the next occurrence of the search text."""
-        text = self.find_text.text()
-        if not text:
-            return
-
-        # Set search flags
+    def get_search_flags(self):
+        """Get the search flags based on current options."""
         flags = QTextDocument.FindFlag(0)
         if self.case_sensitive.isChecked():
             flags |= QTextDocument.FindFlag.FindCaseSensitively
         if self.whole_words.isChecked():
             flags |= QTextDocument.FindFlag.FindWholeWords
+        if self.search_backwards.isChecked() or self._is_find_previous:
+            flags |= QTextDocument.FindFlag.FindBackward
+            
+        return flags
 
-        # Find text
+    def find_next(self):
+        """Find the next occurrence of the search text."""
+        self._is_find_previous = False
+        return self._find_text()
+        
+    def find_previous(self):
+        """Find the previous occurrence of the search text."""
+        self._is_find_previous = True
+        return self._find_text()
+        
+    def _find_text(self):
+        """Core implementation of text finding."""
+        text = self.find_text.text()
+        if not text:
+            return False
+            
+        # Get cursor and save position if first search
         cursor = self.editor.editor.textCursor()
-        # Start from current position
+        if self.search_start_position is None:
+            self.search_start_position = cursor.position()
+            self.search_wrapped = False
+
+        # Set search flags
+        flags = self.get_search_flags()
+        
+        # Find text
         found = self.editor.editor.find(text, flags)
 
         if not found:
-            # If not found from current position, try from beginning
-            cursor = self.editor.editor.textCursor()
-            cursor.movePosition(QTextCursor.MoveOperation.Start)
+            # If we've already wrapped, show not found
+            if self.search_wrapped:
+                self.status_label.setText(f"No occurrences of '{text}' found.")
+                # Reset for next search
+                self.search_wrapped = False
+                cursor.setPosition(self.search_start_position)
+                self.editor.editor.setTextCursor(cursor)
+                return False
+                
+            # If not found and we haven't wrapped yet, try from beginning or end
+            if flags & QTextDocument.FindFlag.FindBackward:
+                # If searching backwards, start from the end
+                cursor.movePosition(QTextCursor.MoveOperation.End)
+            else:
+                # If searching forwards, start from the beginning
+                cursor.movePosition(QTextCursor.MoveOperation.Start)
+                
             self.editor.editor.setTextCursor(cursor)
             found = self.editor.editor.find(text, flags)
-
-            if not found:
-                show_info_message(self, "Search Result", f"No occurrences of '{text}' found.")
+            
+            if found:
+                self.search_wrapped = True
+                self.status_label.setText("Search wrapped to the beginning/end")
+            else:
+                self.status_label.setText(f"No occurrences of '{text}' found.")
+                cursor.setPosition(self.search_start_position)
+                self.editor.editor.setTextCursor(cursor)
+        else:
+            if self.search_wrapped:
+                self.status_label.setText("Search wrapped to the beginning/end")
+            else:
+                self.status_label.setText(f"Found '{text}'")
 
         return found
 
@@ -128,9 +237,11 @@ class FindReplaceDialog(QDialog):
         cursor = self.editor.editor.textCursor()
         if cursor.hasSelection():
             cursor.insertText(self.replace_text.text())
+            self.status_label.setText("Replaced one occurrence")
 
         # Find the next occurrence
-        self.find_next()
+        self._is_find_previous = False  # Always find next after replace
+        self._find_text()
 
     def replace_all(self):
         """Replace all occurrences of the search text."""
@@ -140,38 +251,114 @@ class FindReplaceDialog(QDialog):
         if not text:
             return
 
-        # Save cursor position
-        cursor = self.editor.editor.textCursor()
-        cursor_position = cursor.position()
+        # Begin undo sequence
+        self.editor.editor.document().beginEditBlock()
+        
+        try:
+            # Save cursor position
+            cursor = self.editor.editor.textCursor()
+            cursor_position = cursor.position()
 
-        # Move to beginning
-        cursor.movePosition(QTextCursor.MoveOperation.Start)
-        self.editor.editor.setTextCursor(cursor)
+            # Move to beginning
+            cursor.movePosition(QTextCursor.MoveOperation.Start)
+            self.editor.editor.setTextCursor(cursor)
 
-        # Set search flags
+            # Set search flags - always forward for replace all
+            flags = QTextDocument.FindFlag(0)
+            if self.case_sensitive.isChecked():
+                flags |= QTextDocument.FindFlag.FindCaseSensitively
+            if self.whole_words.isChecked():
+                flags |= QTextDocument.FindFlag.FindWholeWords
+
+            # Count and replace all occurrences
+            count = 0
+            while self.editor.editor.find(text, flags):
+                # Replace text
+                cursor = self.editor.editor.textCursor()
+                cursor.insertText(replacement)
+                count += 1
+
+            if count == 0:
+                self.status_label.setText(f"No occurrences of '{text}' found.")
+            else:
+                self.status_label.setText(f"Replaced {count} occurrence(s) of '{text}'.")
+
+            # Restore position
+            cursor = self.editor.editor.textCursor()
+            cursor.setPosition(cursor_position)
+            self.editor.editor.setTextCursor(cursor)
+            
+            # If highlight all was active, refresh
+            if self.highlight_all.isChecked():
+                self.toggle_highlight_all(True)
+                
+        finally:
+            # End undo sequence
+            self.editor.editor.document().endEditBlock()
+    
+    def toggle_highlight_all(self, state):
+        """Highlight all matches of the search text."""
+        # Clear any existing highlights
+        self.clear_all_highlights()
+        
+        if not state or not self.find_text.text():
+            return
+            
+        # Get search parameters
+        text = self.find_text.text()
+        
+        # Only use case sensitivity and whole words for highlighting
         flags = QTextDocument.FindFlag(0)
         if self.case_sensitive.isChecked():
             flags |= QTextDocument.FindFlag.FindCaseSensitively
         if self.whole_words.isChecked():
             flags |= QTextDocument.FindFlag.FindWholeWords
-
-        # Count and replace all occurrences
+            
+        # Save current cursor
+        cursor = self.editor.editor.textCursor()
+        saved_position = cursor.position()
+        
+        # Start from beginning
+        cursor.movePosition(QTextCursor.MoveOperation.Start)
+        self.editor.editor.setTextCursor(cursor)
+        
+        # Find and highlight all matches
         count = 0
         while self.editor.editor.find(text, flags):
-            # Replace text
+            # Get current selection
             cursor = self.editor.editor.textCursor()
-            cursor.insertText(replacement)
+            
+            # Store the format for later restoration
+            extra_selection = QTextEdit.ExtraSelection()
+            extra_selection.cursor = cursor
+            extra_selection.format = self.highlight_format
+            self.original_selection_formats.append(extra_selection)
+            
             count += 1
-
-        if count == 0:
-            show_info_message(self, "Replace Result", f"No occurrences of '{text}' found.")
-        else:
-            show_info_message(self, "Replace Result", f"Replaced {count} occurrence(s) of '{text}'.")
-
-        # Restore position
-        cursor = self.editor.editor.textCursor()
-        cursor.setPosition(cursor_position)
+        
+        # Show extra selections
+        self.editor.editor.setExtraSelections(self.original_selection_formats)
+        
+        # Restore cursor position
+        cursor.setPosition(saved_position)
         self.editor.editor.setTextCursor(cursor)
+        
+        if count > 0:
+            self.status_label.setText(f"Highlighted {count} matches")
+            
+    def clear_all_highlights(self):
+        """Clear all highlighted matches."""
+        self.original_selection_formats = []
+        self.editor.editor.setExtraSelections([])
+        
+    def cleanup_on_close(self):
+        """Clear any highlights when dialog is closed."""
+        self.clear_all_highlights()
+        
+    def closeEvent(self, event):
+        """Handle dialog close events."""
+        self.cleanup_on_close()
+        super().closeEvent(event)
 
 
 class TextEditor(QMainWindow):
@@ -187,7 +374,6 @@ class TextEditor(QMainWindow):
         self.editor = QTextEdit()
         self.setCentralWidget(self.editor)
         self._toolbar_actions = {}
-        self.is_markdown_mode = False  # Track current mode (unused but kept for completeness)
         self.find_replace_dialog = None
         
         # Initialize spinner manager
@@ -200,6 +386,11 @@ class TextEditor(QMainWindow):
         # Connect signals for formatting updates
         self.editor.cursorPositionChanged.connect(self.update_formatting)
         self.editor.selectionChanged.connect(self.update_formatting)
+        
+        # Connect text change signal for more responsive word count
+        self.editor.textChanged.connect(self.on_text_changed)
+        self._word_count_dirty = True
+        self._update_count_pending = False
 
         # Set default font
         default_font = QFont("Arial", 12)
@@ -212,13 +403,20 @@ class TextEditor(QMainWindow):
 
         # Enable drag and drop
         self.editor.setAcceptDrops(True)
+        self.setAcceptDrops(True)  # Also allow drops on the main window
+
+        # Set document title for accessibility
+        self.editor.document().setMetaInformation(QTextDocument.MetaInformation.DocumentTitle, "Transcript Editor")
+
+        # Enable undo/redo history
+        self.editor.setUndoRedoEnabled(True)
 
         # Initialize formatting
         self.update_formatting()
 
-        # Word count timer
+        # Word count timer (less frequent updates as a backup)
         self.word_count_timer = QTimer(self)
-        self.word_count_timer.timeout.connect(self.update_word_count)
+        self.word_count_timer.timeout.connect(self.delayed_word_count_update)
         self.word_count_timer.start(2000)  # Update every 2 seconds
 
     def setup_keyboard_shortcuts(self):
@@ -619,41 +817,221 @@ class TextEditor(QMainWindow):
         preview.exec()
 
     def export_to_pdf(self):
+        """Export document to PDF with formatting preserved - using multiple fallback approaches."""
         file_path, _ = QFileDialog.getSaveFileName(self, "Export to PDF", "", "PDF Files (*.pdf)")
         if file_path:
+            if not file_path.endswith('.pdf'):
+                file_path += '.pdf'
+                
+            # Try multiple PDF generation approaches in sequence
+            
+            # Approach 1: Direct printing (simplest but may not preserve formatting well)
             try:
-                if not file_path.endswith('.pdf'):
-                    file_path += '.pdf'
-
+                # Simple approach - just print the document directly
                 printer = QPrinter(QPrinter.PrinterMode.HighResolution)
                 printer.setOutputFormat(QPrinter.OutputFormat.PdfFormat)
                 printer.setOutputFileName(file_path)
-                self.editor.document().print(printer)
-
-                self.show_status_message(f"Document exported to {os.path.basename(file_path)}")
-                show_info_message(self, "Export to PDF", f"Document successfully exported to {file_path}")
+                
+                # Print directly
+                success = self.editor.document().print(printer)
+                
+                if success:
+                    self.show_status_message(f"Document exported to {os.path.basename(file_path)}")
+                    show_info_message(self, "Export to PDF", f"Document successfully exported to {file_path}")
+                    return
+                
+            except Exception as e1:
+                logger.debug(f"Basic PDF export failed: {e1}")
+                # Continue to next approach
+            
+            # Approach 2: Export to HTML then create PDF from that
+            try:
+                # Export HTML to a temporary file
+                import tempfile
+                html_file = tempfile.NamedTemporaryFile(suffix='.html', delete=False)
+                html_path = html_file.name
+                html_file.close()
+                
+                # Get formatted HTML with proper styles
+                html = self.editor.toHtml()
+                
+                # Add proper styling to ensure good PDF output
+                styled_html = f"""<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <style>
+        body {{
+            font-family: Arial, sans-serif;
+            font-size: 12pt;
+            line-height: 1.5;
+            margin: 1.5cm;
+        }}
+        * {{ 
+            font-size: 12pt;
+        }}
+    </style>
+</head>
+<body>
+{self._extract_body_content(html)}
+</body>
+</html>"""
+                
+                # Write the styled HTML to the temp file
+                with open(html_path, 'w', encoding='utf-8') as f:
+                    f.write(styled_html)
+                
+                # Check for external PDF conversion tools - use the first available one
+                
+                # Try using wkhtmltopdf if available (common HTML to PDF converter)
+                import subprocess
+                import shutil
+                
+                try:
+                    # Check if wkhtmltopdf is installed
+                    if shutil.which('wkhtmltopdf'):
+                        # Use wkhtmltopdf to convert HTML to PDF
+                        subprocess.check_call([
+                            'wkhtmltopdf',
+                            '--quiet',
+                            '--page-size', 'A4',
+                            '--margin-top', '20',
+                            '--margin-right', '20',
+                            '--margin-bottom', '20',
+                            '--margin-left', '20',
+                            '--encoding', 'UTF-8',
+                            html_path, file_path
+                        ])
+                        
+                        # Clean up temp file
+                        try:
+                            os.unlink(html_path)
+                        except:
+                            pass
+                            
+                        self.show_status_message(f"Document exported to {os.path.basename(file_path)}")
+                        show_info_message(self, "Export to PDF", f"Document successfully exported to {file_path}")
+                        return
+                except Exception as e2:
+                    logger.debug(f"wkhtmltopdf export failed: {e2}")
+                
+                # Try using weasyprint if available
+                try:
+                    import importlib.util
+                    if importlib.util.find_spec("weasyprint"):
+                        import weasyprint
+                        weasyprint.HTML(string=styled_html).write_pdf(file_path)
+                        
+                        # Clean up temp file
+                        try:
+                            os.unlink(html_path)
+                        except:
+                            pass
+                            
+                        self.show_status_message(f"Document exported to {os.path.basename(file_path)}")
+                        show_info_message(self, "Export to PDF", f"Document successfully exported to {file_path}")
+                        return
+                except Exception as e3:
+                    logger.debug(f"weasyprint export failed: {e3}")
+                
+                # Fallback - create a simple PDF using QPrinter but print from our styled HTML file
+                try:
+                    # Set up a printer
+                    printer = QPrinter(QPrinter.PrinterMode.HighResolution)
+                    printer.setOutputFormat(QPrinter.OutputFormat.PdfFormat)
+                    printer.setOutputFileName(file_path)
+                    
+                    # Use simpler approach without many settings
+                    self.editor.document().print(printer)
+                    
+                    # Clean up temp file
+                    try:
+                        os.unlink(html_path)
+                    except:
+                        pass
+                        
+                    self.show_status_message(f"Document exported to {os.path.basename(file_path)}")
+                    show_info_message(self, "Export to PDF", f"Document exported with basic formatting to {file_path}")
+                    return
+                except Exception as e4:
+                    logger.debug(f"Fallback PDF export failed: {e4}")
+                    
+                    # If we got here, all our PDF export attempts failed
+                    # Let's just save the HTML file and tell the user
+                    html_output_path = file_path.replace('.pdf', '.html')
+                    try:
+                        # Move our temp HTML file to final destination
+                        shutil.copy(html_path, html_output_path)
+                        os.unlink(html_path)
+                        
+                        show_error_message(self, "PDF Export Failed", 
+                                          f"Could not create PDF file. HTML file saved to {html_output_path} instead.")
+                        return
+                    except:
+                        # Last resort - just leave the temp HTML file
+                        show_error_message(self, "PDF Export Failed", 
+                                          f"Could not create PDF file. HTML file saved to {html_path} instead.")
+                        return
+                    
             except Exception as e:
+                # If all approaches failed
                 show_error_message(self, "Export Error", f"Failed to export to PDF: {e}")
-                logger.error(f"PDF export error: {e}")
+                logger.error(f"PDF export error (all methods failed): {e}", exc_info=True)
 
     def export_to_word(self):
+        """Export document to Word with improved formatting preservation."""
         file_path, _ = QFileDialog.getSaveFileName(self, "Export to Word", "", "Word Documents (*.docx)")
         if file_path:
             try:
                 if not file_path.endswith('.docx'):
                     file_path += '.docx'
 
+                # Create a new document
                 doc = docx.Document()
+                
+                # Clean up HTML for better conversion
                 html = self.editor.toHtml()
+                
+                # Make sure we have complete HTML with proper structure
+                if not html.startswith('<!DOCTYPE html>'):
+                    # Add wrapper to ensure proper parsing
+                    html = f"""<!DOCTYPE html>
+                    <html>
+                    <head>
+                    <meta charset="UTF-8">
+                    <style>
+                    body {{ font-family: Arial, sans-serif; }}
+                    p {{ margin-bottom: 10px; }}
+                    h1, h2, h3, h4, h5, h6 {{ margin-top: 20px; margin-bottom: 10px; }}
+                    </style>
+                    </head>
+                    <body>
+                    {html}
+                    </body>
+                    </html>"""
+                
+                # Set up the converter with better styling support
                 new_parser = HtmlToDocx()
+                
+                # Try to optimize conversion settings
+                try:
+                    # Set the parser to use styling (if this method exists)
+                    if hasattr(new_parser, 'set_initial_style'):
+                        new_parser.set_initial_style(doc)
+                except Exception as style_err:
+                    logger.debug(f"Style setup for Word export: {style_err}")
+                
+                # Add the HTML to the document
                 new_parser.add_html_to_document(html, doc)
+                
+                # Save the document
                 doc.save(file_path)
 
                 self.show_status_message(f"Document exported to {os.path.basename(file_path)}")
                 show_info_message(self, "Export to Word", f"Document successfully exported to {file_path}")
             except Exception as e:
                 show_error_message(self, "Export Error", f"Failed to export to Word: {e}")
-                logger.error(f"Word export error: {e}")
+                logger.error(f"Word export error: {e}", exc_info=True)
 
     def export_to_text(self):
         file_path, _ = QFileDialog.getSaveFileName(self, "Export to Plain Text", "", "Text Files (*.txt)")
@@ -673,14 +1051,155 @@ class TextEditor(QMainWindow):
                 logger.error(f"Text export error: {e}")
 
     def export_to_html(self):
-        """Export document to HTML file."""
+        """Export document to HTML file with better formatting and styling."""
         file_path, _ = QFileDialog.getSaveFileName(self, "Export to HTML", "", "HTML Files (*.html)")
         if file_path:
             try:
                 if not file_path.endswith('.html'):
                     file_path += '.html'
 
+                # Get the HTML content
                 html = self.editor.toHtml()
+                
+                # Fix up the HTML for better standalone viewing - improve CSS and structure
+                if not html.startswith('<!DOCTYPE html>'):
+                    # This is a fragment - wrap it in a proper document with styling
+                    html = f"""<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Exported Document from Transcribrr</title>
+    <style>
+        body {{
+            font-family: Arial, Helvetica, sans-serif;
+            line-height: 1.6;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            color: #333;
+        }}
+        p {{
+            margin-bottom: 1em;
+        }}
+        h1, h2, h3, h4, h5, h6 {{
+            margin-top: 1.5em;
+            margin-bottom: 0.5em;
+            font-weight: bold;
+            color: #222;
+        }}
+        h1 {{ font-size: 2em; }}
+        h2 {{ font-size: 1.75em; }}
+        h3 {{ font-size: 1.5em; }}
+        h4 {{ font-size: 1.25em; }}
+        h5 {{ font-size: 1.1em; }}
+        h6 {{ font-size: 1em; }}
+        pre {{
+            background-color: #f5f5f5;
+            padding: 0.5em;
+            border-radius: 4px;
+            overflow-x: auto;
+        }}
+        ul, ol {{
+            padding-left: 2em;
+            margin-bottom: 1em;
+        }}
+        li {{
+            margin-bottom: 0.5em;
+        }}
+        a {{
+            color: #0066cc;
+            text-decoration: none;
+        }}
+        a:hover {{
+            text-decoration: underline;
+        }}
+        blockquote {{
+            border-left: 3px solid #ccc;
+            padding-left: 1em;
+            margin-left: 0;
+            color: #666;
+        }}
+        img {{
+            max-width: 100%;
+            height: auto;
+        }}
+        table {{
+            border-collapse: collapse;
+            width: 100%;
+            margin-bottom: 1em;
+        }}
+        th, td {{
+            border: 1px solid #ddd;
+            padding: 8px;
+            text-align: left;
+        }}
+        th {{
+            background-color: #f2f2f2;
+            font-weight: bold;
+        }}
+        tr:nth-child(even) {{
+            background-color: #f9f9f9;
+        }}
+    </style>
+</head>
+<body>
+    {html}
+</body>
+</html>"""
+                else:
+                    # Extract the HTML content between body tags and add our improved styling
+                    import re
+                    head_match = re.search(r'<head>(.*?)</head>', html, re.DOTALL)
+                    body_match = re.search(r'<body.*?>(.*?)</body>', html, re.DOTALL)
+                    
+                    if head_match and body_match:
+                        head_content = head_match.group(1)
+                        body_content = body_match.group(1)
+                        
+                        # Create a new document with better styling
+                        html = f"""<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Exported Document from Transcribrr</title>
+    {head_content}
+    <style>
+        body {{
+            font-family: Arial, Helvetica, sans-serif;
+            line-height: 1.6;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            color: #333;
+        }}
+        p {{
+            margin-bottom: 1em;
+        }}
+        h1, h2, h3, h4, h5, h6 {{
+            margin-top: 1.5em;
+            margin-bottom: 0.5em;
+            color: #222;
+        }}
+        pre {{
+            background-color: #f5f5f5;
+            padding: 0.5em;
+            border-radius: 4px;
+            overflow-x: auto;
+        }}
+        ul, ol {{
+            padding-left: 2em;
+            margin-bottom: 1em;
+        }}
+    </style>
+</head>
+<body>
+    {body_content}
+</body>
+</html>"""
+                
+                # Write the improved HTML to file
                 with open(file_path, 'w', encoding='utf-8') as file:
                     file.write(html)
 
@@ -688,7 +1207,7 @@ class TextEditor(QMainWindow):
                 show_info_message(self, "Export to HTML", f"Document successfully exported to {file_path}")
             except Exception as e:
                 show_error_message(self, "Export Error", f"Failed to export to HTML: {e}")
-                logger.error(f"HTML export error: {e}")
+                logger.error(f"HTML export error: {e}", exc_info=True)
 
     def show_status_message(self, message, timeout=3000):
         """Show a temporary status message."""
@@ -701,11 +1220,54 @@ class TextEditor(QMainWindow):
         self.statusBar().clearMessage()
         self.statusBar().hide()
 
+    def on_text_changed(self):
+        """Called when the text content changes."""
+        self._word_count_dirty = True
+        
+        # Use a single-shot timer to avoid updating on every keystroke
+        if not self._update_count_pending:
+            self._update_count_pending = True
+            QTimer.singleShot(300, self.update_word_count)
+    
+    def delayed_word_count_update(self):
+        """Update word count if it's marked as dirty (backup for any missed updates)."""
+        if self._word_count_dirty:
+            self.update_word_count()
+    
     def update_word_count(self):
-        """Update the word count display."""
+        """Update the word count display with accurate word count."""
+        self._update_count_pending = False
+        self._word_count_dirty = False
+        
         text = self.editor.toPlainText()
-        word_count = len(text.split()) if text else 0
-        self.word_count_label.setText(f"Words: {word_count}")
+        # Improved word count calculation - splits on whitespace and removes empty strings
+        words = [word for word in text.split() if word.strip()]
+        word_count = len(words)
+        char_count = len(text)
+        self.word_count_label.setText(f"Words: {word_count} | Chars: {char_count}")
+        
+    def _extract_body_content(self, html):
+        """Extract the body content from HTML, or return the entire HTML if no body tags are found."""
+        import re
+        
+        # Try to find body content
+        body_match = re.search(r'<body.*?>(.*?)</body>', html, re.DOTALL | re.IGNORECASE)
+        
+        if body_match:
+            # Return just the content inside the body tags
+            return body_match.group(1)
+        
+        # If we have a full HTML document but couldn't extract body for some reason
+        if html.lower().startswith('<!doctype html>') or html.lower().startswith('<html'):
+            # Just return everything after the head section
+            head_end = html.lower().find('</head>')
+            if head_end > 0:
+                html_start = html.lower().find('<html', head_end)
+                if html_start > 0:
+                    return html[html_start:]
+                
+        # Return the original content as a fallback
+        return html
 
     def serialize_text_document(self):
         """Serialize the text document to HTML."""
@@ -724,8 +1286,24 @@ class TextEditor(QMainWindow):
                 if isinstance(text_data, bytes):
                     text_data = text_data.decode('utf-8')
 
-                # Check if it contains HTML tags
-                if '<' in text_data and '>' in text_data:
+                # More robust HTML detection - checks for proper HTML structure
+                is_html = False
+                
+                # Check if it has HTML content tag
+                if text_data.startswith('<!DOCTYPE html>') or text_data.startswith('<html'):
+                    is_html = True
+                # Check if it has HTML body elements
+                elif '<body' in text_data and '</body>' in text_data:
+                    is_html = True
+                # Check if it has style elements or other common HTML tags
+                elif ('<p>' in text_data and '</p>' in text_data) or \
+                     ('<div>' in text_data and '</div>' in text_data) or \
+                     ('<pre>' in text_data and '</pre>' in text_data) or \
+                     ('<h1>' in text_data and '</h1>' in text_data) or \
+                     ('<style>' in text_data and '</style>' in text_data):
+                    is_html = True
+                
+                if is_html:
                     self.editor.setHtml(text_data)
                 else:
                     self.editor.setPlainText(text_data)
@@ -833,11 +1411,27 @@ class TextEditor(QMainWindow):
             self._toolbar_actions['align_right'].setChecked(alignment == Qt.AlignmentFlag.AlignRight)
         if 'justify' in self._toolbar_actions:
             self._toolbar_actions['justify'].setChecked(alignment == Qt.AlignmentFlag.AlignJustify)
+            
+    def __del__(self):
+        """Clean up resources when the editor is destroyed."""
+        try:
+            # Cleanup timer if still active
+            if hasattr(self, 'word_count_timer') and self.word_count_timer.isActive():
+                self.word_count_timer.stop()
+                
+            # Close any open dialog
+            if hasattr(self, 'find_replace_dialog') and self.find_replace_dialog:
+                self.find_replace_dialog.close()
+                self.find_replace_dialog = None
+        except Exception as e:
+            # Protect against errors during shutdown
+            logger.error(f"Error in TextEditor cleanup: {e}")
 
     def dragEnterEvent(self, event):
         """Handle drag enter events for drag and drop functionality."""
-        # Accept drag events if they contain text or URLs
-        if event.mimeData().hasText() or event.mimeData().hasUrls():
+        # Accept drag events if they contain text, URLs, or HTML
+        mime_data = event.mimeData()
+        if mime_data.hasText() or mime_data.hasUrls() or mime_data.hasHtml():
             event.acceptProposedAction()
         else:
             event.ignore()
@@ -858,6 +1452,14 @@ class TextEditor(QMainWindow):
                     event.acceptProposedAction()
                     return
 
+        # Handle HTML content (preferred over plain text for rich formatting)
+        if mime_data.hasHtml():
+            html = mime_data.html()
+            cursor = self.editor.cursorForPosition(event.position().toPoint())
+            cursor.insertHtml(html)
+            event.acceptProposedAction()
+            return
+            
         # Handle plain text
         if mime_data.hasText():
             text = mime_data.text()
@@ -869,30 +1471,55 @@ class TextEditor(QMainWindow):
         event.ignore()
 
     def load_file(self, file_path):
-        """Load content from a file into the editor."""
+        """Load content from a file into the editor with improved error handling and encoding detection."""
         try:
             # Check file extension to determine how to load it
             _, extension = os.path.splitext(file_path)
             extension = extension.lower()
-
-            if extension in ['.txt', '.md', '.csv', '.json', '.xml', '.html', '.htm']:
-                with open(file_path, 'r', encoding='utf-8') as file:
-                    text = file.read()
-
-                if extension in ['.html', '.htm']:
+            
+            supported_text_extensions = ['.txt', '.md', '.csv', '.json', '.xml', '.log', '.py', '.js', '.css']
+            supported_html_extensions = ['.html', '.htm', '.xhtml']
+            
+            if extension in supported_text_extensions + supported_html_extensions:
+                # Try different encodings if UTF-8 fails
+                encodings_to_try = ['utf-8', 'latin-1', 'cp1252', 'iso-8859-1']
+                text = None
+                
+                for encoding in encodings_to_try:
+                    try:
+                        with open(file_path, 'r', encoding=encoding) as file:
+                            text = file.read()
+                        break  # Successfully read the file
+                    except UnicodeDecodeError:
+                        continue  # Try the next encoding
+                
+                if text is None:
+                    raise ValueError(f"Unable to decode file with any of the attempted encodings: {', '.join(encodings_to_try)}")
+                
+                if extension in supported_html_extensions:
                     self.editor.setHtml(text)
                 else:
                     self.editor.setPlainText(text)
-
+                
+                # Update word count
+                self.update_word_count()
                 self.show_status_message(f"Loaded file: {os.path.basename(file_path)}")
-
             else:
                 show_error_message(self, "Unsupported File",
                             f"The file type {extension} is not supported for direct editing.")
 
+        except FileNotFoundError:
+            show_error_message(self, "File Not Found", f"The file {file_path} could not be found.")
+            logger.error(f"File not found: {file_path}")
+        except PermissionError:
+            show_error_message(self, "Permission Error", f"You do not have permission to access {file_path}.")
+            logger.error(f"Permission error accessing file {file_path}")
+        except ValueError as e:
+            show_error_message(self, "Encoding Error", str(e))
+            logger.error(f"Encoding error with file {file_path}: {e}")
         except Exception as e:
             show_error_message(self, "Error Loading File", f"Failed to load file: {e}")
-            logger.error(f"Error loading file {file_path}: {e}")
+            logger.error(f"Error loading file {file_path}: {e}", exc_info=True)
 
 
 # For standalone testing
