@@ -340,7 +340,6 @@ class SettingsDialog(QDialog):
         appearance_layout.addWidget(theme_group)
         appearance_layout.addStretch()
         self.tab_widget.addTab(appearance_tab, "Appearance")
-
     # --- UI Logic ---
     def toggle_speaker_detection_checkbox(self):
         has_key = bool(self.hf_api_key_edit.text().strip())
@@ -350,7 +349,6 @@ class SettingsDialog(QDialog):
             self.speaker_detection_checkbox.setToolTip("HuggingFace Access Token required for speaker detection")
         else:
             self.speaker_detection_checkbox.setToolTip("Identify different speakers in the audio")
-
     def update_transcription_ui(self):
         is_local = self.transcription_method_dropdown.currentText() == 'Local'
         # Only enable quality dropdown for local method
@@ -487,6 +485,7 @@ class SettingsDialog(QDialog):
              # Decide if we should proceed or stop here? For now, proceed with config save.
 
         # --- Save General Settings via ConfigManager ---
+
         # Get transcription method and ensure it's properly formatted 
         transcription_method = self.transcription_method_dropdown.currentText()
         if transcription_method.upper() == 'API':

@@ -189,6 +189,7 @@ class TranscriptionThread(QThread):
         # Check device for local method
         method = self.transcription_method.lower()
         if method == 'local':
+
             device = ModelManager.instance().device
             self.update_progress.emit(f'Using device: {device}')
             if device == 'cuda':
@@ -198,6 +199,7 @@ class TranscriptionThread(QThread):
                  except Exception: pass # Ignore if props fail
         else:
             self.update_progress.emit(f'Using OpenAI API for transcription')
+
 
         # --- Call Transcription Service ---
         # Add a check before the potentially long call

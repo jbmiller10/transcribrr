@@ -232,6 +232,7 @@ class TranscriptionService:
             logger.info(f"Using local method for transcription of {os.path.basename(file_path)}")
             return self._transcribe_locally(file_path, model_id, language, 
                                           speaker_detection, hf_auth_key)
+
     
     def _transcribe_locally(self, 
                            file_path: str, 
