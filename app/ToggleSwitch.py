@@ -3,7 +3,7 @@ from PyQt6.QtCore import Qt
 
 class ToggleSwitch(QSlider):
     def __init__(self, parent=None):
-        super().__init__(Qt.Orientation.Horizontal, parent)
+        super().__init__(Qt.Orientation.Horizontal, parent)  # Fixed correct PyQt6 enum
         self.setFixedSize(100, 30)
         self.setMinimum(0)
         self.setMaximum(1)
@@ -31,12 +31,12 @@ class ToggleSwitch(QSlider):
                 border-radius: 10px;
             }
         """)
-        self.setTickPosition(QSlider.TickPosition.NoTicks)
+        self.setTickPosition(QSlider.TickPosition.NoTicks)  # Fixed enum
 
     def mousePressEvent(self, event):
-        if event.button() == Qt.MouseButton.LeftButton:
+        if event.button() == Qt.MouseButton.LeftButton:  # Fixed enum
             # Determine the value to set based on the mouse position
-            if event.position().x() < self.width() / 2:
+            if event.position().x() < self.width() / 2:  # Fixed to use position() instead of pos()
                 self.setValue(0)
             else:
                 self.setValue(1)

@@ -15,9 +15,9 @@ class SVGToggleButton(QPushButton):
     def render_svgs(self):
         for key, renderer in self.svg_renderers.items():
             pixmap = QPixmap(self.size())
-            pixmap.fill(Qt.GlobalColor.transparent)  # Ensure transparent background for SVG, note the enum change
+            pixmap.fill(Qt.GlobalColor.transparent)  # Correct PyQt6 enum usage
             painter = QPainter(pixmap)
-            rect = QRectF(pixmap.rect())  # Convert QRect to QRectF
+            rect = QRectF(pixmap.rect())
             renderer.render(painter, rect)
             painter.end()
             self.pixmaps[key] = pixmap

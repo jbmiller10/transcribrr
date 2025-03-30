@@ -1,398 +1,229 @@
 from PyQt6.QtCore import QThread, pyqtSignal
-from transformers import AutoModelForSpeechSeq2Seq, AutoProcessor, pipeline
-from typing import List, Optional, Union
-import numpy as np
-import requests
-import torch
-from pyannote.audio import Pipeline
-from torchaudio import functional as F
-from transformers.pipelines.audio_utils import ffmpeg_read
+from typing import List, Optional, Union, Dict, Any
+import os
 import time
 import logging
-from openai import OpenAI
+import concurrent.futures
+from threading import Lock # Import Lock
 from app.utils import language_to_iso
+from app.services.transcription_service import TranscriptionService, ModelManager
 
-logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
-
-
-class ASRDiarizationPipeline:
-
-    def __init__(
-        self,
-        asr_pipeline,
-        diarization_pipeline,
-    ):
-        self.asr_pipeline = asr_pipeline
-        self.sampling_rate = asr_pipeline.feature_extractor.sampling_rate
-
-        self.diarization_pipeline = diarization_pipeline
-
-    @classmethod
-    def from_pretrained(
-        cls,
-        asr_model: Optional[str] = "openai/whisper-large-v3",
-        *,
-        diarizer_model: Optional[str] = "pyannote/speaker-diarization",
-        chunk_length_s: Optional[int] = 30,
-        use_auth_token: Optional[Union[str, bool]] = False,
-        **kwargs,
-    ):
-        asr_pipeline = pipeline(
-            "automatic-speech-recognition",
-            model=asr_model,
-            chunk_length_s=chunk_length_s,
-            token=use_auth_token,
-            batch_size=12,
-            return_timestamps=True,
-            **kwargs,
-        )
-        diarization_pipeline = Pipeline.from_pretrained(diarizer_model, use_auth_token=use_auth_token)
-        return cls(asr_pipeline, diarization_pipeline)
-
-    def __call__(
-        self,
-        inputs: Union[np.ndarray, List[np.ndarray]],
-        group_by_speaker: bool = True,
-        **kwargs,
-    ):
-        """
-        Transcribe the audio sequence(s) given as inputs to text and label with speaker information. The input
-        audio is first passed to the speaker diarization pipeline, which returns timestamps for 'who spoke
-        when'. The audio is then passed to the ASR pipeline, which returns utterance-level transcriptions and
-        their corresponding timestamps. The speaker diarizer timestamps are aligned with the ASR transcription
-        timestamps to give speaker-labelled transcriptions. We cannot use the speaker diarization timestamps
-        alone to partition the transcriptions, as these timestamps may straddle across transcribed utterances
-        from the ASR output. Thus, we find the diarizer timestamps that are closest to the ASR timestamps and
-        partition here.
-
-        Args:
-            inputs (`np.ndarray` or `bytes` or `str` or `dict`):
-                The inputs is either :
-                    - `str` that is the filename of the audio file, the file will be read at the correct sampling rate
-                      to get the waveform using *ffmpeg*. This requires *ffmpeg* to be installed on the system.
-                    - `bytes` it is supposed to be the content of an audio file and is interpreted by *ffmpeg* in the
-                      same way.
-                    - (`np.ndarray` of shape (n, ) of type `np.float32` or `np.float64`)
-                        Raw audio at the correct sampling rate (no further check will be done)
-                    - `dict` form can be used to pass raw audio sampled at arbitrary `sampling_rate` and let this
-                      pipeline do the resampling. The dict must be in the format `{"sampling_rate": int, "raw":
-                      np.array}` with optionally a `"stride": (left: int, right: int)` than can ask the pipeline to
-                      treat the first `left` samples and last `right` samples to be ignored in decoding (but used at
-                      inference to provide more context to the model). Only use `stride` with CTC models.
-            group_by_speaker (`bool`):
-                Whether to group consecutive utterances by one speaker into a single segment. If False, will return
-                transcriptions on a chunk-by-chunk basis.
-            kwargs (remaining dictionary of keyword arguments, *optional*):
-                Can be used to update additional asr or diarization configuration parameters
-                        - To update the asr configuration, use the prefix *asr_* for each configuration parameter.
-                        - To update the diarization configuration, use the prefix *diarization_* for each configuration parameter.
-                        - Added this support related to issue #25: 08/25/2023
-
-        Return:
-            A list of transcriptions. Each list item corresponds to one chunk / segment of transcription, and is a
-            dictionary with the following keys:
-                - **text** (`str` ) -- The recognized text.
-                - **speaker** (`str`) -- The associated speaker.
-                - **timestamps** (`tuple`) -- The start and end time for the chunk / segment.
-        """
-        kwargs_asr = {
-            argument[len("asr_"):]: value
-            for argument, value in kwargs.items() if argument.startswith("asr_")
-        }
-
-        kwargs_diarization = {
-            argument[len("diarization_"):]: value
-            for argument, value in kwargs.items() if argument.startswith("diarization_")
-        }
-
-        inputs, diarizer_inputs = self.preprocess(inputs)
-
-        diarization = self.diarization_pipeline(
-            {
-                "waveform": diarizer_inputs,
-                "sample_rate": self.sampling_rate
-            },
-            **kwargs_diarization,
-        )
-
-        segments = []
-        for segment, track, label in diarization.itertracks(yield_label=True):
-            segments.append({
-                'segment': {
-                    'start': segment.start,
-                    'end': segment.end
-                },
-                'track': track,
-                'label': label
-            })
-
-        # Combine consecutive segments with the same speaker
-        new_segments = []
-        if not segments:
-            return new_segments  # No segments found
-        prev_segment = cur_segment = segments[0]
-
-        for i in range(1, len(segments)):
-            cur_segment = segments[i]
-
-            # Check if the speaker has changed
-            if cur_segment["label"] != prev_segment["label"]:
-                # Add the previous segment
-                new_segments.append({
-                    "segment": {
-                        "start": prev_segment["segment"]["start"],
-                        "end": cur_segment["segment"]["start"]
-                    },
-                    "speaker": prev_segment["label"],
-                })
-                prev_segment = cur_segment
-
-        # Add the last segment
-        new_segments.append({
-            "segment": {
-                "start": prev_segment["segment"]["start"],
-                "end": cur_segment["segment"]["end"]
-            },
-            "speaker": prev_segment["label"],
-        })
-
-        # Perform ASR
-        asr_out = self.asr_pipeline(
-            {
-                "array": inputs,
-                "sampling_rate": self.sampling_rate
-            },
-            return_timestamps=True,
-            **kwargs_asr,
-        )
-        transcript = asr_out["chunks"]
-
-        # Get the end timestamps for each chunk from the ASR output
-        end_timestamps = np.array([chunk["timestamp"][-1] for chunk in transcript])
-        segmented_preds = []
-
-        # Align the diarizer timestamps and the ASR timestamps
-        for segment in new_segments:
-            # Get the diarizer end timestamp
-            end_time = segment["segment"]["end"]
-            # Find the ASR end timestamp that is closest to the diarizer's end timestamp and cut the transcript to here
-            if len(end_timestamps) == 0:
-                break  # No more transcripts to process
-            upto_idx = np.argmin(np.abs(end_timestamps - end_time))
-
-            if group_by_speaker:
-                segmented_preds.append({
-                    "speaker":
-                    segment["speaker"],
-                    "text":
-                    "".join([chunk["text"] for chunk in transcript[:upto_idx + 1]]),
-                    "timestamp": (transcript[0]["timestamp"][0], transcript[upto_idx]["timestamp"][1]),
-                })
-            else:
-                for i in range(upto_idx + 1):
-                    segmented_preds.append({"speaker": segment["speaker"], **transcript[i]})
-
-            # Crop the transcripts and timestamp lists according to the latest timestamp (for faster argmin)
-            transcript = transcript[upto_idx + 1:]
-            end_timestamps = end_timestamps[upto_idx + 1:]
-
-        return segmented_preds
-
-    # Adapted from transformers.pipelines.automatic_speech_recognition.AutomaticSpeechRecognitionPipeline.preprocess
-    # (see https://github.com/huggingface/transformers/blob/238449414f88d94ded35e80459bb6412d8ab42cf/src/transformers/pipelines/automatic_speech_recognition.py#L417)
-    def preprocess(self, inputs):
-        if isinstance(inputs, str):
-            if inputs.startswith("http://") or inputs.startswith("https://"):
-                # We need to actually check for a real protocol, otherwise it's impossible to use a local file
-                # like http_huggingface_co.png
-                inputs = requests.get(inputs).content
-            else:
-                with open(inputs, "rb") as f:
-                    inputs = f.read()
-
-        if isinstance(inputs, bytes):
-            inputs = ffmpeg_read(inputs, self.sampling_rate)
-
-        if isinstance(inputs, dict):
-            # Accepting `"array"` which is the key defined in `datasets` for better integration
-            if not ("sampling_rate" in inputs and ("raw" in inputs or "array" in inputs)):
-                raise ValueError(
-                    "When passing a dictionary to ASRDiarizePipeline, the dict needs to contain a "
-                    '"raw" key containing the numpy array representing the audio and a "sampling_rate" key, '
-                    "containing the sampling_rate associated with that array")
-
-            _inputs = inputs.pop("raw", None)
-            if _inputs is None:
-                # Remove path which will not be used from `datasets`.
-                inputs.pop("path", None)
-                _inputs = inputs.pop("array", None)
-            in_sampling_rate = inputs.pop("sampling_rate")
-            inputs = _inputs
-            if in_sampling_rate != self.sampling_rate:
-                inputs = F.resample(torch.from_numpy(inputs), in_sampling_rate, self.sampling_rate).numpy()
-
-        if not isinstance(inputs, np.ndarray):
-            raise ValueError(f"We expect a numpy ndarray as input, got `{type(inputs)}`")
-        if len(inputs.shape) != 1:
-            raise ValueError("We expect a single channel audio input for ASRDiarizePipeline")
-
-        # diarization model expects float32 torch tensor of shape `(channels, seq_len)`
-        diarizer_inputs = torch.from_numpy(inputs).float()
-        diarizer_inputs = diarizer_inputs.unsqueeze(0)
-
-        return inputs, diarizer_inputs
-
-
-def format_speech_to_dialogue(speech_text):
-    return dialog_text
-
-
-class SpeechToTextPipeline:
-    """Class for converting audio to text using a pre-trained speech recognition model."""
-
-    def __init__(self, model_id: str = "openai/whisper-large-v3"):
-        self.model = None
-        self.device = None
-
-        if self.model is None:
-            self.load_model(model_id)
-        else:
-            logging.info("Model already loaded.")
-
-        self.set_device()
-
-    def set_device(self):
-        """Sets the device to be used for inference based on availability."""
-        if torch.backends.mps.is_available():
-            self.device = "mps"
-        else:
-            self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-
-        logging.info(f"Using device: {self.device}")
-
-    def load_model(self, model_id: str = "openai/whisper-large-v3"):
-        """
-        Loads the pre-trained speech recognition model and moves it to the specified device.
-
-        Args:
-            model_id (str): Identifier of the pre-trained model to be loaded.
-        """
-        logging.info("Loading model...")
-        model = AutoModelForSpeechSeq2Seq.from_pretrained(
-            model_id, torch_dtype=torch.float16, low_cpu_mem_usage=False, use_safetensors=True)
-        model.to(self.device)
-        logging.info("Model loaded successfully.")
-
-        self.model = model
-
-    def __call__(self, audio_path: str, model_id: str = "openai/whisper-large-v3", language: str = "english"):
-        """
-        Converts audio to text using the pre-trained speech recognition model.
-
-        Args:
-            audio_path (str): Path to the audio file to be transcribed.
-            model_id (str): Identifier of the pre-trained model to be used for transcription.
-
-        Returns:
-            dict: Contains the transcribed text and other relevant information.
-        """
-        processor = AutoProcessor.from_pretrained(model_id)
-        pipe = pipeline(
-            "automatic-speech-recognition",
-            model=self.model,
-            torch_dtype=torch.float16,
-            chunk_length_s=15,
-            max_new_tokens=128,
-            batch_size=8,
-            return_timestamps=True,  # Changed to True for better integration with diarization
-            device=self.device,
-            tokenizer=processor.tokenizer,
-            feature_extractor=processor.feature_extractor,
-            model_kwargs={"use_flash_attention_2": True},
-            generate_kwargs={"language": language},
-        )
-        logging.info("Transcribing audio...")
-        result = pipe(audio_path)
-        return result
+# Configure logging
+# logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s') # Configured in main
+logger = logging.getLogger('transcribrr')
 
 
 class TranscriptionThread(QThread):
+    """Thread for handling audio transcription tasks."""
     update_progress = pyqtSignal(str)
     completed = pyqtSignal(str)
     error = pyqtSignal(str)
 
-    def __init__(self, file_path, transcription_quality, speaker_detection_enabled
-                 , hf_auth_key
-                 , language='English'
-                 ,transcription_method='local'
-                 , openai_api_key=None
-                 , *args, **kwargs):
+    def __init__(self,
+                file_path: Union[str, List[str]],
+                transcription_quality: str,
+                speaker_detection_enabled: bool,
+                hf_auth_key: Optional[str],
+                language: str = 'English',
+                transcription_method: str = 'local',
+                openai_api_key: Optional[str] = None,
+                # files_are_chunks: bool = False, # Determined internally now
+                *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.file_path = file_path
+        # Determine if input is chunks
+        self.files_are_chunks = isinstance(file_path, list)
+
+        # Store parameters explicitly
         self.transcription_quality = transcription_quality
         self.speaker_detection_enabled = speaker_detection_enabled
         self.transcription_method = transcription_method
         self.hf_auth_key = hf_auth_key
         self.openai_api_key = openai_api_key
-        self.language = language  # Add language attribute
+        self.language = language
+
+        # Cancellation flag
+        self._is_canceled = False
+        self._lock = Lock() # For thread-safe access to the flag
+
+        # Initialize the transcription service (consider if it needs to be thread-local)
+        # For now, assume ModelManager handles thread safety or models are used sequentially
+        self.transcription_service = TranscriptionService()
+
+        # Initial validation (moved here from run)
+        try:
+            if self.files_are_chunks:
+                if not self.file_path: raise ValueError("Received empty list of chunks.")
+                for path in self.file_path:
+                    self._validate_file(path)
+            else:
+                self._validate_file(self.file_path)
+        except (FileNotFoundError, ValueError) as e:
+             # Emit error immediately if validation fails in constructor
+             # Use QTimer to emit from the main thread's event loop if needed,
+             # but emitting directly might be okay for constructor errors before start()
+             self.error.emit(str(e))
+             self._is_canceled = True # Prevent run() from executing
 
 
+    def _validate_file(self, file_path: str):
+        """Validate a single file path."""
+        if not os.path.exists(file_path):
+            raise FileNotFoundError(f"Audio file not found: {file_path}")
+        # Check file size to prevent processing extremely large files
+        file_size_mb = os.path.getsize(file_path) / (1024 * 1024)
+        # Allow larger files if chunking occurs upstream (TranscodingThread)
+        # Maybe check total size if it's a list? For now, check individual.
+        MAX_SIZE = 500 # MB, adjust as needed
+        if file_size_mb > MAX_SIZE:
+            raise ValueError(f"File size too large: {file_size_mb:.1f}MB > {MAX_SIZE}MB limit ({os.path.basename(file_path)})")
+
+
+    def cancel(self):
+        """Request cancellation of the transcription process."""
+        with self._lock:
+            if not self._is_canceled:
+                logger.info("Cancellation requested for transcription thread.")
+                self._is_canceled = True
+                # Note: Cannot easily interrupt underlying model inference once started.
+                # Cancellation primarily prevents starting new steps or chunks.
+
+    def is_canceled(self):
+        """Check if cancellation has been requested."""
+        with self._lock:
+            return self._is_canceled
 
     def run(self):
+        """Execute the transcription thread."""
+        if self.is_canceled():
+             self.update_progress.emit('Transcription cancelled before starting.')
+             return # Exit if validation failed or cancelled early
+
+        start_time = time.time()
+        transcript = ""
+
         try:
-            client = OpenAI()
-            start_time = time.time()
-            self.update_progress.emit('Transcription started...')
-            if self.transcription_method.lower() == 'local':
-                device = "cuda" if torch.cuda.is_available() else "mps"
-                model_id = self.transcription_quality
-                pipeline = SpeechToTextPipeline(model_id=model_id)
-                result = pipeline(self.file_path, model_id, language=self.language)  # Pass language here
-                transcript = result
+            if self.files_are_chunks:
+                self.update_progress.emit(f'Processing {len(self.file_path)} audio chunks...')
+                transcript = self.process_chunked_files(start_time)
+            else:
+                self.update_progress.emit('Transcription started...')
+                transcript = self.process_single_file(self.file_path, start_time)
 
-                if not self.speaker_detection_enabled:
-                    end_time = time.time()
-                    runtime = end_time - start_time
-                    print(f"Runtime: {runtime:.2f} seconds")
-                    self.completed.emit(transcript['text'])
-                    return
+            if self.is_canceled():
+                self.update_progress.emit('Transcription cancelled.')
+            else:
+                self.completed.emit(transcript)
+                self.update_progress.emit('Transcription finished successfully.')
 
-                logging.info("Initializing diarization pipeline...")
-                dir_pipeline = ASRDiarizationPipeline.from_pretrained(
-                    asr_model=model_id,
-                    diarizer_model="pyannote/speaker-diarization",
-                    use_auth_token=self.hf_auth_key,
-                    chunk_length_s=15,
-                    device=device,
-                )
-                logging.info("Running diarization pipeline...")
-                output_text = dir_pipeline(self.file_path, num_speakers=2, min_speaker=1, max_speaker=6)
-                dialogue = format_speech_to_dialogue(output_text)
-                end_time = time.time()
-                runtime = end_time - start_time
-                print(f"Runtime: {runtime:.2f} seconds")
-                print(dialogue)
-
-                self.completed.emit(dialogue)
-                self.update_progress.emit('Transcription finished.')
-            elif self.transcription_method=='API':
-                self.update_progress.emit('OpenAI Whisper transcription started...')
-                try:
-                    with open(self.file_path, 'rb') as audio_file:
-                        response = client.audio.transcriptions.create(
-                            model="whisper-1",
-                            file=audio_file,
-                            language=language_to_iso(self.language)
-                        )
-                        print(response.text)
-                        self.completed.emit(response.text)
-                        logging.info("OpenAI Whisper transcription completed.")
-                except Exception as e:
-                    logging.error(f"OpenAI Whisper transcription failed: {e}")
-                    raise Exception(f"OpenAI Whisper transcription failed: {e}")
-
+        except FileNotFoundError as e:
+            if not self.is_canceled(): self.error.emit(f"File error: {e}")
+            self.update_progress.emit('Transcription failed: File not found')
+        except ValueError as e:
+             if not self.is_canceled(): self.error.emit(f"Configuration error: {e}")
+             self.update_progress.emit('Transcription failed: Configuration issue')
+        except RuntimeError as e:
+            if not self.is_canceled(): self.error.emit(f"Processing error: {e}")
+            self.update_progress.emit('Transcription failed: Processing issue')
         except Exception as e:
-            self.error.emit(str(e))
-            self.update_progress.emit('Error encountered; stopping...')
-            self.completed.emit("")
+            if not self.is_canceled():
+                self.error.emit(f"Unexpected error: {e}")
+                logger.error(f"Transcription error: {e}", exc_info=True)
+            self.update_progress.emit('Transcription failed: Unexpected error')
+        finally:
+            # Release memory if the thread wasn't cancelled mid-operation uncleanly
+            if not self.is_canceled() or transcript: # Attempt cleanup even if cancelled late
+                self.update_progress.emit('Cleaning up transcription resources...')
+                ModelManager.instance().release_memory()
+            logger.info("Transcription thread finished execution.")
 
+    def process_chunked_files(self, start_time: float) -> str:
+        """Process multiple audio chunks and combine the results."""
+        chunk_results = [""] * len(self.file_path) # Pre-allocate for order
+        total_chunks = len(self.file_path)
+        self.update_progress.emit(f'Starting transcription of {total_chunks} chunks...')
+
+        # --- Sequential processing for API or simplified local ---
+        # Consider if parallel local processing is truly needed/stable.
+        # Let's stick to sequential for now for stability.
+        # If parallelism is desired, ThreadPoolExecutor is okay for I/O bound (API),
+        # but ProcessPoolExecutor might be needed for CPU/GPU bound local tasks
+        # to bypass GIL, adding complexity.
+
+        for i, chunk_path in enumerate(self.file_path):
+            if self.is_canceled():
+                logger.info(f"Chunk processing cancelled at chunk {i+1}/{total_chunks}")
+                return "[Transcription Cancelled]"
+
+            self.update_progress.emit(f'Processing chunk {i+1}/{total_chunks}...')
+            try:
+                # Use the main process_single_file method
+                chunk_transcript = self.process_single_file(chunk_path, time.time(), f"Chunk {i+1}")
+                chunk_results[i] = chunk_transcript
+            except Exception as e:
+                logger.error(f"Error processing chunk {i+1} ({chunk_path}): {e}", exc_info=True)
+                chunk_results[i] = f"[Error in Chunk {i+1}]"
+                # Optionally emit an error signal here too, or just continue
+                self.error.emit(f"Error processing chunk {i+1}: {e}")
+
+
+        if self.is_canceled():
+            return "[Transcription Cancelled]"
+
+        # Combine results with clear separators
+        combined_transcript = "\n\n--- End Chunk ---\n\n".join(filter(None, chunk_results)) # Filter out potential None results
+        self.update_progress.emit('All chunks processed. Combined results.')
+        return combined_transcript
+
+    def process_single_file(self,
+                           file_path: str,
+                           start_time: float,
+                           chunk_label: str = "") -> str:
+        """Process a single audio file."""
+        if self.is_canceled(): return "[Cancelled]"
+
+        task_label = f"{os.path.basename(file_path)}{' (' + chunk_label + ')' if chunk_label else ''}"
+        logger.info(f"Starting processing for: {task_label}")
+        self.update_progress.emit(f'Processing: {task_label}...')
+
+        # Check device for local method
+        if self.transcription_method.lower() == 'local':
+            device = ModelManager.instance().device
+            self.update_progress.emit(f'Using device: {device}')
+            if device == 'cuda':
+                 try:
+                     gpu_mem = torch.cuda.get_device_properties(0).total_memory / (1024**3)
+                     self.update_progress.emit(f'GPU Memory: {gpu_mem:.2f}GB')
+                 except Exception: pass # Ignore if props fail
+
+        # --- Call Transcription Service ---
+        # Add a check before the potentially long call
+        if self.is_canceled(): return "[Cancelled]"
+
+        result = self.transcription_service.transcribe_file(
+            file_path=file_path,
+            model_id=self.transcription_quality,
+            language=self.language,
+            method=self.transcription_method,
+            openai_api_key=self.openai_api_key,
+            hf_auth_key=self.hf_auth_key if self.speaker_detection_enabled else None,
+            speaker_detection=self.speaker_detection_enabled and not self.files_are_chunks # Disable speaker detect for individual chunks
+        )
+
+        # --- Process Result ---
+        if self.is_canceled(): return "[Cancelled]"
+
+        end_time = time.time()
+        runtime = end_time - start_time
+        logger.info(f"Finished processing {task_label} in {runtime:.2f}s")
+
+        # Return formatted text if speaker detection was successful, otherwise plain text
+        if self.speaker_detection_enabled and 'formatted_text' in result:
+            self.update_progress.emit(f"Finished {task_label} with speakers in {runtime:.2f}s")
+            return result['formatted_text']
+        elif 'text' in result:
+            self.update_progress.emit(f"Finished {task_label} in {runtime:.2f}s")
+            return result['text']
+        else:
+            logger.warning(f"Transcription for {task_label} returned no text.")
+            return "[No transcription generated]"

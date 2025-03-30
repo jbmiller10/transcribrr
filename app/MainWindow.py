@@ -1,20 +1,23 @@
 import datetime
-from PyQt6.QtCore import (
-    Qt,
-)
+from PyQt6.QtCore import Qt
 from PyQt6.QtWidgets import (
-    QVBoxLayout,
-    QWidget, QHBoxLayout,  QSizePolicy,
-    QMainWindow, QSplitter,QStatusBar
+    QVBoxLayout, QApplication, QWidget, QHBoxLayout,
+    QSizePolicy, QMainWindow, QSplitter, QStatusBar
 )
 import os
-from app.MainTranscriptionWidget import  MainTranscriptionWidget
-from app.ControlPanelWidget import ControlPanelWidget
-from app.database import create_connection, create_db, create_recording
-from moviepy.editor import VideoFileClip, AudioFileClip
-from app.utils import resource_path
-from app.RecentRecordingsWidget import RecentRecordingsWidget
+import logging
 
+from app.MainTranscriptionWidget import MainTranscriptionWidget
+from app.ControlPanelWidget import ControlPanelWidget
+from app.DatabaseManager import DatabaseManager
+from app.RecentRecordingsWidget import RecentRecordingsWidget
+from app.utils import resource_path
+from app.file_utils import calculate_duration
+from app.ui_utils import show_status_message
+from app.constants import APP_NAME
+
+# Configure logging
+logger = logging.getLogger('transcribrr')
 
 
 class MainWindow(QMainWindow):
@@ -24,17 +27,29 @@ class MainWindow(QMainWindow):
 
 
     def init_ui(self):
+        """Initialize the user interface components."""
         # Initialize the window properties
-        self.setWindowTitle('Transcribrr')
-        self.setGeometry(50, 50, 1690, 960)
+        self.setWindowTitle(APP_NAME)
+        
+        # Set a reasonable default size that will be scaled by the window manager
+        screen_size = QApplication.primaryScreen().availableGeometry().size()
+        window_width = min(int(screen_size.width() * 0.8), 1690)
+        window_height = min(int(screen_size.height() * 0.8), 960)
+        self.resize(window_width, window_height)
+        
+        # Center the window on screen
+        self.move(
+            (screen_size.width() - window_width) // 2,
+            (screen_size.height() - window_height) // 2
+        )
 
-        #create db if needed
-        create_db()
+        # Initialize the database manager
+        self.db_manager = DatabaseManager(self)
 
         # Create instances of widgets
         self.control_panel = ControlPanelWidget(self)
-        self.recent_recordings_widget = RecentRecordingsWidget()
-        self.main_transcription_widget = MainTranscriptionWidget()
+        self.recent_recordings_widget = RecentRecordingsWidget(db_manager=self.db_manager)
+        self.main_transcription_widget = MainTranscriptionWidget(db_manager=self.db_manager)
 
         # Set up the central widget and its layout
         self.central_widget = QWidget()
@@ -43,13 +58,26 @@ class MainWindow(QMainWindow):
 
         # Create a QSplitter to manage the layout of the left and right sections
         self.splitter = QSplitter(Qt.Orientation.Horizontal)
+        self.splitter.setChildrenCollapsible(False) # Prevent collapsing panels completely
+        self.splitter.setHandleWidth(8) # Make the splitter handle easier to grab
+        
+        # Style the splitter handle for better visibility
+        self.splitter.setStyleSheet("""
+            QSplitter::handle {
+                background-color: #D0D0D0;
+                border-radius: 2px;
+            }
+            QSplitter::handle:hover {
+                background-color: #808080;
+            }
+        """)
 
         self.main_layout.addWidget(self.splitter)
 
         # Layout for the left side section
         self.left_layout = QVBoxLayout()
-        self.left_layout.addWidget(self.recent_recordings_widget,12)
-        self.left_layout.addWidget(self.control_panel,0)
+        self.left_layout.addWidget(self.recent_recordings_widget, 12)
+        self.left_layout.addWidget(self.control_panel, 0)
 
         self.recent_recordings_widget.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding)
         self.control_panel.setSizePolicy(QSizePolicy.Policy.MinimumExpanding, QSizePolicy.Policy.MinimumExpanding)
@@ -57,97 +85,126 @@ class MainWindow(QMainWindow):
         # Create a widget to hold the left_layout
         self.left_widget = QWidget()
         self.left_widget.setLayout(self.left_layout)
+        self.left_widget.setMinimumWidth(220) # Set minimum width to prevent excessive shrinking
 
-        # Add left_widget to the splitter and define its initial size
+        # Add widgets to the splitter
         self.splitter.addWidget(self.left_widget)
-        self.splitter.setSizes([400, 950])
-
+        self.splitter.addWidget(self.main_transcription_widget)
+        
         # Load existing recordings, if any
         self.recent_recordings_widget.load_recordings()
 
-        # Assuming you have a widget for managing transcriptions
-        self.main_transcription_widget = MainTranscriptionWidget()
+        # Connect signal for new files (renamed from uploaded_filepath to file_ready_for_processing)
+        self.control_panel.file_ready_for_processing.connect(self.on_new_file)
 
-        # Add the left panel (recent recordings and controls) to the splitter
-        self.splitter.addWidget(self.left_widget)
-
-        # Additionally, add the main transcription area to the right side of the splitter
-        self.splitter.addWidget(self.main_transcription_widget)
-
-        self.control_panel.uploaded_filepath.connect(self.on_new_file)
-
-        # Set the initial side ratios of the splitter (e.g., 1:2)
-        self.splitter.setSizes([1, 5])
+        # Set the initial side ratios of the splitter using proportions of the window width
+        window_width = self.width()
+        left_panel_width = int(window_width * 0.3)
+        right_panel_width = window_width - left_panel_width
+        self.splitter.setSizes([left_panel_width, right_panel_width])
 
         self.status_bar = QStatusBar()
-        #self.statusBar().setStyleSheet("QStatusBar{color: red;}")
         self.setStatusBar(self.status_bar)
-        self.status_bar.setSizePolicy(QSizePolicy.Policy.Fixed, QSizePolicy.Policy.Fixed)
-        fixed_height = 10
-        self.status_bar.setFixedHeight(fixed_height)
+        self.status_bar.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Preferred)
         self.status_bar.setVisible(True)
-        self.status_bar.showMessage("This is a status message.")
+        self.status_bar.showMessage("Ready")
 
-        self.recent_recordings_widget.recordingSelected.connect(self.main_transcription_widget.on_recording_item_selected)
-
+        # Connect to current signal name (recordingItemSelected) and remove the old one (recordingSelected)
         self.recent_recordings_widget.recordingItemSelected.connect(self.main_transcription_widget.on_recording_item_selected)
 
     def set_style(self):
-        self.setStyleSheet("""
-            QMainWindow {
-                background-color: #252525;
-                color: white;
-            }
-            QLabel {
-                font-size: 18px;
-                color: white;
-                padding: 10px 0px; /* Top and bottom padding */
-            }
-            QListWidget {
-                background-color: #333;
-                color: white;
-            }
-            QPushButton {
-                border-radius: 25px; /* Half of the button size for a circular look */
-                background-color: #444;
-                color: white;
-            }
-        """)
+        # Not needed - styling is now handled by the ThemeManager
+        pass
 
-    def on_new_file(self, file_path):
-        # Extract metadata from the file path
-        filename = os.path.basename(file_path)
-        date_created = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-        # Assume you have a method to calculate the duration of the recording
-        duration = self.calculate_duration(file_path)
+    def on_new_file(self, file_path_or_paths):
+        """
+        Handle new audio/video file(s) uploaded or recorded.
+        
+        Args:
+            file_path_or_paths: Either a single file path or a list of file paths (for chunked files)
+        """
+        try:
+            # Check if we have a list of files (chunks) or a single file
+            if isinstance(file_path_or_paths, list):
+                # For chunked files, add all chunks to the database
+                file_paths = file_path_or_paths
+                
+                # If there's only one chunk, treat it as a normal file
+                if len(file_paths) == 1:
+                    self.on_new_file(file_paths[0])
+                    return
+                    
+                # Handle multiple chunks
+                date_created = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+                
+                # Process each chunk
+                for i, file_path in enumerate(file_paths):
+                    filename = os.path.basename(file_path)
+                    # Calculate the duration for each chunk using our utility function
+                    duration = calculate_duration(file_path)
+                    
+                    # Create a recording in the database for each chunk
+                    recording_data = (
+                        f"{filename} (Chunk {i+1}/{len(file_paths)})", 
+                        file_path, 
+                        date_created, 
+                        duration, 
+                        "", 
+                        ""
+                    )
+                    
+                    # Define a closure to capture the current chunk's info for the callback
+                    def create_callback(idx, fname, fpath, dur):
+                        def on_recording_created(recording_id):
+                            self.recent_recordings_widget.add_recording_to_list(
+                                recording_id, 
+                                fname, 
+                                fpath, 
+                                date_created, 
+                                dur, 
+                                "", 
+                                ""
+                            )
+                        return on_recording_created
+                    
+                    # Add the chunk to the database with its specific callback
+                    self.db_manager.create_recording(
+                        recording_data, 
+                        create_callback(i, filename, file_path, duration)
+                    )
+                
+                # Show a status message about the chunked files
+                self.update_status_bar(f"Added {len(file_paths)} audio chunks")
+                
+            else:
+                # Handle a single file (non-chunked)
+                file_path = file_path_or_paths
+                filename = os.path.basename(file_path)
+                date_created = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+                
+                # Calculate the duration of the recording using our utility function
+                duration = calculate_duration(file_path)
+                
+                # Create a new recording in the database using the DatabaseManager
+                recording_data = (filename, file_path, date_created, duration, "", "")
+                
+                # Define callback function to add the recording to UI when database operation completes
+                def on_recording_created(recording_id):
+                    self.recent_recordings_widget.add_recording_to_list(
+                        recording_id, filename, file_path, date_created, duration, "", ""
+                    )
+                    self.update_status_bar(f"Added new recording: {filename}")
+                    
+                # Execute the database operation in a background thread
+                self.db_manager.create_recording(recording_data, on_recording_created)
+                
+        except Exception as e:
+            logger.error(f"Error processing new file: {e}", exc_info=True)
+            self.update_status_bar(f"Error processing file: {str(e)}")
 
-        # Create a new recording in the database
-        db_path = resource_path("./database/database.sqlite")
-        conn = create_connection(db_path)
-        recording_data = (filename, file_path, date_created, duration, "", "")
-        recording_id = create_recording(conn, recording_data)
-
-        # Add the recording to the recent recordings widget
-        self.recent_recordings_widget.add_recording_to_list(recording_id, filename, file_path, date_created, duration,
-                                                            "", "")
-
-    def calculate_duration(self, file_path):
-        # Determine if the file is audio or video to use the appropriate MoviePy class
-        if file_path.lower().endswith(('.mp3', '.wav', '.aac', '.flac', '.ogg', '.m4a')):
-            clip = AudioFileClip(file_path)
-        else:
-            clip = VideoFileClip(file_path)
-
-        # Calculate the duration
-        duration_in_seconds = clip.duration
-        clip.close()  # Close the clip to release the file
-
-        # Format the duration as HH:MM:SS
-        duration_str = str(datetime.timedelta(seconds=int(duration_in_seconds)))
-        return duration_str
     def update_status_bar(self, message):
+        """Update the status bar with a message."""
         self.statusBar().showMessage(message)
-        print('whee'+message)
-
+        logger.debug(f"Status bar updated: {message}")
 
 

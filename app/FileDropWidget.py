@@ -1,163 +1,333 @@
 import sys
-from PyQt6.QtWidgets import QApplication, QMainWindow, QVBoxLayout, QWidget, QLabel, QFileDialog, QMessageBox
-from PyQt6.QtCore import Qt, pyqtSignal
-from PyQt6.QtGui import QDragEnterEvent, QDropEvent, QPainter, QPen, QFont
 import os
+from PyQt6.QtWidgets import QApplication, QMainWindow, QVBoxLayout, QWidget, QLabel, QFileDialog, QMessageBox, \
+    QProgressDialog
+from PyQt6.QtCore import Qt, pyqtSignal, QSize
+from PyQt6.QtGui import QDragEnterEvent, QDropEvent, QPainter, QPen, QFont, QColor, QBrush
 import shutil
+import logging
 from app.utils import resource_path
+
+logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
+
 
 class FileDropWidget(QWidget):
     fileDropped = pyqtSignal(str)
-    supported_file_types = (
-        'mp3', 'wav', 'm4a', 'ogg', 'mp4', 'mkv', 'avi', 'mov', 'flac'
-    )
+
+    # Define supported file types with descriptions
+    supported_file_types = {
+        # Audio formats
+        'mp3': 'MPEG Audio Layer III',
+        'wav': 'Waveform Audio File Format',
+        'm4a': 'MPEG-4 Audio',
+        'ogg': 'Ogg Vorbis Audio',
+        'flac': 'Free Lossless Audio Codec',
+        # Video formats
+        'mp4': 'MPEG-4 Video',
+        'mkv': 'Matroska Video',
+        'avi': 'Audio Video Interleave',
+        'mov': 'QuickTime Movie'
+    }
 
     def __init__(self, parent=None):
         super().__init__(parent)
         self.setAcceptDrops(True)
-        #self.setMinimumSize(50, 100)
+        self.setMinimumHeight(150)
         self.initUI()
+
+        # Create Recordings directory if it doesn't exist
+        self.recordings_dir = os.path.join(os.getcwd(), 'Recordings')
+        os.makedirs(self.recordings_dir, exist_ok=True)
 
     def initUI(self):
         self.layout = QVBoxLayout(self)
         self.label = QLabel("Drag audio/video files here or click to browse", self)
-        self.label.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        self.label.setAlignment(Qt.AlignmentFlag.AlignCenter)  # Fixed enum
         self.layout.addWidget(self.label)
         self.setLayout(self.layout)
+
         # Custom styling
         self.setStyleSheet(f"""
             QLabel {{
                 font-size: 16px;
+                padding-top: 50px;
+                padding-bottom: 50px;
             }}
             QWidget {{
                 border: 2px dashed #cccccc;
-                padding-top: 50px;
-                padding-bottom: 50px;
-                padding-left: 3px;
-                padding-right: 3px;
+                padding: 5px;
                 font-weight: medium;
                 background-image: url({resource_path('icons/dropdown_arrow.svg')});
             }}
-            QPushButton:hover {{
-                background-color: qlineargradient(
-                    x1:0, y1:0, x2:1, y2:0,
-                    stop:0 gray, stop:1 darkgray
-                );
+            QWidget:hover {{
+                border: 2px dashed #5a5a5a;
             }}
         """)
 
     def dragEnterEvent(self, event: QDragEnterEvent):
-        event.accept()
+        """Handle drag enter events with improved feedback."""
         if event.mimeData().hasUrls():
             url = event.mimeData().urls()[0]
-            if url.isLocalFile() and url.toLocalFile().endswith(self.supported_file_types):
-                event.acceptProposedAction()
-            else:
-                self.label.setText("Unsupported filetype.")
-                event.accept()
-    def dragLeaveEvent(self, event):
+            if url.isLocalFile():
+                file_path = url.toLocalFile()
+                file_extension = os.path.splitext(file_path)[1].lower()[1:]  # Get extension without dot
 
+                if file_extension in self.supported_file_types:
+                    self.label.setText(f"Release to upload {os.path.basename(file_path)}")
+                    self.setStyleSheet(f"""
+                        QLabel {{
+                            font-size: 16px;
+                            padding-top: 50px;
+                            padding-bottom: 50px;
+                            color: #3366cc;
+                        }}
+                        QWidget {{
+                            border: 2px dashed #3366cc;
+                            padding: 5px;
+                            font-weight: medium;
+                            background-image: url({resource_path('icons/dropdown_arrow.svg')});
+                        }}
+                    """)
+                    event.acceptProposedAction()
+                else:
+                    self.label.setText(f"Unsupported file type: .{file_extension}")
+                    self.setStyleSheet(f"""
+                        QLabel {{
+                            font-size: 16px;
+                            padding-top: 50px;
+                            padding-bottom: 50px;
+                            color: #cc3333;
+                        }}
+                        QWidget {{
+                            border: 2px dashed #cc3333;
+                            padding: 5px;
+                            font-weight: medium;
+                            background-image: url({resource_path('icons/dropdown_arrow.svg')});
+                        }}
+                    """)
+                    event.accept()
+            else:
+                self.label.setText("Only local files are supported")
+                event.accept()
+        else:
+            event.ignore()
+
+    def dragLeaveEvent(self, event):
+        """Reset widget appearance when drag leaves."""
         self.label.setText("Drag audio/video files here or click to browse")
+        self.setStyleSheet(f"""
+            QLabel {{
+                font-size: 16px;
+                padding-top: 50px;
+                padding-bottom: 50px;
+            }}
+            QWidget {{
+                border: 2px dashed #cccccc;
+                padding: 5px;
+                font-weight: medium;
+                background-image: url({resource_path('icons/dropdown_arrow.svg')});
+            }}
+            QWidget:hover {{
+                border: 2px dashed #5a5a5a;
+            }}
+        """)
 
     def dragMoveEvent(self, event):
+        """Handle drag move events."""
         if event.mimeData().hasUrls():
             event.acceptProposedAction()
 
     def dropEvent(self, event: QDropEvent):
+        """Handle file drop events with progress reporting."""
         self.label.setText("Drag audio/video files here or click to browse")
+        self.dragLeaveEvent(None)  # Reset styling
 
         if event.mimeData().hasUrls():
             url = event.mimeData().urls()[0]
             file_path = url.toLocalFile()
-            if file_path.endswith(self.supported_file_types):
-                # Determine the app's directory and ensure the /Recordings directory exists
-                app_directory = os.getcwd()
-                recordings_path = os.path.join(app_directory, 'Recordings')
-                os.makedirs(recordings_path, exist_ok=True)
+            file_extension = os.path.splitext(file_path)[1].lower()[1:]
 
-                # Copy the file to the /Recordings directory
-                try:
-                    base_name = os.path.basename(file_path)
-                    new_path = os.path.join(recordings_path, base_name)
-                    shutil.copy2(file_path, new_path)
-                    self.fileDropped.emit(new_path)  # Emit the new path
-                except Exception as e:
-                    QMessageBox.critical(self, "Error", f"Failed to copy file: {e}")
-                    event.ignore()
+            if file_extension in self.supported_file_types:
+                self.process_file(file_path)
             else:
+                self.showErrorMessage(
+                    f"The file type .{file_extension} is not supported. Please use one of these formats: {', '.join(self.supported_file_types.keys())}")
                 event.ignore()
-
+        else:
+            event.ignore()
 
     def mousePressEvent(self, event):
-        if event.button() == Qt.MouseButton.LeftButton:
+        """Handle mouse click events to open file dialog."""
+        if event.button() == Qt.MouseButton.LeftButton:  # Fixed enum
             self.openFileDialog()
 
     def openFileDialog(self):
+        """Open file dialog with improved filter and error handling."""
+        # Create a filter string that includes all supported file types with descriptions
+        filter_parts = []
+        for ext, desc in self.supported_file_types.items():
+            filter_parts.append(f"*.{ext}")
+
+        filter_string = f"Audio/Video Files ({' '.join(filter_parts)})"
+
+        # Add individual format filters
+        audio_formats = [ext for ext in self.supported_file_types.keys()
+                         if ext in ['mp3', 'wav', 'm4a', 'ogg', 'flac']]
+        video_formats = [ext for ext in self.supported_file_types.keys()
+                         if ext in ['mp4', 'mkv', 'avi', 'mov']]
+
+        audio_filter = f"Audio Files ({' '.join([f'*.{ext}' for ext in audio_formats])})"
+        video_filter = f"Video Files ({' '.join([f'*.{ext}' for ext in video_formats])})"
+
+        # Combine all filters
+        complete_filter = f"{filter_string};;{audio_filter};;{video_filter}"
+
         file_dialog = QFileDialog(self)
-        file_dialog.setNameFilter("Audio/Video Files (*.mp3 *.wav *.m4a *.ogg *.mp4 *.mkv *.avi *.mov *.flac)")
+        file_dialog.setNameFilter(complete_filter)
         file_dialog.setFileMode(QFileDialog.FileMode.ExistingFile)
+        file_dialog.setWindowTitle("Select Audio or Video File")
+
         if file_dialog.exec() == QFileDialog.DialogCode.Accepted:
             file_path = file_dialog.selectedFiles()[0]
-            if file_path.endswith(self.supported_file_types):
-                # Determine the app's directory and ensure the /Recordings directory exists
-                app_directory = os.getcwd()
-                recordings_path = os.path.join(app_directory, 'Recordings')
-                os.makedirs(recordings_path, exist_ok=True)
+            file_extension = os.path.splitext(file_path)[1].lower()[1:]
 
-                # Copy the file to the /Recordings directory
-                try:
-                    base_name = os.path.basename(file_path)
-                    new_path = os.path.join(recordings_path, base_name)
-                    shutil.copy2(file_path, new_path)
-                    self.fileDropped.emit(new_path)  # Emit the new path
-                except Exception as e:
-                    QMessageBox.critical(self, "Error", f"Failed to copy file: {e}")
+            if file_extension in self.supported_file_types:
+                self.process_file(file_path)
             else:
-                self.showErrorMessage()
-    def showErrorMessage(self):
-        QMessageBox.critical(self, "Unsupported File Type",
-                             "The file you dragged is not a supported audio/video file.")
+                self.showErrorMessage(f"The file type .{file_extension} is not supported.")
+
+    def process_file(self, file_path):
+        """Process the selected file with error handling and progress reporting."""
+        try:
+            # Check if file exists
+            if not os.path.exists(file_path):
+                raise FileNotFoundError(f"File not found: {file_path}")
+
+            # Check file size (prevent extremely large files)
+            file_size_mb = os.path.getsize(file_path) / (1024 * 1024)  # Convert to MB
+            if file_size_mb > 500:  # Limit to 500MB
+                response = QMessageBox.question(
+                    self,
+                    "Large File Warning",
+                    f"The selected file is {file_size_mb:.1f}MB, which is quite large. "
+                    "Processing might take significant time and resources. Continue?",
+                    QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No
+                )
+                if response == QMessageBox.StandardButton.No:
+                    return
+
+            base_name = os.path.basename(file_path)
+            new_path = os.path.join(self.recordings_dir, base_name)
+
+            # Check if file with same name already exists
+            if os.path.exists(new_path):
+                response = QMessageBox.question(
+                    self,
+                    "File Exists",
+                    f"A file named '{base_name}' already exists in Recordings folder. Replace it?",
+                    QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No | QMessageBox.StandardButton.Cancel
+                )
+
+                if response == QMessageBox.StandardButton.Cancel:
+                    return
+                elif response == QMessageBox.StandardButton.Yes:
+                    os.remove(new_path)  # Remove existing file
+                else:  # No - create a new unique filename
+                    counter = 1
+                    name, ext = os.path.splitext(base_name)
+                    while os.path.exists(new_path):
+                        new_base_name = f"{name}_{counter}{ext}"
+                        new_path = os.path.join(self.recordings_dir, new_base_name)
+                        counter += 1
+                    base_name = os.path.basename(new_path)
+
+            # Show progress dialog for larger files
+            if file_size_mb > 50:  # Only show for files > 50MB
+                progress = QProgressDialog(f"Copying {base_name}...", "Cancel", 0, 100, self)
+                progress.setWindowTitle("Copying File")
+                progress.setWindowModality(Qt.WindowModality.WindowModal)  # Fixed enum
+                progress.setMinimumDuration(500)  # Only show for operations taking > 500ms
+                progress.setValue(0)
+
+                # Since shutil.copy2 doesn't report progress, we'll just update in chunks
+                progress.setValue(25)
+                QApplication.processEvents()
+
+                shutil.copy2(file_path, new_path)
+
+                progress.setValue(100)
+                QApplication.processEvents()
+            else:
+                # For smaller files, just copy without progress dialog
+                shutil.copy2(file_path, new_path)
+
+            # Emit signal with the new path
+            logging.info(f"File processed successfully: {new_path}")
+            self.fileDropped.emit(new_path)
+
+        except FileNotFoundError as e:
+            self.showErrorMessage(f"File not found: {e}")
+        except PermissionError:
+            self.showErrorMessage(
+                "Permission denied. Make sure you have access to both the source file and the Recordings folder.")
+        except shutil.SameFileError:
+            # If it's the same file, just use it directly
+            self.fileDropped.emit(file_path)
+        except Exception as e:
+            self.showErrorMessage(f"Failed to process file: {e}")
+            logging.error(f"Error processing file: {e}", exc_info=True)
+
+    def showErrorMessage(self, message):
+        """Show an error message with improved formatting."""
+        error_box = QMessageBox(self)
+        error_box.setIcon(QMessageBox.Icon.Critical)
+        error_box.setWindowTitle("File Error")
+        error_box.setText(message)
+        error_box.setStandardButtons(QMessageBox.StandardButton.Ok)
+        error_box.exec()
 
     def paintEvent(self, event):
+        """Custom paint event for nicer visual appearance."""
         painter = QPainter(self)
-        pen = QPen(Qt.GlobalColor.gray, 2, Qt.PenStyle.DashLine)
+        painter.setRenderHint(QPainter.RenderHint.Antialiasing)
+
+        # Draw rounded dashed rectangle
+        pen = QPen(QColor("#cccccc"), 2, Qt.PenStyle.DashLine)  # Fixed enum
         painter.setPen(pen)
-        painter.setBrush(Qt.BrushStyle.NoBrush)
-        painter.drawRect(10, 10, self.width()-20, self.height()-20)
+        painter.setBrush(Qt.BrushStyle.NoBrush)  # Fixed enum
+        painter.drawRoundedRect(10, 10, self.width() - 20, self.height() - 20, 10, 10)
 
         # Draw plus sign
-        font = QFont()
-        font.setPixelSize(32)
-        painter.setFont(font)
-        painter.drawText(self.rect(), Qt.AlignmentFlag.AlignCenter, "+")
+        pen.setStyle(Qt.PenStyle.SolidLine)  # Fixed enum
+        pen.setColor(QColor("#666666"))
+        painter.setPen(pen)
+
+        # Draw plus sign
+        plus_size = 40
+        center_x = self.width() / 2
+        center_y = self.height() / 2 - 15  # Move up slightly to account for text below
+
+        # Horizontal line
+        painter.drawLine(
+            int(center_x - plus_size / 2),
+            int(center_y),
+            int(center_x + plus_size / 2),
+            int(center_y)
+        )
+
+        # Vertical line
+        painter.drawLine(
+            int(center_x),
+            int(center_y - plus_size / 2),
+            int(center_x),
+            int(center_y + plus_size / 2)
+        )
 
         super().paintEvent(event)
 
-
-class MainWindow(QMainWindow):
-    def __init__(self):
-        super().__init__()
-        self.init_ui()
-
-    def init_ui(self):
-        self.setWindowTitle("File Drop Test")
-        self.setGeometry(100, 100, 600, 200)
-
-        self.file_drop_widget = FileDropWidget(self)
-        self.setCentralWidget(self.file_drop_widget)
-
-        self.file_drop_widget.fileDropped.connect(self.file_dropped)
-
-    def file_dropped(self, file_path):
-        print(f"File dropped: {file_path}")
-
-
-def main():
-    app = QApplication(sys.argv)
-    main_window = MainWindow()
-    main_window.show()
-    sys.exit(app.exec())
-
-
-if __name__ == "__main__":
-    main()
+    def get_supported_format_list(self):
+        """Return a formatted list of supported file formats for display."""
+        formats = []
+        for ext, desc in self.supported_file_types.items():
+            formats.append(f".{ext} ({desc})")
+        return formats
