@@ -417,9 +417,11 @@ class SettingsDialog(QDialog):
             index = self.transcription_quality_dropdown.findText(quality)
             self.transcription_quality_dropdown.setCurrentIndex(index if index != -1 else 0)
 
-            method = config.get('transcription_method')
-            index = self.transcription_method_dropdown.findText(method.capitalize())
-            self.transcription_method_dropdown.setCurrentIndex(index if index != -1 else 0)
+            method = config.get('transcription_method', '').lower()
+            if method == 'api':
+                self.transcription_method_dropdown.setCurrentText('API')
+            else:
+                self.transcription_method_dropdown.setCurrentText('Local')
 
             language = config.get('transcription_language')
             index = self.language_dropdown.findText(language)
@@ -485,9 +487,16 @@ class SettingsDialog(QDialog):
              # Decide if we should proceed or stop here? For now, proceed with config save.
 
         # --- Save General Settings via ConfigManager ---
+        # Get transcription method and ensure it's properly formatted 
+        transcription_method = self.transcription_method_dropdown.currentText()
+        if transcription_method.upper() == 'API':
+            transcription_method = 'api'
+        else:
+            transcription_method = 'local'
+
         config_updates = {
             'transcription_quality': self.transcription_quality_dropdown.currentText(),
-            'transcription_method': self.transcription_method_dropdown.currentText().lower(),
+            'transcription_method': transcription_method,
             'gpt_model': self.gpt_model_dropdown.currentText(),
             'max_tokens': self.max_tokens_spinbox.value(),
             'temperature': self.temperature_spinbox.value(),
