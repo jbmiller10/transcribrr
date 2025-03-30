@@ -3,6 +3,8 @@ Central location for application constants to avoid duplication and ensure consi
 """
 
 import os
+import sys
+import appdirs
 from typing import Dict, List, Set
 from enum import Enum, auto
 
@@ -11,14 +13,61 @@ APP_NAME = "Transcribrr"
 APP_VERSION = "1.0.0"
 APP_AUTHOR = "John Miller"
 
-# File paths
-RECORDINGS_DIR = os.path.join(os.getcwd(), "Recordings")
-DATABASE_DIR = os.path.join(os.getcwd(), "database")
+# Determine base paths: differentiate between resource path and user data path
+def get_resource_path():
+    """Get the path for read-only resources bundled with the app"""
+    try:
+        # Check if running as PyInstaller bundle
+        if hasattr(sys, '_MEIPASS'):
+            return sys._MEIPASS
+        
+        # Check if running as a py2app bundle
+        elif getattr(sys, 'frozen', False) and 'MacOS' in sys.executable:
+            bundle_dir = os.path.normpath(os.path.join(
+                os.path.dirname(sys.executable), 
+                os.pardir, 'Resources'
+            ))
+            return bundle_dir
+        
+    except AttributeError:
+        pass
+    
+    # Not running as bundled app, use current working directory
+    return os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+
+def get_user_data_path():
+    """Get the path for user data files that need to be read/write"""
+    # When packaged, we need to use the user's data directory
+    if hasattr(sys, '_MEIPASS') or getattr(sys, 'frozen', False):
+        # Use appdirs to get standard user data directory
+        user_data_dir = appdirs.user_data_dir(APP_NAME, APP_AUTHOR)
+        # Create the directory if it doesn't exist
+        os.makedirs(user_data_dir, exist_ok=True)
+        return user_data_dir
+    else:
+        # In development mode, use the project directory
+        return os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+
+# Base directories
+RESOURCE_DIR = get_resource_path()  # Read-only bundled resources
+USER_DATA_DIR = get_user_data_path()  # Read-write user data
+
+# File paths for read-only resources
+ICONS_DIR = os.path.join(RESOURCE_DIR, "icons")
+
+# File paths for user data (read-write)
+RECORDINGS_DIR = os.path.join(USER_DATA_DIR, "Recordings")
+DATABASE_DIR = os.path.join(USER_DATA_DIR, "database")
 DATABASE_PATH = os.path.join(DATABASE_DIR, "database.sqlite")
-CONFIG_PATH = os.path.join(os.getcwd(), "config.json")
-PROMPTS_PATH = os.path.join(os.getcwd(), "preset_prompts.json")
-LOG_DIR = os.path.join(os.getcwd(), "logs")
+CONFIG_PATH = os.path.join(USER_DATA_DIR, "config.json")
+PROMPTS_PATH = os.path.join(USER_DATA_DIR, "preset_prompts.json")
+LOG_DIR = os.path.join(USER_DATA_DIR, "logs")
 LOG_FILE = os.path.join(LOG_DIR, "transcribrr.log")
+
+# Ensure user data directories exist
+os.makedirs(RECORDINGS_DIR, exist_ok=True)
+os.makedirs(DATABASE_DIR, exist_ok=True)
+os.makedirs(LOG_DIR, exist_ok=True)
 
 # Database table names and fields
 TABLE_RECORDINGS = "recordings"

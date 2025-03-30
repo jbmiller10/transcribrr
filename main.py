@@ -22,26 +22,23 @@ from app.ThemeManager import ThemeManager
 from app.ResponsiveUI import ResponsiveUIManager, ResponsiveEventFilter
 from app.services.transcription_service import ModelManager
 
-# Configure logging
-LOG_FORMAT = '%(asctime)s - %(name)s - %(levelname)s - %(message)s'
-log_dir = os.path.join(os.getcwd(), 'logs')
-os.makedirs(log_dir, exist_ok=True)
-log_file = os.path.join(log_dir, 'transcribrr.log')
+# Import constants for paths
+from app.constants import LOG_FORMAT, LOG_DIR, LOG_FILE, RECORDINGS_DIR, DATABASE_DIR, APP_NAME, USER_DATA_DIR
 
+# Configure logging - now all paths come from constants
 logging.basicConfig(
     level=logging.INFO,
     format=LOG_FORMAT,
     handlers=[
         logging.StreamHandler(),
-        logging.FileHandler(log_file)
+        logging.FileHandler(LOG_FILE)
     ]
 )
 
-logger = logging.getLogger('transcribrr')
+logger = logging.getLogger(APP_NAME)
+logger.info(f"Application starting. User data directory: {USER_DATA_DIR}")
 
-# Create Recordings directory if it doesn't exist
-os.makedirs(os.path.join(os.getcwd(), 'Recordings'), exist_ok=True)
-os.makedirs(os.path.join(os.getcwd(), 'database'), exist_ok=True)
+# Directories are already created in constants.py, no need to recreate them here
 
 # Global variable to keep reference to the startup thread
 startup_thread = None
@@ -71,10 +68,16 @@ class StartupThread(QThread):
             self.update_progress.emit(30, "Cleaning temporary files...")
             cleanup_temp_files()
 
-            # Create necessary directories
-            self.update_progress.emit(40, "Setting up environment...")
-            os.makedirs(os.path.join(os.getcwd(), 'Recordings'), exist_ok=True)
-            os.makedirs(os.path.join(os.getcwd(), 'database'), exist_ok=True)
+            # Verify environment is properly set up
+            self.update_progress.emit(40, "Verifying environment...")
+            # Log directory locations
+            from app.constants import RESOURCE_DIR, USER_DATA_DIR, RECORDINGS_DIR, DATABASE_DIR, LOG_DIR
+            logger.info(f"Resource directory: {os.path.join(RESOURCE_DIR)}")
+            logger.info(f"User data directory: {os.path.join(USER_DATA_DIR)}")
+            logger.info(f"Recordings directory: {os.path.join(RECORDINGS_DIR)}")
+            logger.info(f"Database directory: {os.path.join(DATABASE_DIR)}")
+            logger.info(f"Log directory: {os.path.join(LOG_DIR)}") 
+            # Directories are already created in constants.py
             
             # Initialize configuration manager
             self.update_progress.emit(50, "Loading configuration...")
@@ -199,20 +202,32 @@ def create_splash_screen():
     svg_path = resource_path('./icons/app/splash.svg')
     png_path = resource_path('./icons/app/splash.png')
     
-    if os.path.exists(svg_path):
-        # Render SVG to pixmap
-        renderer = QSvgRenderer(svg_path)
-        splash_pixmap = QPixmap(480, 320)
-        splash_pixmap.fill(Qt.GlobalColor.transparent)
-        # Create a painter on the pixmap
-        from PyQt6.QtGui import QPainter
-        painter = QPainter(splash_pixmap)
-        renderer.render(painter)
-        painter.end()
-    elif os.path.exists(png_path):
-        splash_pixmap = QPixmap(png_path)
-    else:
-        # Create a default splash screen if image not found
+    logger.debug(f"Splash SVG path: {svg_path}")
+    logger.debug(f"Splash PNG path: {png_path}")
+    
+    try:
+        if os.path.exists(svg_path):
+            # Render SVG to pixmap
+            logger.debug("Creating splash screen from SVG")
+            renderer = QSvgRenderer(svg_path)
+            splash_pixmap = QPixmap(480, 320)
+            splash_pixmap.fill(Qt.GlobalColor.transparent)
+            # Create a painter on the pixmap
+            from PyQt6.QtGui import QPainter
+            painter = QPainter(splash_pixmap)
+            renderer.render(painter)
+            painter.end()
+        elif os.path.exists(png_path):
+            logger.debug("Creating splash screen from PNG")
+            splash_pixmap = QPixmap(png_path)
+        else:
+            # Create a default splash screen if image not found
+            logger.warning("Splash image not found, using default")
+            splash_pixmap = QPixmap(480, 320)
+            splash_pixmap.fill(Qt.GlobalColor.white)
+    except Exception as e:
+        logger.error(f"Error creating splash pixmap: {e}")
+        # Fallback to a plain splash screen
         splash_pixmap = QPixmap(480, 320)
         splash_pixmap.fill(Qt.GlobalColor.white)
 
@@ -395,11 +410,75 @@ def on_initialization_error(error_message, main_window, splash):
     main_window.show()
 
 
+def copy_initial_data_files():
+    """Copy default configuration and preset files to user data directory on first run"""
+    from app.constants import USER_DATA_DIR, RESOURCE_DIR, CONFIG_PATH, PROMPTS_PATH
+    import shutil
+    
+    # Check if running in a bundled app
+    is_frozen = getattr(sys, 'frozen', False)
+    
+    if is_frozen:
+        # Determine resource path based on bundling method
+        if hasattr(sys, '_MEIPASS'):
+            # PyInstaller
+            resource_dir = sys._MEIPASS
+        elif 'MacOS' in sys.executable:
+            # py2app
+            resource_dir = os.path.normpath(os.path.join(
+                os.path.dirname(sys.executable), 
+                os.pardir, 'Resources'
+            ))
+        else:
+            resource_dir = os.getcwd()
+            
+        # Copy config.json if it doesn't exist in user data directory
+        if not os.path.exists(CONFIG_PATH):
+            source_config = os.path.join(resource_dir, 'config.json')
+            if os.path.exists(source_config):
+                logger.info(f"Copying default config.json to {CONFIG_PATH}")
+                shutil.copy2(source_config, CONFIG_PATH)
+            else:
+                logger.warning(f"Default config.json not found at {source_config}")
+                
+        # Copy preset_prompts.json if it doesn't exist in user data directory
+        if not os.path.exists(PROMPTS_PATH):
+            source_prompts = os.path.join(resource_dir, 'preset_prompts.json')
+            if os.path.exists(source_prompts):
+                logger.info(f"Copying default preset_prompts.json to {PROMPTS_PATH}")
+                shutil.copy2(source_prompts, PROMPTS_PATH)
+            else:
+                logger.warning(f"Default preset_prompts.json not found at {source_prompts}")
+
+
 def main():
     # Keep a reference to the startup thread to prevent early destruction
     global startup_thread
     
     try:
+        # Log startup information
+        is_frozen = getattr(sys, 'frozen', False)
+        is_pyinstaller = hasattr(sys, '_MEIPASS')
+        is_py2app = is_frozen and 'MacOS' in sys.executable
+        
+        logger.info(f"Starting application: Frozen = {is_frozen}, PyInstaller = {is_pyinstaller}, py2app = {is_py2app}")
+        logger.info(f"Working directory: {os.getcwd()}")
+        # Import constants directly instead of through app
+        from app.constants import USER_DATA_DIR, RESOURCE_DIR
+        logger.info(f"User data directory: {USER_DATA_DIR}")
+        logger.info(f"Resource directory: {RESOURCE_DIR}")
+        
+        # Copy default configuration files on first run
+        copy_initial_data_files()
+        
+        # Check if critical files exist after potential copying
+        # Use constants directly
+        from app.constants import CONFIG_PATH, PROMPTS_PATH
+        config_exists = os.path.exists(CONFIG_PATH)
+        prompts_exists = os.path.exists(PROMPTS_PATH)
+        logger.info(f"Config file exists in user data dir: {config_exists}")
+        logger.info(f"Prompts file exists in user data dir: {prompts_exists}")
+        
         # Initialize application
         app, main_window = initialize_app()
         
@@ -407,6 +486,7 @@ def main():
         app.aboutToQuit.connect(cleanup_application)
         
         # Run application main loop
+        logger.info("Starting application main loop")
         return app.exec()
 
     except Exception as e:

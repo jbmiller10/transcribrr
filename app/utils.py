@@ -57,17 +57,35 @@ def validate_url(url):
 
 
 def resource_path(relative_path):
-    """ Get absolute path to resource, works for dev and for PyInstaller """
+    """ Get absolute path to resource, works for dev, PyInstaller, and py2app """
     try:
         # PyInstaller creates a temp folder and stores path in _MEIPASS
-        base_path = sys._MEIPASS
+        if hasattr(sys, '_MEIPASS'):
+            base_path = sys._MEIPASS
+            logger.debug(f"Using PyInstaller _MEIPASS path: {base_path}")
+            
+        # py2app specific case - bundle resources in Resources directory
+        elif getattr(sys, 'frozen', False) and 'MacOS' in sys.executable:
+            bundle_dir = os.path.normpath(os.path.join(
+                os.path.dirname(sys.executable), 
+                os.pardir, 'Resources'
+            ))
+            base_path = bundle_dir
+            logger.debug(f"Using py2app bundle path: {base_path}")
+            
+        else:
+            raise AttributeError("Not running as a bundled app")
+            
     except AttributeError:
         # Not running as a bundled app, assume standard project structure
         # Use the directory of the current file (__file__) to find the project root
         # Assumes utils.py is in app/ directory, one level down from project root
         base_path = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+        logger.debug(f"Using development path: {base_path}")
 
-    return os.path.join(base_path, relative_path)
+    full_path = os.path.join(base_path, relative_path)
+    logger.debug(f"Resource path for '{relative_path}': {full_path}")
+    return full_path
 
 
 def language_to_iso(language_name):
