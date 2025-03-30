@@ -222,12 +222,17 @@ class TranscriptionService:
         if not os.path.exists(file_path):
             raise FileNotFoundError(f"Audio file not found: {file_path}")
             
-        # Choose transcription method
-        if method.lower() == "api":
+        # Choose transcription method - normalize to lowercase for consistent comparison
+        method_norm = method.lower().strip()
+        
+        if method_norm == "api":
+            logger.info(f"Using API method for transcription of {os.path.basename(file_path)}")
             return self._transcribe_with_api(file_path, language, openai_api_key)
         else:
+            logger.info(f"Using local method for transcription of {os.path.basename(file_path)}")
             return self._transcribe_locally(file_path, model_id, language, 
-                                           speaker_detection, hf_auth_key)
+                                          speaker_detection, hf_auth_key)
+
     
     def _transcribe_locally(self, 
                            file_path: str, 

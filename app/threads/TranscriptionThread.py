@@ -187,7 +187,9 @@ class TranscriptionThread(QThread):
         self.update_progress.emit(f'Processing: {task_label}...')
 
         # Check device for local method
-        if self.transcription_method.lower() == 'local':
+        method = self.transcription_method.lower()
+        if method == 'local':
+
             device = ModelManager.instance().device
             self.update_progress.emit(f'Using device: {device}')
             if device == 'cuda':
@@ -195,6 +197,9 @@ class TranscriptionThread(QThread):
                      gpu_mem = torch.cuda.get_device_properties(0).total_memory / (1024**3)
                      self.update_progress.emit(f'GPU Memory: {gpu_mem:.2f}GB')
                  except Exception: pass # Ignore if props fail
+        else:
+            self.update_progress.emit(f'Using OpenAI API for transcription')
+
 
         # --- Call Transcription Service ---
         # Add a check before the potentially long call
