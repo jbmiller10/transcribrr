@@ -9,8 +9,7 @@ __pycache__
 config.json
 *.mp3
 *.m4a
-.DS_Store
-preset_prompts.json
+.DS_Storen
 *.sqlite
 
 config.json
