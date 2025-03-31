@@ -24,14 +24,19 @@ jobs:
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
-          # Install PyAudio from binary to avoid build issues
-          pip install --no-binary :all: --only-binary PyAudio PyAudio
-          pip install -r requirements.txt
+          # Skip PyAudio in requirements and install it separately after portaudio is installed
+          grep -v "PyAudio" requirements.txt > requirements_without_pyaudio.txt
+          pip install -r requirements_without_pyaudio.txt
       
       - name: Install homebrew dependencies
         run: |
           brew install ffmpeg portaudio
       
+      - name: Install PyAudio
+        run: |
+          # Install PyAudio after portaudio is installed
+          pip install PyAudio
+
       - name: Build macOS app
         run: |
           chmod +x build_macos_app.sh
