@@ -39,11 +39,8 @@ jobs:
 
       - name: Build macOS app
         run: |
-          chmod +x build_macos_app.sh
-          # Create a modified version of the script with proper sed syntax for GitHub macOS runners
-          sed 's/sed -i \x27\x27 -e/sed -i.bak -e/' build_macos_app.sh > build_macos_app_gh.sh
-          chmod +x build_macos_app_gh.sh
-          ./build_macos_app_gh.sh
+          chmod +x build_github_macos.sh
+          ./build_github_macos.sh
       
       - name: Create disk image
         run: |
