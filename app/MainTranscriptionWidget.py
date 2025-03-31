@@ -86,11 +86,6 @@ class MainTranscriptionWidget(ResponsiveWidget):
         """Load only GPT parameters initially."""
         self.gpt_temperature = self.config_manager.get('temperature', 1.0)
         self.gpt_max_tokens = self.config_manager.get('max_tokens', 16000)
-        # Update UI if already initialized
-        if hasattr(self, 'temperature_spinbox'):
-            self.temperature_spinbox.setValue(self.gpt_temperature)
-        if hasattr(self, 'max_tokens_spinbox'):
-            self.max_tokens_spinbox.setValue(self.gpt_max_tokens)
 
     def handle_config_update(self, changed_config):
         """Handle updates pushed from ConfigManager."""
@@ -98,12 +93,8 @@ class MainTranscriptionWidget(ResponsiveWidget):
         # Update relevant internal state if needed
         if 'temperature' in changed_config:
              self.gpt_temperature = changed_config['temperature']
-             if hasattr(self, 'temperature_spinbox'):
-                 self.temperature_spinbox.setValue(self.gpt_temperature)
         if 'max_tokens' in changed_config:
              self.gpt_max_tokens = changed_config['max_tokens']
-             if hasattr(self, 'max_tokens_spinbox'):
-                 self.max_tokens_spinbox.setValue(self.gpt_max_tokens)
         # Add checks for other relevant config keys if necessary
 
     def connect_signals(self):
@@ -199,10 +190,9 @@ class MainTranscriptionWidget(ResponsiveWidget):
         control_bar.addStretch(1)
         control_bar.addWidget(self.settings_button)
         editor_layout.addLayout(control_bar)
-
-        # GPT parameters
-        self.init_gpt_parameters() # Initialize GPT param UI
-        editor_layout.addLayout(self.gpt_parameter_layout)
+        
+        # Add some padding above the text editor (spacing without the controls)
+        editor_layout.addSpacing(10)
         
         # Main text editor
         self.transcript_text = TextEditor() # The rich text editor
@@ -228,29 +218,7 @@ class MainTranscriptionWidget(ResponsiveWidget):
         self.main_splitter.addWidget(self.content_widget)
         self.main_splitter.setSizes([0, 500]) # Initially hide prompt widget
 
-    def init_gpt_parameters(self):
-        self.gpt_parameter_layout = QHBoxLayout()
-        self.temperature_label = QLabel("Temp:")
-        self.temperature_spinbox = QDoubleSpinBox()
-        self.temperature_spinbox.setRange(0.0, 2.0)
-        self.temperature_spinbox.setSingleStep(0.1)
-        self.temperature_spinbox.setValue(self.gpt_temperature)
-        self.temperature_spinbox.setToolTip("Controls randomness (0.0=deterministic, 2.0=creative)")
-        self.temperature_spinbox.valueChanged.connect(lambda v: self.config_manager.set('temperature', v))
-
-        self.max_tokens_label = QLabel("Max Tokens:")
-        self.max_tokens_spinbox = QSpinBox()
-        self.max_tokens_spinbox.setRange(1, 16000) # Consider model limits
-        self.max_tokens_spinbox.setValue(self.gpt_max_tokens)
-        self.max_tokens_spinbox.setToolTip("Maximum length of the response")
-        self.max_tokens_spinbox.valueChanged.connect(lambda v: self.config_manager.set('max_tokens', v))
-
-        self.gpt_parameter_layout.addWidget(self.temperature_label)
-        self.gpt_parameter_layout.addWidget(self.temperature_spinbox)
-        self.gpt_parameter_layout.addSpacing(10)
-        self.gpt_parameter_layout.addWidget(self.max_tokens_label)
-        self.gpt_parameter_layout.addWidget(self.max_tokens_spinbox)
-        self.gpt_parameter_layout.addStretch()
+    # Temperature and max tokens settings have been moved to SettingsDialog only
 
     def load_prompts_to_dropdown(self):
         """Load prompts from PromptManager into the dropdown."""
@@ -963,12 +931,10 @@ class MainTranscriptionWidget(ResponsiveWidget):
         self.refinement_input.setEnabled(show_refine)
         self.refinement_submit_button.setEnabled(show_refine)
 
-        # Enable/disable main dropdowns/spinners based on processing state
+        # Enable/disable main dropdowns based on processing state
         processing_busy = self.is_transcribing or self.is_processing_gpt4
         self.gpt_prompt_dropdown.setEnabled(not processing_busy)
         self.edit_prompt_button.setEnabled(not processing_busy and self.gpt_prompt_dropdown.itemData(self.gpt_prompt_dropdown.currentIndex()) != "CUSTOM")
-        self.temperature_spinbox.setEnabled(not processing_busy)
-        self.max_tokens_spinbox.setEnabled(not processing_busy)
         self.mode_switch.setEnabled(not processing_busy and has_recording) # Can only switch if recording loaded
 
 

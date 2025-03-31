@@ -17,7 +17,7 @@ from PyQt6.QtGui import QPixmap, QFont, QIcon, QColor
 from PyQt6.QtCore import Qt, QTimer, QSize, QThread, pyqtSignal, QRect
 from PyQt6.QtSvg import QSvgRenderer
 from app.MainWindow import MainWindow
-from app.utils import resource_path, check_system_requirements, cleanup_temp_files, ConfigManager
+from app.utils import resource_path, check_system_requirements, cleanup_temp_files, ConfigManager, ensure_ffmpeg_available
 from app.ThemeManager import ThemeManager
 from app.ResponsiveUI import ResponsiveUIManager, ResponsiveEventFilter
 from app.services.transcription_service import ModelManager
@@ -125,18 +125,9 @@ class StartupThread(QThread):
         Returns:
             Dictionary of dependency availability
         """
-        # Check FFmpeg availability
-        try:
-            import subprocess
-            result = subprocess.run(
-                ["ffmpeg", "-version"],
-                stdout=subprocess.PIPE,
-                stderr=subprocess.PIPE,
-                text=True
-            )
-            ffmpeg_available = result.returncode == 0
-        except:
-            ffmpeg_available = False
+        # Check FFmpeg availability using our enhanced function
+        ffmpeg_available, ffmpeg_message = ensure_ffmpeg_available()
+        logger.info(f"FFmpeg check: {ffmpeg_message}")
 
         # Check PyAudio
         try:

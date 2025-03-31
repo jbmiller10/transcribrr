@@ -48,6 +48,68 @@ def is_audio_file(file_path):
     return file_extension in audio_extensions
 
 
+def ensure_ffmpeg_available():
+    """
+    Ensure ffmpeg is available, checking multiple locations.
+    Returns a tuple: (success, message)
+    """
+    logger = logging.getLogger('transcribrr')
+    
+    # Check if we're running in a bundled app
+    is_bundled = getattr(sys, 'frozen', False) and hasattr(sys, '_MEIPASS')
+    
+    # Potential locations for ffmpeg
+    potential_locations = [
+        # Check in PATH first
+        shutil.which('ffmpeg'),
+        
+        # Check bundled binary (MacOS app)
+        os.path.join(os.path.dirname(sys.executable), 'bin', 'ffmpeg'),
+        
+        # Check one directory up in case we're in MacOS/bin structure
+        os.path.join(os.path.dirname(os.path.dirname(sys.executable)), 'bin', 'ffmpeg'),
+        
+        # Check Resources directory for bundled app
+        resource_path('ffmpeg'),
+        
+        # Custom common locations
+        '/usr/local/bin/ffmpeg',
+        '/opt/homebrew/bin/ffmpeg',
+        '/usr/bin/ffmpeg',
+    ]
+    
+    # Log the locations we're checking
+    logger.info(f"Checking for ffmpeg in: {potential_locations}")
+    
+    # Check each potential location
+    for location in potential_locations:
+        if location and os.path.exists(location) and os.access(location, os.X_OK):
+            logger.info(f"Found ffmpeg at: {location}")
+            
+            # Add the directory to PATH if it's not already there
+            ffmpeg_dir = os.path.dirname(location)
+            if ffmpeg_dir not in os.environ.get('PATH', ''):
+                logger.info(f"Adding {ffmpeg_dir} to PATH")
+                os.environ['PATH'] = f"{ffmpeg_dir}{os.pathsep}{os.environ.get('PATH', '')}"
+            
+            # Try running ffmpeg to verify it works
+            try:
+                result = subprocess.run(
+                    [location, '-version'], 
+                    stdout=subprocess.PIPE, 
+                    stderr=subprocess.PIPE,
+                    timeout=5
+                )
+                if result.returncode == 0:
+                    logger.info(f"Successfully verified ffmpeg: {result.stdout.decode()[:100]}...")
+                    return True, f"Found ffmpeg at {location}"
+            except Exception as e:
+                logger.warning(f"Found ffmpeg at {location} but executing it failed: {e}")
+    
+    logger.error("Could not find ffmpeg in any of the expected locations")
+    return False, "FFmpeg not found. Please install FFmpeg to enable audio/video processing."
+
+
 def validate_url(url):
     """Validate if a URL is a valid YouTube URL."""
     # Modified regex pattern to handle more YouTube URL formats
