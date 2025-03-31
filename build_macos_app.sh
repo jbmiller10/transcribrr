@@ -9,11 +9,25 @@ APP_NAME="Transcribrr"
 VERSION="1.0.0"
 BUNDLE_ID="com.transcribrr.app"
 
+# Check if ffmpeg is installed
+if ! command -v brew &> /dev/null; then
+    echo "Error: Homebrew is required to install ffmpeg. Please install Homebrew first."
+    echo "Visit https://brew.sh/ for installation instructions."
+    exit 1
+fi
+
+# Check if ffmpeg is installed via Homebrew
+if ! brew list ffmpeg &> /dev/null; then
+    echo "Installing ffmpeg via Homebrew..."
+    brew install ffmpeg
+fi
+
 # Create directories
 echo "Creating app bundle structure..."
 APP_DIR="dist/${APP_NAME}.app"
 mkdir -p "${APP_DIR}/Contents/MacOS"
 mkdir -p "${APP_DIR}/Contents/Resources"
+mkdir -p "${APP_DIR}/Contents/Frameworks"
 
 # Copy icon
 echo "Copying icon..."
@@ -126,5 +140,28 @@ echo "Installing dependencies..."
 # Download CA certificates
 echo "Downloading CA certificates..."
 curl -o "${APP_DIR}/Contents/Resources/cacert.pem" https://curl.se/ca/cacert.pem
+
+# Copy ffmpeg binaries into the app bundle
+echo "Copying ffmpeg binaries..."
+FFMPEG_PATH=$(which ffmpeg)
+FFPROBE_PATH=$(which ffprobe)
+
+if [ -f "$FFMPEG_PATH" ] && [ -f "$FFPROBE_PATH" ]; then
+    mkdir -p "${APP_DIR}/Contents/MacOS/bin"
+    cp "$FFMPEG_PATH" "${APP_DIR}/Contents/MacOS/bin/"
+    cp "$FFPROBE_PATH" "${APP_DIR}/Contents/MacOS/bin/"
+    chmod +x "${APP_DIR}/Contents/MacOS/bin/ffmpeg"
+    chmod +x "${APP_DIR}/Contents/MacOS/bin/ffprobe"
+    echo "FFmpeg binaries copied successfully."
+else
+    echo "Warning: Could not find ffmpeg or ffprobe executables."
+    echo "Your app may not work correctly without these binaries."
+fi
+
+# Update the launcher script to include ffmpeg in PATH
+sed -i '' -e '/export PYTHONPATH/a\\
+# Add ffmpeg to PATH\
+export PATH="$DIR/bin:$PATH"\
+' "${APP_DIR}/Contents/MacOS/${APP_NAME}"
 
 echo "Build completed successfully! App is located at: ${APP_DIR}"
