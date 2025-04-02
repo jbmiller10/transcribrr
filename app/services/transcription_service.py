@@ -39,23 +39,43 @@ class ModelManager:
         self._models: Dict[str, Any] = {}  # Cache for loaded models
         self._processors: Dict[str, Any] = {}  # Cache for loaded processors
         
+        # Read config to get hardware acceleration setting
+        from app.utils import ConfigManager
+        config_manager = ConfigManager.instance()
+        hw_accel_enabled = config_manager.get('hardware_acceleration_enabled', True)
+        
         # Track current device
-        self.device = self._get_optimal_device()
+        self.device = self._get_optimal_device(hw_accel_enabled)
         logger.info(f"ModelManager initialized with device: {self.device}")
         
-    def _get_optimal_device(self) -> str:
-        """Determine the best available device for inference."""
-        if torch.backends.mps.is_available():
-            return "mps"
-        elif torch.cuda.is_available():
+    def _get_optimal_device(self, hw_acceleration_enabled: bool = True) -> str:
+        """
+        Determine the best available device for inference.
+        
+        Args:
+            hw_acceleration_enabled: Whether hardware acceleration is enabled in settings
+        
+        Returns:
+            Device string ("cuda", "mps", or "cpu")
+        """
+        if not hw_acceleration_enabled:
+            logger.info("Hardware acceleration disabled in settings. Using CPU.")
+            return "cpu"
+            
+        if torch.cuda.is_available():
             # Check available GPU memory before setting device to cuda
             free_memory = self._get_free_gpu_memory()
             if free_memory > 2.0:  # If at least 2GB is available
+                logger.info("CUDA device selected for acceleration")
                 return "cuda"
             else:
                 logger.warning(f"Insufficient GPU memory. Available: {free_memory:.2f}GB. Using CPU instead.")
                 return "cpu"
+        elif torch.backends.mps.is_available():
+            logger.info("MPS device selected for acceleration (Apple Silicon)")
+            return "mps"
         else:
+            logger.info("No hardware acceleration available. Using CPU.")
             return "cpu"
     
     def _get_free_gpu_memory(self) -> float:
@@ -202,7 +222,8 @@ class TranscriptionService:
                         method: str = "local",
                         openai_api_key: Optional[str] = None,
                         hf_auth_key: Optional[str] = None,
-                        speaker_detection: bool = False) -> Dict[str, Any]:
+                        speaker_detection: bool = False,
+                        hardware_acceleration_enabled: bool = True) -> Dict[str, Any]:
         """
         Transcribe an audio file using the specified method.
         
@@ -214,6 +235,7 @@ class TranscriptionService:
             openai_api_key: OpenAI API key for API transcription
             hf_auth_key: HuggingFace auth key for speaker detection
             speaker_detection: Whether to enable speaker detection
+            hardware_acceleration_enabled: Whether to enable hardware acceleration
             
         Returns:
             Dictionary with transcription results
@@ -226,10 +248,36 @@ class TranscriptionService:
         method_norm = method.lower().strip()
         
         if method_norm == "api":
+            # Speaker detection is not compatible with API method, log a warning if it was requested
+            if speaker_detection:
+                logger.warning("Speaker detection requested but not available with API method")
+                
             logger.info(f"Using API method for transcription of {os.path.basename(file_path)}")
             return self._transcribe_with_api(file_path, language, openai_api_key)
+        
+        # For local method, decide on hardware acceleration path
+        is_mps_device = hardware_acceleration_enabled and torch.backends.mps.is_available() and not torch.cuda.is_available()
+        
+        # Special case: MPS device with hardware acceleration and speaker detection
+        # MPS and speaker detection don't work together, so we need to warn and choose a path
+        if is_mps_device and speaker_detection:
+            logger.warning("Speaker detection is not compatible with MPS acceleration. Prioritizing your choice...")
+            
+            # If user has explicitly enabled speaker detection despite having hardware acceleration,
+            # we'll assume they prioritize speaker detection over hardware acceleration
+            logger.info("Using CPU transcription to support speaker detection")
+            return self._transcribe_locally(file_path, model_id, language, 
+                                          speaker_detection, hf_auth_key)
+                                          
+        # If MPS is available and hardware acceleration is enabled, use MPS path
+        elif is_mps_device:
+            logger.info(f"Using MPS-optimized method for transcription of {os.path.basename(file_path)}")
+            return self._transcribe_with_mps(file_path, model_id, language)
+            
+        # Otherwise use standard path with CUDA or CPU based on availability and settings
         else:
-            logger.info(f"Using local method for transcription of {os.path.basename(file_path)}")
+            device = self.model_manager._get_optimal_device(hardware_acceleration_enabled)
+            logger.info(f"Using standard transcription with {device} for {os.path.basename(file_path)}")
             return self._transcribe_locally(file_path, model_id, language, 
                                           speaker_detection, hf_auth_key)
 
@@ -273,6 +321,73 @@ class TranscriptionService:
         except Exception as e:
             logger.error(f"Local transcription error: {e}")
             raise RuntimeError(f"Failed to transcribe audio: {e}")
+    
+    def _transcribe_with_mps(self, 
+                         file_path: str, 
+                         model_id: str,
+                         language: str) -> Dict[str, Any]:
+        """
+        Transcribe using MPS-optimized approach for Apple Silicon.
+        This implementation uses the approach from the mac_support branch.
+        
+        Args:
+            file_path: Path to the audio file
+            model_id: Model identifier
+            language: Language of the audio
+            
+        Returns:
+            Dictionary with transcription results
+        """
+        try:
+            # SpeechToTextPipeline MPS implementation
+            if torch.backends.mps.is_available():
+                logger.info(f"Using MPS device for transcription of {os.path.basename(file_path)}")
+                
+                # Initialize model
+                model = AutoModelForSpeechSeq2Seq.from_pretrained(
+                    model_id, 
+                    torch_dtype=torch.float16, 
+                    low_cpu_mem_usage=False, 
+                    use_safetensors=True
+                )
+                
+                # Set device to MPS
+                device = "mps"
+                model.to(device)
+                
+                # Load processor
+                processor = AutoProcessor.from_pretrained(model_id)
+                
+                # Create pipeline
+                pipe = pipeline(
+                    "automatic-speech-recognition",
+                    model=model,
+                    tokenizer=processor.tokenizer,
+                    feature_extractor=processor.feature_extractor,
+                    torch_dtype=torch.float16,
+                    chunk_length_s=15,
+                    max_new_tokens=128,
+                    batch_size=8,
+                    return_timestamps=True,
+                    device=device,
+                    generate_kwargs={"language": language.lower()},
+                )
+                
+                # Transcribe
+                logger.info("Transcribing audio with MPS...")
+                result = pipe(file_path)
+                
+                # Return result in standard format
+                return result
+                
+            else:
+                # Fall back to regular transcription if MPS not available
+                logger.warning("MPS requested but not available, falling back to standard transcription")
+                return self._transcribe_locally(file_path, model_id, language, False, None)
+                
+        except Exception as e:
+            logger.error(f"MPS transcription error: {e}", exc_info=True)
+            raise RuntimeError(f"MPS transcription failed: {e}")
     
     def _transcribe_with_api(self, 
                             file_path: str, 

@@ -143,7 +143,8 @@ DEFAULT_CONFIG = {
     "transcription_language": "english",
     "theme": "light",
     "chunk_enabled": True,
-    "chunk_duration": 5
+    "chunk_duration": 5,
+    "hardware_acceleration_enabled": True
 }
 
 # Default prompt templates

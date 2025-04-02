@@ -11,6 +11,7 @@ import os
 import logging
 import requests
 from openai import OpenAI
+import torch
 from threading import Lock
 
 from app.utils import resource_path, ConfigManager, PromptManager # Use Managers
@@ -91,11 +92,10 @@ class SettingsDialog(QDialog):
     # settings_changed signal is less critical now ConfigManager handles updates
     # prompts_updated signal is replaced by direct interaction with PromptManager
 
-    def __init__(self, main_window, parent=None): # main_window might not be needed
+    def __init__(self, parent=None): # Removed main_window parameter as it's not needed
         super().__init__(parent)
         self.setWindowTitle('Settings')
         self.setMinimumWidth(600)
-        # self.main_window = main_window # Less direct dependency needed now
 
         self.config_manager = ConfigManager.instance()
         self.prompt_manager = PromptManager.instance()
@@ -128,9 +128,14 @@ class SettingsDialog(QDialog):
 
         self.load_settings() # Load settings via ConfigManager
 
-        # Toggle speaker detection based on API key initially and on change
+        # Toggle speaker detection based on various factors
         self.toggle_speaker_detection_checkbox()
         self.hf_api_key_edit.textChanged.connect(self.toggle_speaker_detection_checkbox)
+        self.transcription_method_dropdown.currentIndexChanged.connect(self.toggle_speaker_detection_checkbox)
+        try:
+            self.hw_accel_checkbox.toggled.connect(self.toggle_speaker_detection_checkbox)
+        except Exception as e:
+            logger.warning(f"Could not connect hardware acceleration toggle signal: {e}")
 
     # --- Tab Creation Methods (Mostly unchanged UI structure) ---
     def create_api_tab(self):
@@ -225,6 +230,39 @@ class SettingsDialog(QDialog):
              'Turkish', 'Czech', 'Danish', 'Finnish' # Add more as needed
         ])
         self.speaker_detection_checkbox = QCheckBox('Enable Speaker Detection (Requires HF Token)')
+        
+        # Hardware Acceleration
+        self.hw_accel_layout = QHBoxLayout()
+        self.hw_accel_checkbox = QCheckBox('Enable Hardware Acceleration (CUDA/MPS)')
+        
+        # Check available hardware
+        try:
+            has_cuda = torch.cuda.is_available()
+            has_mps = hasattr(torch.backends, 'mps') and torch.backends.mps.is_available()
+            hw_info = []
+            
+            if has_cuda:
+                hw_info.append("CUDA")
+            if has_mps:
+                hw_info.append("MPS (Apple Silicon)")
+                
+            if hw_info:
+                accel_tooltip = f"Use hardware acceleration: {', '.join(hw_info)}."
+                if has_mps and not has_cuda:
+                    accel_tooltip += " Note: Speaker detection is disabled with MPS acceleration."
+            else:
+                accel_tooltip = "No hardware acceleration detected. CPU will be used."
+                
+            self.hw_accel_checkbox.setToolTip(accel_tooltip)
+        except Exception:
+            # Handle case where torch might not be properly installed
+            logger.warning("Could not check hardware acceleration availability.")
+            hw_info = []
+            self.hw_accel_checkbox.setToolTip("Unable to detect hardware acceleration. Enable if your device has GPU support.")
+        
+        self.hw_accel_layout.addWidget(self.hw_accel_checkbox)
+        self.hw_accel_layout.addStretch()
+        
         # Chunking options
         chunk_layout = QHBoxLayout()
         self.chunk_enabled_checkbox = QCheckBox('Enable Audio Chunking')
@@ -237,9 +275,14 @@ class SettingsDialog(QDialog):
         chunk_layout.addWidget(self.chunk_duration_spinbox)
         chunking_info = QLabel("Splitting audio allows processing very long files.")
         chunking_info.setStyleSheet("color: gray; font-size: 10pt;")
+        hw_accel_info = QLabel("Hardware acceleration improves speed. On Apple Silicon, speaker detection will be disabled with MPS.")
+        hw_accel_info.setStyleSheet("color: gray; font-size: 10pt;")
+        
         options_layout.addWidget(self.language_label)
         options_layout.addWidget(self.language_dropdown)
         options_layout.addWidget(self.speaker_detection_checkbox)
+        options_layout.addLayout(self.hw_accel_layout)
+        options_layout.addWidget(hw_accel_info)
         options_layout.addLayout(chunk_layout)
         options_layout.addWidget(chunking_info)
         transcription_layout.addWidget(options_group)
@@ -342,20 +385,61 @@ class SettingsDialog(QDialog):
         self.tab_widget.addTab(appearance_tab, "Appearance")
     # --- UI Logic ---
     def toggle_speaker_detection_checkbox(self):
-        has_key = bool(self.hf_api_key_edit.text().strip())
-        self.speaker_detection_checkbox.setEnabled(has_key)
-        if not has_key:
-            self.speaker_detection_checkbox.setChecked(False)
-            self.speaker_detection_checkbox.setToolTip("HuggingFace Access Token required for speaker detection")
-        else:
-            self.speaker_detection_checkbox.setToolTip("Identify different speakers in the audio")
+        try:
+            # First, check if we're using API method - speaker detection not compatible with API
+            is_local = self.transcription_method_dropdown.currentText() == 'Local'
+            if not is_local:
+                self.speaker_detection_checkbox.setChecked(False)
+                self.speaker_detection_checkbox.setEnabled(False)
+                self.speaker_detection_checkbox.setToolTip("Speaker detection requires local transcription method")
+                return
+                
+            has_key = bool(self.hf_api_key_edit.text().strip())
+            
+            # Safely check hardware acceleration status and available hardware
+            try:
+                hw_accel_enabled = (hasattr(self, 'hw_accel_checkbox') and 
+                                  self.hw_accel_checkbox.isChecked())
+                
+                # Check if MPS is the only available hardware - only then we need to disable speaker detection
+                has_cuda = torch.cuda.is_available()
+                has_mps = hasattr(torch.backends, 'mps') and torch.backends.mps.is_available()
+                
+                # Only disable speaker detection for MPS-only devices with hardware acceleration enabled
+                mps_only_device = has_mps and not has_cuda
+                disable_for_hw = hw_accel_enabled and mps_only_device
+            except Exception:
+                logger.warning("Error checking hardware status, assuming standard operation")
+                disable_for_hw = False
+            
+            # Disable speaker detection if either no key OR on MPS-only device with HW accel enabled
+            can_enable = has_key and not disable_for_hw
+            self.speaker_detection_checkbox.setEnabled(can_enable)
+            
+            if not has_key:
+                self.speaker_detection_checkbox.setChecked(False)
+                self.speaker_detection_checkbox.setToolTip("HuggingFace Access Token required for speaker detection")
+            elif disable_for_hw:
+                self.speaker_detection_checkbox.setChecked(False)
+                self.speaker_detection_checkbox.setToolTip("Speaker detection is disabled with MPS acceleration")
+            else:
+                self.speaker_detection_checkbox.setToolTip("Identify different speakers in the audio")
+        except Exception as e:
+            logger.warning(f"Error in toggle_speaker_detection_checkbox: {e}")
     def update_transcription_ui(self):
         is_local = self.transcription_method_dropdown.currentText() == 'Local'
         # Only enable quality dropdown for local method
         self.transcription_quality_label.setEnabled(is_local)
         self.transcription_quality_dropdown.setEnabled(is_local)
-        # Speaker detection might depend on local/API specifics - enable based on HF key for now
-        self.toggle_speaker_detection_checkbox()
+        
+        # Speaker detection only works with local transcription
+        if not is_local:
+            self.speaker_detection_checkbox.setChecked(False)
+            self.speaker_detection_checkbox.setEnabled(False)
+            self.speaker_detection_checkbox.setToolTip("Speaker detection requires local transcription method")
+        else:
+            # If using local method, enable/disable based on other factors
+            self.toggle_speaker_detection_checkbox()
 
     def update_theme_preview(self):
         selected_theme = self.theme_dropdown.currentText().lower()
@@ -428,6 +512,23 @@ class SettingsDialog(QDialog):
             self.speaker_detection_checkbox.setChecked(config.get('speaker_detection_enabled', False))
             self.chunk_enabled_checkbox.setChecked(config.get('chunk_enabled', True))
             self.chunk_duration_spinbox.setValue(config.get('chunk_duration', 10))
+            
+            # Hardware acceleration
+            self.hw_accel_checkbox.setChecked(config.get('hardware_acceleration_enabled', True))
+            
+            # Check for incompatibilities between hardware acceleration and speaker detection
+            try:
+                # Only check for MPS-only devices (no CUDA)
+                has_cuda = torch.cuda.is_available()
+                has_mps = hasattr(torch.backends, 'mps') and torch.backends.mps.is_available()
+                mps_only = has_mps and not has_cuda
+                
+                # If MPS-only device with hardware acceleration enabled, disable speaker detection
+                if mps_only and self.hw_accel_checkbox.isChecked():
+                    self.speaker_detection_checkbox.setChecked(False)
+                    self.speaker_detection_checkbox.setEnabled(False)
+            except Exception as e:
+                logger.warning(f"Error checking hardware compatibility: {e}")
 
             # GPT settings
             model = config.get('gpt_model')
@@ -503,7 +604,8 @@ class SettingsDialog(QDialog):
             'transcription_language': self.language_dropdown.currentText(),
             'theme': self.theme_dropdown.currentText().lower(),
             'chunk_enabled': self.chunk_enabled_checkbox.isChecked(),
-            'chunk_duration': self.chunk_duration_spinbox.value()
+            'chunk_duration': self.chunk_duration_spinbox.value(),
+            'hardware_acceleration_enabled': self.hw_accel_checkbox.isChecked()
         }
 
         try:
@@ -555,6 +657,7 @@ class SettingsDialog(QDialog):
             self.speaker_detection_checkbox.setChecked(DEFAULT_CONFIG['speaker_detection_enabled'])
             self.chunk_enabled_checkbox.setChecked(DEFAULT_CONFIG['chunk_enabled'])
             self.chunk_duration_spinbox.setValue(DEFAULT_CONFIG['chunk_duration'])
+            self.hw_accel_checkbox.setChecked(DEFAULT_CONFIG['hardware_acceleration_enabled'])
             self.gpt_model_dropdown.setCurrentText(DEFAULT_CONFIG['gpt_model'])
             self.max_tokens_spinbox.setValue(DEFAULT_CONFIG['max_tokens'])
             self.temperature_spinbox.setValue(DEFAULT_CONFIG['temperature'])
