@@ -875,6 +875,22 @@ class RecentRecordingsWidget(ResponsiveWidget):
         self.filter_recordings()
 
 
+    def update_recording_status(self, recording_id, status_updates):
+        """Update the status of a recording item based on external processing events."""
+        logger.info(f"Updating recording status for ID {recording_id}")
+        
+        # Find the recording widget in our map
+        widget = self.unified_view.recordings_map.get(recording_id)
+        if not widget:
+            logger.error(f"Cannot update status: RecordingListItem widget not found for ID {recording_id}")
+            return
+        
+        # Update the widget with new status
+        widget.update_data(status_updates)
+        
+        # Refresh the visual appearance
+        self.unified_view.viewport().update()
+
     def handle_recording_rename(self, recording_id: int, new_name_no_ext: str):
          """Handle the rename request from a RecordingListItem."""
          logger.info(f"Handling rename for ID {recording_id} to '{new_name_no_ext}'")

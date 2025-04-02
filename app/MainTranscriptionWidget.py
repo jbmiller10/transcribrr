@@ -2,6 +2,7 @@ import json
 import os
 import traceback
 import keyring
+import torch
 from PyQt6.QtWidgets import (
     QWidget, QVBoxLayout, QMessageBox, QComboBox, QHBoxLayout, QLabel,
     QSizePolicy, QTextEdit, QDoubleSpinBox, QSpinBox, QSplitter, QPushButton,
@@ -42,6 +43,7 @@ class MainTranscriptionWidget(ResponsiveWidget):
     gpt_process_completed = pyqtSignal(str) # Emits final processed text
     save_operation_completed = pyqtSignal(str) # Emits status message
     status_update = pyqtSignal(str) # Generic status update signal
+    recording_status_updated = pyqtSignal(int, dict) # Signal for recording updates (ID, data)
 
     # Removed current_selected_item, use self.current_recording_data instead
     # current_selected_item = None
@@ -408,9 +410,27 @@ class MainTranscriptionWidget(ResponsiveWidget):
         transcription_method = config.get('transcription_method', 'local')
         transcription_quality = config.get('transcription_quality', 'openai/whisper-large-v3')
         speaker_detection_enabled = config.get('speaker_detection_enabled', False)
+        hardware_acceleration_enabled = config.get('hardware_acceleration_enabled', True)
         language = config.get('transcription_language', 'english')
         chunk_enabled = config.get('chunk_enabled', True) # Needed if file is large
         chunk_duration = config.get('chunk_duration', 5) # Needed if file is large
+        
+        # Disable speaker detection for API method
+        if transcription_method == 'api' and speaker_detection_enabled:
+            speaker_detection_enabled = False
+            logger.info("Speaker detection disabled for API transcription method")
+            
+        # Check if we're on an MPS-only device and handle potential conflicts
+        try:
+            has_cuda = torch.cuda.is_available()
+            has_mps = hasattr(torch.backends, 'mps') and torch.backends.mps.is_available()
+            mps_only_device = has_mps and not has_cuda
+            
+            # If MPS-only device with hardware acceleration and speaker detection, log a warning
+            if mps_only_device and hardware_acceleration_enabled and speaker_detection_enabled:
+                logger.warning("Speaker detection may not work with MPS acceleration. User has both enabled.")
+        except Exception:
+            logger.warning("Could not check hardware compatibility")
 
         # Get API keys from keyring
         openai_api_key = keyring.get_password("transcription_application", "OPENAI_API_KEY")
@@ -458,6 +478,7 @@ class MainTranscriptionWidget(ResponsiveWidget):
             language=language,
             transcription_method=transcription_method,
             openai_api_key=openai_api_key,
+            hardware_acceleration_enabled=hardware_acceleration_enabled,
             # files_are_chunks=False # Let the thread handle chunking if needed internally based on duration/config? No, transcoding handles chunks
         )
         self.transcription_thread.completed.connect(self.on_transcription_completed)
@@ -496,6 +517,14 @@ class MainTranscriptionWidget(ResponsiveWidget):
             # Check if the refinement widget should be hidden (likely yes after raw transcription)
             self.refinement_widget.setVisible(False)
             logger.info(f"Transcription saved for recording ID: {recording_id}")
+            
+            # Emit signal to update UI in other components
+            status_updates = {
+                'has_transcript': True,
+                raw_field: transcript,
+                formatted_field: db_value if is_formatted else None
+            }
+            self.recording_status_updated.emit(recording_id, status_updates)
 
         # Save the raw transcript to the database
         update_data = {raw_field: transcript}
@@ -592,6 +621,14 @@ class MainTranscriptionWidget(ResponsiveWidget):
             self.gpt_process_completed.emit(processed_text) # Emit signal
             self.refinement_widget.setVisible(True) # Show refinement options
             logger.info(f"GPT processing saved for recording ID: {recording_id}")
+            
+            # Emit signal to update UI in other components
+            status_updates = {
+                'has_processed': True,
+                raw_field: processed_text,
+                formatted_field: db_value if is_html else None
+            }
+            self.recording_status_updated.emit(recording_id, status_updates)
 
         # Save processed text to DB
         update_data = {raw_field: processed_text}
@@ -604,6 +641,16 @@ class MainTranscriptionWidget(ResponsiveWidget):
 
 
     def on_gpt4_processing_error(self, error_message):
+        # Reset smart format button if needed
+        if hasattr(self.transcript_text, '_toolbar_actions') and 'smart_format' in self.transcript_text._toolbar_actions:
+            button = self.transcript_text._toolbar_actions['smart_format']
+            if hasattr(button, '_is_processing') and button._is_processing:
+                # Restore original text
+                original_text = getattr(button, '_original_text', "Smart Format")
+                button.setText(original_text)
+                button.setEnabled(True)
+                button._is_processing = False
+                
         show_error_message(self, 'GPT Processing Error', error_message)
         self.status_update.emit(f"GPT processing failed: {error_message}")
         # Finished signal will handle cleanup
@@ -653,6 +700,16 @@ class MainTranscriptionWidget(ResponsiveWidget):
 
     def on_smart_format_completed(self, formatted_html):
         if not self.current_recording_data: return # Check if recording is still selected
+
+        # Reset smart format button state
+        if hasattr(self.transcript_text, '_toolbar_actions') and 'smart_format' in self.transcript_text._toolbar_actions:
+            button = self.transcript_text._toolbar_actions['smart_format']
+            if hasattr(button, '_is_processing') and button._is_processing:
+                # Restore original text
+                original_text = getattr(button, '_original_text', "Smart Format")
+                button.setText(original_text)
+                button.setEnabled(True)
+                button._is_processing = False
 
         recording_id = self.current_recording_data['id']
         current_view_is_raw = (self.mode_switch.value() == 0)
@@ -896,6 +953,10 @@ class MainTranscriptionWidget(ResponsiveWidget):
             # Show refinement only if there is processed text and not currently processing
             can_refine = bool(content_to_show) and not self.is_processing_gpt4
             self.refinement_widget.setVisible(can_refine)
+            
+        # Ensure editor is properly updated and repainted
+        self.transcript_text.repaint()
+        self.transcript_text.editor.repaint()
 
     def on_mode_switch_changed(self, value):
         """Handle changes in the mode switch."""
@@ -981,6 +1042,6 @@ class MainTranscriptionWidget(ResponsiveWidget):
     def open_settings_dialog(self):
         """Open the settings dialog."""
         # SettingsDialog now manages its own state and interacts with managers
-        dialog = SettingsDialog(self) # Pass self as parent
+        dialog = SettingsDialog(parent=self) # Pass self as parent only
         # No need to connect signals like settings_changed or prompts_updated
         dialog.exec()

@@ -306,18 +306,50 @@ class RecordingListItem(QWidget):
 
     # --- Update from External Data ---
     def update_data(self, data: dict):
-         """Update item's data and UI, e.g., after DB update."""
-         self.raw_transcript = data.get('raw_transcript', self.raw_transcript)
-         self.processed_text = data.get('processed_text', self.processed_text)
-         self.raw_transcript_formatted_data = data.get('raw_transcript_formatted', self.raw_transcript_formatted_data)
-         self.processed_text_formatted_data = data.get('processed_text_formatted', self.processed_text_formatted_data)
+        """Update item's data and UI, e.g., after DB update."""
+        # Check for direct status flags first
+        has_transcript_flag = data.get('has_transcript')
+        has_processed_flag = data.get('has_processed')
+        
+        # Update internal data
+        self.raw_transcript = data.get('raw_transcript', self.raw_transcript)
+        self.processed_text = data.get('processed_text', self.processed_text)
+        self.raw_transcript_formatted_data = data.get('raw_transcript_formatted', self.raw_transcript_formatted_data)
+        self.processed_text_formatted_data = data.get('processed_text_formatted', self.processed_text_formatted_data)
 
-         # Update filename if changed externally
-         new_filename_no_ext = data.get('filename', self.filename_no_ext)
-         if new_filename_no_ext != self.filename_no_ext:
-              self.filename_no_ext = new_filename_no_ext
-              self.filename = new_filename_no_ext + os.path.splitext(self.filename)[1]
-              self.name_editable.setText(self.filename_no_ext) # Update UI
+        # Update filename if changed externally
+        new_filename_no_ext = data.get('filename', self.filename_no_ext)
+        if new_filename_no_ext != self.filename_no_ext:
+             self.filename_no_ext = new_filename_no_ext
+             self.filename = new_filename_no_ext + os.path.splitext(self.filename)[1]
+             self.name_editable.setText(self.filename_no_ext) # Update UI
 
-         self.update_status_label()
-         self.refresh_folders() # Refresh folder display as well
+        # If status flags were provided, explicitly set them, otherwise infer from content
+        if has_transcript_flag is not None or has_processed_flag is not None:
+            has_transcript = has_transcript_flag if has_transcript_flag is not None else bool(self.raw_transcript)
+            has_processed = has_processed_flag if has_processed_flag is not None else bool(self.processed_text)
+            
+            # Update the status indicator with forced values
+            self.status_indicator.set_status(has_transcript, has_processed)
+            
+            # Update the status text with forced values
+            if has_transcript and has_processed:
+                self.status_label.setText("Transcribed & Processed")
+                self.status_label.setStyleSheet("color: #4CAF50;")
+            elif has_transcript:
+                self.status_label.setText("Transcribed")
+                self.status_label.setStyleSheet("color: #2196F3;")
+            else:
+                self.status_label.setText("Needs Transcription")
+                self.status_label.setStyleSheet("color: #9E9E9E;")
+        else:
+            # Normal update based on internal state
+            self.update_status_label()
+        
+        # Ensure proper visibility and repaint
+        self.update()
+        self.folder_label.show()
+        
+        # Refresh folder display if needed
+        if data.get('refresh_folders', False) or len(data) > 4:  # Do a refresh for larger data updates
+            self.refresh_folders()

@@ -27,6 +27,7 @@ class TranscriptionThread(QThread):
                 language: str = 'English',
                 transcription_method: str = 'local',
                 openai_api_key: Optional[str] = None,
+                hardware_acceleration_enabled: bool = True,
                 # files_are_chunks: bool = False, # Determined internally now
                 *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -41,6 +42,7 @@ class TranscriptionThread(QThread):
         self.hf_auth_key = hf_auth_key
         self.openai_api_key = openai_api_key
         self.language = language
+        self.hardware_acceleration_enabled = hardware_acceleration_enabled
 
         # Cancellation flag
         self._is_canceled = False
@@ -212,7 +214,8 @@ class TranscriptionThread(QThread):
             method=self.transcription_method,
             openai_api_key=self.openai_api_key,
             hf_auth_key=self.hf_auth_key if self.speaker_detection_enabled else None,
-            speaker_detection=self.speaker_detection_enabled and not self.files_are_chunks # Disable speaker detect for individual chunks
+            speaker_detection=self.speaker_detection_enabled and not self.files_are_chunks, # Disable speaker detect for individual chunks
+            hardware_acceleration_enabled=self.hardware_acceleration_enabled
         )
 
         # --- Process Result ---

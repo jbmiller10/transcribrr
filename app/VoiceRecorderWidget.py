@@ -160,6 +160,7 @@ class RecordingThread(QThread):
         """Update the elapsed time counter."""
         if self.is_recording and not self.is_paused:
             self.elapsed_time += 1
+            logging.debug(f"Thread timer update: {self.elapsed_time}s")
             self.update_time.emit(self.elapsed_time)
 
     def pauseRecording(self):
@@ -261,6 +262,10 @@ class VoiceRecorderWidget(QWidget):
         self.elapsed_time = 0
         self.timer = QTimer(self)
         self.timer.timeout.connect(self.updateTimer)
+        
+        # Add a backup timer that directly increments elapsed time
+        self.backupTimer = QTimer(self)
+        self.backupTimer.timeout.connect(self.incrementElapsedTime)
 
     def initUI(self):
         """Initialize the user interface."""
@@ -305,17 +310,53 @@ class VoiceRecorderWidget(QWidget):
 
         # Save and Delete buttons in a horizontal layout
         buttonLayout = QHBoxLayout()
+        buttonLayout.setAlignment(Qt.AlignmentFlag.AlignCenter)  # Center the buttons
+        buttonLayout.setSpacing(20)  # Add spacing between buttons
 
-        self.saveButton = QPushButton("Save")
+        # Icon-only save button with transparent background
+        self.saveButton = QPushButton()
         self.saveButton.setIcon(QIcon(resource_path('icons/save.svg')))
+        self.saveButton.setIconSize(QSize(24, 24))  # Smaller icon size
+        self.saveButton.setStyleSheet("""
+            QPushButton {
+                background-color: transparent;
+                border: none;
+            }
+            QPushButton:hover {
+                background-color: rgba(200, 200, 200, 30);
+                border-radius: 4px;
+            }
+            QPushButton:pressed {
+                background-color: rgba(150, 150, 150, 50);
+            }
+        """)
+        self.saveButton.setToolTip("Save recording")
         self.saveButton.clicked.connect(self.saveRecording)
         self.saveButton.setEnabled(False)
+        self.saveButton.setFixedSize(40, 40)
         buttonLayout.addWidget(self.saveButton)
 
-        self.deleteButton = QPushButton("Discard")
+        # Icon-only delete button with transparent background
+        self.deleteButton = QPushButton()
         self.deleteButton.setIcon(QIcon(resource_path('icons/delete.svg')))
+        self.deleteButton.setIconSize(QSize(24, 24))  # Smaller icon size
+        self.deleteButton.setStyleSheet("""
+            QPushButton {
+                background-color: transparent;
+                border: none;
+            }
+            QPushButton:hover {
+                background-color: rgba(200, 200, 200, 30);
+                border-radius: 4px;
+            }
+            QPushButton:pressed {
+                background-color: rgba(150, 150, 150, 50);
+            }
+        """)
+        self.deleteButton.setToolTip("Discard recording")
         self.deleteButton.clicked.connect(self.deleteRecording)
         self.deleteButton.setEnabled(False)
+        self.deleteButton.setFixedSize(40, 40)
         buttonLayout.addWidget(self.deleteButton)
 
         self.layout.addLayout(buttonLayout)
@@ -358,10 +399,14 @@ class VoiceRecorderWidget(QWidget):
         """Start a new recording."""
         self.is_recording = True
         self.is_paused = False
+        self.elapsed_time = 0  # Reset elapsed time
         self.recordButton.set_svg('pause')
         self.statusLabel.setText("Recording...")
         self.saveButton.setEnabled(True)
         self.deleteButton.setEnabled(True)
+        
+        # Update timer display immediately to show 00:00:00
+        self.timerLabel.setText(format_time_duration(0))
 
         try:
             self.recording_thread = RecordingThread(
@@ -371,7 +416,10 @@ class VoiceRecorderWidget(QWidget):
             self.recording_thread.update_time.connect(self.updateTimerValue)
             self.recording_thread.error.connect(self.handleRecordingError)
             self.recording_thread.startRecording()
+            
+            # Start both timers
             self.timer.start(100)  # Update UI frequently for smoother appearance
+            self.backupTimer.start(1000)  # Start backup timer with 1-second interval
 
             # Emit signal that recording has started
             self.recordingStarted.emit()
@@ -387,6 +435,7 @@ class VoiceRecorderWidget(QWidget):
             self.statusLabel.setText("Recording paused")
             self.recording_thread.pauseRecording()
             self.timer.stop()
+            self.backupTimer.stop()
 
     def resumeRecording(self):
         """Resume a paused recording."""
@@ -396,6 +445,7 @@ class VoiceRecorderWidget(QWidget):
             self.statusLabel.setText("Recording...")
             self.recording_thread.resumeRecording()
             self.timer.start(100)
+            self.backupTimer.start(1000)
 
     def saveRecording(self):
         """Save the current recording."""
@@ -408,6 +458,7 @@ class VoiceRecorderWidget(QWidget):
                 self.recording_thread.stopRecording()
                 self.recording_thread.wait()
                 self.timer.stop()
+                self.backupTimer.stop()
 
             # Ask user for filename
             recordings_dir = os.path.join(os.getcwd(), "Recordings")
@@ -464,6 +515,7 @@ class VoiceRecorderWidget(QWidget):
                 self.recording_thread.stopRecording()
                 self.recording_thread.wait()
                 self.timer.stop()
+                self.backupTimer.stop()
 
             # Clear the recorded frames
             if hasattr(self.recording_thread, 'frames'):
@@ -488,11 +540,28 @@ class VoiceRecorderWidget(QWidget):
         if self.is_recording and not self.is_paused:
             time_str = format_time_duration(self.elapsed_time)
             self.timerLabel.setText(time_str)
+        elif self.is_recording and self.is_paused:
+            # Make sure display is updated when paused
+            time_str = format_time_duration(self.elapsed_time)
+            self.timerLabel.setText(time_str)
 
+    def incrementElapsedTime(self):
+        """Manually increment the elapsed time in the UI thread."""
+        if self.is_recording and not self.is_paused:
+            self.elapsed_time += 1
+            time_str = format_time_duration(self.elapsed_time)
+            self.timerLabel.setText(time_str)
+            logging.debug(f"Backup timer incremented: {self.elapsed_time}s")
+    
     def updateTimerValue(self, seconds):
         """Update timer value from recording thread."""
-        self.elapsed_time = seconds
-        self.updateTimer()
+        # Only update if thread value is greater to avoid conflicts
+        if seconds > self.elapsed_time:
+            self.elapsed_time = seconds
+            logging.debug(f"Received timer update: {seconds}s")
+            # Force a UI update immediately
+            time_str = format_time_duration(self.elapsed_time)
+            self.timerLabel.setText(time_str)
 
     def handleRecordingError(self, error_message):
         """Handle recording errors."""
