@@ -18,8 +18,8 @@ from app.SettingsDialog import SettingsDialog
 from app.ToggleSwitch import ToggleSwitch
 from app.DatabaseManager import DatabaseManager
 from app.ResponsiveUI import ResponsiveWidget, ResponsiveSizePolicy
-# Use ui_utils for messages and spinner
-from app.ui_utils import SpinnerManager, show_error_message, show_info_message, show_confirmation_dialog
+# Use ui_utils for messages, spinner and feedback
+from app.ui_utils import SpinnerManager, FeedbackManager, show_error_message, show_info_message, show_confirmation_dialog
 from app.file_utils import calculate_duration, is_valid_media_file, check_file_size
 # Use ConfigManager and PromptManager
 from app.utils import resource_path, ConfigManager, PromptManager
@@ -58,7 +58,10 @@ class MainTranscriptionWidget(ResponsiveWidget):
         self.db_manager = db_manager or DatabaseManager(self)
         self.config_manager = ConfigManager.instance()
         self.prompt_manager = PromptManager.instance()
-        self.spinner_manager = SpinnerManager(self) # Now managed here
+        
+        # UI feedback managers
+        self.spinner_manager = SpinnerManager(self) # For backward compatibility
+        self.feedback_manager = FeedbackManager(self) # Centralized feedback management
 
         # State variables
         self.is_editing_existing_prompt = False
@@ -463,10 +466,18 @@ class MainTranscriptionWidget(ResponsiveWidget):
              # Optionally re-enable the checkbox in settings UI here if needed
              return
 
-
-        # --- Start Thread ---
+        # --- Start Thread with Feedback ---
         self.is_transcribing = True
-        self.update_ui_state()
+        
+        # Get controls that should be disabled during transcription
+        ui_elements = self.get_transcription_ui_elements()
+        
+        # Setup feedback
+        self.feedback_manager.set_ui_busy(True, ui_elements)  
+        self.feedback_manager.start_spinner('transcribe')  # Start spinner animation
+        self.feedback_manager.show_status("Starting transcription...")
+        
+        # Emit signals
         self.status_update.emit("Starting transcription...")
         self.transcription_process_started.emit()
 
@@ -479,13 +490,48 @@ class MainTranscriptionWidget(ResponsiveWidget):
             transcription_method=transcription_method,
             openai_api_key=openai_api_key,
             hardware_acceleration_enabled=hardware_acceleration_enabled,
-            # files_are_chunks=False # Let the thread handle chunking if needed internally based on duration/config? No, transcoding handles chunks
         )
         self.transcription_thread.completed.connect(self.on_transcription_completed)
-        self.transcription_thread.update_progress.connect(self.status_update.emit) # Use generic signal
+        self.transcription_thread.update_progress.connect(self.on_transcription_progress)
         self.transcription_thread.error.connect(self.on_transcription_error)
-        self.transcription_thread.finished.connect(self.on_transcription_finished) # Cleanup
+        self.transcription_thread.finished.connect(self.on_transcription_finished)
         self.transcription_thread.start()
+        
+    def get_transcription_ui_elements(self):
+        """Get UI elements to disable during transcription."""
+        elements = []
+        if hasattr(self, 'transcribe_button'):
+            elements.append(self.transcribe_button)
+        if hasattr(self, 'process_button'):
+            elements.append(self.process_button)
+        if hasattr(self, 'smart_format_button'):
+            elements.append(self.smart_format_button)
+        if hasattr(self, 'settings_button'):
+            elements.append(self.settings_button)
+        # Add other relevant controls
+        return elements
+        
+    def on_transcription_progress(self, message):
+        """Handle progress updates from transcription thread."""
+        self.status_update.emit(message)  # Forward to status bar
+        
+        # Extract progress information if available - for example, "Processing chunk 2/5..."
+        if "chunk" in message.lower() and "/" in message:
+            try:
+                parts = message.split()
+                for part in parts:
+                    if "/" in part:
+                        current, total = map(int, part.strip(".,").split("/"))
+                        # Update progress if we have a determinate operation
+                        if hasattr(self, 'transcription_progress_id'):
+                            self.feedback_manager.update_progress(
+                                self.transcription_progress_id,
+                                int(current * 100 / total),
+                                message
+                            )
+                        return
+            except (ValueError, IndexError):
+                pass  # If parsing fails, treat as indeterminate
 
     def on_transcription_completed(self, transcript):
         if not self.current_recording_data: return # Recording deselected during process
@@ -536,15 +582,35 @@ class MainTranscriptionWidget(ResponsiveWidget):
         self.db_manager.update_recording(recording_id, on_update_complete, **update_data)
 
     def on_transcription_error(self, error_message):
+        # Show error message to user
         show_error_message(self, 'Transcription Error', error_message)
+        
+        # Update status feedback
         self.status_update.emit(f"Transcription failed: {error_message}")
-        # No need to call finished manually, it will be called
+        
+        # Make sure spinner is hidden and progress indicator is cleared, if any
+        if hasattr(self, 'transcription_progress_id'):
+            self.feedback_manager.close_progress(self.transcription_progress_id)
+            
+        # no need to call finished manually, it will be called
 
     def on_transcription_finished(self):
         """Called when transcription thread finishes, regardless of success."""
+        # Update state flags and UI
         self.is_transcribing = False
         self.update_ui_state()
-        self.transcription_thread = None # Clean up reference
+        
+        # Clean up feedback indicators
+        self.feedback_manager.stop_spinner('transcribe')  
+        if hasattr(self, 'transcription_progress_id'):
+            self.feedback_manager.close_progress(self.transcription_progress_id)
+            delattr(self, 'transcription_progress_id')
+        
+        # Re-enable UI elements
+        self.feedback_manager.set_ui_busy(False)
+        
+        # Clean up thread reference
+        self.transcription_thread = None
         logger.info("Transcription thread finished.")
 
     def start_gpt4_processing(self):
@@ -572,9 +638,29 @@ class MainTranscriptionWidget(ResponsiveWidget):
         # Get GPT parameters (already loaded into self.gpt_temperature/max_tokens)
         gpt_model = self.config_manager.get('gpt_model', 'gpt-4o')
 
-        # --- Start Thread ---
+        # --- Start Thread with Feedback ---
         self.is_processing_gpt4 = True
-        self.update_ui_state()
+        
+        # Get UI elements to disable
+        ui_elements = self.get_gpt_ui_elements()
+        
+        # Setup feedback
+        self.feedback_manager.set_ui_busy(True, ui_elements)
+        self.feedback_manager.start_spinner('gpt_process')  # Start spinner animation
+        self.feedback_manager.show_status(f"Starting GPT processing with {gpt_model}...")
+        
+        # Create indeterminate progress dialog for GPT
+        self.gpt_progress_id = 'gpt_process'
+        self.feedback_manager.start_progress(
+            self.gpt_progress_id,
+            "GPT Processing",
+            f"Processing transcript with {gpt_model}...",
+            maximum=0,  # Indeterminate
+            cancelable=True,
+            cancel_callback=lambda: self.cancel_gpt_processing()
+        )
+        
+        # Emit signals
         self.status_update.emit(f"Starting GPT processing with {gpt_model}...")
         self.gpt_process_started.emit()
 
@@ -587,10 +673,46 @@ class MainTranscriptionWidget(ResponsiveWidget):
             openai_api_key=openai_api_key
         )
         self.gpt4_processing_thread.completed.connect(self.on_gpt4_processing_completed)
-        self.gpt4_processing_thread.update_progress.connect(self.status_update.emit)
+        self.gpt4_processing_thread.update_progress.connect(self.on_gpt_progress)
         self.gpt4_processing_thread.error.connect(self.on_gpt4_processing_error)
-        self.gpt4_processing_thread.finished.connect(self.on_gpt4_processing_finished) # Cleanup
+        self.gpt4_processing_thread.finished.connect(self.on_gpt4_processing_finished)
         self.gpt4_processing_thread.start()
+        
+    def get_gpt_ui_elements(self):
+        """Get UI elements to disable during GPT processing."""
+        elements = []
+        if hasattr(self, 'transcribe_button'):
+            elements.append(self.transcribe_button)
+        if hasattr(self, 'process_button'):
+            elements.append(self.process_button)
+        if hasattr(self, 'smart_format_button'):
+            elements.append(self.smart_format_button)
+        if hasattr(self, 'settings_button'):
+            elements.append(self.settings_button)
+        if hasattr(self, 'prompt_selector'):
+            elements.append(self.prompt_selector)
+        # Add other relevant GPT controls
+        return elements
+        
+    def cancel_gpt_processing(self):
+        """Cancel an ongoing GPT processing operation."""
+        if self.gpt4_processing_thread and self.gpt4_processing_thread.isRunning():
+            logger.info("User requested cancellation of GPT processing")
+            self.gpt4_processing_thread.cancel()  # Call the thread's cancel method
+            self.feedback_manager.show_status("Cancelling GPT processing...")
+            
+    def on_gpt_progress(self, message):
+        """Handle progress updates from GPT thread."""
+        # Update status bar
+        self.status_update.emit(message)
+        
+        # Update progress dialog
+        if hasattr(self, 'gpt_progress_id'):
+            self.feedback_manager.update_progress(
+                self.gpt_progress_id,
+                0,  # Still indeterminate
+                message
+            )
 
     def on_gpt4_processing_completed(self, processed_text):
         if not self.current_recording_data: return
@@ -641,6 +763,16 @@ class MainTranscriptionWidget(ResponsiveWidget):
 
 
     def on_gpt4_processing_error(self, error_message):
+        # Show error to user
+        show_error_message(self, 'GPT Processing Error', error_message)
+        
+        # Update status
+        self.status_update.emit(f"GPT processing failed: {error_message}")
+        
+        # Reset feedback
+        if hasattr(self, 'gpt_progress_id'):
+            self.feedback_manager.close_progress(self.gpt_progress_id)
+            
         # Reset smart format button if needed
         if hasattr(self.transcript_text, '_toolbar_actions') and 'smart_format' in self.transcript_text._toolbar_actions:
             button = self.transcript_text._toolbar_actions['smart_format']
@@ -657,9 +789,21 @@ class MainTranscriptionWidget(ResponsiveWidget):
 
     def on_gpt4_processing_finished(self):
         """Called when GPT processing thread finishes."""
+        # Update state flags
         self.is_processing_gpt4 = False
         self.update_ui_state()
-        self.gpt4_processing_thread = None # Clean up reference
+        
+        # Clean up feedback
+        self.feedback_manager.stop_spinner('gpt_process')
+        if hasattr(self, 'gpt_progress_id'):
+            self.feedback_manager.close_progress(self.gpt_progress_id)
+            delattr(self, 'gpt_progress_id')
+            
+        # Re-enable UI
+        self.feedback_manager.set_ui_busy(False)
+        
+        # Clean up thread reference
+        self.gpt4_processing_thread = None
         logger.info("GPT processing thread finished.")
 
     def start_smart_format_processing(self, text_to_format):
@@ -677,9 +821,27 @@ class MainTranscriptionWidget(ResponsiveWidget):
 
         gpt_model = 'gpt-4o-mini' # Cheaper/faster model suitable for formatting
 
-        # --- Start Thread ---
-        self.is_processing_gpt4 = True # Reuse GPT processing flag/spinner
-        self.update_ui_state()
+        # --- Start Thread with Feedback ---
+        self.is_processing_gpt4 = True
+        
+        # Setup feedback
+        ui_elements = self.get_gpt_ui_elements()
+        self.feedback_manager.set_ui_busy(True, ui_elements)
+        self.feedback_manager.start_spinner('smart_format')
+        self.feedback_manager.show_status(f"Starting smart formatting with {gpt_model}...")
+        
+        # Create progress indicator
+        self.smart_format_progress_id = 'smart_format'
+        self.feedback_manager.start_progress(
+            self.smart_format_progress_id,
+            "Smart Formatting",
+            f"Applying smart formatting with {gpt_model}...",
+            maximum=0,  # Indeterminate
+            cancelable=True,
+            cancel_callback=lambda: self.cancel_smart_formatting()
+        )
+        
+        # Emit signals
         self.status_update.emit(f"Starting smart formatting with {gpt_model}...")
         self.gpt_process_started.emit() # Reuse signal
 
@@ -692,10 +854,47 @@ class MainTranscriptionWidget(ResponsiveWidget):
             openai_api_key=openai_api_key
         )
         self.gpt4_smart_format_thread.completed.connect(self.on_smart_format_completed)
-        self.gpt4_smart_format_thread.update_progress.connect(self.status_update.emit)
+        self.gpt4_smart_format_thread.update_progress.connect(self.on_smart_format_progress)
         self.gpt4_smart_format_thread.error.connect(self.on_gpt4_processing_error) # Reuse error handler
-        self.gpt4_smart_format_thread.finished.connect(self.on_gpt4_processing_finished) # Reuse cleanup
+        self.gpt4_smart_format_thread.finished.connect(self.on_smart_format_finished) 
         self.gpt4_smart_format_thread.start()
+        
+    def cancel_smart_formatting(self):
+        """Cancel an ongoing smart formatting operation."""
+        if self.gpt4_smart_format_thread and self.gpt4_smart_format_thread.isRunning():
+            logger.info("User requested cancellation of smart formatting")
+            self.gpt4_smart_format_thread.cancel()
+            self.feedback_manager.show_status("Cancelling smart formatting...")
+            
+    def on_smart_format_progress(self, message):
+        """Handle progress updates from smart format thread."""
+        self.status_update.emit(message)
+        
+        if hasattr(self, 'smart_format_progress_id'):
+            self.feedback_manager.update_progress(
+                self.smart_format_progress_id,
+                0,  # Still indeterminate
+                message
+            )
+            
+    def on_smart_format_finished(self):
+        """Called when smart formatting thread finishes."""
+        # Update state flags
+        self.is_processing_gpt4 = False
+        self.update_ui_state()
+        
+        # Clean up feedback
+        self.feedback_manager.stop_spinner('smart_format')
+        if hasattr(self, 'smart_format_progress_id'):
+            self.feedback_manager.close_progress(self.smart_format_progress_id)
+            delattr(self, 'smart_format_progress_id')
+            
+        # Re-enable UI
+        self.feedback_manager.set_ui_busy(False)
+        
+        # Clean up thread reference
+        self.gpt4_smart_format_thread = None
+        logger.info("Smart formatting thread finished.")
 
 
     def on_smart_format_completed(self, formatted_html):
@@ -796,9 +995,27 @@ class MainTranscriptionWidget(ResponsiveWidget):
             {'role': 'user', 'content': refinement_instructions} # The new instruction
         ]
 
-        # --- Start Thread ---
-        self.is_processing_gpt4 = True # Reuse flag/spinner
-        self.update_ui_state()
+        # --- Start Thread with Feedback ---
+        self.is_processing_gpt4 = True
+        
+        # Set up feedback
+        ui_elements = self.get_gpt_ui_elements() + [self.refinement_input, self.refinement_submit_button]
+        self.feedback_manager.set_ui_busy(True, ui_elements)
+        self.feedback_manager.start_spinner('refinement')
+        self.feedback_manager.show_status("Starting refinement processing...")
+        
+        # Create progress indicator
+        self.refinement_progress_id = 'refinement'
+        self.feedback_manager.start_progress(
+            self.refinement_progress_id,
+            "Text Refinement",
+            "Applying refinement instructions...",
+            maximum=0,  # Indeterminate
+            cancelable=True,
+            cancel_callback=lambda: self.cancel_refinement()
+        )
+        
+        # Emit signals
         self.status_update.emit("Starting refinement processing...")
         self.gpt_process_started.emit() # Reuse signal
 
@@ -812,16 +1029,61 @@ class MainTranscriptionWidget(ResponsiveWidget):
             openai_api_key=openai_api_key,
             messages=messages # Use the constructed messages
         )
-        # Connect signals (reuse handlers)
+        # Connect signals
         self.gpt4_refinement_thread.completed.connect(self.on_refinement_completed)
-        self.gpt4_refinement_thread.update_progress.connect(self.status_update.emit)
-        self.gpt4_refinement_thread.error.connect(self.on_gpt4_processing_error)
-        self.gpt4_refinement_thread.finished.connect(self.on_gpt4_processing_finished)
+        self.gpt4_refinement_thread.update_progress.connect(self.on_refinement_progress)
+        self.gpt4_refinement_thread.error.connect(self.on_refinement_error)
+        self.gpt4_refinement_thread.finished.connect(self.on_refinement_finished)
         self.gpt4_refinement_thread.start()
-
-        # Disable refinement input during processing
-        self.refinement_input.setEnabled(False)
-        self.refinement_submit_button.setEnabled(False)
+        
+    def cancel_refinement(self):
+        """Cancel an ongoing refinement operation."""
+        if self.gpt4_refinement_thread and self.gpt4_refinement_thread.isRunning():
+            logger.info("User requested cancellation of refinement")
+            self.gpt4_refinement_thread.cancel()
+            self.feedback_manager.show_status("Cancelling refinement...")
+            
+    def on_refinement_progress(self, message):
+        """Handle progress updates from refinement thread."""
+        self.status_update.emit(message)
+        
+        if hasattr(self, 'refinement_progress_id'):
+            self.feedback_manager.update_progress(
+                self.refinement_progress_id,
+                0,  # Still indeterminate
+                message
+            )
+            
+    def on_refinement_error(self, error_message):
+        """Handle errors from refinement thread."""
+        # Show error to user
+        show_error_message(self, 'Refinement Error', error_message)
+        
+        # Update status
+        self.status_update.emit(f"Refinement failed: {error_message}")
+        
+        # Reset feedback
+        if hasattr(self, 'refinement_progress_id'):
+            self.feedback_manager.close_progress(self.refinement_progress_id)
+        
+    def on_refinement_finished(self):
+        """Called when refinement thread finishes."""
+        # Update state flags
+        self.is_processing_gpt4 = False
+        self.update_ui_state()
+        
+        # Clean up feedback
+        self.feedback_manager.stop_spinner('refinement')
+        if hasattr(self, 'refinement_progress_id'):
+            self.feedback_manager.close_progress(self.refinement_progress_id)
+            delattr(self, 'refinement_progress_id')
+            
+        # Re-enable UI
+        self.feedback_manager.set_ui_busy(False)
+        
+        # Clean up thread reference
+        self.gpt4_refinement_thread = None
+        logger.info("Refinement thread finished.")
 
     def on_refinement_completed(self, refined_text):
         """Handle the refined text received from GPT-4."""

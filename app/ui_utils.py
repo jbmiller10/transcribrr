@@ -3,7 +3,7 @@ import logging
 from typing import Optional, Union, Callable, Dict, Any
 from PyQt6.QtWidgets import (
     QMessageBox, QProgressDialog, QLabel, QWidget, QWidgetAction, QToolBar,
-    QPushButton, QSizePolicy
+    QPushButton, QSizePolicy, QStatusBar
 )
 from PyQt6.QtCore import Qt, QSize, QTimer
 from PyQt6.QtGui import QMovie, QIcon, QAction
@@ -151,13 +151,28 @@ def show_confirmation_dialog(parent: Optional[QWidget], title: str, message: str
 
 
 def create_progress_dialog(parent: QWidget, title: str, message: str,
-                          cancelable: bool = True, maximum: int = 100) -> QProgressDialog:
-    """Create a standardized progress dialog."""
+                          cancelable: bool = True, maximum: int = 100,
+                          autoclose: bool = True, autoreset: bool = True) -> QProgressDialog:
+    """Create a standardized progress dialog.
+    
+    Args:
+        parent: Parent widget
+        title: Title of the progress dialog
+        message: Initial message in the dialog
+        cancelable: Whether dialog is cancelable by the user
+        maximum: Maximum progress value (use 0 for indeterminate)
+        autoclose: Whether dialog should auto-close on completion
+        autoreset: Whether dialog should auto-reset on completion
+        
+    Returns:
+        Configured QProgressDialog instance
+    """
     progress = QProgressDialog(message, "Cancel" if cancelable else None, 0, maximum, parent)
     progress.setWindowTitle(title)
     progress.setWindowModality(Qt.WindowModality.WindowModal)
     progress.setMinimumDuration(500) # Only show if operation takes time
-    # Consider adding setAutoClose(False) and setAutoReset(False) if managing manually
+    progress.setAutoClose(autoclose)
+    progress.setAutoReset(autoreset)
     return progress
 
 
@@ -175,3 +190,143 @@ def show_status_message(parent: QWidget, message: str, timeout: int = 3000):
         logger.debug(f"Status message: {message}")
     else:
         logger.warning(f"Cannot show status message - no statusBar found on parent: {parent}")
+
+
+class FeedbackManager:
+    """Manages consistent UI feedback for long operations.
+    
+    Provides a standardized approach to handle visual feedback for time-consuming
+    operations including spinners, progress bars, UI disablement, and status updates.
+    """
+    def __init__(self, parent_widget: QWidget):
+        self.parent = parent_widget
+        self.spinner_manager = SpinnerManager(parent_widget)
+        self.progress_dialogs = {}  # Store references to active progress dialogs
+        self.ui_state = {} # Track UI elements disabled state
+        self.operation_count = 0 # Count of active operations
+        
+    def start_spinner(self, spinner_name: str) -> bool:
+        """Start a spinner for indeterminate operations."""
+        return self.spinner_manager.toggle_spinner(spinner_name)
+        
+    def stop_spinner(self, spinner_name: str):
+        """Stop a specific spinner."""
+        self.spinner_manager.set_spinner_state(spinner_name, False)
+        
+    def start_progress(self, operation_id: str, title: str, message: str, 
+                      maximum: int = 100, cancelable: bool = True,
+                      cancel_callback = None) -> QProgressDialog:
+        """Create and show a progress dialog for determinate operations.
+        
+        Args:
+            operation_id: Unique identifier for this operation
+            title: Progress dialog title
+            message: Initial progress message
+            maximum: Maximum progress value (0 for indeterminate)
+            cancelable: Whether user can cancel the operation
+            cancel_callback: Function to call if user cancels
+            
+        Returns:
+            The created progress dialog
+        """
+        # Clean up any existing dialog with same ID
+        if operation_id in self.progress_dialogs:
+            try:
+                self.progress_dialogs[operation_id].close()
+            except: pass
+            
+        progress = create_progress_dialog(
+            self.parent, title, message, cancelable, maximum,
+            autoclose=False, autoreset=False
+        )
+        
+        if cancelable and cancel_callback:
+            progress.canceled.connect(cancel_callback)
+            
+        self.progress_dialogs[operation_id] = progress
+        progress.show()
+        
+        # Increment operation count
+        self.operation_count += 1
+        
+        return progress
+        
+    def update_progress(self, operation_id: str, value: int, message: str = None):
+        """Update progress for a specific operation."""
+        if operation_id in self.progress_dialogs:
+            progress = self.progress_dialogs[operation_id]
+            if message:
+                progress.setLabelText(message)
+            progress.setValue(value)
+            
+    def finish_progress(self, operation_id: str, message: str = None, auto_close: bool = True, delay: int = 1000):
+        """Complete a progress operation."""
+        if operation_id in self.progress_dialogs:
+            progress = self.progress_dialogs[operation_id]
+            if message:
+                progress.setLabelText(message)
+            progress.setValue(progress.maximum())
+            
+            if auto_close:
+                # Use a timer to auto-close after showing completion
+                QTimer.singleShot(delay, lambda: self.close_progress(operation_id))
+            
+    def close_progress(self, operation_id: str):
+        """Close and remove a progress dialog."""
+        if operation_id in self.progress_dialogs:
+            try:
+                self.progress_dialogs[operation_id].close()
+            except: pass
+            self.progress_dialogs.pop(operation_id)
+            
+            # Decrement operation count
+            self.operation_count -= 1
+            
+            # Re-enable UI if no more operations
+            if self.operation_count <= 0:
+                self.set_ui_busy(False)
+                
+    def set_ui_busy(self, busy: bool, ui_elements: list = None):
+        """Enable/disable UI elements during long operations.
+        
+        Args:
+            busy: Whether UI should be in busy state
+            ui_elements: Specific UI elements to disable, or None for tracked elements
+        """
+        elements = ui_elements or list(self.ui_state.keys())
+        
+        if busy:
+            # Save current state and disable elements
+            for element in elements:
+                if element not in self.ui_state:
+                    self.ui_state[element] = element.isEnabled()
+                element.setEnabled(False)
+                
+            # Track that we have active operations
+            self.operation_count = max(1, self.operation_count)
+        else:
+            # Only restore if no operations are active
+            if self.operation_count <= 0:
+                # Restore saved states
+                for element in elements:
+                    if element in self.ui_state:
+                        element.setEnabled(self.ui_state[element])
+                # Clear saved states
+                self.ui_state = {}
+                
+    def show_status(self, message: str, timeout: int = 3000):
+        """Show a status message."""
+        show_status_message(self.parent, message, timeout)
+        
+    def stop_all_feedback(self):
+        """Stop all active feedback indicators."""
+        # Stop all spinners
+        self.spinner_manager.stop_all_spinners()
+        
+        # Close all progress dialogs
+        for operation_id in list(self.progress_dialogs.keys()):
+            self.close_progress(operation_id)
+            
+        # Reset operation count and re-enable UI
+        self.operation_count = 0
+        self.set_ui_busy(False)

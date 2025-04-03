@@ -4,7 +4,12 @@ import os
 from moviepy.editor import VideoFileClip
 import traceback
 import math
+import logging
+from threading import Lock
 from app.utils import is_video_file, is_audio_file
+
+# Configure logging
+logger = logging.getLogger('transcribrr')
 
 class TranscodingThread(QThread):
     update_progress = pyqtSignal(str)
@@ -18,9 +23,31 @@ class TranscodingThread(QThread):
         self.recordings_dir = 'Recordings'  # Directory for storing the output
         self.chunk_duration = chunk_duration  # Chunk duration in minutes
         self.chunk_enabled = chunk_enabled  # Whether to enable chunking
+        
+        # Cancellation support
+        self._is_canceled = False
+        self._lock = Lock()
 
+    def cancel(self):
+        """Request cancellation of the transcoding process."""
+        with self._lock:
+            if not self._is_canceled:
+                logger.info("Cancellation requested for transcoding thread.")
+                self._is_canceled = True
+                # Note: Can't easily interrupt underlying transcoding operations
+                # This will primarily prevent starting new operations
+                
+    def is_canceled(self):
+        """Check if cancellation has been requested."""
+        with self._lock:
+            return self._is_canceled
+            
     def run(self):
         try:
+            if self.is_canceled():
+                self.update_progress.emit('Transcoding cancelled before starting.')
+                return
+                
             if is_audio_file(self.file_path):
                 self.update_progress.emit('Transcoding audio file...')
                 self.transcode_audio(self.file_path, self.recordings_dir)
@@ -30,8 +57,11 @@ class TranscodingThread(QThread):
             else:
                 raise ValueError("Unsupported file type for transcoding.")
         except Exception as e:
-            error_message = f'Error: {e}'
-            self.handle_error(error_message)
+            if not self.is_canceled():
+                error_message = f'Error: {e}'
+                self.handle_error(error_message)
+            else:
+                self.update_progress.emit('Transcoding cancelled.')
 
     def transcode_audio(self, source_path, target_dir):
         self.update_progress.emit('Transcoding audio file...')
@@ -113,6 +143,11 @@ class TranscodingThread(QThread):
             List of paths to the chunked audio files
         """
         try:
+            # Check for cancellation
+            if self.is_canceled():
+                self.update_progress.emit('Chunking cancelled.')
+                return [audio_path]
+                
             # Calculate chunk size in milliseconds
             chunk_size_ms = self.chunk_duration * 60 * 1000  # Convert minutes to milliseconds
             duration_ms = len(audio)
@@ -129,6 +164,12 @@ class TranscodingThread(QThread):
             
             # Process each chunk
             for i in range(num_chunks):
+                # Check for cancellation before each chunk
+                if self.is_canceled():
+                    self.update_progress.emit(f'Chunking cancelled at chunk {i+1}/{num_chunks}.')
+                    # Return what we've done so far, or original if nothing completed
+                    return chunk_paths if chunk_paths else [audio_path]
+                
                 start_ms = i * chunk_size_ms
                 end_ms = min((i + 1) * chunk_size_ms, duration_ms)
                 
@@ -144,7 +185,8 @@ class TranscodingThread(QThread):
             return chunk_paths
             
         except Exception as e:
-            self.error.emit(f"Error chunking audio: {str(e)}")
+            if not self.is_canceled():
+                self.error.emit(f"Error chunking audio: {str(e)}")
             return [audio_path]  # Return original if chunking fails
     
     def handle_error(self, error_message):

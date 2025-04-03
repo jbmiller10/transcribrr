@@ -202,16 +202,19 @@ class RecordingListItem(QWidget):
             return 'icons/file.svg'
 
     def update_status_label(self):
-        if self.raw_transcript and self.processed_text:
+        has_transcript = bool(self.raw_transcript and self.raw_transcript.strip())
+        has_processed = bool(self.processed_text and self.processed_text.strip())
+        
+        if has_transcript and has_processed:
             self.status_label.setText("Transcribed & Processed")
             self.status_label.setStyleSheet("color: #4CAF50;")
-        elif self.raw_transcript:
+        elif has_transcript:
             self.status_label.setText("Transcribed")
             self.status_label.setStyleSheet("color: #2196F3;")
         else:
             self.status_label.setText("Needs Transcription")
             self.status_label.setStyleSheet("color: #9E9E9E;")
-        self.status_indicator.set_status(bool(self.raw_transcript), bool(self.processed_text))
+        self.status_indicator.set_status(has_transcript, has_processed)
 
     def update_relative_time(self):
         try:
@@ -245,8 +248,8 @@ class RecordingListItem(QWidget):
     def get_processed_text(self): return self.processed_text
     def get_raw_formatted(self): return self.raw_transcript_formatted_data
     def get_processed_formatted(self): return self.processed_text_formatted_data
-    def has_transcript(self): return bool(self.raw_transcript)
-    def has_processed_text(self): return bool(self.processed_text)
+    def has_transcript(self): return bool(self.raw_transcript and self.raw_transcript.strip())
+    def has_processed_text(self): return bool(self.processed_text and self.processed_text.strip())
 
     # --- Folder Management ---
     def load_folders(self):
@@ -326,8 +329,8 @@ class RecordingListItem(QWidget):
 
         # If status flags were provided, explicitly set them, otherwise infer from content
         if has_transcript_flag is not None or has_processed_flag is not None:
-            has_transcript = has_transcript_flag if has_transcript_flag is not None else bool(self.raw_transcript)
-            has_processed = has_processed_flag if has_processed_flag is not None else bool(self.processed_text)
+            has_transcript = has_transcript_flag if has_transcript_flag is not None else bool(self.raw_transcript and self.raw_transcript.strip())
+            has_processed = has_processed_flag if has_processed_flag is not None else bool(self.processed_text and self.processed_text.strip())
             
             # Update the status indicator with forced values
             self.status_indicator.set_status(has_transcript, has_processed)

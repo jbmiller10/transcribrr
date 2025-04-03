@@ -9,7 +9,7 @@ import sys
 import logging
 # Use managers and ui_utils
 from app.utils import validate_url, resource_path, ConfigManager
-from app.ui_utils import show_error_message, show_info_message
+from app.ui_utils import show_error_message, show_info_message, FeedbackManager
 from app.threads.TranscodingThread import TranscodingThread
 from app.threads.YouTubeDownloadThread import YouTubeDownloadThread
 from app.VoiceRecorderWidget import VoiceRecorderWidget
@@ -31,6 +31,7 @@ class ControlPanelWidget(QWidget):
         self.youtube_download_thread = None
         self.active_widget = None
         self.config_manager = ConfigManager.instance() # Get config manager
+        self.feedback_manager = FeedbackManager(self) # Feedback management
         self.initUI()
 
     def initUI(self):
@@ -240,23 +241,85 @@ class ControlPanelWidget(QWidget):
             return
 
         logger.info(f"Submitting YouTube URL: {youtube_url}")
-        self.show_progress(f"Requesting YouTube audio: {youtube_url[:40]}...")
-        self.toggle_widget(self.youtube_container) # Hide input after submission
+        
+        # Create UI elements to disable
+        ui_elements = self.get_youtube_ui_elements()
+        
+        # Hide input container
+        self.toggle_widget(self.youtube_container)
         self.youtube_url_field.clear()
+        
+        # Setup feedback
+        truncated_url = youtube_url[:40] + ('...' if len(youtube_url) > 40 else '')
+        self.feedback_manager.set_ui_busy(True, ui_elements)
+        self.feedback_manager.show_status(f"Requesting YouTube audio: {truncated_url}")
+        
+        # Create progress dialog for download
+        self.yt_progress_id = 'youtube_download'
+        self.feedback_manager.start_progress(
+            self.yt_progress_id, 
+            "YouTube Download",
+            f"Downloading audio from: {truncated_url}",
+            maximum=100,  # Determinate progress
+            cancelable=True,
+            cancel_callback=lambda: self.cancel_youtube_download()
+        )
 
         try:
             # Stop previous thread if running
             if self.youtube_download_thread and self.youtube_download_thread.isRunning():
-                self.youtube_download_thread.cancel() # Assuming cancel is implemented
+                self.youtube_download_thread.cancel()
                 self.youtube_download_thread.wait(1000)
 
             self.youtube_download_thread = YouTubeDownloadThread(youtube_url=youtube_url)
-            self.youtube_download_thread.update_progress.connect(self.status_update.emit) # Forward progress
-            self.youtube_download_thread.completed.connect(self.handle_io_complete) # Go to common handler
+            self.youtube_download_thread.update_progress.connect(self.on_youtube_progress)
+            self.youtube_download_thread.completed.connect(self.handle_io_complete)
             self.youtube_download_thread.error.connect(self.on_error)
             self.youtube_download_thread.start()
         except Exception as e:
             self.on_error(f"Failed to start YouTube download: {e}")
+            
+    def get_youtube_ui_elements(self):
+        """Get UI elements to disable during YouTube download."""
+        elements = []
+        if hasattr(self, 'youtube_button'):
+            elements.append(self.youtube_button)
+        if hasattr(self, 'upload_button'):
+            elements.append(self.upload_button)
+        if hasattr(self, 'record_button'):
+            elements.append(self.record_button)
+        if hasattr(self, 'youtube_url_field'):
+            elements.append(self.youtube_url_field)
+        if hasattr(self, 'submit_youtube_url_button'):
+            elements.append(self.submit_youtube_url_button)
+        return elements
+        
+    def cancel_youtube_download(self):
+        """Cancel YouTube download operation."""
+        if self.youtube_download_thread and self.youtube_download_thread.isRunning():
+            logger.info("User requested cancellation of YouTube download")
+            self.youtube_download_thread.cancel()
+            self.feedback_manager.show_status("Cancelling YouTube download...")
+            
+    def on_youtube_progress(self, message):
+        """Handle progress updates from YouTube download thread."""
+        # Update status
+        self.status_update.emit(message)
+        
+        # Extract progress percentage if available
+        if "Downloading:" in message and "%" in message:
+            try:
+                percent_str = message.split("Downloading:")[1].split("%")[0].strip()
+                percent = float(percent_str)
+                
+                if hasattr(self, 'yt_progress_id'):
+                    self.feedback_manager.update_progress(
+                        self.yt_progress_id,
+                        int(percent),
+                        message
+                    )
+            except (ValueError, IndexError):
+                pass
 
     def handle_io_complete(self, filepath):
         """Common handler for completed file operations (upload, record, download)."""
@@ -265,12 +328,37 @@ class ControlPanelWidget(QWidget):
              return
 
         logger.info(f"IO complete, file path: {filepath}")
-        self.show_progress(f"Processing file: {os.path.basename(filepath)}")
-
+        
+        # Close YouTube progress if it exists
+        if hasattr(self, 'yt_progress_id'):
+            self.feedback_manager.finish_progress(
+                self.yt_progress_id,
+                f"Download complete: {os.path.basename(filepath)}",
+                auto_close=True,
+                delay=2000
+            )
+            
         # Check if transcoding is needed (e.g., not mp3/wav)
         _, ext = os.path.splitext(filepath)
         if ext.lower() not in ['.mp3', '.wav']: # Define supported directly usable formats
             logger.info(f"Transcoding needed for {filepath}")
+            
+            # Setup feedback for transcoding
+            ui_elements = self.get_transcoding_ui_elements()
+            self.feedback_manager.set_ui_busy(True, ui_elements)
+            self.feedback_manager.show_status(f"Transcoding file: {os.path.basename(filepath)}")
+            
+            # Create progress dialog for transcoding
+            self.transcoding_progress_id = 'transcoding'
+            self.feedback_manager.start_progress(
+                self.transcoding_progress_id,
+                "Audio Transcoding",
+                f"Converting file: {os.path.basename(filepath)}",
+                maximum=0,  # Indeterminate for now
+                cancelable=True,
+                cancel_callback=lambda: self.cancel_transcoding()
+            )
+            
             try:
                 # Stop previous thread if running
                 if self.transcoding_thread and self.transcoding_thread.isRunning():
@@ -286,7 +374,7 @@ class ControlPanelWidget(QWidget):
                     chunk_enabled=chunk_enabled,
                     chunk_duration=chunk_duration
                 )
-                self.transcoding_thread.update_progress.connect(self.status_update.emit)
+                self.transcoding_thread.update_progress.connect(self.on_transcoding_progress)
                 self.transcoding_thread.completed.connect(self.on_transcoding_complete)
                 self.transcoding_thread.error.connect(self.on_error)
                 self.transcoding_thread.start()
@@ -295,30 +383,114 @@ class ControlPanelWidget(QWidget):
         else:
             # File is already in a usable format
             logger.info(f"File {filepath} is ready, no transcoding needed.")
-            self.hide_progress(f"Ready: {os.path.basename(filepath)}")
-            self.file_ready_for_processing.emit(filepath) # Emit the final path
+            
+            # Finish any progress indicators
+            if hasattr(self, 'yt_progress_id'):
+                self.feedback_manager.close_progress(self.yt_progress_id)
+                
+            # Re-enable UI
+            self.feedback_manager.set_ui_busy(False)
+            
+            # Show status and emit file ready signal
+            self.feedback_manager.show_status(f"Ready: {os.path.basename(filepath)}")
+            self.file_ready_for_processing.emit(filepath)
+            
+    def get_transcoding_ui_elements(self):
+        """Get UI elements to disable during transcoding."""
+        elements = []
+        if hasattr(self, 'youtube_button'):
+            elements.append(self.youtube_button)
+        if hasattr(self, 'upload_button'):
+            elements.append(self.upload_button)
+        if hasattr(self, 'record_button'):
+            elements.append(self.record_button)
+        return elements
+        
+    def cancel_transcoding(self):
+        """Cancel transcoding operation."""
+        if self.transcoding_thread and self.transcoding_thread.isRunning():
+            logger.info("User requested cancellation of transcoding")
+            self.transcoding_thread.cancel()  # Call the thread's cancel method
+            self.feedback_manager.show_status("Cancelling transcoding...")
+            
+    def on_transcoding_progress(self, message):
+        """Handle progress updates from transcoding thread."""
+        # Update status
+        self.status_update.emit(message)
+        
+        # Update progress dialog
+        if hasattr(self, 'transcoding_progress_id'):
+            progress_value = 0  # Default indeterminate
+            
+            # Try to parse progress information
+            if "Exporting chunk" in message and "/" in message:
+                try:
+                    parts = message.split()
+                    for part in parts:
+                        if "/" in part:
+                            current, total = map(int, part.strip(".,").split("/"))
+                            progress_value = int(current * 100 / total)
+                            break
+                except (ValueError, IndexError):
+                    pass
+                    
+            self.feedback_manager.update_progress(
+                self.transcoding_progress_id,
+                progress_value,
+                message
+            )
 
     def on_transcoding_complete(self, filepath_or_paths):
         """Handle completion of transcoding."""
-        if isinstance(filepath_or_paths, list):
-             # Multiple chunks produced
-             num_chunks = len(filepath_or_paths)
-             logger.info(f"Transcoding completed. {num_chunks} chunks created.")
-             self.hide_progress(f"Ready: {num_chunks} audio chunks")
-             # Emit the list of paths
-             self.file_ready_for_processing.emit(filepath_or_paths)
-        elif isinstance(filepath_or_paths, str):
-             # Single file produced (or chunking disabled/failed)
-             logger.info(f"Transcoding completed. File saved to: {filepath_or_paths}")
-             self.hide_progress(f"Ready: {os.path.basename(filepath_or_paths)}")
-             self.file_ready_for_processing.emit(filepath_or_paths) # Emit single path
-        else:
-             self.on_error("Transcoding completed but returned unexpected result type.")
+        try:
+            # Finish progress dialog
+            if hasattr(self, 'transcoding_progress_id'):
+                self.feedback_manager.close_progress(self.transcoding_progress_id)
+                delattr(self, 'transcoding_progress_id')
+                
+            # Re-enable UI elements
+            self.feedback_manager.set_ui_busy(False)
+                
+            if isinstance(filepath_or_paths, list):
+                # Multiple chunks produced
+                num_chunks = len(filepath_or_paths)
+                logger.info(f"Transcoding completed. {num_chunks} chunks created.")
+                
+                # Show status and emit file ready
+                self.feedback_manager.show_status(f"Ready: {num_chunks} audio chunks")
+                self.file_ready_for_processing.emit(filepath_or_paths)
+                
+            elif isinstance(filepath_or_paths, str):
+                # Single file produced
+                logger.info(f"Transcoding completed. File saved to: {filepath_or_paths}")
+                
+                # Show status and emit file ready
+                self.feedback_manager.show_status(f"Ready: {os.path.basename(filepath_or_paths)}")
+                self.file_ready_for_processing.emit(filepath_or_paths)
+                
+            else:
+                self.on_error("Transcoding completed but returned unexpected result type.")
+        except Exception as e:
+            logger.error(f"Error in transcoding completion handler: {e}")
+            self.on_error(f"Failed to complete transcoding: {e}")
 
 
     def on_error(self, message):
         """Handle errors from threads."""
         logger.error(f"Operation Error: {message}")
-        self.hide_progress() # Hide any active progress
+        
+        # Clean up any active feedback
+        if hasattr(self, 'yt_progress_id'):
+            self.feedback_manager.close_progress(self.yt_progress_id)
+            delattr(self, 'yt_progress_id')
+            
+        if hasattr(self, 'transcoding_progress_id'):
+            self.feedback_manager.close_progress(self.transcoding_progress_id)
+            delattr(self, 'transcoding_progress_id')
+            
+        # Re-enable UI
+        self.feedback_manager.set_ui_busy(False)
+        
+        # Show error message
         show_error_message(self, "Operation Failed", message)
-        self.status_update.emit(f"Error: {message}") # Update general status
+        self.status_update.emit(f"Error: {message}")
