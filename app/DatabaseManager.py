@@ -1,11 +1,10 @@
 import os
-import json
 import logging
 import queue
 import sqlite3
 from PyQt6.QtCore import QObject, pyqtSignal, QThread, QMutex
 
-from app.constants import DATABASE_PATH, CONFIG_PATH, DEFAULT_CONFIG
+from app.constants import DATABASE_PATH
 from app.db_utils import (
     ensure_database_exists, get_connection, create_recordings_table,
     get_all_recordings, get_recording_by_id, create_recording, 
@@ -141,7 +140,7 @@ class DatabaseManager(QObject):
         # Ensure database directory exists
         os.makedirs(os.path.dirname(DATABASE_PATH), exist_ok=True)
         
-        # Initialize database if needed
+        # Initialize database and config if needed
         if not os.path.exists(DATABASE_PATH):
             ensure_database_exists()
         
@@ -150,20 +149,6 @@ class DatabaseManager(QObject):
         self.worker.operation_complete.connect(self.operation_complete)
         self.worker.error_occurred.connect(self.error_occurred)
         self.worker.start()
-        
-        # Initialize config if needed
-        if not os.path.exists(CONFIG_PATH):
-            self._create_config_file()
-
-
-    def _create_config_file(self):
-        """Create default configuration file."""
-        try:
-            with open(CONFIG_PATH, 'w') as config_file:
-                json.dump(DEFAULT_CONFIG, config_file, indent=4)
-            logger.info("Config file created successfully")
-        except Exception as e:
-            logger.error(f"Failed to create config file: {e}", exc_info=True)
 
     def create_recording(self, recording_data, callback=None):
         """

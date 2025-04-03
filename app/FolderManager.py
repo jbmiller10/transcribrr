@@ -36,32 +36,10 @@ class FolderManager:
     
     def init_database(self):
         """Initialize database tables for folders."""
-        create_folders_table_query = '''
-            CREATE TABLE IF NOT EXISTS folders (
-                id INTEGER PRIMARY KEY,
-                name TEXT NOT NULL,
-                parent_id INTEGER,
-                created_at TEXT NOT NULL,
-                FOREIGN KEY (parent_id) REFERENCES folders (id)
-                    ON DELETE CASCADE
-            )
-        '''
-        
-        create_recording_folders_table_query = '''
-            CREATE TABLE IF NOT EXISTS recording_folders (
-                recording_id INTEGER NOT NULL,
-                folder_id INTEGER NOT NULL,
-                PRIMARY KEY (recording_id, folder_id),
-                FOREIGN KEY (recording_id) REFERENCES recordings (id)
-                    ON DELETE CASCADE,
-                FOREIGN KEY (folder_id) REFERENCES folders (id)
-                    ON DELETE CASCADE
-            )
-        '''
-        
-        # Execute queries using DatabaseManager
-        self.db_manager.execute_query(create_folders_table_query)
-        self.db_manager.execute_query(create_recording_folders_table_query)
+        # Tables are now created by db_utils.ensure_database_exists
+        # This method remains for compatibility but is essentially a no-op
+        # since the tables should already be created by DatabaseManager initialization
+        logger.debug("Folder tables are initialized during database creation")
     
     def load_folders(self):
         """Load folders from database."""

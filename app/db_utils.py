@@ -5,13 +5,15 @@ Database utility functions to standardize database operations.
 import sqlite3
 import os
 import logging
+import json
 from typing import List, Dict, Any, Optional, Tuple, Callable, Union
 import datetime
 
 from app.constants import (
     DATABASE_PATH, TABLE_RECORDINGS, FIELD_ID, FIELD_FILENAME, FIELD_FILE_PATH,
     FIELD_DATE_CREATED, FIELD_DURATION, FIELD_RAW_TRANSCRIPT, FIELD_PROCESSED_TEXT,
-    FIELD_RAW_TRANSCRIPT_FORMATTED, FIELD_PROCESSED_TEXT_FORMATTED
+    FIELD_RAW_TRANSCRIPT_FORMATTED, FIELD_PROCESSED_TEXT_FORMATTED,
+    CONFIG_PATH, DEFAULT_CONFIG
 )
 
 # Configure logging
@@ -25,17 +27,31 @@ def ensure_database_exists() -> None:
         conn = get_connection()
         # Ensure tables from all features exist
         create_recordings_table(conn)
-        # Note: FolderManager currently initializes its own tables directly.
-        # Consider moving folder table creation here for consistency.
-        # create_folders_table(conn)
-        # create_recording_folders_table(conn)
+        # Create folders tables for consistency
+        create_folders_table(conn)
+        create_recording_folders_table(conn)
         logger.debug("Database structure verified/initialized successfully")
+        
+        # Create config file if it doesn't exist
+        if not os.path.exists(CONFIG_PATH):
+            create_config_file()
     except Exception as e:
         logger.error(f"Error initializing database structure: {e}", exc_info=True)
         raise
     finally:
         if conn:
             conn.close()
+
+
+def create_config_file() -> None:
+    """Create default configuration file."""
+    try:
+        with open(CONFIG_PATH, 'w') as config_file:
+            json.dump(DEFAULT_CONFIG, config_file, indent=4)
+        logger.info("Config file created successfully")
+    except Exception as e:
+        logger.error(f"Failed to create config file: {e}", exc_info=True)
+        raise
 
 # --- Connection ---
 def get_connection() -> sqlite3.Connection:
@@ -78,6 +94,49 @@ def create_recordings_table(conn: sqlite3.Connection) -> None:
         conn.commit()
     except sqlite3.Error as e:
         logger.error(f"Error creating recordings table or index: {e}", exc_info=True)
+        raise
+
+
+def create_folders_table(conn: sqlite3.Connection) -> None:
+    """Create the folders table if it doesn't exist."""
+    sql_create_folders_table = """
+    CREATE TABLE IF NOT EXISTS folders (
+        id INTEGER PRIMARY KEY,
+        name TEXT NOT NULL,
+        parent_id INTEGER,
+        created_at TEXT NOT NULL,
+        FOREIGN KEY (parent_id) REFERENCES folders (id)
+            ON DELETE CASCADE
+    )
+    """
+    try:
+        cursor = conn.cursor()
+        cursor.execute(sql_create_folders_table)
+        conn.commit()
+    except sqlite3.Error as e:
+        logger.error(f"Error creating folders table: {e}", exc_info=True)
+        raise
+
+
+def create_recording_folders_table(conn: sqlite3.Connection) -> None:
+    """Create the recording_folders junction table if it doesn't exist."""
+    sql_create_recording_folders_table = """
+    CREATE TABLE IF NOT EXISTS recording_folders (
+        recording_id INTEGER NOT NULL,
+        folder_id INTEGER NOT NULL,
+        PRIMARY KEY (recording_id, folder_id),
+        FOREIGN KEY (recording_id) REFERENCES recordings (id)
+            ON DELETE CASCADE,
+        FOREIGN KEY (folder_id) REFERENCES folders (id)
+            ON DELETE CASCADE
+    )
+    """
+    try:
+        cursor = conn.cursor()
+        cursor.execute(sql_create_recording_folders_table)
+        conn.commit()
+    except sqlite3.Error as e:
+        logger.error(f"Error creating recording_folders table: {e}", exc_info=True)
         raise
 
 # --- CRUD Operations for Recordings ---
