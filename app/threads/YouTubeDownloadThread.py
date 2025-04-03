@@ -20,6 +20,7 @@ class YouTubeDownloadThread(QThread):
         self._is_canceled = False
         self._lock = Lock()
         self.ydl_instance = None # To potentially interrupt download
+        self._temp_files = [] # Track temporary files for cleanup
 
     def cancel(self):
         """Request cancellation of the download."""
@@ -41,6 +42,10 @@ class YouTubeDownloadThread(QThread):
              self.update_progress.emit("YouTube download cancelled before starting.")
              return
 
+        temp_files = []
+        temp_output_template = None
+        expected_temp_wav = None
+        info_dict = None
         try:
             self.update_progress.emit('Preparing YouTube download...')
             # Ensure Recordings directory exists
@@ -53,6 +58,11 @@ class YouTubeDownloadThread(QThread):
                 recordings_dir,
                 f'youtube_temp_{datetime.now().strftime("%Y%m%d%H%M%S%f")}.%(ext)s'
             )
+
+            # Check cancellation before setting up options
+            if self.is_canceled(): 
+                self.update_progress.emit("YouTube download cancelled after preparing.")
+                return
 
             ydl_opts = {
                 'format': 'bestaudio/best',
@@ -71,11 +81,20 @@ class YouTubeDownloadThread(QThread):
                  'socket_timeout': 30, # Add a socket timeout
             }
 
-            if self.is_canceled(): return
+            if self.is_canceled(): 
+                self.update_progress.emit("YouTube download cancelled after initializing.")
+                return
 
             logger.info(f"Starting download for: {self.youtube_url}")
             with yt_dlp.YoutubeDL(ydl_opts) as ydl:
                 self.ydl_instance = ydl # Store for potential (limited) interruption
+                
+                # Check cancellation one more time before the actual download starts
+                if self.is_canceled():
+                    self.update_progress.emit("YouTube download cancelled before extraction.")
+                    return
+                    
+                # Start the actual download
                 info_dict = ydl.extract_info(self.youtube_url, download=True)
                 self.ydl_instance = None # Clear instance after use
 
@@ -97,10 +116,19 @@ class YouTubeDownloadThread(QThread):
                 # The actual output path after postprocessing is tricky to get directly.
                 # We know the *base* temp name and the final extension is wav.
                 expected_temp_wav = temp_output_template.rsplit('.', 1)[0] + '.wav'
+                temp_files.append(expected_temp_wav) # Track for cleanup
+
+                # One final check before renaming and finishing
+                if self.is_canceled():
+                    self.cleanup_temp_file(temp_output_template, info_dict)
+                    self.update_progress.emit("YouTube download cancelled before finalizing.")
+                    return
 
                 if os.path.exists(expected_temp_wav):
                      logger.info(f"Renaming temporary file '{expected_temp_wav}' to '{final_wav_path}'")
                      os.rename(expected_temp_wav, final_wav_path)
+                     # No longer need to clean up temp file since it was renamed
+                     temp_files.clear()
                      self.completed.emit(final_wav_path)
                      self.update_progress.emit(f"Audio extracted: {os.path.basename(final_wav_path)}")
                 else:
@@ -128,22 +156,59 @@ class YouTubeDownloadThread(QThread):
             else:
                  self.update_progress.emit("YouTube download cancelled during error.")
         finally:
-             self.ydl_instance = None # Ensure cleared
+            # Clean up resources
+            try:
+                self.ydl_instance = None # Ensure the instance is cleared
+                
+                # Clean up any temporary files if they still exist and weren't renamed
+                for temp_file in temp_files:
+                    if temp_file and os.path.exists(temp_file):
+                        try:
+                            os.remove(temp_file)
+                            logger.info(f"Cleaned up temporary file in finally block: {temp_file}")
+                        except Exception as cleanup_error:
+                            logger.warning(f"Failed to clean up temporary file: {cleanup_error}")
+                
+                # Also try the cleanup method with our template and info
+                if self.is_canceled() and temp_output_template and info_dict:
+                    self.cleanup_temp_file(temp_output_template, info_dict)
+            except Exception as cleanup_e:
+                logger.error(f"Error during cleanup in finally block: {cleanup_e}", exc_info=True)
 
 
     def ydl_progress_hook(self, d):
         """Progress hook for yt-dlp."""
+        # Check cancellation status frequently
         if self.is_canceled():
             # Attempt to signal yt-dlp to stop (may not work reliably)
-            raise yt_dlp.utils.DownloadCancelled()
+            # This will raise an exception to interrupt the download
+            logger.info("Raising DownloadCancelled exception in progress hook")
+            raise yt_dlp.utils.DownloadCancelled("Download cancelled by user")
+
+        # Track the current temporary file path for possible cleanup
+        if d.get('info_dict') and d.get('filename'):
+            temp_filename = d.get('filename')
+            if hasattr(self, '_temp_files') and isinstance(self._temp_files, list):
+                if temp_filename not in self._temp_files:
+                    self._temp_files.append(temp_filename)
+                    logger.debug(f"Tracking temporary file: {temp_filename}")
 
         if d['status'] == 'downloading':
             percent_str = d.get('_percent_str', '0.0%')
             speed_str = d.get('_speed_str', 'N/A')
             eta_str = d.get('_eta_str', 'N/A')
             self.update_progress.emit(f"Downloading: {percent_str} at {speed_str} (ETA: {eta_str})")
+            
+            # Check cancellation periodically during download
+            if self.is_canceled():
+                logger.info("Cancellation detected during download progress update")
+                raise yt_dlp.utils.DownloadCancelled("Download cancelled by user")
         elif d['status'] == 'finished':
             self.update_progress.emit("Download complete. Processing audio...")
+            # Check cancellation before post-processing starts
+            if self.is_canceled():
+                logger.info("Cancellation detected after download finished")
+                raise yt_dlp.utils.DownloadCancelled("Download cancelled by user")
         elif d['status'] == 'error':
              logger.error("yt-dlp reported an error during download/processing.")
              # Error will likely be raised by extract_info, but log here too
@@ -154,12 +219,44 @@ class YouTubeDownloadThread(QThread):
          try:
               # Try to reconstruct the possible temp filename
               temp_base = template.rsplit('.', 1)[0]
+              
               # Check for common extensions yt-dlp might use temporarily
-              possible_exts = ['.' + info_dict.get('ext', 'tmp'), '.part', '.temp', '.wav']
+              # Add more extensions that might be used during processing
+              possible_exts = [
+                '.tmp', '.part', '.temp', '.wav', 
+                '.ytdl', '.download', '.dl', '.webm', '.m4a', '.mp3', '.mp4',
+              ]
+              
+              # Also add the extension from info_dict if available
+              if info_dict and info_dict.get('ext'):
+                  possible_exts.append('.' + info_dict.get('ext'))
+              
+              # Create a set of paths to check
+              files_to_check = set()
+              
+              # Add variations with the template base
               for ext in possible_exts:
-                   temp_file = temp_base + ext
-                   if os.path.exists(temp_file):
-                        os.remove(temp_file)
-                        logger.info(f"Removed temporary download file: {temp_file}")
+                  files_to_check.add(temp_base + ext)
+              
+              # Check for any files that include the base name (for partial downloads)
+              base_name = os.path.basename(temp_base)
+              recordings_dir = 'Recordings'
+              
+              if os.path.exists(recordings_dir):
+                  for filename in os.listdir(recordings_dir):
+                      # If filename contains our temp base and has a temp-looking extension
+                      if base_name in filename:
+                          for ext in possible_exts:
+                              if filename.endswith(ext):
+                                  files_to_check.add(os.path.join(recordings_dir, filename))
+              
+              # Actually remove the files
+              for temp_file in files_to_check:
+                  if os.path.exists(temp_file):
+                      os.remove(temp_file)
+                      logger.info(f"Removed temporary download file: {temp_file}")
+              
+              return True
          except Exception as e:
-              logger.warning(f"Could not clean up temporary download file: {e}")
+              logger.warning(f"Could not clean up temporary download file: {e}", exc_info=True)
+              return False

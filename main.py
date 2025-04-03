@@ -21,6 +21,7 @@ from app.utils import resource_path, check_system_requirements, cleanup_temp_fil
 from app.ThemeManager import ThemeManager
 from app.ResponsiveUI import ResponsiveUIManager, ResponsiveEventFilter
 from app.services.transcription_service import ModelManager
+from app.ThreadManager import ThreadManager
 
 # Import constants for paths
 from app.constants import LOG_FORMAT, LOG_DIR, LOG_FILE, RECORDINGS_DIR, DATABASE_DIR, APP_NAME, USER_DATA_DIR
@@ -321,6 +322,9 @@ def initialize_app():
         startup_thread.update_progress.connect(update_splash)
         startup_thread.initialization_done.connect(lambda results: on_initialization_done(results, main_window, splash))
         startup_thread.error.connect(lambda msg: on_initialization_error(msg, main_window, splash))
+        
+        # Register with ThreadManager before starting
+        ThreadManager.instance().register_thread(startup_thread)
         startup_thread.start()
 
         return app, main_window
@@ -500,6 +504,25 @@ def main():
 def cleanup_application():
     """Clean up any resources before application exit."""
     logger.info("Cleaning up application resources...")
+    
+    # Use ThreadManager to cancel all active threads
+    thread_manager = ThreadManager.instance()
+    thread_manager.cancel_all_threads(wait_timeout=1000)
+    
+    # Get any threads that didn't respond to cancellation
+    threads_to_terminate = []
+    for thread in thread_manager.get_active_threads():
+        if thread.isRunning():
+            threads_to_terminate.append(thread)
+    
+    # Force terminate any threads that didn't respond to cancellation
+    for thread in threads_to_terminate:
+        try:
+            logger.warning(f"Terminating thread {thread.__class__.__name__} that didn't respond to cancellation...")
+            thread.terminate()
+            thread.wait(500)  # Brief wait after terminate
+        except Exception as e:
+            logger.error(f"Error terminating thread {thread.__class__.__name__}: {e}")
     
     # Release model resources
     try:

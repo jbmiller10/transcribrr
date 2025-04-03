@@ -239,4 +239,5 @@ class MainWindow(QMainWindow):
                 
         return False
 
+    # Method removed - thread management handled by ThreadManager
 

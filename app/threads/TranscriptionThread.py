@@ -133,10 +133,12 @@ class TranscriptionThread(QThread):
                 logger.error(f"Transcription error: {e}", exc_info=True)
             self.update_progress.emit('Transcription failed: Unexpected error')
         finally:
-            # Release memory if the thread wasn't cancelled mid-operation uncleanly
-            if not self.is_canceled() or transcript: # Attempt cleanup even if cancelled late
+            try:
+                # Always attempt to release resources regardless of cancellation state
                 self.update_progress.emit('Cleaning up transcription resources...')
                 ModelManager.instance().release_memory()
+            except Exception as cleanup_error:
+                logger.error(f"Error during transcription resource cleanup: {cleanup_error}", exc_info=True)
             logger.info("Transcription thread finished execution.")
 
     def process_chunked_files(self, start_time: float) -> str:

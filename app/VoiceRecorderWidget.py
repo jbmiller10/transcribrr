@@ -17,8 +17,11 @@ import numpy as np
 import time
 from app.SVGToggleButton import SVGToggleButton
 from app.utils import resource_path, format_time_duration
+from app.ThreadManager import ThreadManager
 
-logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
+# Logging configuration should be done in main.py, not here
+# logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
+logger = logging.getLogger('transcribrr')
 
 
 class AudioLevelMeter(QWidget):
@@ -104,11 +107,8 @@ class RecordingThread(QThread):
         self.is_paused = False
         self.elapsed_time = 0
         self.stream = None
-
-        # For level metering
-        self.level_timer = QTimer()
-        self.level_timer.moveToThread(self)
-        self.level_timer.timeout.connect(self.update_elapsed_time)
+        
+        # Don't create timers here - we'll handle time tracking differently
 
     def run(self):
         """Main recording loop."""
@@ -121,11 +121,9 @@ class RecordingThread(QThread):
                 frames_per_buffer=self.frames_per_buffer
             )
 
-            # Start timer for elapsed time updates
-            self.level_timer.start(1000)  # 1 second updates
-
             # Reset elapsed time
             self.elapsed_time = 0
+            last_time_update = time.time()
 
             while self.is_recording:
                 if not self.is_paused:
@@ -139,6 +137,14 @@ class RecordingThread(QThread):
                             max_amplitude = np.max(np.abs(audio_array))
                             normalized_level = max_amplitude / 32768.0  # Normalize to 0.0-1.0
                             self.update_level.emit(normalized_level)
+                        
+                        # Check if we need to update elapsed time (every second)
+                        current_time = time.time()
+                        if current_time - last_time_update >= 1.0:
+                            self.elapsed_time += 1
+                            self.update_time.emit(self.elapsed_time)
+                            last_time_update = current_time
+                            
                     except Exception as e:
                         self.error.emit(f"Error reading audio: {e}")
                 else:
@@ -146,7 +152,6 @@ class RecordingThread(QThread):
                     time.sleep(0.1)
 
             # Clean up the stream
-            self.level_timer.stop()
             if self.stream:
                 self.stream.stop_stream()
                 self.stream.close()
@@ -154,14 +159,9 @@ class RecordingThread(QThread):
 
         except Exception as e:
             self.error.emit(f"Recording error: {e}")
-            logging.error(f"Recording error: {e}", exc_info=True)
+            logger.error(f"Recording error: {e}", exc_info=True)
 
-    def update_elapsed_time(self):
-        """Update the elapsed time counter."""
-        if self.is_recording and not self.is_paused:
-            self.elapsed_time += 1
-            logging.debug(f"Thread timer update: {self.elapsed_time}s")
-            self.update_time.emit(self.elapsed_time)
+    # Time updates are now handled directly in the run method
 
     def pauseRecording(self):
         """Pause the recording."""
@@ -260,12 +260,9 @@ class VoiceRecorderWidget(QWidget):
         self.is_recording = False
         self.is_paused = False
         self.elapsed_time = 0
-        self.timer = QTimer(self)
-        self.timer.timeout.connect(self.updateTimer)
-        
-        # Add a backup timer that directly increments elapsed time
-        self.backupTimer = QTimer(self)
-        self.backupTimer.timeout.connect(self.incrementElapsedTime)
+        # Use a single timer in the main thread for UI updates
+        self.ui_timer = QTimer(self)
+        self.ui_timer.timeout.connect(self.updateUI)
 
     def initUI(self):
         """Initialize the user interface."""
@@ -378,11 +375,11 @@ class VoiceRecorderWidget(QWidget):
             # Log available input devices for debugging
             for i in range(num_devices):
                 if self.audio.get_device_info_by_host_api_device_index(0, i).get('maxInputChannels') > 0:
-                    logging.info(
+                    logger.info(
                         f"Input Device {i}: {self.audio.get_device_info_by_host_api_device_index(0, i).get('name')}")
 
         except Exception as e:
-            logging.error(f"Error initializing audio: {e}", exc_info=True)
+            logger.error(f"Error initializing audio: {e}", exc_info=True)
             self.statusLabel.setText("Error: Could not initialize audio system")
             self.recordButton.setEnabled(False)
 
@@ -415,11 +412,13 @@ class VoiceRecorderWidget(QWidget):
             self.recording_thread.update_level.connect(self.level_meter.set_level)
             self.recording_thread.update_time.connect(self.updateTimerValue)
             self.recording_thread.error.connect(self.handleRecordingError)
+            
+            # Register with ThreadManager
+            ThreadManager.instance().register_thread(self.recording_thread)
             self.recording_thread.startRecording()
             
-            # Start both timers
-            self.timer.start(100)  # Update UI frequently for smoother appearance
-            self.backupTimer.start(1000)  # Start backup timer with 1-second interval
+            # Start UI update timer
+            self.ui_timer.start(100)  # Update UI frequently for smoother appearance
 
             # Emit signal that recording has started
             self.recordingStarted.emit()
@@ -434,8 +433,7 @@ class VoiceRecorderWidget(QWidget):
             self.recordButton.set_svg('record')
             self.statusLabel.setText("Recording paused")
             self.recording_thread.pauseRecording()
-            self.timer.stop()
-            self.backupTimer.stop()
+            self.ui_timer.stop()
 
     def resumeRecording(self):
         """Resume a paused recording."""
@@ -444,8 +442,7 @@ class VoiceRecorderWidget(QWidget):
             self.recordButton.set_svg('pause')
             self.statusLabel.setText("Recording...")
             self.recording_thread.resumeRecording()
-            self.timer.start(100)
-            self.backupTimer.start(1000)
+            self.ui_timer.start(100)
 
     def saveRecording(self):
         """Save the current recording."""
@@ -457,8 +454,7 @@ class VoiceRecorderWidget(QWidget):
                 self.recordButton.set_svg('record')
                 self.recording_thread.stopRecording()
                 self.recording_thread.wait()
-                self.timer.stop()
-                self.backupTimer.stop()
+                self.ui_timer.stop()
 
             # Ask user for filename
             recordings_dir = os.path.join(os.getcwd(), "Recordings")
@@ -514,8 +510,7 @@ class VoiceRecorderWidget(QWidget):
                 self.recordButton.set_svg('record')
                 self.recording_thread.stopRecording()
                 self.recording_thread.wait()
-                self.timer.stop()
-                self.backupTimer.stop()
+                self.ui_timer.stop()
 
             # Clear the recorded frames
             if hasattr(self.recording_thread, 'frames'):
@@ -535,37 +530,22 @@ class VoiceRecorderWidget(QWidget):
         self.is_paused = False
         self.level_meter.set_level(0)
 
-    def updateTimer(self):
-        """Update the timer display."""
-        if self.is_recording and not self.is_paused:
+    def updateUI(self):
+        """Update all UI elements that need regular updates."""
+        # Update the timer display
+        if self.is_recording:
             time_str = format_time_duration(self.elapsed_time)
             self.timerLabel.setText(time_str)
-        elif self.is_recording and self.is_paused:
-            # Make sure display is updated when paused
-            time_str = format_time_duration(self.elapsed_time)
-            self.timerLabel.setText(time_str)
-
-    def incrementElapsedTime(self):
-        """Manually increment the elapsed time in the UI thread."""
-        if self.is_recording and not self.is_paused:
-            self.elapsed_time += 1
-            time_str = format_time_duration(self.elapsed_time)
-            self.timerLabel.setText(time_str)
-            logging.debug(f"Backup timer incremented: {self.elapsed_time}s")
     
     def updateTimerValue(self, seconds):
         """Update timer value from recording thread."""
-        # Only update if thread value is greater to avoid conflicts
-        if seconds > self.elapsed_time:
-            self.elapsed_time = seconds
-            logging.debug(f"Received timer update: {seconds}s")
-            # Force a UI update immediately
-            time_str = format_time_duration(self.elapsed_time)
-            self.timerLabel.setText(time_str)
+        self.elapsed_time = seconds
+        logger.debug(f"Received timer update: {seconds}s")
+        # No need to force update - the regular UI timer will handle it
 
     def handleRecordingError(self, error_message):
         """Handle recording errors."""
-        logging.error(f"Recording error: {error_message}")
+        logger.error(f"Recording error: {error_message}")
         self.statusLabel.setText(f"Error: {error_message}")
         self.recordingError.emit(error_message)
 

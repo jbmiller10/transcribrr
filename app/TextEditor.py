@@ -458,6 +458,29 @@ class TextEditor(QMainWindow):
         self.toolbar.setMovable(False)
         self.toolbar.setIconSize(QSize(16, 16))
         self.addToolBar(self.toolbar)
+        
+        # Transcription actions - adding at the beginning
+        self.toolbar.addSeparator()
+        
+        # Transcribe button
+        self.add_toolbar_action(
+            'start_transcription', resource_path('./icons/transcribe.svg'),
+            self.start_transcription, 'Start Transcription (Ctrl+T)', checkable=False
+        )
+        
+        # GPT-4 Processing button
+        self.add_toolbar_action(
+            'process_with_gpt4', resource_path('./icons/magic_wand.svg'),
+            self.process_with_gpt4, 'Process with GPT-4 (Ctrl+G)', checkable=False
+        )
+        
+        # Smart Format button
+        self.add_toolbar_action(
+            'smart_format', resource_path('./icons/smart_format.svg'),
+            self.smart_format_text, 'Smart Format (Ctrl+Shift+F)', checkable=False
+        )
+        
+        self.toolbar.addSeparator()
 
         # Font family selector
         self.font_family_combobox = QFontComboBox()
@@ -519,76 +542,7 @@ class TextEditor(QMainWindow):
         self.word_count_label.setAlignment(Qt.AlignmentFlag.AlignRight)
         self.word_count_label.setMinimumWidth(80)
         self.toolbar.addWidget(self.word_count_label)
-        
-        # Add the second toolbar after initializing the UI
-        # This ensures it's properly positioned beneath the main toolbar
-        QTimer.singleShot(0, self.create_transcription_toolbar)
 
-    def create_transcription_toolbar(self):
-        """Create a dedicated toolbar for transcription actions directly under the text editor."""
-        # Create a toolbar container widget that we'll insert into the layout
-        trans_toolbar_container = QWidget()
-        toolbar_layout = QHBoxLayout(trans_toolbar_container)
-        toolbar_layout.setContentsMargins(0, 0, 0, 0)
-        toolbar_layout.setSpacing(4)
-        
-        # Transcribe button
-        transcribe_btn = QToolButton()
-        transcribe_btn.setIcon(QIcon(resource_path('./icons/transcribe.svg')))
-        transcribe_btn.setText("Transcribe")
-        transcribe_btn.setToolTip("Start Transcription (Ctrl+T)")
-        transcribe_btn.setToolButtonStyle(Qt.ToolButtonStyle.ToolButtonTextBesideIcon)
-        transcribe_btn.clicked.connect(self.start_transcription)
-        toolbar_layout.addWidget(transcribe_btn)
-        
-        # Store button reference
-        self._toolbar_actions['start_transcription'] = transcribe_btn
-        
-        # GPT-4 Processing button
-        gpt_btn = QToolButton()
-        gpt_btn.setIcon(QIcon(resource_path('./icons/magic_wand.svg')))
-        gpt_btn.setText("Process with GPT")
-        gpt_btn.setToolTip("Process with GPT-4 (Ctrl+G)")
-        gpt_btn.setToolButtonStyle(Qt.ToolButtonStyle.ToolButtonTextBesideIcon)
-        gpt_btn.clicked.connect(self.process_with_gpt4)
-        toolbar_layout.addWidget(gpt_btn)
-        
-        # Store button reference
-        self._toolbar_actions['process_with_gpt4'] = gpt_btn
-        
-        # Smart Format button
-        smart_format_btn = QToolButton()
-        smart_format_btn.setIcon(QIcon(resource_path('./icons/smart_format.svg')))
-        smart_format_btn.setText("Smart Format")
-        smart_format_btn.setToolTip("Smart Format (Ctrl+Shift+F)")
-        smart_format_btn.setToolButtonStyle(Qt.ToolButtonStyle.ToolButtonTextBesideIcon)
-        smart_format_btn.clicked.connect(self.smart_format_text)
-        toolbar_layout.addWidget(smart_format_btn)
-        
-        # Store button reference
-        self._toolbar_actions['smart_format'] = smart_format_btn
-        
-        # Add spacer to push buttons to the left
-        toolbar_layout.addStretch(1)
-        
-        # Now insert this toolbar widget into the main layout between the main toolbar and editor
-        main_layout = QVBoxLayout()
-        main_layout.setContentsMargins(0, 0, 0, 0)
-        main_layout.setSpacing(0)
-        
-        # Add the transcription toolbar
-        main_layout.addWidget(trans_toolbar_container)
-        
-        # Move the existing editor into our layout
-        main_layout.addWidget(self.editor)
-        
-        # Create a container widget
-        container = QWidget()
-        container.setLayout(main_layout)
-        
-        # Replace the central widget with our container
-        self.setCentralWidget(container)
-        
     def add_formatting_actions(self):
         # Bold
         bold_action = self.add_toolbar_action(
@@ -715,43 +669,46 @@ class TextEditor(QMainWindow):
         return action
 
     def toggle_spinner(self, spinner_name):
-        """Toggle button state to indicate processing."""
+        """Toggle action state to indicate processing."""
         button_map = {
             'transcription': 'start_transcription',
-            'gpt': 'process_with_gpt4'
+            'gpt': 'process_with_gpt4',
+            'smart_format': 'smart_format'
         }
         
         button_name = button_map.get(spinner_name)
         if not button_name or button_name not in self._toolbar_actions:
             return False
         
-        button = self._toolbar_actions[button_name]
+        action = self._toolbar_actions[button_name]
         
         # Check current state
-        is_active = getattr(button, '_is_processing', False)
+        is_active = getattr(action, '_is_processing', False)
         
         if not is_active:
             # Start processing state
-            original_text = button.text()
-            setattr(button, '_original_text', original_text)
+            original_tooltip = action.toolTip()
+            setattr(action, '_original_tooltip', original_tooltip)
             
             if spinner_name == 'transcription':
-                button.setText("Transcribing...")
+                action.setToolTip("Transcribing...")
             elif spinner_name == 'gpt':
-                button.setText("Processing...")
+                action.setToolTip("Processing...")
+            elif spinner_name == 'smart_format':
+                action.setToolTip("Formatting...")
                 
-            button.setEnabled(False)
-            setattr(button, '_is_processing', True)
+            action.setEnabled(False)
+            setattr(action, '_is_processing', True)
             self.show_status_message("Processing...")
             return True
         else:
             # End processing state
-            original_text = getattr(button, '_original_text', None)
-            if original_text:
-                button.setText(original_text)
+            original_tooltip = getattr(action, '_original_tooltip', None)
+            if original_tooltip:
+                action.setToolTip(original_tooltip)
                 
-            button.setEnabled(True)
-            setattr(button, '_is_processing', False)
+            action.setEnabled(True)
+            setattr(action, '_is_processing', False)
             self.hide_status_message()
             return False
 
@@ -1445,17 +1402,8 @@ class TextEditor(QMainWindow):
             if response == QMessageBox.StandardButton.No:
                 return
                 
-        # Set the smart format button to processing state
-        if 'smart_format' in self._toolbar_actions:
-            button = self._toolbar_actions['smart_format']
-            # Save original text
-            original_text = button.text()
-            setattr(button, '_original_text', original_text)
-            
-            # Set processing state
-            button.setText("Formatting...")
-            button.setEnabled(False)
-            setattr(button, '_is_processing', True)
+        # Set the smart format action to processing state
+        self.toggle_spinner('smart_format')
 
         self.smart_format_requested.emit(current_text)
         self.show_status_message("Smart formatting requested...")

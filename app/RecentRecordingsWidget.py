@@ -153,19 +153,49 @@ class UnifiedFolderListWidget(QTreeWidget):
         folder_open_icon_path = resource_path('icons/folder_open.svg')
         self.folder_icon = QIcon(folder_icon_path) if os.path.exists(folder_icon_path) else QIcon.fromTheme("folder")
         self.folder_open_icon = QIcon(folder_open_icon_path) if os.path.exists(folder_open_icon_path) else QIcon.fromTheme("folder-open")
-        self.audio_icon = QIcon(resource_path('icons/audio.svg'))
-        self.video_icon = QIcon(resource_path('icons/video.svg'))
-        self.file_icon = QIcon(resource_path('icons/file.svg'))
+        self.audio_icon = QIcon(resource_path('icons/status/audio.svg'))
+        self.video_icon = QIcon(resource_path('icons/status/video.svg'))
+        self.file_icon = QIcon(resource_path('icons/status/file.svg'))
 
         self.load_structure() # Initial load
 
-    def load_structure(self, select_item_id=None, item_type=None):
-        """Load folder structure and recordings for the current view."""
+    def _refresh_with_expansion(self, expanded_folder_ids):
+        """Refresh the tree view while preserving the expanded state of folders.
+        
+        Args:
+            expanded_folder_ids: List of folder IDs that were expanded before refresh
+        """
+        # Store the currently selected item
+        current_item = self.currentItem()
+        current_id = None
+        current_type = None
+        
+        if current_item:
+            item_data = current_item.data(0, Qt.ItemDataRole.UserRole)
+            if item_data:
+                current_id = item_data.get("id")
+                current_type = item_data.get("type")
+        
+        # Reload the structure
+        self.load_structure(current_id, current_type, expanded_folder_ids)
+        
+    def load_structure(self, select_item_id=None, item_type=None, expanded_folder_ids=None):
+        """Load folder structure and recordings for the current view.
+        
+        Args:
+            select_item_id: ID of item to select after loading
+            item_type: Type of item to select ("folder" or "recording")
+            expanded_folder_ids: List of folder IDs that should be expanded
+        """
         self.clear()
         self.recordings_map.clear()
         self.item_map.clear()
         self._is_loading = True # Flag to prevent signals during load
 
+        # Initialize expanded_folders if not provided
+        if expanded_folder_ids is None:
+            expanded_folder_ids = [-1]  # Always expand root by default
+        
         # Check if we're filtering
         is_filtering = getattr(self, '_is_filtering', False)
         search_text = getattr(self, '_filtering_search', "").lower() if is_filtering else ""
@@ -174,11 +204,11 @@ class UnifiedFolderListWidget(QTreeWidget):
         if is_filtering:
             logger.info(f"Loading structure with filter - Search: '{search_text}', Criteria: {filter_criteria}")
 
-        # Add "All Recordings" root
+        # Add root item for unorganized recordings
         root_item = QTreeWidgetItem(self)
-        root_item.setText(0, "All Recordings")
+        root_item.setText(0, "Unorganized Recordings")
         root_item.setIcon(0, self.folder_icon)
-        root_item.setData(0, Qt.ItemDataRole.UserRole, {"type": "folder", "id": -1, "name": "All Recordings"})
+        root_item.setData(0, Qt.ItemDataRole.UserRole, {"type": "folder", "id": -1, "name": "Unorganized Recordings"})
         root_item.setFlags(root_item.flags() | Qt.ItemFlag.ItemIsDropEnabled) # Allow drop on root
         self.item_map[("folder", -1)] = root_item
 
@@ -188,12 +218,22 @@ class UnifiedFolderListWidget(QTreeWidget):
             # Skip folders during filtering unless we're searching by name
             if is_filtering and search_text and search_text not in folder['name'].lower():
                 continue
-            self.add_folder_to_tree(folder, root_item)
+            folder_item = self.add_folder_to_tree(folder, root_item)
+            
+            # Set folder expansion state based on expanded_folder_ids
+            should_expand = folder['id'] in expanded_folder_ids
+            folder_item.setExpanded(should_expand)
+            
+            # Load recordings for the folder
+            self.load_recordings_for_item(folder_item, initial_load=True)
+            
+            # Recursively add child folders with their expansion states
+            self._load_nested_folders_with_expansion(folder_item, folder, expanded_folder_ids)
 
         # Expand root initially
         root_item.setExpanded(True)
 
-        # Load recordings for the root ("All Recordings")
+        # Load recordings for the root ("Unorganized Recordings")
         self.load_recordings_for_item(root_item, initial_load=True)
 
         # Restore selection if provided
@@ -210,6 +250,29 @@ class UnifiedFolderListWidget(QTreeWidget):
 
         self.setCurrentItem(item_to_select)
         self._is_loading = False
+        
+    def _load_nested_folders_with_expansion(self, parent_item, parent_data, expanded_folder_ids):
+        """Recursively add child folders with proper expansion state.
+        
+        Args:
+            parent_item: QTreeWidgetItem of the parent folder
+            parent_data: Dictionary containing folder data
+            expanded_folder_ids: List of folder IDs that should be expanded
+        """
+        # Process each child folder
+        for child_folder in sorted(parent_data['children'], key=lambda f: f['name'].lower()):
+            # Add the child folder to the tree
+            child_item = self.add_folder_to_tree(child_folder, parent_item)
+            
+            # Set expansion state
+            should_expand = child_folder['id'] in expanded_folder_ids
+            child_item.setExpanded(should_expand)
+            
+            # Load recordings for this folder
+            self.load_recordings_for_item(child_item, initial_load=True)
+            
+            # Process grandchildren recursively
+            self._load_nested_folders_with_expansion(child_item, child_folder, expanded_folder_ids)
 
     def find_item_by_id(self, target_id, target_type):
         """Find an item by ID and type using the item_map."""
@@ -256,44 +319,42 @@ class UnifiedFolderListWidget(QTreeWidget):
         # Add to item_map for quick lookup
         self.item_map[("folder", folder_data['id'])] = item
 
-        # Add placeholder if it has children or might have recordings
-        # Only add placeholder if not already expanded during initial load strategy
-        if folder_data['children'] or recording_count > 0:
-            placeholder = QTreeWidgetItem(item)
-            placeholder.setText(0, "loading...") # Placeholder text
-            placeholder.setData(0, Qt.ItemDataRole.UserRole, {"type": "placeholder"})
-            placeholder.setFlags(Qt.ItemFlag.NoItemFlags) # Non-interactive
+        # We no longer use placeholders - we'll load everything upfront
+        # This makes folders and their contents visible immediately
+        pass
 
         # Recursively add children folders (sorted)
+        child_items = []
         for child_folder in sorted(folder_data['children'], key=lambda f: f['name'].lower()):
-            self.add_folder_to_tree(child_folder, item)
+            child_item = self.add_folder_to_tree(child_folder, item)
+            child_items.append(child_item)
+            
+        # Return the created item so the caller can use it
+        return item
 
-    def load_recordings_for_item(self, folder_item, initial_load=False):
-        """Load recordings for the specified folder item."""
+    def load_recordings_for_item(self, folder_item, initial_load=False, force_ui_update=False):
+        """Load recordings for the specified folder item.
+        
+        Args:
+            folder_item: The folder tree item to load recordings for
+            initial_load: Whether this is part of the initial tree construction
+            force_ui_update: Whether to force an immediate UI update (for drag operations)
+        """
         folder_data = folder_item.data(0, Qt.ItemDataRole.UserRole)
         if not folder_data or folder_data.get("type") != "folder": return
 
         folder_id = folder_data.get("id")
+        
+        # Add a debug log to help diagnose the duplication issue
+        logger.debug(f"Loading recordings for folder ID {folder_id} (initial_load={initial_load}, force_update={force_ui_update})")
 
         # Check if we're filtering
         is_filtering = getattr(self, '_is_filtering', False)
         search_text = getattr(self, '_filtering_search', "").lower() if is_filtering else ""
         filter_criteria = getattr(self, '_filtering_criteria', "All") if is_filtering else "All"
 
-        # Remove existing placeholders and recording items
-        items_to_remove = []
-        for i in range(folder_item.childCount()):
-            child = folder_item.child(i)
-            child_data = child.data(0, Qt.ItemDataRole.UserRole)
-            if child_data and child_data.get("type") in ["recording", "placeholder"]:
-                # Remove from item_map if it's a recording
-                if child_data.get("type") == "recording" and "id" in child_data:
-                    rec_id = child_data.get("id")
-                    self.item_map.pop(("recording", rec_id), None)
-                items_to_remove.append(child)
-                
-        for item in items_to_remove:
-            folder_item.removeChild(item)
+        # Clear existing items - make sure we do this properly
+        self._clear_folder_recordings(folder_item)
 
         # Define callback to add recordings to the UI
         def _add_recordings_to_ui(recordings):
@@ -302,112 +363,128 @@ class UnifiedFolderListWidget(QTreeWidget):
             try: folder_item.text(0)
             except RuntimeError: return # Item was deleted
 
-            if not recordings: return
-
-            # Sort recordings (e.g., by date descending)
-            try:
-                sorted_recs = sorted(recordings, key=lambda r: datetime.datetime.strptime(r[3], "%Y-%m-%d %H:%M:%S"), reverse=True)
-            except Exception as e:
-                logger.warning(f"Could not sort recordings for folder {folder_id}: {e}")
-                sorted_recs = recordings
-
-            # Filter recordings if filtering is active
-            filtered_count = 0
             visible_count = 0
             
-            # Add recordings to the folder item
-            for rec in sorted_recs:
-                # Check if folder_item is still valid before adding each child
-                try: folder_item.text(0)
-                except RuntimeError: return # Item was deleted
+            if recordings:
+                # Sort recordings (e.g., by date descending)
+                try:
+                    sorted_recs = sorted(recordings, key=lambda r: datetime.datetime.strptime(r[3], "%Y-%m-%d %H:%M:%S"), reverse=True)
+                except Exception as e:
+                    logger.warning(f"Could not sort recordings for folder {folder_id}: {e}")
+                    sorted_recs = recordings
 
-                rec_id = rec[0]
-                # Avoid adding duplicates if already present (can happen with async loads)
-                if rec_id in self.recordings_map and self.recordings_map[rec_id].parent() == folder_item:
-                    continue
+                # Filter recordings if filtering is active
+                filtered_count = 0
+                
+                # Add recordings to the folder item
+                for rec in sorted_recs:
+                    # Check if folder_item is still valid before adding each child
+                    try: folder_item.text(0)
+                    except RuntimeError: return # Item was deleted
 
-                # Apply filtering if needed
-                if is_filtering:
-                    should_add = True
-                    
-                    # Search text filter
-                    if search_text:
-                        # Check filename
-                        filename = rec[1].lower()
-                        name_match = search_text in filename
+                    rec_id = rec[0]
+                    # Avoid adding duplicates if this recording is already in ANY folder
+                    if rec_id in self.recordings_map:
+                        # Log the duplicate case for debugging
+                        logger.debug(f"Skipping duplicate recording ID {rec_id} in folder refresh")
+                        visible_count += 1  # Count existing items
+                        continue
+
+                    # Apply filtering if needed
+                    if is_filtering:
+                        should_add = True
                         
-                        # Check transcript content
-                        transcript_match = False
-                        if not name_match and rec[4]:  # Raw transcript
-                            transcript_match = search_text in rec[4].lower()
+                        # Search text filter
+                        if search_text:
+                            # Check filename
+                            filename = rec[1].lower()
+                            name_match = search_text in filename
                             
-                        # Check processed text
-                        if not name_match and not transcript_match and rec[5]:  # Processed text
-                            transcript_match = search_text in rec[5].lower()
-                            
-                        should_add = name_match or transcript_match
-                        
-                        if not should_add:
-                            filtered_count += 1
-                            continue
-                    
-                    # Criteria filter
-                    if filter_criteria != "All":
-                        if filter_criteria == "Has Transcript":
-                            # Check if raw transcript exists and isn't empty
-                            has_transcript = rec[4] and rec[4].strip() != ""
-                            if not has_transcript:  # No raw transcript
-                                logger.debug(f"Filtering out '{rec[1]}' - no transcript found")
-                                filtered_count += 1
-                                continue
-                        elif filter_criteria == "No Transcript":
-                            # Check if raw transcript exists and isn't empty
-                            has_transcript = rec[4] and rec[4].strip() != ""
-                            if has_transcript:  # Has raw transcript
-                                logger.debug(f"Filtering out '{rec[1]}' - has transcript")
-                                filtered_count += 1
-                                continue
-                        elif filter_criteria in ["Recent (24h)", "This Week"]:
-                            try:
-                                created_date = datetime.datetime.strptime(rec[3], "%Y-%m-%d %H:%M:%S")
-                                now = datetime.datetime.now()
+                            # Check transcript content
+                            transcript_match = False
+                            if not name_match and rec[4]:  # Raw transcript
+                                transcript_match = search_text in rec[4].lower()
                                 
-                                if filter_criteria == "Recent (24h)":
-                                    if (now - created_date).total_seconds() >= 86400:  # Not in last 24h
-                                        filtered_count += 1
-                                        continue
-                                elif filter_criteria == "This Week":
-                                    # Get start of current week (Monday)
-                                    start_of_week = now - datetime.timedelta(days=now.weekday())
-                                    start_of_week = datetime.datetime(start_of_week.year, start_of_week.month, start_of_week.day)
-                                    if created_date < start_of_week:  # Not in current week
-                                        filtered_count += 1
-                                        continue
-                            except (ValueError, TypeError) as e:
-                                logger.error(f"Date filtering error: {e}")
+                            # Check processed text
+                            if not name_match and not transcript_match and rec[5]:  # Processed text
+                                transcript_match = search_text in rec[5].lower()
+                                
+                            should_add = name_match or transcript_match
+                            
+                            if not should_add:
                                 filtered_count += 1
                                 continue
+                        
+                        # Criteria filter
+                        if filter_criteria != "All":
+                            if filter_criteria == "Has Transcript":
+                                # Check if raw transcript exists and isn't empty
+                                has_transcript = rec[4] and rec[4].strip() != ""
+                                if not has_transcript:  # No raw transcript
+                                    logger.debug(f"Filtering out '{rec[1]}' - no transcript found")
+                                    filtered_count += 1
+                                    continue
+                            elif filter_criteria == "No Transcript":
+                                # Check if raw transcript exists and isn't empty
+                                has_transcript = rec[4] and rec[4].strip() != ""
+                                if has_transcript:  # Has raw transcript
+                                    logger.debug(f"Filtering out '{rec[1]}' - has transcript")
+                                    filtered_count += 1
+                                    continue
+                            elif filter_criteria in ["Recent (24h)", "This Week"]:
+                                try:
+                                    created_date = datetime.datetime.strptime(rec[3], "%Y-%m-%d %H:%M:%S")
+                                    now = datetime.datetime.now()
+                                    
+                                    if filter_criteria == "Recent (24h)":
+                                        if (now - created_date).total_seconds() >= 86400:  # Not in last 24h
+                                            filtered_count += 1
+                                            continue
+                                    elif filter_criteria == "This Week":
+                                        # Get start of current week (Monday)
+                                        start_of_week = now - datetime.timedelta(days=now.weekday())
+                                        start_of_week = datetime.datetime(start_of_week.year, start_of_week.month, start_of_week.day)
+                                        if created_date < start_of_week:  # Not in current week
+                                            filtered_count += 1
+                                            continue
+                                except (ValueError, TypeError) as e:
+                                    logger.error(f"Date filtering error: {e}")
+                                    filtered_count += 1
+                                    continue
 
-                # Add recording item using helper method
-                self._add_recording_item(folder_item, rec)
-                visible_count += 1
+                    # Add recording item using helper method
+                    self._add_recording_item(folder_item, rec)
+                    visible_count += 1
 
-            # Log filtering results
-            if is_filtering:
-                logger.info(f"Filtered recordings: {filtered_count} hidden, {visible_count} visible")
+                # Log filtering results
+                if is_filtering:
+                    logger.info(f"Filtered recordings: {filtered_count} hidden, {visible_count} visible")
 
-            # Update folder count visually if needed
+            # Update folder count visually
             self._update_folder_display(folder_item, visible_count)
-
+            
+            # Force immediate UI update if requested (for drag operations)
+            if force_ui_update:
+                self.update()  # Force an immediate repaint
+                folder_item.setExpanded(folder_item.isExpanded())  # Trick to force a layout update
+            
         # Fetch recordings based on folder_id
-        if folder_id == -1: # All Recordings
-            self.db_manager.get_all_recordings(_add_recordings_to_ui)
-        else: # Specific folder
-            self.folder_manager.get_recordings_in_folder(folder_id, lambda success, result: _add_recordings_to_ui(result) if success else None)
+        if folder_id == -1:  # Unorganized Recordings
+            # Use the method to only show recordings not already in a folder
+            self.folder_manager.get_recordings_not_in_folders(lambda success, result: 
+                _add_recordings_to_ui(result) if success else None)
+        else:  # Specific folder
+            self.folder_manager.get_recordings_in_folder(folder_id, lambda success, result: 
+                _add_recordings_to_ui(result) if success else None)
 
     def _add_recording_item(self, parent_item, recording_data):
         """Helper method to add a recording item to the tree."""
         rec_id = recording_data[0]
+        
+        # Double-check to prevent duplicates - check if this recording already exists in the tree
+        if rec_id in self.recordings_map:
+            logger.debug(f"Avoiding duplicate insertion of recording ID {rec_id}")
+            return None
         
         # Create widget
         list_item_widget = RecordingListItem(*recording_data)
@@ -429,6 +506,7 @@ class UnifiedFolderListWidget(QTreeWidget):
         self.recordings_map[rec_id] = list_item_widget # Map ID to widget
         self.item_map[("recording", rec_id)] = tree_item # Add to item_map
         
+        logger.debug(f"Added recording ID {rec_id} to parent folder")
         return tree_item
 
     def _add_folder_item(self, parent_item, folder_id, name):
@@ -541,12 +619,24 @@ class UnifiedFolderListWidget(QTreeWidget):
             
         folder_name = folder_data.get("name", "Unknown")
         
-        # If count not provided, we can query it (but might be costly)
-        if recording_count is None:
+        # If count is provided, update immediately
+        if recording_count is not None:
+            self._apply_folder_display_update(folder_item, folder_name, recording_count)
+        else:
+            # If count not provided, request it asynchronously
             folder_id = folder_data.get("id")
             if folder_id is not None:
-                recording_count = self.get_folder_recording_count(folder_id)
-        
+                # Set a temporary display name while fetching count
+                folder_item.setText(0, f"{folder_name} (...)")
+                
+                # Request count, will update display when received
+                def on_count_received(count):
+                    self._apply_folder_display_update(folder_item, folder_name, count)
+                
+                self.get_folder_recording_count(folder_id, on_count_received)
+    
+    def _apply_folder_display_update(self, folder_item, folder_name, recording_count):
+        """Apply folder display updates with the provided count."""
         # Update visual display
         display_name = folder_name
         if recording_count is not None:
@@ -558,7 +648,7 @@ class UnifiedFolderListWidget(QTreeWidget):
         if recording_count and recording_count > 0:
             folder_item.setForeground(0, QColor("#333333"))  # Darker for non-empty
         else:
-            folder_item.setForeground(0, QColor("#888888"))  # Lighter for empty
+            folder_item.setForeground(0, QColor("#999999"))  # Lighter for empty
 
     def _sort_folder_children(self, folder_item):
         """Sort a folder's children alphabetically."""
@@ -604,9 +694,71 @@ class UnifiedFolderListWidget(QTreeWidget):
         for child in folders + recordings + placeholders:
             folder_item.addChild(child)
 
-    def get_folder_recording_count(self, folder_id):
-         # Simplified - actual count loaded async
-         return FolderManager.instance().get_folder_recording_count(folder_id)
+    def get_folder_recording_count(self, folder_id, callback=None):
+        """Get folder recording count asynchronously.
+        
+        Args:
+            folder_id: ID of the folder
+            callback: Optional callback function that receives the count
+            
+        Returns:
+            0 initially (the actual count will be passed to the callback)
+        """
+        def on_count_received(count):
+            # If caller wants the callback directly
+            if callback:
+                callback(count)
+                
+            # Otherwise, find and update the folder display with the count
+            if not callback:
+                self._update_folder_with_count(folder_id, count)
+        
+        # Call the FolderManager async method
+        FolderManager.instance().get_folder_recording_count(folder_id, on_count_received)
+        
+        # Return a default value (the real value will be in the callback)
+        return 0
+        
+    def _update_folder_with_count(self, folder_id, count):
+        """Update a folder's display with the count received asynchronously."""
+        # Find the folder item
+        folder_item = self._find_folder_item_by_id(folder_id)
+        if folder_item:
+            # Update its display
+            self._update_folder_display(folder_item, count)
+    
+    def _find_folder_item_by_id(self, folder_id):
+        """Recursively find a folder item by its ID.
+        
+        Args:
+            folder_id: ID of the folder to find
+            
+        Returns:
+            QTreeWidgetItem or None if not found
+        """
+        def search_item(item):
+            # Check this item
+            item_data = item.data(0, Qt.ItemDataRole.UserRole)
+            if item_data and item_data.get("type") == "folder" and item_data.get("id") == folder_id:
+                return item
+                
+            # Check children
+            for i in range(item.childCount()):
+                child = item.child(i)
+                result = search_item(child)
+                if result:
+                    return result
+                    
+            return None
+        
+        # Search from root items
+        for i in range(self.topLevelItemCount()):
+            item = self.topLevelItem(i)
+            result = search_item(item)
+            if result:
+                return result
+                
+        return None
 
     def on_item_clicked(self, item, column):
         if self._is_loading: return # Ignore clicks during load
@@ -636,16 +788,8 @@ class UnifiedFolderListWidget(QTreeWidget):
     def on_item_expanded(self, item):
         item_data = item.data(0, Qt.ItemDataRole.UserRole)
         if item_data and item_data.get("type") == "folder":
+            # Just update the icon to show open folder
             item.setIcon(0, self.folder_open_icon)
-            # If it only contains a placeholder, load recordings now
-            has_only_placeholder = False
-            if item.childCount() == 1:
-                 child_data = item.child(0).data(0, Qt.ItemDataRole.UserRole)
-                 if child_data and child_data.get("type") == "placeholder":
-                      has_only_placeholder = True
-
-            if has_only_placeholder:
-                self.load_recordings_for_item(item)
 
     def on_item_collapsed(self, item):
         item_data = item.data(0, Qt.ItemDataRole.UserRole)
@@ -782,6 +926,12 @@ class UnifiedFolderListWidget(QTreeWidget):
         except Exception as e:
              show_error_message(self, "Error", f"Could not open folder: {e}")
 
+    def refresh_all_folders(self):
+        """Refresh all folders to update counts and contents."""
+        logger.debug("Refreshing all folders")
+        # Delegate to the UnifiedFolderListWidget method
+        self.unified_view.refresh_all_folders()
+        
     def add_recording_to_folder_dialog(self, recording_widget: RecordingListItem):
         recording_id = recording_widget.get_id()
         recording_name = recording_widget.filename_no_ext
@@ -804,11 +954,8 @@ class UnifiedFolderListWidget(QTreeWidget):
                     # Refresh this specific item's folder display
                     recording_widget.refresh_folders()
                     
-                    # Update folder count if needed
-                    folder_item = self.find_item_by_id(folder_id, "folder")
-                    if folder_item:
-                        recording_count = self.get_folder_recording_count(folder_id)
-                        self._update_folder_display(folder_item, recording_count)
+                    # Refresh all folders to update counts and contents
+                    self.refresh_all_folders()
                     
                     # Status message
                     if self.parent():
@@ -829,16 +976,8 @@ class UnifiedFolderListWidget(QTreeWidget):
                     # Update recording's folder display
                     recording_widget.refresh_folders()
                     
-                    # Update folder count if needed
-                    folder_item = self.find_item_by_id(folder_id, "folder")
-                    if folder_item:
-                        recording_count = self.get_folder_recording_count(folder_id)
-                        self._update_folder_display(folder_item, recording_count)
-                        
-                        # If viewing this specific folder, remove item from view
-                        recording_item = self.find_item_by_id(recording_id, "recording")
-                        if recording_item and recording_item.parent() == folder_item:
-                            self._remove_tree_item(recording_item)
+                    # Refresh all folders to update counts and contents
+                    self.refresh_all_folders()
                     
                     # Status message
                     if self.parent():
@@ -947,16 +1086,69 @@ class UnifiedFolderListWidget(QTreeWidget):
             event.ignore()
 
     def dragMoveEvent(self, event):
-         # Check if dropping onto a folder
-         target_item = self.itemAt(event.position().toPoint())
-         if target_item:
-              target_data = target_item.data(0, Qt.ItemDataRole.UserRole)
-              if target_data and target_data.get("type") == "folder":
-                   event.acceptProposedAction()
-                   return
-         event.ignore() # Ignore drop elsewhere
+        # Get the item under the cursor
+        target_item = self.itemAt(event.position().toPoint())
+        
+        # Clear any previous highlight (restore normal style)
+        if hasattr(self, '_last_highlighted_item') and self._last_highlighted_item:
+            # Reset the background and foreground of the previously highlighted item
+            self._last_highlighted_item.setBackground(0, QColor(0, 0, 0, 0))  # Transparent background
+            
+            # Reset any custom font we might have applied
+            current_font = self._last_highlighted_item.font(0)
+            current_font.setBold(False)
+            self._last_highlighted_item.setFont(0, current_font)
+            
+            self._last_highlighted_item = None
+            
+        # Check if dropping onto a folder
+        if target_item:
+            target_data = target_item.data(0, Qt.ItemDataRole.UserRole)
+            if target_data and target_data.get("type") == "folder":
+                # Apply highlight to the current target item
+                target_item.setBackground(0, QColor(180, 220, 255, 150))  # Light blue with increased opacity
+                
+                # Make the text bold to further emphasize the target
+                current_font = target_item.font(0)
+                current_font.setBold(True)
+                target_item.setFont(0, current_font)
+                
+                # Save reference to highlighted item for later cleanup
+                self._last_highlighted_item = target_item
+                
+                # Accept the drop
+                event.acceptProposedAction()
+                return
+                
+        event.ignore()  # Ignore drop elsewhere
 
+    def dragLeaveEvent(self, event):
+        # Clear highlight when drag leaves the widget
+        if hasattr(self, '_last_highlighted_item') and self._last_highlighted_item:
+            # Reset background 
+            self._last_highlighted_item.setBackground(0, QColor(0, 0, 0, 0))  # Transparent background
+            
+            # Reset font
+            current_font = self._last_highlighted_item.font(0)
+            current_font.setBold(False)
+            self._last_highlighted_item.setFont(0, current_font)
+            
+            self._last_highlighted_item = None
+        event.accept()
+    
     def dropEvent(self, event):
+        # Clear any highlight when the drop occurs
+        if hasattr(self, '_last_highlighted_item') and self._last_highlighted_item:
+            # Reset background 
+            self._last_highlighted_item.setBackground(0, QColor(0, 0, 0, 0))  # Transparent background
+            
+            # Reset font
+            current_font = self._last_highlighted_item.font(0)
+            current_font.setBold(False)
+            self._last_highlighted_item.setFont(0, current_font)
+            
+            self._last_highlighted_item = None
+            
         if not event.mimeData().hasFormat('application/x-transcribrr-recording-id'):
              event.ignore()
              return
@@ -979,9 +1171,11 @@ class UnifiedFolderListWidget(QTreeWidget):
         # Find the source item
         source_item = self.find_item_by_id(recording_id, "recording")
         source_widget = None
+        source_parent = None
         if source_item:
             try:
                 source_widget = source_item.data(0, Qt.ItemDataRole.UserRole)['widget']
+                source_parent = source_item.parent()  # Store the source parent for refreshing
             except (AttributeError, KeyError, TypeError) as e:
                 logger.warning(f"Error getting source widget data: {e}")
 
@@ -999,22 +1193,17 @@ class UnifiedFolderListWidget(QTreeWidget):
                 if source_widget:
                     source_widget.refresh_folders()
                 
-                # Visual feedback - specifically targeted
-                target_folder_item = self.find_item_by_id(target_folder_id, "folder")
-                if target_folder_item:
-                    # Load the recordings for this folder if expanded
-                    if target_folder_item.isExpanded():
-                        self.load_recordings_for_item(target_folder_item)
-                    else:
-                        # Update folder count
-                        recording_count = self.get_folder_recording_count(target_folder_id)
-                        self._update_folder_display(target_folder_item, recording_count)
+                # Refresh all folders to update counts and contents
+                self.refresh_all_folders()
                 
                 # Status message
                 if self.parent():
                     self.parent().show_status_message(f"Moved recording to '{target_folder_name}'")
                 else:
                     logger.info(f"Moved recording to '{target_folder_name}'")
+                    
+                # We no longer need the delayed full refresh since we do immediate targeted updates
+                pass
             else:
                 show_error_message(self, "Error", f"Failed to move recording: {result}")
                 
@@ -1024,6 +1213,122 @@ class UnifiedFolderListWidget(QTreeWidget):
     def is_loading(self):
         """Check the loading flag."""
         return getattr(self, '_is_loading', False)
+        
+    def refresh_all_folders(self):
+        """Refresh all folders to update counts and contents."""
+        logger.debug("Refreshing all folders in UnifiedFolderListWidget")
+        
+        # First, get all expanded folder IDs to preserve expansion state
+        expanded_folder_ids = []
+        selected_id = None
+        selected_type = None
+        
+        # Get currently selected item to maintain selection
+        current_item = self.currentItem()
+        if current_item:
+            data = current_item.data(0, Qt.ItemDataRole.UserRole)
+            if data:
+                selected_id = data.get("id")
+                selected_type = data.get("type")
+                logger.debug(f"Preserving selection of {selected_type} with ID {selected_id}")
+        
+        def collect_expanded_folders(item):
+            if item.isExpanded():
+                data = item.data(0, Qt.ItemDataRole.UserRole)
+                if data and data.get("type") == "folder":
+                    expanded_folder_ids.append(data.get("id"))
+            for i in range(item.childCount()):
+                collect_expanded_folders(item.child(i))
+        
+        # Start collecting from the root item
+        root_item = self.invisibleRootItem()
+        for i in range(root_item.childCount()):
+            collect_expanded_folders(root_item.child(i))
+        
+        # Clear the maps to prevent duplicates
+        logger.debug(f"Clearing recordings_map with {len(self.recordings_map)} entries before refresh")
+        self.recordings_map.clear()
+        self.item_map.clear()
+        
+        # Now reload the structure preserving expansion state and selection
+        self.load_structure(selected_id, selected_type, expanded_folder_ids)
+        
+        # Refresh the UI
+        self.update()
+        logger.debug("Folder refresh complete")
+        
+    def _clear_folder_recordings(self, folder_item):
+        """Properly remove all recording items from a folder.
+        
+        Args:
+            folder_item: The folder item to clear recordings from
+        """
+        # Safety check
+        if not folder_item:
+            return
+            
+        # Create a list of items to remove (we can't remove while iterating)
+        items_to_remove = []
+        removed_ids = []  # Track which recording IDs we're removing
+        
+        for i in range(folder_item.childCount()):
+            child = folder_item.child(i)
+            child_data = child.data(0, Qt.ItemDataRole.UserRole)
+            
+            # Only remove recordings and placeholders, not subfolders
+            if child_data and child_data.get("type") in ["recording", "placeholder"]:
+                items_to_remove.append(child)
+                
+                # Track recording ID if present
+                if child_data.get("type") == "recording" and "id" in child_data:
+                    rec_id = child_data.get("id")
+                    removed_ids.append(rec_id)
+                    
+                    # Clean up item_map
+                    self.item_map.pop(("recording", rec_id), None)
+                    
+                    # Clean up widget reference in recordings_map
+                    if rec_id in self.recordings_map:
+                        # Don't delete if it's being shown in another folder
+                        # The recordings_map is shared among all instances
+                        self.recordings_map.pop(rec_id, None)
+        
+        # Now remove the items
+        for item in items_to_remove:
+            folder_item.removeChild(item)
+            
+        # Log what we did for debugging
+        if items_to_remove:
+            logger.debug(f"Removed {len(items_to_remove)} recordings from folder")
+    
+    def _load_all_nested_folder_recordings(self, parent_item, expanded_folder_ids=None):
+        """Recursively load recordings for all child folders.
+        
+        Args:
+            parent_item: Parent folder item
+            expanded_folder_ids: Optional list of folder IDs that should be expanded
+        """
+        # If expanded_folder_ids not provided, default to expanding all
+        expand_all = expanded_folder_ids is None
+        
+        # Process each child
+        for i in range(parent_item.childCount()):
+            child = parent_item.child(i)
+            child_data = child.data(0, Qt.ItemDataRole.UserRole)
+            
+            # If this child is a folder, load its recordings
+            if child_data and child_data.get("type") == "folder":
+                # Load recordings for this folder
+                self.load_recordings_for_item(child, initial_load=True)
+                
+                # Set expansion state
+                folder_id = child_data.get("id")
+                should_expand = expand_all or (expanded_folder_ids and folder_id in expanded_folder_ids)
+                if should_expand:
+                    child.setExpanded(True)
+                
+                # Recursively load recordings for its children
+                self._load_all_nested_folder_recordings(child, expanded_folder_ids)
         
     def apply_filter(self, search_text: str, filter_criteria: str):
         """Apply a filter to show/hide items in the tree based on search text and criteria."""
@@ -1105,11 +1410,11 @@ class UnifiedFolderListWidget(QTreeWidget):
             
         item_type = data.get("type")
         
-        # DIRECT DEBUGGING TO CONSOLE
-        if item.isHidden():
-            print(f"Item is initially HIDDEN: {item_type}")
-        else:
-            print(f"Item is initially VISIBLE: {item_type}")
+        # Remove console debug prints
+        # if item.isHidden():
+        #     print(f"Item is initially HIDDEN: {item_type}")
+        # else:
+        #     print(f"Item is initially VISIBLE: {item_type}")
             
         # Process based on item type
         if item_type == "recording":
@@ -1138,7 +1443,7 @@ class UnifiedFolderListWidget(QTreeWidget):
                     
                     matches_search = name_matches or transcript_matches
                     
-                    print(f"Search match for '{widget.filename_no_ext}': {matches_search}")
+                    logger.debug(f"Search match for '{widget.filename_no_ext}': {matches_search}")
                     
                 except Exception as e:
                     logger.error(f"Error in search matching: {e}")
@@ -1148,16 +1453,16 @@ class UnifiedFolderListWidget(QTreeWidget):
             matches_criteria = True
             if filter_criteria == "Has Transcript":
                 matches_criteria = bool(widget.raw_transcript)
-                print(f"Has Transcript filter for '{widget.filename_no_ext}': {matches_criteria}")
+                logger.debug(f"Has Transcript filter for '{widget.filename_no_ext}': {matches_criteria}")
             elif filter_criteria == "No Transcript":
                 matches_criteria = not bool(widget.raw_transcript)
-                print(f"No Transcript filter for '{widget.filename_no_ext}': {matches_criteria}")
+                logger.debug(f"No Transcript filter for '{widget.filename_no_ext}': {matches_criteria}")
             elif filter_criteria == "Recent (24h)":
                 try:
                     created_date = datetime.datetime.strptime(widget.date_created, "%Y-%m-%d %H:%M:%S")
                     now = datetime.datetime.now()
                     matches_criteria = (now - created_date).total_seconds() < 86400  # 24 hours in seconds
-                    print(f"Recent filter for '{widget.filename_no_ext}': {matches_criteria}")
+                    logger.debug(f"Recent filter for '{widget.filename_no_ext}': {matches_criteria}")
                 except (ValueError, TypeError) as e:
                     logger.error(f"Error parsing date '{widget.date_created}': {e}")
                     matches_criteria = False
@@ -1169,7 +1474,7 @@ class UnifiedFolderListWidget(QTreeWidget):
                     start_of_week = now - datetime.timedelta(days=now.weekday())
                     start_of_week = datetime.datetime(start_of_week.year, start_of_week.month, start_of_week.day)
                     matches_criteria = created_date >= start_of_week
-                    print(f"This Week filter for '{widget.filename_no_ext}': {matches_criteria}")
+                    logger.debug(f"This Week filter for '{widget.filename_no_ext}': {matches_criteria}")
                 except (ValueError, TypeError) as e:
                     logger.error(f"Error parsing date for week filter: {e}")
                     matches_criteria = False
@@ -1178,23 +1483,23 @@ class UnifiedFolderListWidget(QTreeWidget):
             visible = matches_search and matches_criteria
             
             # Use direct API to control visibility
-            print(f"Setting hidden={not visible} for '{widget.filename_no_ext}'")
+            logger.debug(f"Setting hidden={not visible} for '{widget.filename_no_ext}'")
             
             # Force rendering update
             try:
                 # Try direct widget hiding
                 widget.setVisible(visible)
                 item.setHidden(not visible)
-                print(f"Widget visibility set to {visible}")
+                logger.debug(f"Widget visibility set to {visible}")
             except Exception as e:
-                print(f"Error setting visibility: {e}")
+                logger.error(f"Error setting visibility: {e}")
                 item.setHidden(not visible)
             
             # Force redraw
             try:
                 self.viewport().update()
             except Exception as e:
-                print(f"Error updating viewport: {e}")
+                logger.error(f"Error updating viewport: {e}")
                 
             return visible
             
@@ -1223,17 +1528,17 @@ class UnifiedFolderListWidget(QTreeWidget):
             if is_root:
                 visible = True  # Root is always visible
                 item.setExpanded(True)  # Always expand root
-                print("Root folder - keeping visible and expanded")
+                logger.debug("Root folder - keeping visible and expanded")
             else:
                 # For non-root folders
-                print(f"Setting folder '{folder_name}' hidden={not visible}")
+                logger.debug(f"Setting folder '{folder_name}' hidden={not visible}")
                 item.setHidden(not visible)
                 
                 # If this folder is visible due to containing matching items,
                 # expand it to show those matches
                 if visible and any_child_visible and not folder_matches_search:
                     item.setExpanded(True)
-                    print(f"Auto-expanding folder '{folder_name}' to show matches")
+                    logger.debug(f"Auto-expanding folder '{folder_name}' to show matches")
                     
             return visible
             
@@ -1435,6 +1740,11 @@ class RecentRecordingsWidget(ResponsiveWidget):
         self.show_status_message(f"Selected folder: {folder_name}")
         # TODO: Implement filtering of recordings based on the selected folder
         self.filter_recordings()
+        
+        # Refresh the selected folder to ensure we have the latest contents
+        folder_item = self.unified_view.find_item_by_id(folder_id, "folder")
+        if folder_item:
+            self.unified_view.load_recordings_for_item(folder_item, force_ui_update=True)
 
 
     def update_recording_status(self, recording_id, status_updates):
@@ -1479,10 +1789,18 @@ class RecentRecordingsWidget(ResponsiveWidget):
               # Revert UI change if necessary (optional)
               widget.name_editable.setText(widget.filename_no_ext) # Revert the line edit
 
-         # Disconnect existing error handler for this specific operation if necessary
-         # Or use unique operation IDs in DatabaseManager if implementing that pattern
-         try: self.db_manager.error_occurred.disconnect(on_rename_error)
-         except TypeError: pass
+         # Create a unique connection ID for this specific rename operation
+         connection_id = f"rename_{recording_id}_{new_name_no_ext}"
+         
+         # Disconnect any existing error handler for rename operations
+         try:
+             for signal in self.db_manager.error_occurred.receivers:
+                 if hasattr(signal, '__self__') and signal.__self__.__name__.startswith('on_rename_error'):
+                     self.db_manager.error_occurred.disconnect(signal)
+         except (TypeError, AttributeError):
+             pass
+             
+         # Connect the new error handler
          self.db_manager.error_occurred.connect(on_rename_error)
 
          self.db_manager.update_recording(

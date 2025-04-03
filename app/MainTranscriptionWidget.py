@@ -23,6 +23,7 @@ from app.ui_utils import SpinnerManager, FeedbackManager, show_error_message, sh
 from app.file_utils import calculate_duration, is_valid_media_file, check_file_size
 # Use ConfigManager and PromptManager
 from app.utils import resource_path, ConfigManager, PromptManager
+from app.ThreadManager import ThreadManager
 from app.constants import (
      ERROR_INVALID_FILE, ERROR_FILE_TOO_LARGE, ERROR_API_KEY_MISSING,
     SUCCESS_TRANSCRIPTION, SUCCESS_GPT_PROCESSING, SUCCESS_SAVE
@@ -199,7 +200,7 @@ class MainTranscriptionWidget(ResponsiveWidget):
         # Add some padding above the text editor (spacing without the controls)
         editor_layout.addSpacing(10)
         
-        # Main text editor
+        # Main text editor - now with integrated transcription actions in its toolbar
         self.transcript_text = TextEditor() # The rich text editor
         editor_layout.addWidget(self.transcript_text)
         
@@ -495,17 +496,16 @@ class MainTranscriptionWidget(ResponsiveWidget):
         self.transcription_thread.update_progress.connect(self.on_transcription_progress)
         self.transcription_thread.error.connect(self.on_transcription_error)
         self.transcription_thread.finished.connect(self.on_transcription_finished)
+        
+        # Register thread with ThreadManager
+        ThreadManager.instance().register_thread(self.transcription_thread)
         self.transcription_thread.start()
         
     def get_transcription_ui_elements(self):
         """Get UI elements to disable during transcription."""
         elements = []
-        if hasattr(self, 'transcribe_button'):
-            elements.append(self.transcribe_button)
-        if hasattr(self, 'process_button'):
-            elements.append(self.process_button)
-        if hasattr(self, 'smart_format_button'):
-            elements.append(self.smart_format_button)
+        # The transcription buttons are now part of the TextEditor's toolbar
+        # and are managed by the TextEditor's own state management
         if hasattr(self, 'settings_button'):
             elements.append(self.settings_button)
         # Add other relevant controls
@@ -676,17 +676,16 @@ class MainTranscriptionWidget(ResponsiveWidget):
         self.gpt4_processing_thread.update_progress.connect(self.on_gpt_progress)
         self.gpt4_processing_thread.error.connect(self.on_gpt4_processing_error)
         self.gpt4_processing_thread.finished.connect(self.on_gpt4_processing_finished)
+        
+        # Register thread with ThreadManager
+        ThreadManager.instance().register_thread(self.gpt4_processing_thread)
         self.gpt4_processing_thread.start()
         
     def get_gpt_ui_elements(self):
         """Get UI elements to disable during GPT processing."""
         elements = []
-        if hasattr(self, 'transcribe_button'):
-            elements.append(self.transcribe_button)
-        if hasattr(self, 'process_button'):
-            elements.append(self.process_button)
-        if hasattr(self, 'smart_format_button'):
-            elements.append(self.smart_format_button)
+        # The transcription/GPT buttons are now part of the TextEditor's toolbar
+        # and are managed by the TextEditor's own state management
         if hasattr(self, 'settings_button'):
             elements.append(self.settings_button)
         if hasattr(self, 'prompt_selector'):
@@ -773,18 +772,13 @@ class MainTranscriptionWidget(ResponsiveWidget):
         if hasattr(self, 'gpt_progress_id'):
             self.feedback_manager.close_progress(self.gpt_progress_id)
             
-        # Reset smart format button if needed
-        if hasattr(self.transcript_text, '_toolbar_actions') and 'smart_format' in self.transcript_text._toolbar_actions:
-            button = self.transcript_text._toolbar_actions['smart_format']
-            if hasattr(button, '_is_processing') and button._is_processing:
-                # Restore original text
-                original_text = getattr(button, '_original_text', "Smart Format")
-                button.setText(original_text)
-                button.setEnabled(True)
-                button._is_processing = False
-                
-        show_error_message(self, 'GPT Processing Error', error_message)
-        self.status_update.emit(f"GPT processing failed: {error_message}")
+        # Reset any processing buttons - now using the more generic toggle mechanism
+        if hasattr(self.transcript_text, 'toggle_spinner'):
+            # Try to reset all potential processing buttons
+            self.transcript_text.toggle_spinner('smart_format')
+            self.transcript_text.toggle_spinner('gpt')
+            self.transcript_text.toggle_spinner('transcription')
+        
         # Finished signal will handle cleanup
 
     def on_gpt4_processing_finished(self):
@@ -856,7 +850,10 @@ class MainTranscriptionWidget(ResponsiveWidget):
         self.gpt4_smart_format_thread.completed.connect(self.on_smart_format_completed)
         self.gpt4_smart_format_thread.update_progress.connect(self.on_smart_format_progress)
         self.gpt4_smart_format_thread.error.connect(self.on_gpt4_processing_error) # Reuse error handler
-        self.gpt4_smart_format_thread.finished.connect(self.on_smart_format_finished) 
+        self.gpt4_smart_format_thread.finished.connect(self.on_smart_format_finished)
+        
+        # Register thread with ThreadManager
+        ThreadManager.instance().register_thread(self.gpt4_smart_format_thread)
         self.gpt4_smart_format_thread.start()
         
     def cancel_smart_formatting(self):
@@ -900,15 +897,9 @@ class MainTranscriptionWidget(ResponsiveWidget):
     def on_smart_format_completed(self, formatted_html):
         if not self.current_recording_data: return # Check if recording is still selected
 
-        # Reset smart format button state
-        if hasattr(self.transcript_text, '_toolbar_actions') and 'smart_format' in self.transcript_text._toolbar_actions:
-            button = self.transcript_text._toolbar_actions['smart_format']
-            if hasattr(button, '_is_processing') and button._is_processing:
-                # Restore original text
-                original_text = getattr(button, '_original_text', "Smart Format")
-                button.setText(original_text)
-                button.setEnabled(True)
-                button._is_processing = False
+        # Reset smart format button state - now handled by the toggle_spinner method in TextEditor
+        if hasattr(self.transcript_text, 'toggle_spinner'):
+            self.transcript_text.toggle_spinner('smart_format')
 
         recording_id = self.current_recording_data['id']
         current_view_is_raw = (self.mode_switch.value() == 0)
@@ -1034,6 +1025,9 @@ class MainTranscriptionWidget(ResponsiveWidget):
         self.gpt4_refinement_thread.update_progress.connect(self.on_refinement_progress)
         self.gpt4_refinement_thread.error.connect(self.on_refinement_error)
         self.gpt4_refinement_thread.finished.connect(self.on_refinement_finished)
+        
+        # Register thread with ThreadManager
+        ThreadManager.instance().register_thread(self.gpt4_refinement_thread)
         self.gpt4_refinement_thread.start()
         
     def cancel_refinement(self):

@@ -195,11 +195,11 @@ class RecordingListItem(QWidget):
     def get_icon_for_file(self):
         extension = os.path.splitext(self.file_path)[1].lower()
         if extension in ['.mp3', '.wav', '.m4a', '.ogg', '.flac', '.aac', '.aiff', '.wma']:
-            return 'icons/audio.svg'
+            return 'icons/status/audio.svg'
         elif extension in ['.mp4', '.avi', '.mov', '.mkv', '.webm', '.flv', '.wmv']:
-            return 'icons/video.svg'
+            return 'icons/status/video.svg'
         else:
-            return 'icons/file.svg'
+            return 'icons/status/file.svg'
 
     def update_status_label(self):
         has_transcript = bool(self.raw_transcript and self.raw_transcript.strip())
@@ -254,32 +254,40 @@ class RecordingListItem(QWidget):
     # --- Folder Management ---
     def load_folders(self):
         try:
-            # Assuming FolderManager provides structured folder data
-            folders_data = FolderManager.instance().get_folders_for_recording(self.id)
-            self.folders = [{'id': f[0], 'name': f[1]} for f in folders_data] # Simplified structure
+            # Get folders asynchronously with a callback
+            def on_folders_received(success, result):
+                if success and result:
+                    self.folders = [{'id': f[0], 'name': f[1]} for f in result]
+                    # Update UI after loading
+                    if hasattr(self, 'folder_label'):
+                        self.update_folder_label()
+                else:
+                    self.folders = []
+                    if hasattr(self, 'folder_label'):
+                        self.update_folder_label()
+            
+            # Call the async method with our callback
+            FolderManager.instance().get_folders_for_recording(self.id, on_folders_received)
         except Exception as e:
             logger.error(f"Error loading folders for recording {self.id}: {e}")
             self.folders = []
-        # Update UI after loading
-        if hasattr(self, 'folder_label'): # Check if UI is initialized
-             self.update_folder_label()
+            # Update UI after loading
+            if hasattr(self, 'folder_label'):
+                self.update_folder_label()
 
     def update_folder_label(self):
-        if not self.folders:
-            self.folder_label.setText("")
-            self.folder_label.setVisible(False)
-        elif len(self.folders) == 1:
-            # Truncate long folder names
-            folder_name = self.folders[0]['name']
-            display_name = folder_name[:25] + '...' if len(folder_name) > 25 else folder_name
-            self.folder_label.setText(f"Folder: {display_name}")
-            self.folder_label.setToolTip(f"In folder: {folder_name}")
-            self.folder_label.setVisible(True)
-        else:
-            folder_names = ", ".join(f['name'] for f in self.folders)
-            self.folder_label.setText(f"In {len(self.folders)} folders")
-            self.folder_label.setToolTip(f"In folders: {folder_names}")
-            self.folder_label.setVisible(True)
+        # Hide the folder label as per requirements - the visual nesting in the tree view is sufficient
+        self.folder_label.setText("")
+        self.folder_label.setVisible(False)
+        
+        # Keep the tooltip for accessibility/additional info
+        if self.folders:
+            if len(self.folders) == 1:
+                folder_name = self.folders[0]['name']
+                self.folder_label.setToolTip(f"In folder: {folder_name}")
+            else:
+                folder_names = ", ".join(f['name'] for f in self.folders)
+                self.folder_label.setToolTip(f"In folders: {folder_names}")
 
     def refresh_folders(self):
         self.load_folders()
@@ -315,10 +323,14 @@ class RecordingListItem(QWidget):
         has_processed_flag = data.get('has_processed')
         
         # Update internal data
-        self.raw_transcript = data.get('raw_transcript', self.raw_transcript)
-        self.processed_text = data.get('processed_text', self.processed_text)
-        self.raw_transcript_formatted_data = data.get('raw_transcript_formatted', self.raw_transcript_formatted_data)
-        self.processed_text_formatted_data = data.get('processed_text_formatted', self.processed_text_formatted_data)
+        if 'raw_transcript' in data:
+            self.raw_transcript = data.get('raw_transcript', '')
+        if 'processed_text' in data:
+            self.processed_text = data.get('processed_text', '')
+        if 'raw_transcript_formatted' in data:
+            self.raw_transcript_formatted_data = data.get('raw_transcript_formatted')
+        if 'processed_text_formatted' in data:
+            self.processed_text_formatted_data = data.get('processed_text_formatted')
 
         # Update filename if changed externally
         new_filename_no_ext = data.get('filename', self.filename_no_ext)

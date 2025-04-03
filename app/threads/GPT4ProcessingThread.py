@@ -55,10 +55,9 @@ class GPT4ProcessingThread(QThread):
                 if self.current_request and hasattr(self.current_request, 'close'):
                      try:
                           # This is a bit hacky - requests doesn't have a formal cancel.
-                          # Closing might raise errors, we'll handle them.
-                          logger.debug("Attempting to close active HTTP request.")
-                          # Find the connection object and close it? Difficult.
-                          # A simpler approach is just to ignore the result if cancelled.
+                          # Attempt to close the session to interrupt any in-flight requests
+                          logger.debug("Attempting to close active HTTP session.")
+                          self.current_request.close()
                      except Exception as e:
                           logger.warning(f"Could not forcefully close request: {e}")
 
@@ -118,6 +117,17 @@ class GPT4ProcessingThread(QThread):
             else:
                  self.update_progress.emit("GPT processing cancelled during error handling.")
         finally:
+             # Clean up any resources
+             try:
+                 if hasattr(self, 'current_request') and self.current_request:
+                     if hasattr(self.current_request, 'close'):
+                         try:
+                             self.current_request.close()
+                         except Exception as e:
+                             logger.warning(f"Error closing request in finally block: {e}")
+                     self.current_request = None
+             except Exception as cleanup_e:
+                 logger.warning(f"Error during resource cleanup: {cleanup_e}")
              logger.info("GPT processing thread finished execution.")
 
 
@@ -125,6 +135,7 @@ class GPT4ProcessingThread(QThread):
         """Send a request to the OpenAI API and handle retries."""
         retry_count = 0
         last_error = None
+        session = None
 
         while retry_count < self.MAX_RETRY_ATTEMPTS:
             if self.is_canceled(): return "[Cancelled]"
@@ -136,10 +147,14 @@ class GPT4ProcessingThread(QThread):
                 headers = {'Authorization': f'Bearer {self.openai_api_key}',
                            'Content-Type': 'application/json'}
 
-                # Store request object - limited utility for cancellation
+                # Create a new session for each attempt to ensure clean state
                 session = requests.Session()
                 prepared_request = requests.Request('POST', self.API_ENDPOINT, json=data, headers=headers).prepare()
-                # self.current_request = session # session doesn't directly help cancel flight
+                self.current_request = session # Store session for potential cancellation
+
+                # Check cancellation again before sending request
+                if self.is_canceled(): 
+                    return "[Cancelled]"
 
                 response = session.send(prepared_request, timeout=self.TIMEOUT)
                 self.current_request = None # Request finished

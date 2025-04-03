@@ -43,6 +43,7 @@ class TranscodingThread(QThread):
             return self._is_canceled
             
     def run(self):
+        temp_files = [] # Track temporary files for cleanup in case of cancellation
         try:
             if self.is_canceled():
                 self.update_progress.emit('Transcoding cancelled before starting.')
@@ -62,6 +63,19 @@ class TranscodingThread(QThread):
                 self.handle_error(error_message)
             else:
                 self.update_progress.emit('Transcoding cancelled.')
+        finally:
+            # Clean up any temporary files if thread was cancelled
+            try:
+                if self.is_canceled() and temp_files:
+                    for temp_file in temp_files:
+                        if os.path.exists(temp_file):
+                            try:
+                                os.remove(temp_file)
+                                logger.info(f"Cleaned up temporary file after cancellation: {temp_file}")
+                            except Exception as cleanup_error:
+                                logger.warning(f"Failed to clean up temporary file {temp_file}: {cleanup_error}")
+            except Exception as e:
+                logger.error(f"Error during post-cancellation cleanup: {e}")
 
     def transcode_audio(self, source_path, target_dir):
         self.update_progress.emit('Transcoding audio file...')
@@ -142,6 +156,7 @@ class TranscodingThread(QThread):
         Returns:
             List of paths to the chunked audio files
         """
+        chunk_paths = []
         try:
             # Check for cancellation
             if self.is_canceled():
@@ -160,15 +175,21 @@ class TranscodingThread(QThread):
             base_name = os.path.basename(audio_path)
             name, ext = os.path.splitext(base_name)
             
-            chunk_paths = []
-            
             # Process each chunk
             for i in range(num_chunks):
                 # Check for cancellation before each chunk
                 if self.is_canceled():
                     self.update_progress.emit(f'Chunking cancelled at chunk {i+1}/{num_chunks}.')
-                    # Return what we've done so far, or original if nothing completed
-                    return chunk_paths if chunk_paths else [audio_path]
+                    # Clean up partial chunks if cancelled
+                    for path in chunk_paths:
+                        try:
+                            if os.path.exists(path):
+                                os.remove(path)
+                                logger.info(f"Cleaned up chunk file after cancellation: {path}")
+                        except Exception as cleanup_error:
+                            logger.warning(f"Failed to clean up chunk file {path}: {cleanup_error}")
+                    # Return original if cancellation occurred
+                    return [audio_path]
                 
                 start_ms = i * chunk_size_ms
                 end_ms = min((i + 1) * chunk_size_ms, duration_ms)
@@ -181,12 +202,36 @@ class TranscodingThread(QThread):
                 chunk.export(chunk_path, format=self.target_format)
                 chunk_paths.append(chunk_path)
                 
-            # Return the list of chunk paths
+                # Check if cancellation occurred while exporting (for long exports)
+                if self.is_canceled():
+                    self.update_progress.emit(f'Chunking cancelled after exporting chunk {i+1}/{num_chunks}.')
+                    # Clean up partial chunks
+                    for path in chunk_paths:
+                        try:
+                            if os.path.exists(path):
+                                os.remove(path)
+                                logger.info(f"Cleaned up chunk file after post-export cancellation: {path}")
+                        except Exception as cleanup_error:
+                            logger.warning(f"Failed to clean up chunk file {path}: {cleanup_error}")
+                    return [audio_path]
+                
+            # Return the list of completed chunk paths
             return chunk_paths
             
         except Exception as e:
             if not self.is_canceled():
                 self.error.emit(f"Error chunking audio: {str(e)}")
+                logger.error(f"Chunking error: {e}", exc_info=True)
+            
+            # Clean up any partial chunks on exception
+            try:
+                for path in chunk_paths:
+                    if os.path.exists(path):
+                        os.remove(path)
+                        logger.info(f"Cleaned up chunk file after error: {path}")
+            except Exception as cleanup_error:
+                logger.warning(f"Failed to clean up chunk files after error: {cleanup_error}")
+                
             return [audio_path]  # Return original if chunking fails
     
     def handle_error(self, error_message):

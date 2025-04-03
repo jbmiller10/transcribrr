@@ -14,6 +14,7 @@ from app.threads.TranscodingThread import TranscodingThread
 from app.threads.YouTubeDownloadThread import YouTubeDownloadThread
 from app.VoiceRecorderWidget import VoiceRecorderWidget
 from app.FileDropWidget import FileDropWidget
+from app.ThreadManager import ThreadManager
 
 # Configure logging (use app name)
 logger = logging.getLogger('transcribrr')
@@ -275,6 +276,9 @@ class ControlPanelWidget(QWidget):
             self.youtube_download_thread.update_progress.connect(self.on_youtube_progress)
             self.youtube_download_thread.completed.connect(self.handle_io_complete)
             self.youtube_download_thread.error.connect(self.on_error)
+            
+            # Register thread with ThreadManager
+            ThreadManager.instance().register_thread(self.youtube_download_thread)
             self.youtube_download_thread.start()
         except Exception as e:
             self.on_error(f"Failed to start YouTube download: {e}")
@@ -377,6 +381,9 @@ class ControlPanelWidget(QWidget):
                 self.transcoding_thread.update_progress.connect(self.on_transcoding_progress)
                 self.transcoding_thread.completed.connect(self.on_transcoding_complete)
                 self.transcoding_thread.error.connect(self.on_error)
+                
+                # Register thread with ThreadManager
+                ThreadManager.instance().register_thread(self.transcoding_thread)
                 self.transcoding_thread.start()
             except Exception as e:
                 self.on_error(f"Failed to start transcoding: {e}")

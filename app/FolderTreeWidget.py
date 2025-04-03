@@ -92,11 +92,11 @@ class FolderTreeWidget(QWidget):
         
         main_layout.addWidget(self.folder_tree)
         
-        # Add "All Recordings" root item
+        # Add unorganized recordings root item
         root_item = QTreeWidgetItem(self.folder_tree)
-        root_item.setText(0, "All Recordings")
+        root_item.setText(0, "Unorganized Recordings")
         root_item.setIcon(0, QIcon(resource_path('icons/folder.svg')))
-        root_item.setData(0, Qt.ItemDataRole.UserRole, {"id": -1, "name": "All Recordings"})
+        root_item.setData(0, Qt.ItemDataRole.UserRole, {"id": -1, "name": "Unorganized Recordings"})
         root_item.setExpanded(True)
         self.folder_tree.setCurrentItem(root_item)
         
@@ -124,21 +124,27 @@ class FolderTreeWidget(QWidget):
         folder_manager = FolderManager.instance()
         root_folders = folder_manager.get_all_root_folders()
         
-        # Get total recording count
+        # Get count of recordings not in any folder
         try:
             import sqlite3
             conn = sqlite3.connect(folder_manager.db_path)
             cursor = conn.cursor()
-            cursor.execute("SELECT COUNT(*) FROM recordings")
-            total_count = cursor.fetchone()[0]
+            cursor.execute("""
+                SELECT COUNT(*) FROM recordings
+                WHERE NOT EXISTS (
+                    SELECT 1 FROM recording_folders 
+                    WHERE recording_id = recordings.id
+                )
+            """)
+            unorganized_count = cursor.fetchone()[0]
             conn.close()
             
-            # Update "All Recordings" text with count
+            # Update root item with count of unorganized recordings
             if root_item:
-                root_item.setText(0, f"All Recordings ({total_count})")
+                root_item.setText(0, f"Unorganized Recordings ({unorganized_count})")
         except Exception as e:
-            logger.error(f"Error getting total recording count: {e}")
-            total_count = 0
+            logger.error(f"Error getting unorganized recording count: {e}")
+            unorganized_count = 0
         
         # Add folders to tree
         for folder in root_folders:
@@ -155,7 +161,7 @@ class FolderTreeWidget(QWidget):
             # Select "All Recordings" by default
             if root_item:
                 self.folder_tree.setCurrentItem(root_item)
-                self.folderSelected.emit(-1, "All Recordings")
+                self.folderSelected.emit(-1, "Unorganized Recordings")
     
     def add_folder_to_tree(self, folder, parent_item):
         """Recursively add folder and its children to the tree."""
@@ -211,7 +217,7 @@ class FolderTreeWidget(QWidget):
     def select_folder_by_id(self, folder_id):
         """Find and select a folder by ID."""
         if folder_id == -1:
-            # Select "All Recordings" root item
+            # Select "Unorganized Recordings" root item
             root_item = self.folder_tree.topLevelItem(0)
             if root_item:
                 self.folder_tree.setCurrentItem(root_item)
@@ -379,7 +385,7 @@ class FolderTreeWidget(QWidget):
             # Define callback for when folder deletion completes
             def on_folder_deleted(success, result):
                 if success:
-                    # Select "All Recordings" after deletion
+                    # Select "Unorganized Recordings" after deletion
                     root_item = self.folder_tree.topLevelItem(0)
                     if root_item:
                         self.folder_tree.setCurrentItem(root_item)
