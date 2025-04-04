@@ -2,7 +2,7 @@
 setlocal EnableDelayedExpansion
 
 :: Script to build a standalone Windows application with optional CUDA support
-:: FIXED Pip Invocation & Echo Syntax
+:: FIXED Comment Syntax
 
 :: --- Configuration ---
 set APP_NAME=Transcribrr
@@ -123,8 +123,7 @@ if %INSTALL_CUDA% == 1 (
     echo   PyTorch CPU installed successfully.
 )
 
-:: Install remaining dependencies from requirements.txt using python -m pip
-:: IMPORTANT: torch, torchvision, torchaudio should NOT be in requirements.txt
+REM IMPORTANT: torch, torchvision, torchaudio should NOT be in requirements.txt
 echo   Installing dependencies from requirements.txt
 if exist requirements.txt (
     %VENV_PYTHON% -m pip install -r requirements.txt --log pip_reqs.log
