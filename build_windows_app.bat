@@ -2,7 +2,7 @@
 setlocal EnableDelayedExpansion
 
 :: Script to build a standalone Windows application with optional CUDA support
-:: FIXED Comment Syntax
+:: FIXED Launcher Script Echoing
 
 :: --- Configuration ---
 set APP_NAME=Transcribrr
@@ -11,7 +11,7 @@ set OUTPUT_DIR=dist\%APP_NAME%
 set PYTHON_EXECUTABLE=python
 
 :: --- Default values ---
-set INSTALL_CUDA=0
+set INSTALL_CUDA=0 REM Use 0 for false, 1 for true
 
 :: --- Argument Parsing ---
 :ArgLoop
@@ -183,13 +183,14 @@ echo --- Creating Launcher Script ---
     echo.
     echo echo Running Python script using venv python... ^>^> "%%SCRIPT_DIR%%logs\launch.log"
     echo cd /d "%%SCRIPT_DIR%%"
-    echo if exist %%VENV_PYTHON%% (
+    REM Escape parentheses for the IF/ELSE block being echoed
+    echo if exist %%VENV_PYTHON%% ^(
     echo   %%VENV_PYTHON%% main.py
-    echo ) else (
+    echo ^) else ^(
     echo   echo ERROR: venv Python not found at %%VENV_PYTHON%% ^>^> "%%SCRIPT_DIR%%logs\launch.log"
     echo   pause
     echo   exit /b 1
-    echo )
+    echo ^)
     echo set EXIT_CODE=%%ERRORLEVEL%%
     echo echo Python script finished with exit code %%EXIT_CODE%% ^>^> "%%SCRIPT_DIR%%logs\launch.log"
     echo.
