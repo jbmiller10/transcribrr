@@ -16,6 +16,12 @@ if ! command -v brew &> /dev/null; then
     exit 1
 fi
 
+# Check if portaudio is installed (Needed for PyAudio)
+if ! brew list portaudio &> /dev/null; then
+    echo "Installing portaudio via Homebrew (required for PyAudio)..."
+    brew install portaudio
+fi
+
 # Check if ffmpeg is installed via Homebrew
 if ! brew list ffmpeg &> /dev/null; then
     echo "Installing ffmpeg via Homebrew..."
@@ -88,58 +94,84 @@ export SSL_CERT_FILE="$RESOURCES_DIR/cacert.pem"
 source "$RESOURCES_DIR/python/bin/activate"
 
 # Echo diagnostic information to a log file
-echo "Starting application at $(date)" > "$RESOURCES_DIR/launch.log"
-echo "RESOURCES_DIR: $RESOURCES_DIR" >> "$RESOURCES_DIR/launch.log" 
-echo "PYTHONPATH: $PYTHONPATH" >> "$RESOURCES_DIR/launch.log"
-echo "Python executable: $(which python3)" >> "$RESOURCES_DIR/launch.log"
-echo "Python version: $(python3 --version)" >> "$RESOURCES_DIR/launch.log"
-echo "Available modules:" >> "$RESOURCES_DIR/launch.log"
-python3 -c "help('modules')" >> "$RESOURCES_DIR/launch.log" 2>&1
+echo "Starting application at $(date)" > "$RESOURCES_DIR/logs/launch.log"
+echo "RESOURCES_DIR: $RESOURCES_DIR" >> "$RESOURCES_DIR/logs/launch.log"
+echo "PYTHONPATH: $PYTHONPATH" >> "$RESOURCES_DIR/logs/launch.log"
+echo "PATH: $PATH" >> "$RESOURCES_DIR/logs/launch.log"
+echo "Python executable: $(which python3)" >> "$RESOURCES_DIR/logs/launch.log"
+echo "Python version: $(python3 --version)" >> "$RESOURCES_DIR/logs/launch.log"
+# Consider limiting module output or removing if logs get too large
+# echo "Available modules:" >> "$RESOURCES_DIR/logs/launch.log"
+# python3 -c "import pkgutil; print([module.name for module in pkgutil.iter_modules()])" >> "$RESOURCES_DIR/logs/launch.log" 2>&1
 
 # Launch the app with Python
 cd "$RESOURCES_DIR"  # Change to resources directory before launching
-exec python3 "$RESOURCES_DIR/main.py"
+echo "Launching main.py..." >> "$RESOURCES_DIR/logs/launch.log"
+exec python3 "$RESOURCES_DIR/main.py" >> "$RESOURCES_DIR/logs/launch.log" 2>&1
 EOF
 
 # Make the launcher executable
 chmod +x "${APP_DIR}/Contents/MacOS/${APP_NAME}"
 
-# Copy resources 
+# Copy resources
 echo "Copying resources..."
-mkdir -p "${APP_DIR}/Contents/Resources/icons"
 mkdir -p "${APP_DIR}/Contents/Resources/icons/status"
 mkdir -p "${APP_DIR}/Contents/Resources/app"
 mkdir -p "${APP_DIR}/Contents/Resources/Recordings"
 mkdir -p "${APP_DIR}/Contents/Resources/database"
 mkdir -p "${APP_DIR}/Contents/Resources/logs"
 
-# Copy specific SVG files that the app is looking for
-cp -f icons/status/audio.svg "${APP_DIR}/Contents/Resources/icons/"
-cp -f icons/status/video.svg "${APP_DIR}/Contents/Resources/icons/"
-cp -f icons/status/file.svg "${APP_DIR}/Contents/Resources/icons/"
+# Copy directories first
+cp -R icons "${APP_DIR}/Contents/Resources/"
+cp -R app "${APP_DIR}/Contents/Resources/"
 
-# Now copy all icons with proper structure
-cp -r icons "${APP_DIR}/Contents/Resources/"
-# Ensure status icons are also copied to the expected location
-cp -f icons/status/* "${APP_DIR}/Contents/Resources/icons/status/"
-cp -r app "${APP_DIR}/Contents/Resources/"
-cp config.json "${APP_DIR}/Contents/Resources/"
-cp preset_prompts.json "${APP_DIR}/Contents/Resources/"
+# Copy specific root files (handle potential absence)
 cp main.py "${APP_DIR}/Contents/Resources/"
+# Consider if config/prompts are truly needed *in the bundle* or just user data
+# If they are default fallbacks, maybe copy them only if they exist
+if [ -f config.json ]; then cp config.json "${APP_DIR}/Contents/Resources/"; fi
+if [ -f preset_prompts.json ]; then cp preset_prompts.json "${APP_DIR}/Contents/Resources/"; fi
 
 # Create a virtual environment in the Resources directory
-echo "Creating virtual environment..."
-python -m venv "${APP_DIR}/Contents/Resources/python"
+# Use python3 explicitly
+echo "Creating virtual environment using python3..."
+python3 -m venv "${APP_DIR}/Contents/Resources/python"
+if [ $? -ne 0 ]; then
+    echo "Error: Failed to create virtual environment."
+    exit 1
+fi
 
 # Install dependencies in the virtual environment
+# Define python/pip executables within venv
+VENV_PYTHON="${APP_DIR}/Contents/Resources/python/bin/python3"
+VENV_PIP="${APP_DIR}/Contents/Resources/python/bin/pip3"
+
 echo "Installing dependencies..."
-"${APP_DIR}/Contents/Resources/python/bin/pip" install --upgrade pip
-"${APP_DIR}/Contents/Resources/python/bin/pip" install PyQt6 PyQt6-Qt6 appdirs colorlog
-"${APP_DIR}/Contents/Resources/python/bin/pip" install -r requirements.txt
+"$VENV_PIP" install --upgrade pip
+if [ $? -ne 0 ]; then echo "Error upgrading pip"; exit 1; fi
+
+"$VENV_PIP" install PyQt6 PyQt6-Qt6 appdirs colorlog
+if [ $? -ne 0 ]; then echo "Error installing base GUI packages"; exit 1; fi
+
+# Install PyTorch (Remove from requirements.txt first!)
+# Choose one: CPU or MPS (or add flag logic) - Assuming MPS for macOS build
+echo "Installing PyTorch for Apple Silicon (MPS)..."
+"$VENV_PIP" install torch torchvision torchaudio
+if [ $? -ne 0 ]; then echo "Error installing PyTorch"; exit 1; fi
+
+# Install remaining requirements
+echo "Installing remaining dependencies from requirements.txt..."
+if [ -f requirements.txt ]; then
+    "$VENV_PIP" install -r requirements.txt
+    if [ $? -ne 0 ]; then echo "Error installing from requirements.txt"; exit 1; fi
+else
+    echo "Warning: requirements.txt not found."
+fi
 
 # Download CA certificates
 echo "Downloading CA certificates..."
 curl -o "${APP_DIR}/Contents/Resources/cacert.pem" https://curl.se/ca/cacert.pem
+if [ $? -ne 0 ]; then echo "Error downloading CA certificates"; exit 1; fi
 
 # Copy ffmpeg binaries into the app bundle
 echo "Copying ffmpeg binaries..."
@@ -156,12 +188,18 @@ if [ -f "$FFMPEG_PATH" ] && [ -f "$FFPROBE_PATH" ]; then
 else
     echo "Warning: Could not find ffmpeg or ffprobe executables."
     echo "Your app may not work correctly without these binaries."
+    # Consider exiting here if ffmpeg is essential: exit 1
 fi
 
 # Update the launcher script to include ffmpeg in PATH
-sed -i '' -e '/export PYTHONPATH/a\\
+# Use the corrected sed command
+echo "Updating launcher script PATH..."
+sed -i '' -e '/export PYTHONPATH/a\
 # Add ffmpeg to PATH\
-export PATH="$DIR/bin:$PATH"\
+export PATH="$DIR/bin:$PATH"
 ' "${APP_DIR}/Contents/MacOS/${APP_NAME}"
+if [ $? -ne 0 ]; then echo "Error updating launcher script PATH"; exit 1; fi
 
+
+echo ""
 echo "Build completed successfully! App is located at: ${APP_DIR}"
