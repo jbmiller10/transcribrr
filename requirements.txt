@@ -38,3 +38,4 @@ scipy>=1.8.0
 decorator==4.4.2
 tqdm>=4.60.0
 colorlog>=6.0.0
+appdirs>=1.4.4
