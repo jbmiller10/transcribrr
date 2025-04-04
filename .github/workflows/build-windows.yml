@@ -23,7 +23,6 @@ jobs:
           python-version: '3.9'
           cache: 'pip' # Cache pip dependencies
 
-      # --- Corrected Chocolatey Install Step ---
       - name: Install Chocolatey (if needed)
         run: |
           $chocoPath = Get-Command choco -ErrorAction SilentlyContinue
@@ -33,20 +32,19 @@ jobs:
           } else {
             Write-Host "Chocolatey already installed at $($chocoPath.Source)"
           }
-          # Refresh environment variables in PowerShell to ensure choco is available immediately
           $env:Path = [System.Environment]::GetEnvironmentVariable("Path","Machine") + ";" + [System.Environment]::GetEnvironmentVariable("Path","User")
-        shell: powershell # Explicitly specify PowerShell
+        shell: powershell
 
       - name: Install FFmpeg via Chocolatey
         run: choco install ffmpeg -y --no-progress --force
 
-      - name: Install PyAudio Build Dependencies (pipwin)
-        run: |
-          python -m pip install --upgrade pip
-          pip install pipwin
+      # --- Install PyAudio Dependencies and PyAudio ---
+      - name: Install PortAudio (PyAudio dependency)
+        run: choco install portaudio -y --no-progress --force
 
-      - name: Install PyAudio via pipwin
-        run: pipwin install pyaudio
+      - name: Install PyAudio via pip
+        run: python -m pip install pyaudio
+      # -----------------------------------------------
 
       - name: Run Windows Build Script (CPU)
         run: .\build_windows_app.bat # Run without --cuda flag
@@ -65,9 +63,7 @@ jobs:
 
   build-cuda:
     name: Build Windows (CUDA)
-    runs-on: windows-latest # Note: This runner does NOT have CUDA runtime/drivers installed.
-                            # This job *builds* with CUDA wheels but cannot *test* CUDA execution here.
-                            # Use a self-hosted runner with GPU/CUDA for full testing.
+    runs-on: windows-latest
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -78,7 +74,6 @@ jobs:
           python-version: '3.9'
           cache: 'pip'
 
-      # --- Corrected Chocolatey Install Step (Identical to build-cpu) ---
       - name: Install Chocolatey (if needed)
         run: |
           $chocoPath = Get-Command choco -ErrorAction SilentlyContinue
@@ -88,20 +83,19 @@ jobs:
           } else {
             Write-Host "Chocolatey already installed at $($chocoPath.Source)"
           }
-          # Refresh environment variables in PowerShell to ensure choco is available immediately
           $env:Path = [System.Environment]::GetEnvironmentVariable("Path","Machine") + ";" + [System.Environment]::GetEnvironmentVariable("Path","User")
-        shell: powershell # Explicitly specify PowerShell
+        shell: powershell
 
       - name: Install FFmpeg via Chocolatey
         run: choco install ffmpeg -y --no-progress --force
 
-      - name: Install PyAudio Build Dependencies (pipwin)
-        run: |
-          python -m pip install --upgrade pip
-          pip install pipwin
+      # --- Install PyAudio Dependencies and PyAudio ---
+      - name: Install PortAudio (PyAudio dependency)
+        run: choco install portaudio -y --no-progress --force
 
-      - name: Install PyAudio via pipwin
-        run: pipwin install pyaudio
+      - name: Install PyAudio via pip
+        run: python -m pip install pyaudio
+      # -----------------------------------------------
 
       - name: Run Windows Build Script (CUDA)
         run: .\build_windows_app.bat --cuda # Run WITH --cuda flag
@@ -120,31 +114,30 @@ jobs:
 
   release:
     name: Create GitHub Release
-    if: startsWith(github.ref, 'refs/tags/') # Only run on tag pushes
-    needs: [build-cpu, build-cuda] # Run only if both builds succeed
-    runs-on: ubuntu-latest # Release can run on Linux
+    if: startsWith(github.ref, 'refs/tags/')
+    needs: [build-cpu, build-cuda]
+    runs-on: ubuntu-latest
     permissions:
-      contents: write # Permission to create releases and upload assets
+      contents: write
 
     steps:
       - name: Download CPU Artifact
         uses: actions/download-artifact@v4
         with:
           name: Transcribrr-Windows-CPU
-          path: artifacts/cpu # Download to a specific sub-directory
+          path: artifacts/cpu
 
       - name: Download CUDA Artifact
         uses: actions/download-artifact@v4
         with:
           name: Transcribrr-Windows-CUDA
-          path: artifacts/cuda # Download to a specific sub-directory
+          path: artifacts/cuda
 
       - name: Create Release and Upload Assets
-        uses: softprops/action-gh-release@v2 # Use v2 for potentially better node support
+        uses: softprops/action-gh-release@v2
         with:
-          # draft: true # Optional: Create a draft release first
           files: |
             artifacts/cpu/Transcribrr-Windows-CPU.zip
             artifacts/cuda/Transcribrr-Windows-CUDA.zip
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }} # Provided automatically by GitHub
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
