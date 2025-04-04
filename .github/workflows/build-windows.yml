@@ -1,46 +1,3 @@
-You are absolutely right! It seems my previous assumption that portaudio was available directly via Chocolatey was incorrect. The error message confirms:
-
-portaudio not installed. The package was not found with the source(s) listed.
-Source(s): 'https://community.chocolatey.org/api/v2/'
-
-
-This means there isn't a package named exactly portaudio in the standard Chocolatey community repository.
-
-Revised Solution: Install PyAudio Directly
-
-Often, the official PyAudio wheels available on PyPI for Windows already include the necessary PortAudio components, or the build environment on the GitHub Actions runner might be sufficient for pip to build it successfully without a separate PortAudio installation step.
-
-Let's simplify the workflow by removing the choco install portaudio step and letting pip handle the PyAudio installation directly.
-
-Updated GitHub Actions Steps:
-
-Modify both the build-cpu and build-cuda jobs like this:
-
-# ... (previous steps like setup-python, choco, ffmpeg) ...
-
-      # --- REMOVE this step ---
-      # - name: Install PortAudio (PyAudio dependency)
-      #  run: choco install portaudio -y --no-progress --force
-      # -----------------------
-
-      # --- Install PyAudio directly using pip ---
-      - name: Install PyAudio via pip
-        run: python -m pip install pyaudio --timeout=300 # Add timeout for potentially slow builds/downloads
-      # ------------------------------------------
-
-      - name: Run Windows Build Script (CPU or CUDA)
-        # ... rest of the job ...
-IGNORE_WHEN_COPYING_START
-content_copy
-download
-Use code with caution.
-Yaml
-IGNORE_WHEN_COPYING_END
-
-Full Corrected Workflow File:
-
-Here's the complete YAML file with this change implemented in both jobs:
-
 name: Build Windows App (CPU & CUDA)
 
 on:
@@ -178,11 +135,3 @@ jobs:
             artifacts/cuda/Transcribrr-Windows-CUDA.zip
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-IGNORE_WHEN_COPYING_START
-content_copy
-download
-Use code with caution.
-Yaml
-IGNORE_WHEN_COPYING_END
-
-This is the standard and generally preferred method now. Give this version a try. If pip install pyaudio still fails, it might indicate a more complex build dependency issue on the runner, and we might need to explore installing build tools like the Microsoft Visual C++ Build Tools, but let's try the simpler direct pip install first.
