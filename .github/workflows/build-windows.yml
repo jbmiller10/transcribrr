@@ -4,63 +4,26 @@ on:
   push:
     branches: [ main ]
     tags:
-      - 'v*' # Trigger on version tags like v1.0.0
+      - 'v*'
   pull_request:
     branches: [ main ]
-  workflow_dispatch: # Allows manual triggering
+  workflow_dispatch:
 
 jobs:
-  build-cpu:
-    name: Build Windows (CPU)
+  build:
+    name: Build Windows (${{ matrix.build_type }})
     runs-on: windows-latest
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
+    strategy:
+      matrix:
+        include:
+          - build_type: CPU
+            cuda_flag: "" # Empty flag for CPU build
+            artifact_suffix: CPU
+          - build_type: CUDA
+            cuda_flag: "--cuda" # --cuda flag for CUDA build
+            artifact_suffix: CUDA
+            # Note: Runner doesn't have CUDA drivers, only builds wheels.
 
-      - name: Set up Python 3.9
-        uses: actions/setup-python@v5
-        with:
-          python-version: '3.9'
-          cache: 'pip' # Cache pip dependencies
-
-      - name: Install Chocolatey (if needed)
-        run: |
-          $chocoPath = Get-Command choco -ErrorAction SilentlyContinue
-          if (-not $chocoPath) {
-            Write-Host "Installing Chocolatey..."
-            Set-ExecutionPolicy Bypass -Scope Process -Force; [System.Net.ServicePointManager]::SecurityProtocol = [System.Net.ServicePointManager]::SecurityProtocol -bor 3072; iex ((New-Object System.Net.WebClient).DownloadString('https://community.chocolatey.org/install.ps1'))
-          } else {
-            Write-Host "Chocolatey already installed at $($chocoPath.Source)"
-          }
-          $env:Path = [System.Environment]::GetEnvironmentVariable("Path","Machine") + ";" + [System.Environment]::GetEnvironmentVariable("Path","User")
-        shell: powershell
-
-      - name: Install FFmpeg via Chocolatey
-        run: choco install ffmpeg -y --no-progress --force
-
-      # --- Install PyAudio directly using pip ---
-      - name: Install PyAudio via pip
-        run: python -m pip install pyaudio --timeout=300
-      # ------------------------------------------
-
-      - name: Run Windows Build Script (CPU)
-        run: .\build_windows_app.bat # Run without --cuda flag
-
-      - name: Archive CPU Build Artifact
-        run: |
-          Compress-Archive -Path dist\Transcribrr\* -DestinationPath Transcribrr-Windows-CPU.zip -Force
-        shell: powershell
-
-      - name: Upload CPU Build Artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: Transcribrr-Windows-CPU
-          path: Transcribrr-Windows-CPU.zip
-          if-no-files-found: error
-
-  build-cuda:
-    name: Build Windows (CUDA)
-    runs-on: windows-latest
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -86,35 +49,36 @@ jobs:
       - name: Install FFmpeg via Chocolatey
         run: choco install ffmpeg -y --no-progress --force
 
-      # --- Install PyAudio directly using pip ---
       - name: Install PyAudio via pip
         run: python -m pip install pyaudio --timeout=300
-      # ------------------------------------------
 
-      - name: Run Windows Build Script (CUDA)
-        run: .\build_windows_app.bat --cuda # Run WITH --cuda flag
+      # Use the matrix flag to conditionally run the build script
+      - name: Run Windows Build Script (${{ matrix.build_type }})
+        run: .\build_windows_app.bat ${{ matrix.cuda_flag }}
 
-      - name: Archive CUDA Build Artifact
+      # --- Corrected Archiving Step ---
+      - name: Archive Build Artifact (${{ matrix.build_type }})
         run: |
-          Compress-Archive -Path dist\Transcribrr\* -DestinationPath Transcribrr-Windows-CUDA.zip -Force
+          Compress-Archive -Path dist\Transcribrr -DestinationPath Transcribrr-Windows-${{ matrix.artifact_suffix }}.zip -Force
         shell: powershell
 
-      - name: Upload CUDA Build Artifact
+      - name: Upload Build Artifact (${{ matrix.build_type }})
         uses: actions/upload-artifact@v4
         with:
-          name: Transcribrr-Windows-CUDA
-          path: Transcribrr-Windows-CUDA.zip
+          name: Transcribrr-Windows-${{ matrix.artifact_suffix }}
+          path: Transcribrr-Windows-${{ matrix.artifact_suffix }}.zip
           if-no-files-found: error
 
   release:
     name: Create GitHub Release
     if: startsWith(github.ref, 'refs/tags/')
-    needs: [build-cpu, build-cuda]
+    needs: [build] # Depends on the matrix build job
     runs-on: ubuntu-latest
     permissions:
       contents: write
 
     steps:
+      # Download both artifacts (names now include suffix)
       - name: Download CPU Artifact
         uses: actions/download-artifact@v4
         with:
