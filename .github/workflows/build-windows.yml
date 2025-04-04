@@ -23,18 +23,19 @@ jobs:
           python-version: '3.9'
           cache: 'pip' # Cache pip dependencies
 
+      # --- Corrected Chocolatey Install Step ---
       - name: Install Chocolatey (if needed)
         run: |
-          # Check if choco is available, install if not (usually pre-installed on GH runners)
-          where choco
-          if %ERRORLEVEL% NEQ 0 (
-            echo "Installing Chocolatey..."
-            powershell -NoProfile -ExecutionPolicy Bypass -Command "Set-ExecutionPolicy Bypass -Scope Process -Force; [System.Net.ServicePointManager]::SecurityProtocol = [System.Net.ServicePointManager]::SecurityProtocol -bor 3072; iex ((New-Object System.Net.WebClient).DownloadString('https://community.chocolatey.org/install.ps1'))"
-          ) else (
-            echo "Chocolatey already installed."
-          )
-          # Add choco to PATH for this step if just installed
-          refreshenv
+          $chocoPath = Get-Command choco -ErrorAction SilentlyContinue
+          if (-not $chocoPath) {
+            Write-Host "Installing Chocolatey..."
+            Set-ExecutionPolicy Bypass -Scope Process -Force; [System.Net.ServicePointManager]::SecurityProtocol = [System.Net.ServicePointManager]::SecurityProtocol -bor 3072; iex ((New-Object System.Net.WebClient).DownloadString('https://community.chocolatey.org/install.ps1'))
+          } else {
+            Write-Host "Chocolatey already installed at $($chocoPath.Source)"
+          }
+          # Refresh environment variables in PowerShell to ensure choco is available immediately
+          $env:Path = [System.Environment]::GetEnvironmentVariable("Path","Machine") + ";" + [System.Environment]::GetEnvironmentVariable("Path","User")
+        shell: powershell # Explicitly specify PowerShell
 
       - name: Install FFmpeg via Chocolatey
         run: choco install ffmpeg -y --no-progress --force
@@ -77,7 +78,8 @@ jobs:
           python-version: '3.9'
           cache: 'pip'
 
-- name: Install Chocolatey (if needed)
+      # --- Corrected Chocolatey Install Step (Identical to build-cpu) ---
+      - name: Install Chocolatey (if needed)
         run: |
           $chocoPath = Get-Command choco -ErrorAction SilentlyContinue
           if (-not $chocoPath) {
