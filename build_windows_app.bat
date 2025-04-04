@@ -180,8 +180,6 @@ echo --- Creating Launcher Script ---
     echo echo VENV_PYTHON: %%VENV_PYTHON%% ^>^> "%%SCRIPT_DIR%%logs\launch.log"
     echo echo PYTHONPATH: %%PYTHONPATH%% ^>^> "%%SCRIPT_DIR%%logs\launch.log"
     echo echo PATH: %%PATH%% ^>^> "%%SCRIPT_DIR%%logs\launch.log"
-    echo.
-    echo :: Activate venv (implicit by using venv python) and run app
     echo echo Running Python script using venv python... ^>^> "%%SCRIPT_DIR%%logs\launch.log"
     echo cd /d "%%SCRIPT_DIR%%"
     echo if exist %%VENV_PYTHON%% (
