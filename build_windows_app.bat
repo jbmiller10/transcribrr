@@ -11,7 +11,7 @@ set OUTPUT_DIR=dist\%APP_NAME%
 set PYTHON_EXECUTABLE=python
 
 :: --- Default values ---
-set INSTALL_CUDA=0 REM Use 0 for false, 1 for true
+set INSTALL_CUDA=0
 
 :: --- Argument Parsing ---
 :ArgLoop
@@ -123,7 +123,6 @@ if %INSTALL_CUDA% == 1 (
     echo   PyTorch CPU installed successfully.
 )
 
-REM IMPORTANT: torch, torchvision, torchaudio should NOT be in requirements.txt
 echo   Installing dependencies from requirements.txt
 if exist requirements.txt (
     %VENV_PYTHON% -m pip install -r requirements.txt --log pip_reqs.log
@@ -183,7 +182,6 @@ echo --- Creating Launcher Script ---
     echo.
     echo echo Running Python script using venv python... ^>^> "%%SCRIPT_DIR%%logs\launch.log"
     echo cd /d "%%SCRIPT_DIR%%"
-    REM Escape parentheses for the IF/ELSE block being echoed
     echo if exist %%VENV_PYTHON%% ^(
     echo   %%VENV_PYTHON%% main.py
     echo ^) else ^(
