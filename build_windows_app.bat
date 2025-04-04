@@ -2,14 +2,13 @@
 setlocal EnableDelayedExpansion
 
 :: Script to build a standalone Windows application with optional CUDA support
-:: FIXED Pip Invocation
+:: FIXED Pip Invocation & Echo Syntax
 
 :: --- Configuration ---
 set APP_NAME=Transcribrr
 set VERSION=1.0.0
 set OUTPUT_DIR=dist\%APP_NAME%
 set PYTHON_EXECUTABLE=python
-:: No longer need PIP_EXECUTABLE variable
 
 :: --- Default values ---
 set INSTALL_CUDA=0 REM Use 0 for false, 1 for true
@@ -105,26 +104,20 @@ set VENV_PYTHON="%OUTPUT_DIR%\venv\Scripts\%PYTHON_EXECUTABLE%"
 :: Install dependencies in the virtual environment
 echo --- Installing Dependencies ---
 
-:: NO LONGER Upgrading pip - Removed this step
-:: echo   +++ Upgrading pip +++
-:: %VENV_PYTHON% -m pip install --upgrade pip --log pip_upgrade.log
-:: if %ERRORLEVEL% NEQ 0 ( echo ERROR: Failed to upgrade pip. Check pip_upgrade.log. & exit /b 1 )
-:: echo   Pip upgrade skipped.
-
 :: Install base packages using python -m pip
-echo   +++ Installing base packages (PyQt6, appdirs, etc.) +++
+echo   Installing base packages (PyQt6, appdirs, etc.)
 %VENV_PYTHON% -m pip install PyQt6 PyQt6-Qt6 appdirs colorlog --log pip_base.log
 if %ERRORLEVEL% NEQ 0 ( echo ERROR: Failed installing base packages. Check pip_base.log. & exit /b 1 )
 echo   Base packages installed successfully.
 
 :: Conditional PyTorch Installation using python -m pip
 if %INSTALL_CUDA% == 1 (
-    echo   +++ Installing PyTorch with CUDA 11.8 support +++
+    echo   Installing PyTorch with CUDA 11.8 support
     %VENV_PYTHON% -m pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu118 --log pip_torch_cuda.log
     if %ERRORLEVEL% NEQ 0 ( echo ERROR: Failed installing PyTorch CUDA. Check pip_torch_cuda.log. & exit /b 1 )
     echo   PyTorch CUDA installed successfully.
 ) else (
-    echo   +++ Installing PyTorch (CPU version) +++
+    echo   Installing PyTorch (CPU version)
     %VENV_PYTHON% -m pip install torch torchvision torchaudio --log pip_torch_cpu.log
     if %ERRORLEVEL% NEQ 0 ( echo ERROR: Failed installing PyTorch CPU. Check pip_torch_cpu.log. & exit /b 1 )
     echo   PyTorch CPU installed successfully.
@@ -132,7 +125,7 @@ if %INSTALL_CUDA% == 1 (
 
 :: Install remaining dependencies from requirements.txt using python -m pip
 :: IMPORTANT: torch, torchvision, torchaudio should NOT be in requirements.txt
-echo   +++ Installing dependencies from requirements.txt +++
+echo   Installing dependencies from requirements.txt
 if exist requirements.txt (
     %VENV_PYTHON% -m pip install -r requirements.txt --log pip_reqs.log
     if %ERRORLEVEL% NEQ 0 ( echo ERROR: Failed installing from requirements.txt. Check pip_reqs.log. & exit /b 1 )
