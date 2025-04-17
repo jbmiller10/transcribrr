@@ -95,7 +95,7 @@ jobs:
       - name: Compress artefact
         shell: pwsh
         run: |
-          Compress-Archive -Path dist\Transcribrr_${{ matrix.flavour | upcase }} `
+          Compress-Archive -Path dist\Transcribrr_${{ toUpper(matrix.flavour) }} `
                          -DestinationPath dist\Transcribrr-windows-${{ matrix.flavour }}.zip -Force
 
       - name: Upload artefact (windows-${{ matrix.flavour }})
