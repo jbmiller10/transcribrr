@@ -37,6 +37,12 @@ def get_resource_path():
 
 def get_user_data_path():
     """Get the path for user data files that need to be read/write"""
+    # First, check if the app has provided a specific user data directory
+    if "TRANSCRIBRR_USER_DATA_DIR" in os.environ:
+        user_data_dir = os.environ["TRANSCRIBRR_USER_DATA_DIR"]
+        os.makedirs(user_data_dir, exist_ok=True)
+        return user_data_dir
+    
     # When packaged, we need to use the user's data directory
     if hasattr(sys, '_MEIPASS') or getattr(sys, 'frozen', False):
         # Use appdirs to get standard user data directory

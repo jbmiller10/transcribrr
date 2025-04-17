@@ -78,14 +78,27 @@ export SSL_CERT_FILE="$RESOURCES_DIR/cacert.pem"
 # Activate the virtual environment using source
 source "$RESOURCES_DIR/python/bin/activate"
 
-# Echo diagnostic information to a log file
-echo "Starting application at $(date)" > "$RESOURCES_DIR/launch.log"
-echo "RESOURCES_DIR: $RESOURCES_DIR" >> "$RESOURCES_DIR/launch.log" 
-echo "PYTHONPATH: $PYTHONPATH" >> "$RESOURCES_DIR/launch.log"
-echo "Python executable: $(which python3)" >> "$RESOURCES_DIR/launch.log"
-echo "Python version: $(python3 --version)" >> "$RESOURCES_DIR/launch.log"
-echo "Available modules:" >> "$RESOURCES_DIR/launch.log"
-python3 -c "help('modules')" >> "$RESOURCES_DIR/launch.log" 2>&1
+# Create a user-writable log directory in ~/Library/Application Support
+APP_SUPPORT_DIR="$HOME/Library/Application Support/Transcribrr"
+APP_LOGS_DIR="$APP_SUPPORT_DIR/logs"
+mkdir -p "$APP_LOGS_DIR"
+
+# Create a user data directory if it doesn't exist
+mkdir -p "$APP_SUPPORT_DIR/Recordings"
+mkdir -p "$APP_SUPPORT_DIR/database"
+
+# Echo diagnostic information to a log file in the user-writable directory
+echo "Starting application at $(date)" > "$APP_LOGS_DIR/launch.log"
+echo "RESOURCES_DIR: $RESOURCES_DIR" >> "$APP_LOGS_DIR/launch.log" 
+echo "APP_SUPPORT_DIR: $APP_SUPPORT_DIR" >> "$APP_LOGS_DIR/launch.log"
+echo "PYTHONPATH: $PYTHONPATH" >> "$APP_LOGS_DIR/launch.log"
+echo "Python executable: $(which python3)" >> "$APP_LOGS_DIR/launch.log"
+echo "Python version: $(python3 --version)" >> "$APP_LOGS_DIR/launch.log"
+echo "Available modules:" >> "$APP_LOGS_DIR/launch.log"
+python3 -c "help('modules')" >> "$APP_LOGS_DIR/launch.log" 2>&1
+
+# Set environment variable to tell the app to use the user data directory
+export TRANSCRIBRR_USER_DATA_DIR="$APP_SUPPORT_DIR"
 
 # Launch the app with Python
 cd "$RESOURCES_DIR"  # Change to resources directory before launching
