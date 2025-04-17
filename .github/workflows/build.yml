@@ -45,6 +45,11 @@ jobs:
         uses: actions/setup-python@v5
         with:
           python-version: ${{ env.PYTHON_VERSION }}
+          
+      - name: Install system dependencies
+        run: |
+          brew update
+          brew install portaudio ffmpeg
 
       - name: Ensure GitHub Actions build script is executable
         run: chmod +x build_github_macos.sh
