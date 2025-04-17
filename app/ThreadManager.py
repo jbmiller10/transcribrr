@@ -52,10 +52,22 @@ class ThreadManager:
             return
             
         self._active_threads[thread_id] = thread
-        logger.debug(f"Thread registered: {thread.__class__.__name__} (id: {thread_id})")
-        
-        # Connect to the finished signal to auto-unregister the thread
-        thread.finished.connect(lambda: self.unregister_thread(thread))
+        logger.debug(
+            f"Thread registered: {thread.__class__.__name__} (id: {thread_id})"
+        )
+
+        # Use a weak reference inside the slot to avoid keeping the thread
+        # alive after it finishes (lambda would otherwise hold a strong ref).
+        import weakref
+
+        weak_thread = weakref.ref(thread)
+
+        def _auto_unregister():
+            t = weak_thread()
+            if t is not None:
+                self.unregister_thread(t)
+
+        thread.finished.connect(_auto_unregister)
     
     def unregister_thread(self, thread: QThread) -> None:
         """

@@ -27,15 +27,21 @@ from app.ThreadManager import ThreadManager
 from app.constants import LOG_FORMAT, LOG_DIR, LOG_FILE, RECORDINGS_DIR, DATABASE_DIR, APP_NAME, USER_DATA_DIR
 
 # Configure logging - now all paths come from constants
-logging.basicConfig(
-    level=logging.INFO,
-    format=LOG_FORMAT,
-    handlers=[
-        logging.StreamHandler(),
-        logging.FileHandler(LOG_FILE)
-    ]
-)
+# Root logging may have been configured by app.utils already (imported by
+# many modules).  Add handlers only if not present to avoid duplicate log
+# lines.
 
+if not logging.getLogger().handlers:
+    logging.basicConfig(
+        level=logging.INFO,
+        format=LOG_FORMAT,
+        handlers=[
+            logging.StreamHandler(),
+            logging.FileHandler(LOG_FILE),
+        ],
+    )
+
+# Now get the application‑level logger
 logger = logging.getLogger(APP_NAME)
 logger.info(f"Application starting. User data directory: {USER_DATA_DIR}")
 

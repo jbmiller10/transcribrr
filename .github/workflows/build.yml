@@ -1,0 +1,128 @@
+name: Build Transcribrr executables
+
+# -------------------------------------------------------------------
+# This workflow builds standalone application bundles for:
+#   • macOS (.app bundle)
+#   • Windows – two flavours
+#       – CPU‑only (default PyTorch build)
+#       – CUDA 11.8 build (uses --cuda switch in script)
+#
+# The repo already provides platform‑specific build scripts:
+#   • build_macos_app.sh
+#   • build_windows_app.bat
+#
+# The workflow simply invokes those scripts on the appropriate
+# GitHub Actions runners and uploads the resulting artefacts so they can
+# be downloaded from the “Actions” tab or attached to a release later.
+# -------------------------------------------------------------------
+
+on:
+  workflow_dispatch:
+  push:
+    tags:
+      - 'v*.*.*'
+
+permissions:
+  contents: write   # required for release‑uploads on tag pushes
+
+env:
+  PYTHON_VERSION: '3.9'
+
+jobs:
+
+  # ────────────────────────────────────────────────────────────
+  # macOS bundle – universal app built via build_macos_app.sh
+  # ────────────────────────────────────────────────────────────
+  macos:
+    name: macOS Build
+    runs-on: macos-14  # Apple‑silicon runner, faster & supports arm64
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python ${{ env.PYTHON_VERSION }}
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+
+      - name: Ensure GitHub Actions build script is executable
+        run: chmod +x build_github_macos.sh
+
+      - name: Build Transcribrr macOS
+        run: ./build_github_macos.sh
+
+      - name: Compress .app bundle
+        run: |
+          cd dist
+          zip -r Transcribrr-macOS.zip Transcribrr.app
+
+      - name: Upload artifact (macOS)
+        uses: actions/upload-artifact@v4
+        with:
+          name: Transcribrr_macOS
+          path: dist/Transcribrr-macOS.zip
+
+  # ────────────────────────────────────────────────────────────
+  # Windows builds – matrix over [cpu, cuda]
+  # ────────────────────────────────────────────────────────────
+  windows:
+    name: Windows Build (${{ matrix.flavour }})
+    runs-on: windows-latest
+    strategy:
+      matrix:
+        flavour: [cpu, cuda]
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python ${{ env.PYTHON_VERSION }}
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+
+      - name: Build (flavour=${{ matrix.flavour }})
+        shell: cmd
+        run: |
+          REM Forward slashes to keep batch happy
+          IF "${{ matrix.flavour }}" == "cuda" (
+            .\build_windows_app.bat --cuda
+          ) ELSE (
+            .\build_windows_app.bat
+          )
+
+      - name: Compress artefact
+        shell: pwsh
+        run: |
+          Compress-Archive -Path dist\Transcribrr_${{ matrix.flavour | upcase }} `
+                         -DestinationPath dist\Transcribrr-windows-${{ matrix.flavour }}.zip -Force
+
+      - name: Upload artefact (windows-${{ matrix.flavour }})
+        uses: actions/upload-artifact@v4
+        with:
+          name: Transcribrr_windows_${{ matrix.flavour }}
+          path: dist/Transcribrr-windows-${{ matrix.flavour }}.zip
+
+  # ────────────────────────────────────────────────────────────
+  # Attach artefacts to GitHub Release when the workflow was
+  # triggered by a version tag push (vX.Y.Z).
+  # ────────────────────────────────────────────────────────────
+  release:
+    if: startsWith(github.ref, 'refs/tags/')
+    needs: [macos, windows]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Download artefacts
+        uses: actions/download-artifact@v4
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          draft: false
+          files: |
+            Transcribrr_macOS/Transcribrr-macOS.zip
+            Transcribrr_windows_cpu/Transcribrr-windows-cpu.zip
+            Transcribrr_windows_cuda/Transcribrr-windows-cuda.zip
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

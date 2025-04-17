@@ -115,6 +115,13 @@ class MainWindow(QMainWindow):
         # Connect recording status updates from transcription widget to recent recordings list
         self.main_transcription_widget.recording_status_updated.connect(self.recent_recordings_widget.update_recording_status)
 
+        # ------------------------------------------------------------------
+        # Status updates – forward progress messages from the transcription
+        # widget to the main window's status bar so the user can see what is
+        # happening instead of the bar permanently showing "Ready".
+        # ------------------------------------------------------------------
+        self.main_transcription_widget.status_update.connect(self.update_status_bar)
+
     def set_style(self):
         # Not needed - styling is now handled by the ThemeManager
         pass
@@ -157,23 +164,27 @@ class MainWindow(QMainWindow):
                     )
                     
                     # Define a closure to capture the current chunk's info for the callback
-                    def create_callback(idx, fname, fpath, dur):
-                        def on_recording_created(recording_id):
+                    # Capture the current values of the loop variables inside a
+                    # factory in order to avoid the classic late‑binding issue
+                    # where all callbacks would reference the *last* values of
+                    # the loop once it finishes.
+                    def make_callback(fname: str, fpath: str, dur: float, created: str):
+                        def _on_recording_created(recording_id):
                             self.recent_recordings_widget.add_recording_to_list(
-                                recording_id, 
-                                fname, 
-                                fpath, 
-                                date_created, 
-                                dur, 
-                                "", 
-                                ""
+                                recording_id,
+                                fname,
+                                fpath,
+                                created,
+                                dur,
+                                "",
+                                "",
                             )
-                        return on_recording_created
+                        return _on_recording_created
                     
                     # Add the chunk to the database with its specific callback
                     self.db_manager.create_recording(
-                        recording_data, 
-                        create_callback(i, filename, file_path, duration)
+                        recording_data,
+                        make_callback(filename, file_path, duration, date_created),
                     )
                 
                 # Show a status message about the chunked files

@@ -504,11 +504,33 @@ class MainTranscriptionWidget(ResponsiveWidget):
     def get_transcription_ui_elements(self):
         """Get UI elements to disable during transcription."""
         elements = []
-        # The transcription buttons are now part of the TextEditor's toolbar
-        # and are managed by the TextEditor's own state management
+
+        # Settings button should always be disabled while a long‑running
+        # operation is active so that configuration cannot be changed in the
+        # middle of processing.
         if hasattr(self, 'settings_button'):
             elements.append(self.settings_button)
-        # Add other relevant controls
+
+        # Disable the toolbar buttons that could start another operation while
+        # the current transcription is still running.  These actions live in
+        # the embedded TextEditor instance and are stored in its
+        # `_toolbar_actions` dictionary.
+        if hasattr(self, 'transcript_text') and hasattr(self.transcript_text, '_toolbar_actions'):
+            toolbar_actions = self.transcript_text._toolbar_actions
+
+            # Transcription button – prevent double‑clicks that would start a
+            # second concurrent transcription.
+            action = toolbar_actions.get('start_transcription')
+            if action:
+                elements.append(action)
+
+            # While transcribing we also block GPT and smart‑formatting as they
+            # both rely on the transcript that is being produced.
+            for key in ('process_with_gpt4', 'smart_format'):
+                act = toolbar_actions.get(key)
+                if act:
+                    elements.append(act)
+
         return elements
         
     def on_transcription_progress(self, message):
@@ -613,6 +635,9 @@ class MainTranscriptionWidget(ResponsiveWidget):
         self.transcription_thread = None
         logger.info("Transcription thread finished.")
 
+        # Inform listeners that the UI is ready again.
+        self.status_update.emit("Ready")
+
     def start_gpt4_processing(self):
         if not self.current_recording_data:
             show_error_message(self, 'No Recording Selected', 'Please select a recording first.')
@@ -684,13 +709,24 @@ class MainTranscriptionWidget(ResponsiveWidget):
     def get_gpt_ui_elements(self):
         """Get UI elements to disable during GPT processing."""
         elements = []
-        # The transcription/GPT buttons are now part of the TextEditor's toolbar
-        # and are managed by the TextEditor's own state management
+
         if hasattr(self, 'settings_button'):
             elements.append(self.settings_button)
-        if hasattr(self, 'prompt_selector'):
-            elements.append(self.prompt_selector)
-        # Add other relevant GPT controls
+
+        # The prompt dropdown should also be locked so the user cannot change
+        # the prompt mid‑processing, which could be confusing.
+        if hasattr(self, 'gpt_prompt_dropdown'):
+            elements.append(self.gpt_prompt_dropdown)
+
+        # Disable toolbar actions that launch text‑processing tasks so they
+        # cannot be triggered again while GPT is already busy.
+        if hasattr(self, 'transcript_text') and hasattr(self.transcript_text, '_toolbar_actions'):
+            toolbar_actions = self.transcript_text._toolbar_actions
+            for key in ('process_with_gpt4', 'smart_format', 'start_transcription'):
+                act = toolbar_actions.get(key)
+                if act:
+                    elements.append(act)
+
         return elements
         
     def cancel_gpt_processing(self):
@@ -800,6 +836,8 @@ class MainTranscriptionWidget(ResponsiveWidget):
         self.gpt4_processing_thread = None
         logger.info("GPT processing thread finished.")
 
+        self.status_update.emit("Ready")
+
     def start_smart_format_processing(self, text_to_format):
         if not text_to_format.strip():
             show_error_message(self, 'Empty Text', 'There is no text to format.')
@@ -892,6 +930,8 @@ class MainTranscriptionWidget(ResponsiveWidget):
         # Clean up thread reference
         self.gpt4_smart_format_thread = None
         logger.info("Smart formatting thread finished.")
+
+        self.status_update.emit("Ready")
 
 
     def on_smart_format_completed(self, formatted_html):

@@ -7,7 +7,9 @@ setlocal EnableDelayedExpansion
 :: --- Configuration ---
 set APP_NAME=Transcribrr
 set VERSION=1.0.0
-set OUTPUT_DIR=dist\%APP_NAME%
+set BUILD_TYPE=CPU
+if "%INSTALL_CUDA%"=="1" set BUILD_TYPE=CUDA
+set OUTPUT_DIR=dist\%APP_NAME%_%BUILD_TYPE%
 set PYTHON_EXECUTABLE=python
 
 :: --- Default values ---
@@ -18,6 +20,8 @@ set INSTALL_CUDA=0
 if "%1"=="" goto ArgsDone
 if /I "%1"=="--cuda" (
     set INSTALL_CUDA=1
+    set BUILD_TYPE=CUDA
+    set OUTPUT_DIR=dist\%APP_NAME%_%BUILD_TYPE%
     echo CUDA installation requested.
 ) else if /I "%1"=="--help" (
     call :Usage
@@ -172,6 +176,9 @@ echo --- Creating Launcher Script ---
     echo set PYTHONPATH=%%SCRIPT_DIR%%
     echo set SSL_CERT_FILE=%%SCRIPT_DIR%%cacert.pem
     echo set PATH=%%SCRIPT_DIR%%bin;%%PATH%%
+    echo.
+    echo :: Create logs dir if it doesn't exist
+    echo if not exist "%%SCRIPT_DIR%%logs" mkdir "%%SCRIPT_DIR%%logs"
     echo.
     echo :: Log startup info
     echo echo Starting application at %%date%% %%time%% ^> "%%SCRIPT_DIR%%logs\launch.log"

@@ -14,21 +14,44 @@ import datetime
 
 # Assuming constants.py is in the same directory or accessible via path
 from .constants import (
-    APP_NAME, APP_VERSION, DEFAULT_CONFIG, DEFAULT_PROMPTS,
-    CONFIG_PATH, PROMPTS_PATH, LOG_DIR, LOG_FILE
+    APP_NAME,
+    APP_VERSION,
+    DEFAULT_CONFIG,
+    DEFAULT_PROMPTS,
+    CONFIG_PATH,
+    PROMPTS_PATH,
+    LOG_DIR,
+    LOG_FILE,
+    AUDIO_EXTENSIONS,
+    VIDEO_EXTENSIONS,
 )
 
 # Configure logging
 # Ensure log directory exists
 os.makedirs(LOG_DIR, exist_ok=True)
-logging.basicConfig(
-    level=logging.INFO, # Consider making this configurable (e.g., DEBUG)
-    format='%(asctime)s - %(name)s - %(levelname)s - [%(filename)s:%(lineno)d] - %(message)s',
-    handlers=[
-        logging.StreamHandler(),
-        logging.FileHandler(LOG_FILE, encoding='utf-8') # Specify encoding
-    ]
-)
+# Configure logging once, using a rotating file handler to avoid unbounded
+# growth of the log file.  If another module (e.g. main.py) re‑configures
+# logging later this block will silently be ignored thanks to the `force`
+# parameter defaulting to *False* in older Python versions.
+
+from logging.handlers import RotatingFileHandler
+
+if not logging.getLogger().handlers:
+    max_bytes = 5 * 1024 * 1024  # 5 MB per log file
+    backup_count = 3             # keep up to 15 MB total
+
+    rotating_handler = RotatingFileHandler(
+        LOG_FILE,
+        maxBytes=max_bytes,
+        backupCount=backup_count,
+        encoding="utf-8",
+    )
+
+    logging.basicConfig(
+        level=logging.INFO,
+        format="%(asctime)s - %(name)s - %(levelname)s - [%(filename)s:%(lineno)d] - %(message)s",
+        handlers=[logging.StreamHandler(), rotating_handler],
+    )
 
 # Use app name for logger consistently
 logger = logging.getLogger(APP_NAME)
@@ -36,16 +59,14 @@ logger = logging.getLogger(APP_NAME)
 
 def is_video_file(file_path):
     """Check if a file is a video file based on its extension."""
-    video_extensions = ['.mp4', '.mkv', '.avi', '.mov', '.webm', '.flv', '.wmv']
     file_extension = os.path.splitext(file_path)[1].lower()
-    return file_extension in video_extensions
+    return file_extension in VIDEO_EXTENSIONS
 
 
 def is_audio_file(file_path):
     """Check if a file is an audio file based on its extension."""
-    audio_extensions = ['.mp3', '.wav', '.aac', '.flac', '.ogg', '.m4a', '.aiff', '.wma']
     file_extension = os.path.splitext(file_path)[1].lower()
-    return file_extension in audio_extensions
+    return file_extension in AUDIO_EXTENSIONS
 
 
 def ensure_ffmpeg_available():
@@ -114,8 +135,8 @@ def validate_url(url):
     """Validate if a URL is a valid YouTube URL."""
     # Modified regex pattern to handle more YouTube URL formats
     youtube_regex = r'(?:https?:\/\/)?(?:www\.|m\.)?(?:youtube\.com|youtu\.be)\/(?:watch\?v=|embed\/|v\/|shorts\/)?([a-zA-Z0-9_-]{11})' # More specific video ID
-    match = re.match(youtube_regex, url)
-    return bool(match)
+    # search() instead of match() so the pattern can appear anywhere in the URL
+    return re.search(youtube_regex, url) is not None
 
 
 def resource_path(relative_path):

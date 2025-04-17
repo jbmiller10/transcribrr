@@ -162,12 +162,28 @@ class DatabaseManager(QObject):
         self.worker.add_operation('create_recording', operation_id, recording_data)
         
         if callback and callable(callback):
-            def handler(result):
-                if result['id'] == operation_id:
-                    callback(result['result'])
+            def _finalise():
+                # Disconnect both signals *if* they are still connected.
+                try:
                     self.operation_complete.disconnect(handler)
-            
+                except TypeError:
+                    pass
+                try:
+                    self.error_occurred.disconnect(error_handler)
+                except TypeError:
+                    pass
+
+            def handler(result):
+                if result["id"] == operation_id:
+                    callback(result["result"])
+                    _finalise()
+
+            def error_handler(op_name, msg):
+                if op_name == "create_recording":
+                    _finalise()
+
             self.operation_complete.connect(handler)
+            self.error_occurred.connect(error_handler)
 
     def get_all_recordings(self, callback):
         """
@@ -226,12 +242,27 @@ class DatabaseManager(QObject):
         self.worker.add_operation('update_recording', operation_id, recording_id, **kwargs)
         
         if callback and callable(callback):
-            def handler(result):
-                if result['id'] == operation_id:
-                    callback()
+            def _finalise():
+                try:
                     self.operation_complete.disconnect(handler)
-            
+                except TypeError:
+                    pass
+                try:
+                    self.error_occurred.disconnect(error_handler)
+                except TypeError:
+                    pass
+
+            def handler(result):
+                if result["id"] == operation_id:
+                    callback()
+                    _finalise()
+
+            def error_handler(op_name, msg):
+                if op_name == "update_recording":
+                    _finalise()
+
             self.operation_complete.connect(handler)
+            self.error_occurred.connect(error_handler)
 
     def delete_recording(self, recording_id, callback=None):
         """
@@ -245,12 +276,27 @@ class DatabaseManager(QObject):
         self.worker.add_operation('delete_recording', operation_id, recording_id)
         
         if callback and callable(callback):
-            def handler(result):
-                if result['id'] == operation_id:
-                    callback()
+            def _finalise():
+                try:
                     self.operation_complete.disconnect(handler)
-            
+                except TypeError:
+                    pass
+                try:
+                    self.error_occurred.disconnect(error_handler)
+                except TypeError:
+                    pass
+
+            def handler(result):
+                if result["id"] == operation_id:
+                    callback()
+                    _finalise()
+
+            def error_handler(op_name, msg):
+                if op_name == "delete_recording":
+                    _finalise()
+
             self.operation_complete.connect(handler)
+            self.error_occurred.connect(error_handler)
 
     def execute_query(self, query, params=None, callback=None):
         """

@@ -296,23 +296,27 @@ class FeedbackManager:
         elements = ui_elements or list(self.ui_state.keys())
         
         if busy:
-            # Save current state and disable elements
+            # Save the current enabled state for each element once and disable it.
             for element in elements:
                 if element not in self.ui_state:
                     self.ui_state[element] = element.isEnabled()
                 element.setEnabled(False)
-                
-            # Track that we have active operations
-            self.operation_count = max(1, self.operation_count)
+
+            # Treat every call that sets the UI to busy as a new logical operation
+            # so we can safely match it with a later call that releases the UI.
+            self.operation_count += 1
         else:
-            # Only restore if no operations are active
-            if self.operation_count <= 0:
-                # Restore saved states
+            # A previously‑started busy operation finished – decrease the counter.
+            if self.operation_count > 0:
+                self.operation_count -= 1
+
+            # Restore the UI only when the very last outstanding operation finishes.
+            if self.operation_count == 0:
                 for element in elements:
                     if element in self.ui_state:
                         element.setEnabled(self.ui_state[element])
-                # Clear saved states
-                self.ui_state = {}
+                        # Once restored we can forget its saved state.
+                        self.ui_state.pop(element, None)
                 
     def show_status(self, message: str, timeout: int = 3000):
         """Show a status message."""
