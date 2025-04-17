@@ -95,8 +95,24 @@ jobs:
       - name: Compress artefact
         shell: pwsh
         run: |
-          $flavor = "${{ matrix.flavour }}".ToUpper()
-          Compress-Archive -Path "dist\Transcribrr_$flavor" -DestinationPath "dist\Transcribrr-windows-${{ matrix.flavour }}.zip" -Force
+          Write-Host "Checking dist directory contents:"
+          Get-ChildItem -Path dist -Recurse | ForEach-Object { Write-Host $_.FullName }
+          
+          $flavor = "${{ matrix.flavour }}"
+          $outputPath = "dist\Transcribrr_$flavor"
+          
+          if (-Not (Test-Path $outputPath)) {
+            Write-Host "Error: Expected output directory $outputPath does not exist!"
+            Write-Host "Will try with uppercase directory name as fallback"
+            $outputPath = "dist\Transcribrr_" + $flavor.ToUpper()
+            
+            if (-Not (Test-Path $outputPath)) {
+              Write-Host "Error: Uppercase directory $outputPath also doesn't exist!"
+              exit 1
+            }
+          }
+          
+          Compress-Archive -Path $outputPath -DestinationPath "dist\Transcribrr-windows-$flavor.zip" -Force
 
       - name: Upload artefact (windows-${{ matrix.flavour }})
         uses: actions/upload-artifact@v4
