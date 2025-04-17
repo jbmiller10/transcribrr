@@ -8,7 +8,7 @@ name: Build Transcribrr executables
 #       – CUDA 11.8 build (uses --cuda switch in script)
 #
 # The repo already provides platform‑specific build scripts:
-#   • build_macos_app.sh
+#   • build_github_macos.sh
 #   • build_windows_app.bat
 #
 # The workflow simply invokes those scripts on the appropriate
@@ -85,7 +85,7 @@ jobs:
       - name: Build (flavour=${{ matrix.flavour }})
         shell: cmd
         run: |
-          REM Forward slashes to keep batch happy
+          :: Forward slashes to keep batch happy
           IF "${{ matrix.flavour }}" == "cuda" (
             .\build_windows_app.bat --cuda
           ) ELSE (
@@ -95,8 +95,8 @@ jobs:
       - name: Compress artefact
         shell: pwsh
         run: |
-          Compress-Archive -Path dist\Transcribrr_${{ toUpper(matrix.flavour) }} `
-                         -DestinationPath dist\Transcribrr-windows-${{ matrix.flavour }}.zip -Force
+          $flavor = "${{ matrix.flavour }}".ToUpper()
+          Compress-Archive -Path "dist\Transcribrr_$flavor" -DestinationPath "dist\Transcribrr-windows-${{ matrix.flavour }}.zip" -Force
 
       - name: Upload artefact (windows-${{ matrix.flavour }})
         uses: actions/upload-artifact@v4
@@ -124,5 +124,3 @@ jobs:
             Transcribrr_macOS/Transcribrr-macOS.zip
             Transcribrr_windows_cpu/Transcribrr-windows-cpu.zip
             Transcribrr_windows_cuda/Transcribrr-windows-cuda.zip
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
