@@ -93,8 +93,10 @@ echo "Starting application at $(date)" > "$APP_LOGS_DIR/launch.log"
 echo "RESOURCES_DIR: $RESOURCES_DIR" >> "$APP_LOGS_DIR/launch.log" 
 echo "APP_SUPPORT_DIR: $APP_SUPPORT_DIR" >> "$APP_LOGS_DIR/launch.log"
 echo "PYTHONPATH: $PYTHONPATH" >> "$APP_LOGS_DIR/launch.log"
+echo "PATH: $PATH" >> "$APP_LOGS_DIR/launch.log"
 echo "Python executable: $PY" >> "$APP_LOGS_DIR/launch.log"
 echo "Python version: $($PY --version)" >> "$APP_LOGS_DIR/launch.log" 2>&1
+echo "ffmpeg location: $(which ffmpeg)" >> "$APP_LOGS_DIR/launch.log" 2>&1
 
 # Set environment variable to tell the app to use the user data directory
 export TRANSCRIBRR_USER_DATA_DIR="$APP_SUPPORT_DIR"

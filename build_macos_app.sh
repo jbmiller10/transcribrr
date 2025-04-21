@@ -79,6 +79,9 @@ export PYTHONPATH="$RESOURCES_DIR:$PYTHONPATH"
 # Don't set PYTHONHOME as it can cause problems with the venv
 export SSL_CERT_FILE="$RESOURCES_DIR/cacert.pem"
 
+# Add ffmpeg to PATH
+export PATH="$DIR/bin:$PATH"
+
 # Use embedded Python framework
 PY_VER=3.9
 PY="@executable_path/../Frameworks/Python.framework/Versions/$PY_VER/bin/python3"
@@ -86,8 +89,10 @@ PY="@executable_path/../Frameworks/Python.framework/Versions/$PY_VER/bin/python3
 echo "Starting application at $(date)" > "$RESOURCES_DIR/launch.log"
 echo "RESOURCES_DIR: $RESOURCES_DIR" >> "$RESOURCES_DIR/launch.log" 
 echo "PYTHONPATH: $PYTHONPATH" >> "$RESOURCES_DIR/launch.log"
+echo "PATH: $PATH" >> "$RESOURCES_DIR/launch.log"
 echo "Python executable: $PY" >> "$RESOURCES_DIR/launch.log"
 echo "Python version: $($PY --version)" >> "$RESOURCES_DIR/launch.log" 2>&1
+echo "ffmpeg location: $(which ffmpeg)" >> "$RESOURCES_DIR/launch.log" 2>&1
 
 cd "$RESOURCES_DIR"
 exec "$PY" "$RESOURCES_DIR/main.py"
@@ -166,13 +171,7 @@ else
     echo "Your app may not work correctly without these binaries."
 fi
 
-# Use a temporary file for the insertion instead of sed
-TMP_SCRIPT=$(mktemp)
-grep -B 1000 "export PYTHONPATH" "${APP_DIR}/Contents/MacOS/${APP_NAME}" > "${TMP_SCRIPT}"
-echo "# Add ffmpeg to PATH" >> "${TMP_SCRIPT}"
-echo "export PATH=\"\$DIR/bin:\$PATH\"" >> "${TMP_SCRIPT}"
-grep -A 1000 "export PYTHONPATH" "${APP_DIR}/Contents/MacOS/${APP_NAME}" | grep -v "export PYTHONPATH" >> "${TMP_SCRIPT}"
-mv "${TMP_SCRIPT}" "${APP_DIR}/Contents/MacOS/${APP_NAME}"
+# Ensure executable permissions
 chmod +x "${APP_DIR}/Contents/MacOS/${APP_NAME}"
 
 echo "Build completed successfully! App is located at: ${APP_DIR}"
