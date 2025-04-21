@@ -1,8 +1,8 @@
 import os
 import datetime
 import logging
-from PyQt6.QtCore import pyqtSignal, Qt, QModelIndex, QTimer, QMimeData, QPoint
-from PyQt6.QtWidgets import QTreeView, QAbstractItemView, QMenu
+from PyQt6.QtCore import pyqtSignal, Qt, QModelIndex, QTimer, QMimeData, QPoint, QSize
+from PyQt6.QtWidgets import QTreeView, QAbstractItemView, QMenu, QStyledItemDelegate, QStyleOptionViewItem
 from PyQt6.QtGui import QIcon, QAction, QDrag
 from app.RecordingFolderModel import RecordingFolderModel, RecordingFilterProxyModel
 from app.RecordingListItem import RecordingListItem
@@ -10,6 +10,41 @@ from app.FolderManager import FolderManager
 from app.path_utils import resource_path
 
 logger = logging.getLogger('transcribrr')
+
+class RecordingItemDelegate(QStyledItemDelegate):
+    """Custom delegate for rendering recording items in the tree."""
+    
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        
+    def sizeHint(self, option, index):
+        """Return the size hint for the item."""
+        # Get the model item
+        item_type = index.data(RecordingFolderModel.ITEM_TYPE_ROLE)
+        
+        # If it's a recording, use the RecordingListItem's size hint
+        if item_type == "recording":
+            return QSize(option.rect.width(), 70)  # Match the height in RecordingListItem
+        
+        # Otherwise use the default size hint
+        return super().sizeHint(option, index)
+    
+    def paint(self, painter, option, index):
+        """Paint the item."""
+        # Use default rendering for folders
+        item_type = index.data(RecordingFolderModel.ITEM_TYPE_ROLE)
+        if item_type != "recording":
+            super().paint(painter, option, index)
+            return
+            
+        # For recordings, we need to handle selection state but not paint text
+        if option.state & QStyleOptionViewItem.State.Selected:
+            painter.fillRect(option.rect, option.palette.highlight())
+        
+        # Draw only the icon (text is handled by RecordingListItem)
+        option_copy = QStyleOptionViewItem(option)
+        option_copy.text = ""  # Clear text to avoid overlapping with widget
+        super().paint(painter, option_copy, index)
 
 class UnifiedFolderTreeView(QTreeView):
     """Combined folder and recording tree using Qt's Model/View framework."""
@@ -61,6 +96,10 @@ class UnifiedFolderTreeView(QTreeView):
         self.setDragDropMode(QAbstractItemView.DragDropMode.InternalMove)
         self.setContextMenuPolicy(Qt.ContextMenuPolicy.CustomContextMenu)
         self.customContextMenuRequested.connect(self.show_context_menu)
+        
+        # Set custom item delegate to handle recording items
+        self.item_delegate = RecordingItemDelegate(self)
+        self.setItemDelegate(self.item_delegate)
         
         # Connect signals
         self.clicked.connect(self.on_item_clicked)
@@ -259,7 +298,15 @@ class UnifiedFolderTreeView(QTreeView):
                     self.recordings_map[rec_id] = recording_item
                     
                     # Add to the model
-                    self.source_model.add_recording_item(rec, folder_item)
+                    recording_model_item = self.source_model.add_recording_item(rec, folder_item)
+                    
+                    # Create the index for the model item
+                    source_index = recording_model_item.index()
+                    proxy_index = self.proxy_model.mapFromSource(source_index)
+                    
+                    # Set the RecordingListItem widget for this index
+                    self.setIndexWidget(proxy_index, recording_item)
+                    
                     added_count += 1
                     logger.debug(f"Added unassigned recording ID {rec_id}: {rec[1]}")
                 
@@ -324,7 +371,15 @@ class UnifiedFolderTreeView(QTreeView):
                     self.recordings_map[rec_id] = recording_item
                     
                     # Add to the model
-                    self.source_model.add_recording_item(rec, folder_item)
+                    recording_model_item = self.source_model.add_recording_item(rec, folder_item)
+                    
+                    # Create the index for the model item
+                    source_index = recording_model_item.index()
+                    proxy_index = self.proxy_model.mapFromSource(source_index)
+                    
+                    # Set the RecordingListItem widget for this index
+                    self.setIndexWidget(proxy_index, recording_item)
+                    
                     added_count += 1
                     logger.debug(f"Added recording ID {rec_id} to folder {folder_id}: {rec[1]}")
                 
@@ -747,5 +802,13 @@ class UnifiedFolderTreeView(QTreeView):
         self.recordings_map[rec_id] = recording_item
         
         # Add to the model
-        self.source_model.add_recording_item(recording_data, parent_item)
+        recording_model_item = self.source_model.add_recording_item(recording_data, parent_item)
+        
+        # Create the index for the model item
+        source_index = recording_model_item.index()
+        proxy_index = self.proxy_model.mapFromSource(source_index)
+        
+        # Set the RecordingListItem widget for this index
+        self.setIndexWidget(proxy_index, recording_item)
+        
         logger.info(f"Added recording ID {rec_id} to model")

@@ -64,8 +64,10 @@ class RecordingFolderModel(QStandardItemModel):
         """Add recording item to the model."""
         # Create a new item for the recording
         recording_item = QStandardItem()
-        recording_item.setText(recording_data[1])  # Filename
         
+        # Clear the display text to prevent overlapping with custom widget
+        recording_item.setText("")  # Empty text to avoid overlap with custom widget
+        # Still set file type icon as the custom widget will be overlaid
         # Choose icon based on file type
         file_type = self._determine_file_type(recording_data[2])  # File path
         if file_type == "audio":

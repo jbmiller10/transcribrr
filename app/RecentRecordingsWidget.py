@@ -543,6 +543,8 @@ Args:
         # Create tree item
         tree_item = QTreeWidgetItem(parent_item)
         tree_item.setSizeHint(0, list_item_widget.sizeHint())
+        # Clear the display text to prevent overlapping with custom widget
+        tree_item.setText(0, "")
         tree_item.setData(0, Qt.ItemDataRole.UserRole, {
             "type": "recording",
             "id": rec_id,
