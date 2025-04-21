@@ -55,8 +55,9 @@ set OUTPUT_DIR=dist\%APP_NAME%_%BUILD_TYPE%
 
 :: Check Python version
 for /f "tokens=*" %%a in ('"%PYTHON_EXECUTABLE%" -c "import platform; print(platform.python_version())"') do set CURRENT_PY_VERSION=%%a
-if "!CURRENT_PY_VERSION!" NEQ "3.9.6" (
-  echo Error: Expected Python 3.9.6 for build, found !CURRENT_PY_VERSION!
+for /f "tokens=*" %%a in ('"%PYTHON_EXECUTABLE%" -c "import platform; v=platform.python_version().split('.'); print(f'{v[0]}.{v[1]}')"') do set MAJOR_MINOR=%%a
+if "!MAJOR_MINOR!" NEQ "3.9" (
+  echo Error: Expected Python 3.9.x for build, found !CURRENT_PY_VERSION!
   exit /b 1
 )
 

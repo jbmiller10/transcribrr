@@ -5,10 +5,10 @@
 set -e
 
 # Verify correct Python version
-EXPECTED_PY_VERSION="3.9.6"
 CURRENT_PY_VERSION=$(python3 -c "import platform; print(platform.python_version())")
-if [ "$CURRENT_PY_VERSION" != "$EXPECTED_PY_VERSION" ]; then
-  echo "Error: Expected Python $EXPECTED_PY_VERSION for build, found $CURRENT_PY_VERSION"
+MAJOR_MINOR=$(python3 -c "import platform; v=platform.python_version().split('.'); print(f'{v[0]}.{v[1]}')")
+if [ "$MAJOR_MINOR" != "3.9" ]; then
+  echo "Error: Expected Python 3.9.x for build, found $CURRENT_PY_VERSION"
   exit 1
 fi
 
