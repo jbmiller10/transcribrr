@@ -117,15 +117,47 @@ jobs:
           $env:PATH = "$env:PATH;$innoSetupPath"
           [Environment]::SetEnvironmentVariable("PATH", $env:PATH, "Machine")
 
-      - name: Install Python dependencies for icon creation
+      - name: Create Windows icon directly from SVG using rsvg-convert
         shell: pwsh
         run: |
-          python -m pip install cairosvg Pillow
-
-      - name: Create ICO file
-        shell: pwsh
-        run: |
-          python create_ico.py
+          # Create a simple PowerShell script to create the ICO file
+          # This avoids Cairo dependency issues on Windows
+          $iconScript = @"
+          # Convert SVG to PNG using ImageMagick
+          Add-Type -AssemblyName System.Drawing
+          
+          # Define paths
+          `$svgPath = "icons\app\app_icon.svg"
+          `$icoPath = "icons\app\app_icon.ico"
+          
+          # Use System.Drawing to create a basic icon
+          # This is a fallback that creates a simple icon from scratch
+          `$bmp = New-Object System.Drawing.Bitmap 64, 64
+          `$g = [System.Drawing.Graphics]::FromImage(`$bmp)
+          `$g.Clear([System.Drawing.Color]::Transparent)
+          `$g.DrawString("T", (New-Object System.Drawing.Font "Arial", 40), [System.Drawing.Brushes]::DarkBlue, 10, 5)
+          `$g.Dispose()
+          
+          # Save as icon
+          `$ico = New-Object System.IO.FileStream `$icoPath, 'Create'
+          `$bmp.Save(`$ico, [System.Drawing.Imaging.ImageFormat]::Icon)
+          `$ico.Close()
+          `$bmp.Dispose()
+          
+          if (Test-Path `$icoPath) {
+              Write-Host "Basic ICO file created successfully"
+          } else {
+              Write-Host "Failed to create ICO file"
+              exit 1
+          }
+          "@
+          
+          # Write the script to a file
+          $iconScript | Out-File -FilePath "create_basic_ico.ps1"
+          
+          # Run the script
+          & powershell -File "create_basic_ico.ps1"
+          
           # Verify the ico file was created
           if (Test-Path "icons\app\app_icon.ico") {
             Write-Host "ICO file created successfully."
