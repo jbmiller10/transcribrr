@@ -20,7 +20,12 @@ echo Building %APP_NAME% version %VERSION% for Windows...
 
 :: Default values
 set INSTALL_CUDA=0
-set PYTHON_EXECUTABLE=python
+:: Use python command directly when in GitHub Actions, otherwise try to use Python 3.9 specifically
+if defined GITHUB_ACTIONS (
+    set PYTHON_EXECUTABLE=python
+) else (
+    set PYTHON_EXECUTABLE=py -3.9-64
+)
 
 :: --- Argument Parsing ---
 :ArgLoop
