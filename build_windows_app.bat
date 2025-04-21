@@ -7,21 +7,24 @@ setlocal EnableDelayedExpansion
 :: --- Configuration ---
 set APP_NAME=Transcribrr
 set VERSION=1.0.0
-set BUILD_TYPE=cpu
-if "%INSTALL_CUDA%"=="1" set BUILD_TYPE=cuda
-set OUTPUT_DIR=dist\%APP_NAME%_%BUILD_TYPE%
-set PYTHON_EXECUTABLE=python
 
-:: --- Default values ---
+:: -----------------------------------------------------------------
+:: We decide on BUILD_TYPE (cpu / cuda) AFTER we have parsed any
+:: command‑line arguments so that we don't accidentally create the
+:: initial dist directory using the wrong target.  Therefore we only
+:: define INSTALL_CUDA here and postpone creating BUILD_TYPE/OUTPUT_DIR
+:: until the argument‑parsing section has finished.
+:: -----------------------------------------------------------------
+
+:: Default values
 set INSTALL_CUDA=0
+set PYTHON_EXECUTABLE=python
 
 :: --- Argument Parsing ---
 :ArgLoop
 if "%1"=="" goto ArgsDone
 if /I "%1"=="--cuda" (
     set INSTALL_CUDA=1
-    set BUILD_TYPE=cuda
-    set OUTPUT_DIR=dist\%APP_NAME%_%BUILD_TYPE%
     echo CUDA installation requested.
 ) else if /I "%1"=="--help" (
     call :Usage
@@ -34,6 +37,19 @@ if /I "%1"=="--cuda" (
 shift /1
 goto ArgLoop
 :ArgsDone
+
+:: ---------------------------------------------------------------
+:: Determine build type (cpu / cuda) **after** parsing arguments
+:: and create OUTPUT_DIR variable accordingly.
+:: ---------------------------------------------------------------
+
+if %INSTALL_CUDA% == 1 (
+    set BUILD_TYPE=cuda
+) else (
+    set BUILD_TYPE=cpu
+)
+
+set OUTPUT_DIR=dist\%APP_NAME%_%BUILD_TYPE%
 
 :: --- Build Process ---
 echo Building %APP_NAME% version %VERSION% for Windows...
