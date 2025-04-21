@@ -25,7 +25,6 @@ logger = logging.getLogger('transcribrr')
 
 
 class FindReplaceDialog(QDialog):
-    """Find/replace dialog."""
 
     def __init__(self, editor, parent=None):
         super().__init__(parent)
@@ -116,7 +115,6 @@ class FindReplaceDialog(QDialog):
         self.original_selection_formats = []
         
     def reset_search(self):
-        """Reset search state."""
         self.search_wrapped = False
         self.search_start_position = None
         self.status_label.clear()
@@ -125,7 +123,6 @@ class FindReplaceDialog(QDialog):
             self.toggle_highlight_all(self.highlight_all.checkState())
 
     def update_buttons(self):
-        """Update button states based on input."""
         has_find_text = bool(self.find_text.text())
         self.find_button.setEnabled(has_find_text)
         self.find_prev_button.setEnabled(has_find_text)
@@ -138,7 +135,6 @@ class FindReplaceDialog(QDialog):
             self.status_label.clear()
 
     def get_search_flags(self):
-        """Return search flags based on options."""
         flags = QTextDocument.FindFlag(0)
         if self.case_sensitive.isChecked():
             flags |= QTextDocument.FindFlag.FindCaseSensitively
@@ -150,17 +146,14 @@ class FindReplaceDialog(QDialog):
         return flags
 
     def find_next(self):
-        """Find next occurrence."""
         self._is_find_previous = False
         return self._find_text()
         
     def find_previous(self):
-        """Find previous occurrence."""
         self._is_find_previous = True
         return self._find_text()
         
     def _find_text(self):
-        """Perform text search."""
         text = self.find_text.text()
         if not text:
             return False
@@ -278,7 +271,6 @@ class FindReplaceDialog(QDialog):
             self.editor.editor.document().endEditBlock()
     
     def toggle_highlight_all(self, state):
-        """Highlight all matches."""
         # Clear any existing highlights
         self.clear_all_highlights()
         
@@ -328,16 +320,13 @@ class FindReplaceDialog(QDialog):
             self.status_label.setText(f"Highlighted {count} matches")
             
     def clear_all_highlights(self):
-        """Clear highlights."""
         self.original_selection_formats = []
         self.editor.editor.setExtraSelections([])
         
     def cleanup_on_close(self):
-        """Clear highlights on close."""
         self.clear_all_highlights()
         
     def closeEvent(self, event):
-        """Handle close event."""
         self.cleanup_on_close()
         super().closeEvent(event)
 
@@ -401,7 +390,6 @@ class TextEditor(QMainWindow):
         self.word_count_timer.start(2000)  # Update every 2 seconds
 
     def setup_keyboard_shortcuts(self):
-        """Setup keyboard shortcuts for common actions."""
         # Create shortcuts for common operations
         shortcuts = {
             QKeySequence.StandardKey.Save: lambda: self.save_requested.emit(),

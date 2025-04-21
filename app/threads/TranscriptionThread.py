@@ -69,7 +69,6 @@ class TranscriptionThread(QThread):
 
 
     def _validate_file(self, file_path: str):
-        """Validate file path."""
         if not os.path.exists(file_path):
             raise FileNotFoundError(f"Audio file not found: {file_path}")
         # Check file size to prevent processing extremely large files
@@ -82,7 +81,6 @@ class TranscriptionThread(QThread):
 
 
     def cancel(self):
-        """Cancel transcription."""
         with self._lock:
             if not self._is_canceled:
                 logger.info("Cancellation requested for transcription thread.")
@@ -91,12 +89,10 @@ class TranscriptionThread(QThread):
                 # Cancellation primarily prevents starting new steps or chunks.
 
     def is_canceled(self):
-        """Return True if canceled."""
         with self._lock:
             return self._is_canceled
 
     def run(self):
-        """Run transcription."""
         if self.is_canceled():
              self.update_progress.emit('Transcription cancelled before starting.')
              return # Exit if validation failed or cancelled early
@@ -142,7 +138,6 @@ class TranscriptionThread(QThread):
             logger.info("Transcription thread finished execution.")
 
     def process_chunked_files(self, start_time: float) -> str:
-        """Process and combine audio chunks."""
         chunk_results = [""] * len(self.file_path) # Pre-allocate for order
         total_chunks = len(self.file_path)
         self.update_progress.emit(f'Starting transcription of {total_chunks} chunks...')
@@ -183,7 +178,6 @@ class TranscriptionThread(QThread):
                            file_path: str,
                            start_time: float,
                            chunk_label: str = "") -> str:
-        """Process one audio file."""
         if self.is_canceled(): return "[Cancelled]"
 
         task_label = f"{os.path.basename(file_path)}{' (' + chunk_label + ')' if chunk_label else ''}"

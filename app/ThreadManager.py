@@ -19,12 +19,10 @@ class ThreadManager:
         return cls._instance
     
     def __init__(self):
-        """Init ThreadManager."""
         self._active_threads: Dict[int, QThread] = {}
         logger.debug("ThreadManager initialized")
     
     def register_thread(self, thread: QThread) -> None:
-        """Register thread."""
         thread_id = id(thread)
         if thread_id in self._active_threads:
             logger.warning(f"Thread {thread_id} already registered")
@@ -49,7 +47,6 @@ class ThreadManager:
         thread.finished.connect(_auto_unregister)
     
     def unregister_thread(self, thread: QThread) -> None:
-        """Unregister thread."""
         thread_id = id(thread)
         if thread_id in self._active_threads:
             del self._active_threads[thread_id]
@@ -58,7 +55,6 @@ class ThreadManager:
             logger.debug(f"Attempted to unregister non-registered thread: {thread.__class__.__name__} (id: {thread_id})")
     
     def get_active_threads(self) -> List[QThread]:
-        """Return active threads."""
         return list(self._active_threads.values())
     
     def cancel_all_threads(self, wait_timeout: int = 5000) -> None:

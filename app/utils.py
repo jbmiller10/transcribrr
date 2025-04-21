@@ -58,19 +58,16 @@ logger = logging.getLogger(APP_NAME)
 
 
 def is_video_file(file_path):
-    """Return True if video file."""
     file_extension = os.path.splitext(file_path)[1].lower()
     return file_extension in VIDEO_EXTENSIONS
 
 
 def is_audio_file(file_path):
-    """Return True if audio file."""
     file_extension = os.path.splitext(file_path)[1].lower()
     return file_extension in AUDIO_EXTENSIONS
 
 
 def ensure_ffmpeg_available():
-    """Check availability of ffmpeg."""
     logger = logging.getLogger('transcribrr')
     
     # Check if we're running in a bundled app

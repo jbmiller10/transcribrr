@@ -27,7 +27,6 @@ class MainWindow(QMainWindow):
 
 
     def init_ui(self):
-        """Init UI."""
         self.setWindowTitle(APP_NAME)
         
         screen_size = QApplication.primaryScreen().availableGeometry().size()
@@ -204,7 +203,6 @@ Args:
             self.update_status_bar(f"Error processing file: {str(e)}")
 
     def update_status_bar(self, message):
-        """Update the status bar with a message."""
         self.statusBar().showMessage(message)
         logger.debug(f"Status bar updated: {message}")
         

@@ -10,7 +10,6 @@ import logging # Use logging
 logger = logging.getLogger('transcribrr')
 
 class GPT4ProcessingThread(QThread):
-    """GPT processing thread."""
     update_progress = pyqtSignal(str)
     completed = pyqtSignal(str)
     error = pyqtSignal(str)
@@ -45,7 +44,6 @@ class GPT4ProcessingThread(QThread):
         self.current_request = None # To potentially cancel the request
 
     def cancel(self):
-        """Cancel GPT processing."""
         with self._lock:
             if not self._is_canceled:
                 logger.info("Cancellation requested for GPT processing thread.")
@@ -63,12 +61,10 @@ class GPT4ProcessingThread(QThread):
 
 
     def is_canceled(self):
-        """Return True if canceled."""
         with self._lock:
             return self._is_canceled
 
     def run(self):
-        """Run GPT processing."""
         if self.is_canceled():
             self.update_progress.emit("GPT processing cancelled before starting.")
             return
@@ -132,7 +128,6 @@ class GPT4ProcessingThread(QThread):
 
 
     def _send_api_request(self, messages: List[Dict[str, str]]) -> str:
-        """Send API request with retries."""
         retry_count = 0
         last_error = None
         session = None
@@ -226,7 +221,6 @@ class GPT4ProcessingThread(QThread):
             return f"HTTP {response.status_code}: {response.text[:200]}..." # Truncate long non-JSON errors
 
     def _should_retry(self, status_code: int, error_info: str) -> bool:
-        """Return True if retry condition met."""
         # Retry on specific server errors and rate limits
         if status_code in [429, 500, 502, 503, 504]:
             logger.info(f"Retry condition met for status code {status_code}.")
