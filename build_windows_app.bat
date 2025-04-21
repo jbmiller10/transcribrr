@@ -136,34 +136,34 @@ if %ERRORLEVEL% NEQ 0 (
 echo Virtual environment created.
 echo.
 
-:: Define path to python within the venv
-set VENV_PYTHON="%OUTPUT_DIR%\venv\Scripts\%PYTHON_EXECUTABLE%"
+:: Define path to python within the venv (without quotes)
+set VENV_PYTHON=%OUTPUT_DIR%\venv\Scripts\%PYTHON_EXECUTABLE%
 
 :: Install dependencies in the virtual environment
 echo --- Installing Dependencies ---
 
 :: Install base packages using python -m pip
 echo   Installing base packages (PyQt6, appdirs, etc.)
-%VENV_PYTHON% -m pip install PyQt6 PyQt6-Qt6 appdirs colorlog --log pip_base.log
+"%VENV_PYTHON%" -m pip install PyQt6 PyQt6-Qt6 appdirs colorlog --log pip_base.log
 if %ERRORLEVEL% NEQ 0 ( echo ERROR: Failed installing base packages. Check pip_base.log. & exit /b 1 )
 echo   Base packages installed successfully.
 
 :: Conditional PyTorch Installation using python -m pip
 if %INSTALL_CUDA% == 1 (
     echo   Installing PyTorch with CUDA 11.8 support
-    %VENV_PYTHON% -m pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu118 --log pip_torch_cuda.log
+    "%VENV_PYTHON%" -m pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu118 --log pip_torch_cuda.log
     if %ERRORLEVEL% NEQ 0 ( echo ERROR: Failed installing PyTorch CUDA. Check pip_torch_cuda.log. & exit /b 1 )
     echo   PyTorch CUDA installed successfully.
 ) else (
     echo   Installing PyTorch (CPU version)
-    %VENV_PYTHON% -m pip install torch torchvision torchaudio --log pip_torch_cpu.log
+    "%VENV_PYTHON%" -m pip install torch torchvision torchaudio --log pip_torch_cpu.log
     if %ERRORLEVEL% NEQ 0 ( echo ERROR: Failed installing PyTorch CPU. Check pip_torch_cpu.log. & exit /b 1 )
     echo   PyTorch CPU installed successfully.
 )
 
 echo   Installing dependencies from requirements.txt
 if exist requirements.txt (
-    %VENV_PYTHON% -m pip install -r requirements.txt --log pip_reqs.log
+    "%VENV_PYTHON%" -m pip install -r requirements.txt --log pip_reqs.log
     if %ERRORLEVEL% NEQ 0 ( echo ERROR: Failed installing from requirements.txt. Check pip_reqs.log. & exit /b 1 )
     echo   Dependencies from requirements.txt installed successfully.
 ) else (
@@ -206,7 +206,7 @@ echo --- Creating Launcher Script ---
     echo :: Launcher for %APP_NAME%
     echo setlocal
     echo set SCRIPT_DIR=%%~dp0
-    echo set VENV_PYTHON="%%SCRIPT_DIR%%venv\Scripts\python.exe"
+    echo set VENV_PYTHON=%%SCRIPT_DIR%%venv\Scripts\python.exe
     echo set PYTHONPATH=%%SCRIPT_DIR%%
     echo set SSL_CERT_FILE=%%SCRIPT_DIR%%cacert.pem
     echo set PATH=%%SCRIPT_DIR%%bin;%%PATH%%
@@ -223,8 +223,8 @@ echo --- Creating Launcher Script ---
     echo.
     echo echo Running Python script using venv python... ^>^> "%%SCRIPT_DIR%%logs\launch.log"
     echo cd /d "%%SCRIPT_DIR%%"
-    echo if exist %%VENV_PYTHON%% ^(
-    echo   %%VENV_PYTHON%% main.py
+    echo if exist "%%VENV_PYTHON%%" ^(
+    echo   "%%VENV_PYTHON%%" main.py
     echo ^) else ^(
     echo   echo ERROR: venv Python not found at %%VENV_PYTHON%% ^>^> "%%SCRIPT_DIR%%logs\launch.log"
     echo   pause
