@@ -78,7 +78,6 @@ class ThreadManager:
             
             logger.debug(f"Attempting to cancel thread: {thread_name} (id: {thread_id})")
             
-            # Call cancel() method if it exists
             if hasattr(thread, 'cancel') and callable(getattr(thread, 'cancel')):
                 try:
                     thread.cancel()
@@ -88,7 +87,6 @@ class ThreadManager:
             else:
                 logger.warning(f"Thread {thread_name} has no cancel() method")
             
-            # Wait for the thread to finish
             if thread.isRunning():
                 logger.debug(f"Waiting for thread {thread_name} to finish (timeout: {wait_timeout}ms)")
                 thread_finished = thread.wait(wait_timeout)

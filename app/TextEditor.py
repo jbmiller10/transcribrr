@@ -21,7 +21,6 @@ from PyPDF2 import PdfFileWriter
 from app.utils import resource_path
 from app.ui_utils import SpinnerManager, show_error_message, show_info_message
 
-# Configure logging
 logger = logging.getLogger('transcribrr')
 
 
@@ -35,41 +34,33 @@ class FindReplaceDialog(QDialog):
         self.setModal(False)
         self.setMinimumWidth(450)
         
-        # Track whether we've wrapped around in the search
         self.search_wrapped = False
         
-        # Store the start position when beginning a search
         self.search_start_position = None
         
         layout = QVBoxLayout(self)
         layout.setSpacing(8)
 
-        # Find section
         find_layout = QHBoxLayout()
         find_label = QLabel("Find:")
         self.find_text = QLineEdit()
         self.find_text.setPlaceholderText("Enter text to find")
-        # Return key in find field triggers find
         self.find_text.returnPressed.connect(self.find_next)
         find_layout.addWidget(find_label)
         find_layout.addWidget(self.find_text)
         layout.addLayout(find_layout)
 
-        # Replace section
         replace_layout = QHBoxLayout()
         replace_label = QLabel("Replace:")
         self.replace_text = QLineEdit()
         self.replace_text.setPlaceholderText("Enter replacement text")
-        # Return key in replace field triggers replace
         self.replace_text.returnPressed.connect(self.replace)
         replace_layout.addWidget(replace_label)
         replace_layout.addWidget(self.replace_text)
         layout.addLayout(replace_layout)
 
-        # Advanced options layout
         options_layout = QVBoxLayout()
         
-        # Basic options (first row)
         basic_options_layout = QHBoxLayout()
         self.case_sensitive = QCheckBox("Case sensitive")
         self.whole_words = QCheckBox("Whole words only")
@@ -79,7 +70,6 @@ class FindReplaceDialog(QDialog):
         basic_options_layout.addWidget(self.search_backwards)
         options_layout.addLayout(basic_options_layout)
         
-        # Additional options (second row)
         adv_options_layout = QHBoxLayout()
         self.highlight_all = QCheckBox("Highlight matches")
         self.highlight_all.stateChanged.connect(self.toggle_highlight_all)
@@ -88,7 +78,6 @@ class FindReplaceDialog(QDialog):
         
         layout.addLayout(options_layout)
 
-        # Buttons
         button_layout = QHBoxLayout()
         self.find_button = QPushButton("Find Next")
         self.find_prev_button = QPushButton("Find Previous")
@@ -103,12 +92,10 @@ class FindReplaceDialog(QDialog):
         button_layout.addWidget(self.close_button)
         layout.addLayout(button_layout)
         
-        # Status message
         self.status_label = QLabel("")
         self.status_label.setStyleSheet("color: gray;")
         layout.addWidget(self.status_label)
 
-        # Connect signals
         self.find_button.clicked.connect(self.find_next)
         self.find_prev_button.clicked.connect(self.find_previous)
         self.replace_button.clicked.connect(self.replace)
@@ -116,21 +103,16 @@ class FindReplaceDialog(QDialog):
         self.close_button.clicked.connect(self.close)
         self.find_text.textChanged.connect(self.update_buttons)
         
-        # Connect checkbox signals
         self.case_sensitive.stateChanged.connect(self.reset_search)
         self.whole_words.stateChanged.connect(self.reset_search)
         
-        # Track if dialog was closed directly
         self.finished.connect(self.cleanup_on_close)
 
-        # Initial button state
         self.update_buttons()
         
-        # Extra format for highlight
         self.highlight_format = QTextCharFormat()
         self.highlight_format.setBackground(QColor(255, 255, 0, 100))  # Light yellow with transparency
         
-        # Store original selection formats for restore
         self.original_selection_formats = []
         
     def reset_search(self):
@@ -139,7 +121,6 @@ class FindReplaceDialog(QDialog):
         self.search_start_position = None
         self.status_label.clear()
         
-        # If highlight all is active, refresh the highlights
         if self.highlight_all.isChecked():
             self.toggle_highlight_all(self.highlight_all.checkState())
 

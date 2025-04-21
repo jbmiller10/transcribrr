@@ -10,7 +10,6 @@ logger = logging.getLogger('transcribrr')
 class FolderManager:
     """Manage folder structure."""
     
-    # Singleton instance
     _instance = None
     
     @classmethod
@@ -25,24 +24,16 @@ class FolderManager:
         self.folders = []
         self.db_manager = DatabaseManager()
         
-        # Set the correct database path from constants
         self.db_path = DATABASE_PATH
-        
-        # Create folders tables if they don't exist
         self.init_database()
-        
-        # Load existing folders
         self.load_folders()
     
     def init_database(self):
         """Init folder tables."""
-        # Tables are now created by db_utils.ensure_database_exists
-        # This method remains for compatibility but is essentially a no-op
-        # since the tables should already be created by DatabaseManager initialization
         logger.debug("Folder tables are initialized during database creation")
     
     def load_folders(self):
-        """Load folders."""
+        """Load folders asynchronously from database."""
         query = '''
             SELECT id, name, parent_id, created_at
             FROM folders
@@ -66,7 +57,6 @@ class FolderManager:
             self.build_folder_structure()
             logger.info(f"Loaded {len(self.folders)} folders")
         
-        # Use the DatabaseManager to execute the query
         self.db_manager.execute_query(query, callback=on_folders_loaded)
     
     def build_folder_structure(self):
@@ -82,8 +72,7 @@ class FolderManager:
                     parent_folder['children'].append(folder)
     
     def create_folder(self, name, parent_id=None, callback=None):
-        """Create folder."""
-        # Check for duplicate name at same level
+        """Create a new folder in the database and in-memory list."""
         if self.folder_exists(name, parent_id):
             logger.warning(f"Folder with name '{name}' already exists at this level")
             if callback:
@@ -92,20 +81,13 @@ class FolderManager:
         
         created_at = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
         
-        # Query to insert the new folder
         query = '''
             INSERT INTO folders (name, parent_id, created_at)
             VALUES (?, ?, ?)
         '''
-        params = (name, parent_id, created_at)
-        
-        def on_folder_created(result):
-            if result and len(result) > 0:
-                # Extract the folder ID from the result
-                # This is typically the last inserted row ID
                 folder_id = result[0][0] if isinstance(result[0], tuple) else result[0]
                 
-                # Add to in-memory structure
+                # Add new folder to memory
                 new_folder = {
                     'id': folder_id,
                     'name': name,
@@ -136,27 +118,17 @@ class FolderManager:
                     callback(False, "Database error: Failed to get new folder ID")
                 return False
         
-        # First, insert the folder
         insert_query = query
         insert_params = params
-        
-        # Second, get the ID of the inserted folder
         get_id_query = "SELECT last_insert_rowid()"
-        
-        # Execute the insertion and then get the ID
         def after_insert(result):
             self.db_manager.execute_query(get_id_query, callback=on_folder_created)
         
-        # Execute the insert query
         self.db_manager.execute_query(insert_query, insert_params, callback=after_insert)
-        
-        # The function returns immediately as the DB operation is async
-        # The actual result handling is in the callback
         return True
     
     def rename_folder(self, folder_id, new_name, callback=None):
         """Rename folder."""
-        # Check for duplicate name at same level
         folder = self.get_folder_by_id(folder_id)
         if not folder:
             logger.warning(f"Folder with ID {folder_id} not found")
@@ -170,7 +142,6 @@ class FolderManager:
                 callback(False, "A folder with this name already exists")
             return False
         
-        # Query to update the folder name
         query = '''
             UPDATE folders
             SET name = ?
@@ -196,7 +167,6 @@ class FolderManager:
         # Execute the query
         self.db_manager.execute_query(query, params, callback=on_folder_renamed)
         
-        # The function returns immediately as the DB operation is async
         return True
     
     def delete_folder(self, folder_id, callback=None):

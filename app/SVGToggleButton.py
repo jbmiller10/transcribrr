@@ -6,16 +6,15 @@ from PyQt6.QtCore import QSize, Qt, QRectF
 class SVGToggleButton(QPushButton):
     def __init__(self, svg_files, parent=None):
         super().__init__(parent)
-        # Initialize a dictionary to store QSvgRenderer instances for each SVG
         self.svg_renderers = {key: QSvgRenderer(svg_path) for key, svg_path in svg_files.items()}
-        self.current_svg = next(iter(self.svg_renderers.keys()))  # Default to the first key
+        self.current_svg = next(iter(self.svg_renderers.keys()))
         self.pixmaps = {}
         self.render_svgs()
 
     def render_svgs(self):
         for key, renderer in self.svg_renderers.items():
             pixmap = QPixmap(self.size())
-            pixmap.fill(Qt.GlobalColor.transparent)  # Correct PyQt6 enum usage
+            pixmap.fill(Qt.GlobalColor.transparent)
             painter = QPainter(pixmap)
             rect = QRectF(pixmap.rect())
             renderer.render(painter, rect)
@@ -35,5 +34,5 @@ class SVGToggleButton(QPushButton):
         painter.end()
 
     def resizeEvent(self, event):
-        self.render_svgs()  # Re-render SVGs when button size changes
+        self.render_svgs()
         super().resizeEvent(event)

@@ -18,10 +18,8 @@ from app.SettingsDialog import SettingsDialog
 from app.ToggleSwitch import ToggleSwitch
 from app.DatabaseManager import DatabaseManager
 from app.ResponsiveUI import ResponsiveWidget, ResponsiveSizePolicy
-# Use ui_utils for messages, spinner and feedback
 from app.ui_utils import SpinnerManager, FeedbackManager, show_error_message, show_info_message, show_confirmation_dialog
 from app.file_utils import calculate_duration, is_valid_media_file, check_file_size
-# Use ConfigManager and PromptManager
 from app.utils import resource_path, ConfigManager, PromptManager
 from app.ThreadManager import ThreadManager
 from app.constants import (
@@ -29,14 +27,11 @@ from app.constants import (
     SUCCESS_TRANSCRIPTION, SUCCESS_GPT_PROCESSING, SUCCESS_SAVE
 )
 
-# Configure logging
-import logging
 logger = logging.getLogger('transcribrr')
 
 
 class MainTranscriptionWidget(ResponsiveWidget):
-    # Removed settingsRequested signal as SettingsDialog can be opened directly
-    # Renamed signals for clarity
+    # Transcription and GPT workflow signals
     transcription_process_started = pyqtSignal()
     transcription_process_completed = pyqtSignal(str) # Emits final transcript text
     transcription_process_stopped = pyqtSignal()
@@ -46,8 +41,7 @@ class MainTranscriptionWidget(ResponsiveWidget):
     status_update = pyqtSignal(str) # Generic status update signal
     recording_status_updated = pyqtSignal(int, dict) # Signal for recording updates (ID, data)
 
-    # Removed current_selected_item, use self.current_recording_data instead
-    # current_selected_item = None
+    # Internal state for selected recording
 
     def __init__(self, parent=None, db_manager=None):
         super().__init__(parent)

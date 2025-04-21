@@ -35,10 +35,9 @@ class AudioLevelMeter(QWidget):
         self.decay_rate = 0.05  # Level decay rate when not recording
         self.setStyleSheet("background-color: transparent;")
 
-        # Start decay timer
         self.decay_timer = QTimer(self)
         self.decay_timer.timeout.connect(self.decay_levels)
-        self.decay_timer.start(50)  # 50ms updates
+        self.decay_timer.start(50)
 
     def set_level(self, level):
         """Set audio level (0.0–1.0)."""
@@ -64,12 +63,10 @@ class AudioLevelMeter(QWidget):
         width = self.width() - 4  # Margin
         height = self.height() - 4  # Margin
 
-        # Background
         painter.setPen(Qt.PenStyle.NoPen)  # Fixed enum
         painter.setBrush(QColor(50, 50, 50, 30))
         painter.drawRoundedRect(2, 2, width, height, 6, 6)
 
-        # Level fill
         if self.level > 0:
             # Create gradient
             gradient = QLinearGradient(0, 0, width, 0)
@@ -81,7 +78,6 @@ class AudioLevelMeter(QWidget):
             painter.setBrush(QBrush(gradient))
             painter.drawRoundedRect(2, 2, fill_width, height, 6, 6)
 
-        # Peak indicator
         if self.peak_level > 0:
             peak_x = int(width * self.peak_level)
             painter.setPen(QColor("#FFFFFF"))
@@ -121,7 +117,6 @@ class RecordingThread(QThread):
                 frames_per_buffer=self.frames_per_buffer
             )
 
-            # Reset elapsed time
             self.elapsed_time = 0
             last_time_update = time.time()
 
@@ -151,7 +146,6 @@ class RecordingThread(QThread):
                     # When paused, sleep to prevent high CPU usage
                     time.sleep(0.1)
 
-            # Clean up the stream
             if self.stream:
                 self.stream.stop_stream()
                 self.stream.close()
@@ -387,7 +381,7 @@ class VoiceRecorderWidget(QWidget):
         """Start recording."""
         self.is_recording = True
         self.is_paused = False
-        self.elapsed_time = 0  # Reset elapsed time
+        self.elapsed_time = 0
         self.recordButton.set_svg('pause')
         self.statusLabel.setText("Recording...")
         self.saveButton.setEnabled(True)

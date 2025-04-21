@@ -6,12 +6,10 @@ import appdirs
 from typing import Dict, List, Set
 from enum import Enum, auto
 
-# Application information
 APP_NAME = "Transcribrr"
 APP_VERSION = "1.0.0"
 APP_AUTHOR = "John Miller"
 
-# Determine base paths: differentiate between resource path and user data path
 def get_resource_path():
     """Return path to read-only resources."""
     try:
@@ -52,14 +50,11 @@ def get_user_data_path():
         # In development mode, use the project directory
         return os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
-# Base directories
 RESOURCE_DIR = get_resource_path()  # Read-only bundled resources
 USER_DATA_DIR = get_user_data_path()  # Read-write user data
 
-# File paths for read-only resources
 ICONS_DIR = os.path.join(RESOURCE_DIR, "icons")
 
-# File paths for user data (read-write)
 RECORDINGS_DIR = os.path.join(USER_DATA_DIR, "Recordings")
 DATABASE_DIR = os.path.join(USER_DATA_DIR, "database")
 DATABASE_PATH = os.path.join(DATABASE_DIR, "database.sqlite")
@@ -68,12 +63,10 @@ PROMPTS_PATH = os.path.join(USER_DATA_DIR, "preset_prompts.json")
 LOG_DIR = os.path.join(USER_DATA_DIR, "logs")
 LOG_FILE = os.path.join(LOG_DIR, "transcribrr.log")
 
-# Ensure user data directories exist
 os.makedirs(RECORDINGS_DIR, exist_ok=True)
 os.makedirs(DATABASE_DIR, exist_ok=True)
 os.makedirs(LOG_DIR, exist_ok=True)
 
-# Database table names and fields
 TABLE_RECORDINGS = "recordings"
 FIELD_ID = "id"
 FIELD_FILENAME = "filename"
@@ -85,7 +78,6 @@ FIELD_PROCESSED_TEXT = "processed_text"
 FIELD_RAW_TRANSCRIPT_FORMATTED = "raw_transcript_formatted"
 FIELD_PROCESSED_TEXT_FORMATTED = "processed_text_formatted"
 
-# File types
 class FileType(Enum):
     """Supported file type enum."""
     AUDIO = auto()
@@ -93,7 +85,6 @@ class FileType(Enum):
     DOCUMENT = auto()
     UNKNOWN = auto()
     
-# Supported file extensions
 AUDIO_EXTENSIONS: Set[str] = {
     '.mp3', '.wav', '.aac', '.flac', '.ogg', '.m4a', '.aiff', '.wma'
 }
@@ -106,7 +97,6 @@ DOCUMENT_EXTENSIONS: Set[str] = {
     '.txt', '.md', '.doc', '.docx', '.pdf', '.odt'
 }
 
-# Maps file extensions to their display names and types
 FILE_TYPES: Dict[str, Dict[str, str]] = {
     # Audio formats
     '.mp3': {'name': 'MPEG Audio Layer III', 'type': FileType.AUDIO},
@@ -136,7 +126,6 @@ FILE_TYPES: Dict[str, Dict[str, str]] = {
     '.odt': {'name': 'OpenDocument Text', 'type': FileType.DOCUMENT},
 }
 
-# Default configuration values
 DEFAULT_CONFIG = {
     "transcription_quality": "openai/whisper-large-v3",
     "transcription_method": "local",
@@ -151,7 +140,6 @@ DEFAULT_CONFIG = {
     "hardware_acceleration_enabled": True
 }
 
-# Default prompt templates
 DEFAULT_PROMPTS = {
     "Youtube to article": {
         "text": "Transform this raw transcript of a youtube video into a well-structured article, maintaining as much detail as possible. Do not embellish by adding details not mentioned. It is extremely important you keep all details. Your output should come close to matching the number of words of the original transcript.",
@@ -175,24 +163,20 @@ DEFAULT_PROMPTS = {
     }
 }
 
-# Transcription settings
 WHISPER_CHUNK_LENGTH = 30  # seconds
 MIN_AUDIO_LENGTH = 0.5  # seconds
 MAX_FILE_SIZE_MB = 300  # MB
 
-# UI constants
 DEFAULT_FONT_FAMILY = "Arial"
 DEFAULT_FONT_SIZE = 12
 TEXT_EDITOR_MIN_HEIGHT = 200
 
-# Error messages
 ERROR_DATABASE_CONNECTION = "Could not connect to the database."
 ERROR_INVALID_FILE = "The selected file format is not supported."
 ERROR_FILE_TOO_LARGE = "The selected file is too large to process."
 ERROR_API_CONNECTION = "Could not connect to API. Please check your internet connection."
 ERROR_API_KEY_MISSING = "API key is missing. Please add your API key in settings."
 
-# Success messages
 SUCCESS_TRANSCRIPTION = "Audio transcription completed successfully."
 SUCCESS_GPT_PROCESSING = "GPT processing completed successfully."
 SUCCESS_SAVE = "File saved successfully."

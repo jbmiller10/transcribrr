@@ -16,7 +16,7 @@ from app.file_utils import calculate_duration
 from app.ui_utils import show_status_message
 from app.constants import APP_NAME
 
-# Configure logging
+ 
 logger = logging.getLogger('transcribrr')
 
 
@@ -28,40 +28,32 @@ class MainWindow(QMainWindow):
 
     def init_ui(self):
         """Init UI."""
-        # Initialize the window properties
         self.setWindowTitle(APP_NAME)
         
-        # Set a reasonable default size that will be scaled by the window manager
         screen_size = QApplication.primaryScreen().availableGeometry().size()
         window_width = min(int(screen_size.width() * 0.8), 1690)
         window_height = min(int(screen_size.height() * 0.8), 960)
         self.resize(window_width, window_height)
         
-        # Center the window on screen
         self.move(
             (screen_size.width() - window_width) // 2,
             (screen_size.height() - window_height) // 2
         )
 
-        # Initialize the database manager
         self.db_manager = DatabaseManager(self)
 
-        # Create instances of widgets
         self.control_panel = ControlPanelWidget(self)
         self.recent_recordings_widget = RecentRecordingsWidget(db_manager=self.db_manager)
         self.main_transcription_widget = MainTranscriptionWidget(db_manager=self.db_manager)
 
-        # Set up the central widget and its layout
         self.central_widget = QWidget()
         self.setCentralWidget(self.central_widget)
         self.main_layout = QHBoxLayout(self.central_widget)
 
-        # Create a QSplitter to manage the layout of the left and right sections
         self.splitter = QSplitter(Qt.Orientation.Horizontal)
-        self.splitter.setChildrenCollapsible(False) # Prevent collapsing panels completely
-        self.splitter.setHandleWidth(8) # Make the splitter handle easier to grab
+        self.splitter.setChildrenCollapsible(False)
+        self.splitter.setHandleWidth(8)
         
-        # Style the splitter handle for better visibility
         self.splitter.setStyleSheet("""
             QSplitter::handle {
                 background-color: #D0D0D0;
@@ -74,7 +66,6 @@ class MainWindow(QMainWindow):
 
         self.main_layout.addWidget(self.splitter)
 
-        # Layout for the left side section
         self.left_layout = QVBoxLayout()
         self.left_layout.addWidget(self.recent_recordings_widget, 12)
         self.left_layout.addWidget(self.control_panel, 0)
@@ -87,17 +78,13 @@ class MainWindow(QMainWindow):
         self.left_widget.setLayout(self.left_layout)
         self.left_widget.setMinimumWidth(220) # Set minimum width to prevent excessive shrinking
 
-        # Add widgets to the splitter
         self.splitter.addWidget(self.left_widget)
         self.splitter.addWidget(self.main_transcription_widget)
         
-        # Load existing recordings, if any
         self.recent_recordings_widget.load_recordings()
 
-        # Connect signal for new files (renamed from uploaded_filepath to file_ready_for_processing)
         self.control_panel.file_ready_for_processing.connect(self.on_new_file)
 
-        # Set the initial side ratios of the splitter using proportions of the window width
         window_width = self.width()
         left_panel_width = int(window_width * 0.3)
         right_panel_width = window_width - left_panel_width
@@ -109,17 +96,10 @@ class MainWindow(QMainWindow):
         self.status_bar.setVisible(True)
         self.status_bar.showMessage("Ready")
 
-        # Connect to current signal name (recordingItemSelected) and remove the old one (recordingSelected)
         self.recent_recordings_widget.recordingItemSelected.connect(self.main_transcription_widget.on_recording_item_selected)
         
-        # Connect recording status updates from transcription widget to recent recordings list
         self.main_transcription_widget.recording_status_updated.connect(self.recent_recordings_widget.update_recording_status)
 
-        # ------------------------------------------------------------------
-        # Status updates – forward progress messages from the transcription
-        # widget to the main window's status bar so the user can see what is
-        # happening instead of the bar permanently showing "Ready".
-        # ------------------------------------------------------------------
         self.main_transcription_widget.status_update.connect(self.update_status_bar)
 
     def set_style(self):

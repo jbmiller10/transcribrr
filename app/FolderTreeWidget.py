@@ -13,7 +13,6 @@ logger = logging.getLogger('transcribrr')
 class FolderTreeWidget(QWidget):
     """Tree view for folder navigation."""
     
-    # Signals
     folderSelected = pyqtSignal(int, str)  # Folder ID, Folder Name
     folderCreated = pyqtSignal(int, str)
     folderRenamed = pyqtSignal(int, str)
@@ -22,19 +21,15 @@ class FolderTreeWidget(QWidget):
     def __init__(self, parent=None):
         super().__init__(parent)
         
-        # Initialize UI
         self.init_ui()
-        
-        # Load folders
         self.load_folders()
     
     def init_ui(self):
-        """Init UI."""
+        """Initialize UI components and layout."""
         main_layout = QVBoxLayout(self)
         main_layout.setContentsMargins(0, 0, 0, 0)
         main_layout.setSpacing(0)
         
-        # Header
         header_layout = QHBoxLayout()
         header_layout.setContentsMargins(8, 8, 8, 8)
         
@@ -42,7 +37,6 @@ class FolderTreeWidget(QWidget):
         header_label.setFont(QFont("Arial", 12, QFont.Weight.Bold))
         header_layout.addWidget(header_label)
         
-        # Refresh button
         self.refresh_button = QToolButton()
         self.refresh_button.setIcon(QIcon(resource_path('icons/refresh.svg')))
         self.refresh_button.setToolTip("Refresh Folders")
@@ -50,7 +44,6 @@ class FolderTreeWidget(QWidget):
         self.refresh_button.clicked.connect(self.load_folders)
         header_layout.addWidget(self.refresh_button)
         
-        # Add folder button
         self.add_folder_button = QToolButton()
         self.add_folder_button.setIcon(QIcon(resource_path('icons/folder.svg')))
         self.add_folder_button.setToolTip("Add New Folder")
@@ -60,7 +53,6 @@ class FolderTreeWidget(QWidget):
         
         main_layout.addLayout(header_layout)
         
-        # Folder tree
         self.folder_tree = QTreeWidget()
         self.folder_tree.setHeaderHidden(True)
         self.folder_tree.setIconSize(QSize(16, 16))
@@ -71,7 +63,6 @@ class FolderTreeWidget(QWidget):
         self.folder_tree.itemExpanded.connect(self.on_item_expanded)
         self.folder_tree.itemCollapsed.connect(self.on_item_collapsed)
         
-        # Apply custom styling
         self.folder_tree.setStyleSheet("""
             QTreeWidget {
                 background-color: transparent;
@@ -92,7 +83,6 @@ class FolderTreeWidget(QWidget):
         
         main_layout.addWidget(self.folder_tree)
         
-        # Add unorganized recordings root item
         root_item = QTreeWidgetItem(self.folder_tree)
         root_item.setText(0, "Unorganized Recordings")
         root_item.setIcon(0, QIcon(resource_path('icons/folder.svg')))
@@ -100,13 +90,11 @@ class FolderTreeWidget(QWidget):
         root_item.setExpanded(True)
         self.folder_tree.setCurrentItem(root_item)
         
-        # Set folder icon style
         self.folder_icon = QIcon(resource_path('icons/folder.svg'))
         self.folder_open_icon = QIcon(resource_path('icons/folder_open.svg'))
     
     def load_folders(self):
-        """Load folder tree."""
-        # Preserve the selected item if any
+        """Load and rebuild the folder tree."""
         current_item = self.folder_tree.currentItem()
         current_folder_id = -1
         if current_item:
@@ -114,17 +102,14 @@ class FolderTreeWidget(QWidget):
             if isinstance(folder_data, dict) and 'id' in folder_data:
                 current_folder_id = folder_data['id']
         
-        # Clear existing folders (but keep "All Recordings" root item)
         root_item = self.folder_tree.topLevelItem(0)
         if root_item:
             while root_item.childCount() > 0:
                 root_item.removeChild(root_item.child(0))
         
-        # Get folder structure
         folder_manager = FolderManager.instance()
         root_folders = folder_manager.get_all_root_folders()
         
-        # Get count of recordings not in any folder
         try:
             import sqlite3
             conn = sqlite3.connect(folder_manager.db_path)
@@ -139,44 +124,35 @@ class FolderTreeWidget(QWidget):
             unorganized_count = cursor.fetchone()[0]
             conn.close()
             
-            # Update root item with count of unorganized recordings
             if root_item:
                 root_item.setText(0, f"Unorganized Recordings ({unorganized_count})")
         except Exception as e:
             logger.error(f"Error getting unorganized recording count: {e}")
             unorganized_count = 0
         
-        # Add folders to tree
         for folder in root_folders:
             self.add_folder_to_tree(folder, root_item)
         
-        # Expand root item
         if root_item:
             root_item.setExpanded(True)
         
-        # Restore selection if possible
         if current_folder_id >= 0:
             self.select_folder_by_id(current_folder_id)
         else:
-            # Select "All Recordings" by default
             if root_item:
                 self.folder_tree.setCurrentItem(root_item)
                 self.folderSelected.emit(-1, "Unorganized Recordings")
     
     def add_folder_to_tree(self, folder, parent_item):
-        """Add folder children recursively."""
-        # Get recording count for this folder
+        """Recursively add a folder and its children to the tree."""
         recording_count = self.get_folder_recording_count(folder['id'])
         
         item = QTreeWidgetItem(parent_item)
-        # Add recording count to folder name if has recordings
         if recording_count > 0:
             item.setText(0, f"{folder['name']} ({recording_count})")
-            # Regular color for folders with recordings
             item.setForeground(0, QColor("#000000"))
         else:
             item.setText(0, folder['name'] + " (empty)")
-            # Lighter color for empty folders
             item.setForeground(0, QColor("#888888"))
             
         item.setIcon(0, self.folder_icon)
@@ -186,7 +162,6 @@ class FolderTreeWidget(QWidget):
             "recording_count": recording_count
         })
         
-        # Add children
         for child in folder['children']:
             self.add_folder_to_tree(child, item)
     

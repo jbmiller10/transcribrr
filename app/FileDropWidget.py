@@ -14,7 +14,6 @@ logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(
 class FileDropWidget(QWidget):
     fileDropped = pyqtSignal(str)
 
-    # Define supported file types with descriptions
     supported_file_types = {
         # Audio formats
         'mp3': 'MPEG Audio Layer III',
@@ -35,7 +34,6 @@ class FileDropWidget(QWidget):
         self.setMinimumHeight(150)
         self.initUI()
 
-        # Create Recordings directory if it doesn't exist
         self.recordings_dir = os.path.join(os.getcwd(), 'Recordings')
         os.makedirs(self.recordings_dir, exist_ok=True)
 
@@ -46,7 +44,6 @@ class FileDropWidget(QWidget):
         self.layout.addWidget(self.label)
         self.setLayout(self.layout)
 
-        # Custom styling
         self.setStyleSheet(f"""
             QLabel {{
                 font-size: 16px;
@@ -65,7 +62,6 @@ class FileDropWidget(QWidget):
         """)
 
     def dragEnterEvent(self, event: QDragEnterEvent):
-        """Handle drag enter."""
         if event.mimeData().hasUrls():
             url = event.mimeData().urls()[0]
             if url.isLocalFile():
@@ -113,7 +109,6 @@ class FileDropWidget(QWidget):
             event.ignore()
 
     def dragLeaveEvent(self, event):
-        """Reset on drag leave."""
         self.label.setText("Drag audio/video files here or click to browse")
         self.setStyleSheet(f"""
             QLabel {{
@@ -133,12 +128,10 @@ class FileDropWidget(QWidget):
         """)
 
     def dragMoveEvent(self, event):
-        """Handle drag move."""
         if event.mimeData().hasUrls():
             event.acceptProposedAction()
 
     def dropEvent(self, event: QDropEvent):
-        """Handle file drop with progress."""
         self.label.setText("Drag audio/video files here or click to browse")
         self.dragLeaveEvent(None)  # Reset styling
 
@@ -157,20 +150,16 @@ class FileDropWidget(QWidget):
             event.ignore()
 
     def mousePressEvent(self, event):
-        """Open file dialog on click."""
         if event.button() == Qt.MouseButton.LeftButton:  # Fixed enum
             self.openFileDialog()
 
     def openFileDialog(self):
-        """Open file dialog."""
-        # Create a filter string that includes all supported file types with descriptions
         filter_parts = []
         for ext, desc in self.supported_file_types.items():
             filter_parts.append(f"*.{ext}")
 
         filter_string = f"Audio/Video Files ({' '.join(filter_parts)})"
 
-        # Add individual format filters
         audio_formats = [ext for ext in self.supported_file_types.keys()
                          if ext in ['mp3', 'wav', 'm4a', 'ogg', 'flac']]
         video_formats = [ext for ext in self.supported_file_types.keys()
@@ -179,7 +168,6 @@ class FileDropWidget(QWidget):
         audio_filter = f"Audio Files ({' '.join([f'*.{ext}' for ext in audio_formats])})"
         video_filter = f"Video Files ({' '.join([f'*.{ext}' for ext in video_formats])})"
 
-        # Combine all filters
         complete_filter = f"{filter_string};;{audio_filter};;{video_filter}"
 
         file_dialog = QFileDialog(self)

@@ -11,7 +11,6 @@ from app.db_utils import (
     update_recording, delete_recording, search_recordings
 )
 
-# Configure logging
 logger = logging.getLogger('transcribrr')
 
 class DatabaseWorker(QThread):
@@ -33,24 +32,20 @@ class DatabaseWorker(QThread):
             
             while self.running:
                 try:
-                    # Get next operation with a timeout to allow for thread termination
                     operation = self.operations_queue.get(timeout=0.5)
                     if operation is None:  # Sentinel value to exit
                         break
 
-                    # Process operation
                     op_type = operation.get('type')
                     op_id = operation.get('id')
                     op_args = operation.get('args', [])
                     op_kwargs = operation.get('kwargs', {})
                     result = None
                     
-                    # Start transaction for write operations
                     needs_transaction = op_type in ('execute_query', 'create_table', 'create_recording', 
                                                    'update_recording', 'delete_recording', 'search_recordings')
                     
                     try:
-                        # Execute appropriate database function
                         if op_type == 'execute_query':
                             query = op_args[0]
                             params = op_args[1] if len(op_args) > 1 else []
@@ -74,7 +69,6 @@ class DatabaseWorker(QThread):
                         elif op_type == 'search_recordings':
                             result = search_recordings(conn, op_args[0])
                                 
-                        # Signal completion with result
                         self.operation_complete.emit({
                             'id': op_id,
                             'type': op_type,
@@ -85,11 +79,9 @@ class DatabaseWorker(QThread):
                         logger.error(f"Database operation error in {op_type}: {e}", exc_info=True)
                         self.error_occurred.emit(op_type, str(e))
                     finally:
-                        # Mark operation as done regardless of success/failure
                         self.operations_queue.task_done()
 
                 except queue.Empty:
-                    # No operations in queue, continue waiting
                     continue
                 except Exception as e:
                     logger.error(f"Operation queue error: {e}", exc_info=True)
@@ -97,7 +89,7 @@ class DatabaseWorker(QThread):
                     try:
                         self.operations_queue.task_done()
                     except:
-                        pass  # Queue might be in an unstable state
+                        pass
 
         except Exception as e:
             logger.error(f"Database worker error: {e}", exc_info=True)
@@ -137,14 +129,11 @@ class DatabaseManager(QObject):
     def __init__(self, parent=None):
         super().__init__(parent)
         
-        # Ensure database directory exists
         os.makedirs(os.path.dirname(DATABASE_PATH), exist_ok=True)
         
-        # Initialize database and config if needed
         if not os.path.exists(DATABASE_PATH):
             ensure_database_exists()
         
-        # Create worker thread
         self.worker = DatabaseWorker()
         self.worker.operation_complete.connect(self.operation_complete)
         self.worker.error_occurred.connect(self.error_occurred)
@@ -188,7 +177,6 @@ class DatabaseManager(QObject):
         operation_id = f"get_all_recordings_{id(callback)}"
         self.worker.add_operation('get_all_recordings', operation_id)
         
-        # Connect a one-time handler for this specific operation
         def handler(result):
             if result['id'] == operation_id:
                 callback(result['result'])

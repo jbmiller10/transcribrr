@@ -63,19 +63,15 @@ class StartupThread(QThread):
     def run(self) -> None:
         """Run the initialization process."""
         try:
-            # Check dependencies first
             self.update_progress.emit(10, "Checking dependencies...")
             dependencies = self.check_dependencies()
 
-            # Check CUDA availability
             self.update_progress.emit(20, "Checking CUDA availability...")
             cuda_result = self.check_cuda_availability()
 
-            # Clean up temporary files
             self.update_progress.emit(30, "Cleaning temporary files...")
             cleanup_temp_files()
 
-            # Verify environment is properly set up
             self.update_progress.emit(40, "Verifying environment...")
             # Log directory locations
             from app.constants import RESOURCE_DIR, USER_DATA_DIR, RECORDINGS_DIR, DATABASE_DIR, LOG_DIR
@@ -181,7 +177,6 @@ class StartupThread(QThread):
 
 def toggle_theme():
     """Toggle between light and dark theme."""
-    # Use the ThemeManager to toggle the theme
     ThemeManager.instance().toggle_theme()
 
 

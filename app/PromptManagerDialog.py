@@ -7,13 +7,11 @@ from PyQt6.QtCore import pyqtSignal, Qt, QSize
 from PyQt6.QtGui import QIcon, QFont
 import json
 import os
-# Use PromptManager and ui_utils
 from app.utils import resource_path, PromptManager
 from app.ui_utils import show_error_message, show_info_message, show_confirmation_dialog
 
 class PromptEditorWidget(QWidget):
     """Prompt edit widget."""
-    # (Content mostly unchanged, maybe slight UI tweaks if desired)
     def __init__(self, parent=None):
         super().__init__(parent)
         self.layout = QVBoxLayout(self)
@@ -26,10 +24,9 @@ class PromptEditorWidget(QWidget):
         self.category_label = QLabel("Category:")
         self.category_combo = QComboBox()
         self.category_combo.setEditable(True)
-        # Populate categories dynamically later if needed
         self.category_combo.addItems(["General", "Transcription", "Summarization", "Formatting", "Translation", "Custom"])
         self.name_layout.addWidget(self.name_label)
-        self.name_layout.addWidget(self.name_input, 1) # Give name input more space
+        self.name_layout.addWidget(self.name_input, 1)
         self.name_layout.addWidget(self.category_label)
         self.name_layout.addWidget(self.category_combo)
         self.layout.addLayout(self.name_layout)
@@ -38,19 +35,12 @@ class PromptEditorWidget(QWidget):
         self.layout.addWidget(self.text_label)
         self.prompt_text = QTextEdit()
         self.prompt_text.setPlaceholderText("Enter the prompt template text here. Use {transcript} for the input text.")
-        self.layout.addWidget(self.prompt_text, 1) # Give text area more space
+        self.layout.addWidget(self.prompt_text, 1)
 
         self.variables_hint = QLabel("Variable: {transcript} - will be replaced by the recording's transcript.")
         self.variables_hint.setStyleSheet("color: gray; font-style: italic;")
         self.layout.addWidget(self.variables_hint)
 
-        # Preview section (optional, could be removed for simplicity)
-        # self.preview_group = QGroupBox("Preview")
-        # self.preview_layout = QVBoxLayout(self.preview_group)
-        # self.preview_text = QTextEdit()
-        # self.preview_text.setReadOnly(True)
-        # ... rest of preview setup ...
-        # self.layout.addWidget(self.preview_group)
 
     def set_prompt(self, name, text, category="General"):
         self.name_input.setText(name)
@@ -59,10 +49,8 @@ class PromptEditorWidget(QWidget):
         if index >= 0:
             self.category_combo.setCurrentIndex(index)
         else:
-            # Add category if not found and select it
             self.category_combo.addItem(category)
             self.category_combo.setCurrentText(category)
-        # self.update_preview() # If preview is kept
 
     def get_prompt_data(self):
         return {
@@ -75,14 +63,10 @@ class PromptEditorWidget(QWidget):
          self.name_input.clear()
          self.prompt_text.clear()
          self.category_combo.setCurrentIndex(self.category_combo.findText("General")) # Default to General
-         # self.preview_text.clear() # If preview is kept
 
-    # def update_preview(self): # If preview is kept
-    #     # ... preview logic ...
 
 
 class PromptManagerDialog(QDialog):
-    # No prompts_saved signal needed; interacts directly with PromptManager
 
     def __init__(self, parent=None):
         super().__init__(parent)
@@ -90,7 +74,7 @@ class PromptManagerDialog(QDialog):
         self.resize(800, 600)
         self.prompt_manager = PromptManager.instance() # Get singleton
 
-        # Local state for UI (loaded from manager)
+        # Initialize prompt state
         self.categorized_prompts = {}
         self._load_and_organize_prompts() # Load from manager
 
@@ -101,7 +85,6 @@ class PromptManagerDialog(QDialog):
         self.create_browse_tab()
         self.create_edit_tab()
 
-        # Bottom buttons
         self.button_layout = QHBoxLayout()
         self.import_button = QPushButton("Import")
         self.import_button.setIcon(QIcon(resource_path('icons/import.svg')))
@@ -109,14 +92,13 @@ class PromptManagerDialog(QDialog):
         self.export_button = QPushButton("Export")
         self.export_button.setIcon(QIcon(resource_path('icons/export.svg')))
         self.export_button.clicked.connect(self.export_prompts)
-        self.cancel_button = QPushButton("Close") # Changed from Cancel as no explicit save needed per edit
+        self.cancel_button = QPushButton("Close")
         self.cancel_button.clicked.connect(self.reject) # Close dialog
 
         self.button_layout.addWidget(self.import_button)
         self.button_layout.addWidget(self.export_button)
         self.button_layout.addStretch()
         self.button_layout.addWidget(self.cancel_button)
-        # No 'Save All' button needed - changes are saved individually
 
         self.layout.addLayout(self.button_layout)
 

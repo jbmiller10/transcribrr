@@ -97,7 +97,6 @@ def create_db():
                                             processed_text_formatted BLOB
                                          ); """
 
-        # Create a database connection and create tables
         conn = create_connection(database)
         if conn is not None:
             create_table(conn, sql_create_recordings_table)
@@ -105,6 +104,5 @@ def create_db():
         else:
             print("Error! Cannot create the database connection.")
 
-    # Create config file if it doesn't exist
     if not os.path.exists(config_path):
         create_config_file()

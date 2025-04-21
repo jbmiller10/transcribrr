@@ -3,7 +3,7 @@ from PyQt6.QtWidgets import (
     QVBoxLayout, QLabel, QLineEdit, QDialogButtonBox, QHBoxLayout, QGroupBox,
     QTabWidget, QWidget, QToolTip, QMessageBox, QScrollArea
 )
-from PyQt6.QtCore import pyqtSignal, Qt, QSize, QThread, QTimer # Added QTimer
+from PyQt6.QtCore import pyqtSignal, Qt, QSize, QThread, QTimer
 from PyQt6.QtGui import QIcon
 import keyring
 import json
@@ -14,13 +14,11 @@ from openai import OpenAI
 import torch
 from threading import Lock
 
-from app.utils import resource_path, ConfigManager, PromptManager # Use Managers
+from app.utils import resource_path, ConfigManager, PromptManager
 from app.PromptManagerDialog import PromptManagerDialog
 from app.ThemeManager import ThemeManager
 # Use ui_utils for messages
 from app.ui_utils import show_error_message, show_info_message, show_confirmation_dialog
-
-# Configure logging
 logger = logging.getLogger('transcribrr')
 
 
@@ -92,7 +90,7 @@ class SettingsDialog(QDialog):
     # settings_changed signal is less critical now ConfigManager handles updates
     # prompts_updated signal is replaced by direct interaction with PromptManager
 
-    def __init__(self, parent=None): # Removed main_window parameter as it's not needed
+    def __init__(self, parent=None):
         super().__init__(parent)
         self.setWindowTitle('Settings')
         self.setMinimumWidth(600)
@@ -126,9 +124,9 @@ class SettingsDialog(QDialog):
         self.button_box.button(QDialogButtonBox.StandardButton.Cancel).clicked.connect(self.reject)
         self.button_box.button(QDialogButtonBox.StandardButton.Reset).clicked.connect(self.reset_to_defaults)
 
-        self.load_settings() # Load settings via ConfigManager
+        self.load_settings()
 
-        # Toggle speaker detection based on various factors
+        # Connect signals for speaker detection toggling
         self.toggle_speaker_detection_checkbox()
         self.hf_api_key_edit.textChanged.connect(self.toggle_speaker_detection_checkbox)
         self.transcription_method_dropdown.currentIndexChanged.connect(self.toggle_speaker_detection_checkbox)
@@ -137,14 +135,13 @@ class SettingsDialog(QDialog):
         except Exception as e:
             logger.warning(f"Could not connect hardware acceleration toggle signal: {e}")
 
-    # --- Tab Creation Methods (Mostly unchanged UI structure) ---
     def create_api_tab(self):
         api_tab = QWidget()
         api_layout = QVBoxLayout(api_tab)
         api_group = QGroupBox("API Keys (Stored Securely)")
         api_group_layout = QVBoxLayout(api_group)
 
-        # OpenAI API Key
+        # API Key entry
         openai_layout = QVBoxLayout()
         self.openai_api_key_label = QLabel('OpenAI API Key:', self)
         self.openai_api_key_label.setToolTip("Required for GPT processing and OpenAI Whisper API transcription")
@@ -158,7 +155,7 @@ class SettingsDialog(QDialog):
         api_group_layout.addLayout(openai_layout)
         api_group_layout.addSpacing(10)
 
-        # HuggingFace API Key
+        # HF token entry
         hf_layout = QVBoxLayout()
         self.hf_api_key_label = QLabel('HuggingFace Access Token:', self)
         self.hf_api_key_label.setToolTip("Required for speaker detection (diarization)")
@@ -183,7 +180,7 @@ class SettingsDialog(QDialog):
         transcription_content = QWidget()
         transcription_layout = QVBoxLayout(transcription_content)
 
-        # Method Group
+        # Transcription method selection
         method_group = QGroupBox("Transcription Method")
         method_layout = QVBoxLayout(method_group)
         self.transcription_method_label = QLabel('Transcription Method:', self)
