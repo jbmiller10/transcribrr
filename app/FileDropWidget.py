@@ -6,7 +6,8 @@ from PyQt6.QtCore import Qt, pyqtSignal, QSize
 from PyQt6.QtGui import QDragEnterEvent, QDropEvent, QPainter, QPen, QFont, QColor, QBrush
 import shutil
 import logging
-from app.utils import resource_path
+from app.path_utils import resource_path
+
 from app.constants import RECORDINGS_DIR
 
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')

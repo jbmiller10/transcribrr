@@ -6,7 +6,8 @@ from PyQt6.QtCore import pyqtSignal, Qt, QSize
 from PyQt6.QtGui import QIcon, QFont, QColor
 import logging
 from app.FolderManager import FolderManager
-from app.utils import resource_path
+from app.path_utils import resource_path
+
 
 logger = logging.getLogger('transcribrr')
 
@@ -349,7 +350,9 @@ class FolderTreeWidget(QWidget):
         # Confirm deletion
         response = QMessageBox.question(
             self, "Delete Folder",
-            f"Are you sure you want to delete the folder '{folder_name}'?\n\n"
+            f"Are you sure you want to delete the folder '{folder_name}'?
+
+"
             "This will remove all recording associations with this folder.",
             QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No
         )

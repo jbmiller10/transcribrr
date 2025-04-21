@@ -6,7 +6,8 @@ import os
 import logging
 # Removed direct DB import, DatabaseManager will handle updates
 # from app.database import create_connection, update_recording
-from app.utils import resource_path
+from app.path_utils import resource_path
+
 from app.FolderManager import FolderManager # Keep for folder info
 
 # logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s') # Configured in main

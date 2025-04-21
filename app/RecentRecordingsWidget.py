@@ -14,13 +14,16 @@ from PyQt6.QtWidgets import (
 )
 from PyQt6.QtGui import QIcon, QFont, QColor, QDesktopServices, QAction, QDrag
 from app.RecordingListItem import RecordingListItem
-from app.utils import resource_path, create_backup, format_time_duration, PromptManager # Added PromptManager
+from app.path_utils import resource_path
+from app.path_utils import resource_path
+from app.utils import create_backup, format_time_duration, PromptManager # Added PromptManager
 # Use ui_utils for messages
 from app.ui_utils import show_error_message, show_info_message, show_confirmation_dialog
 from app.DatabaseManager import DatabaseManager
 from app.ResponsiveUI import ResponsiveWidget, ResponsiveSizePolicy
 from app.FolderManager import FolderManager
 from app.file_utils import calculate_duration
+from app.UnifiedFolderTreeView import UnifiedFolderTreeView
 
 # Configure logging
 # logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s') # Configured in main
@@ -123,8 +126,8 @@ class UnifiedFolderListWidget(QTreeWidget):
     recordingSelected = pyqtSignal(RecordingListItem) # Keep emitting item for compatibility
     recordingNameChanged = pyqtSignal(int, str) # Signal for rename request
     
-    # Module-level set to track seen recording IDs during refresh
-    seen_recording_ids = set()
+    # Recording tracking is now handled via the recordings_map
+    # and item_map dictionaries
 
     def __init__(self, db_manager, parent=None):
         super().__init__(parent)
@@ -135,6 +138,9 @@ class UnifiedFolderListWidget(QTreeWidget):
         self.item_map = {} # Store QTreeWidgetItems by (type, id) for quick lookup
         self._load_token = 0 # Monotonically increasing token to track valid callbacks
         self._is_loading = False # Flag to prevent signals during load
+        
+        # Connect to the dataChanged signal for unified refresh
+        self.db_manager.dataChanged.connect(self.handle_data_changed)
         
         self.init_ui()
 
@@ -195,8 +201,8 @@ Args:
         self.clear()
         self.recordings_map.clear()
         self.item_map.clear()
-        self.seen_recording_ids.clear()  # Clear the set of seen recording IDs
-        logger.info(f"Starting refresh with empty seen_recording_ids set (size: {len(self.seen_recording_ids)})")
+        # Refresh with empty maps
+        logger.debug("Starting tree structure refresh")
         self._is_loading = True # Flag to prevent signals during load
         self._load_token += 1 # Increment token to invalidate any pending callbacks
         current_token = self._load_token # Store current token for callbacks
@@ -260,11 +266,8 @@ Args:
         self.setCurrentItem(item_to_select)
         self._is_loading = False
         
-        # Final consistency check
-        if len(self.recordings_map) != len(self.seen_recording_ids):
-            logger.warning(f"DUPLICATE CHECK: After load_structure: recordings_map size ({len(self.recordings_map)}) != seen_recording_ids size ({len(self.seen_recording_ids)})")
-        else:
-            logger.info(f"DUPLICATE CHECK: Verified no duplicates. recordings_map and seen_recording_ids both have {len(self.recordings_map)} items.")
+        # Finish loading
+        logger.info(f"Tree structure loaded with {len(self.recordings_map)} recording items")
         
     def _load_nested_folders_with_expansion(self, parent_item, parent_data, expanded_folder_ids):
         """Recursively add child folders with proper expansion state.
@@ -506,12 +509,9 @@ Args:
         """Helper method to add a recording item to the tree."""
         rec_id = recording_data[0]
         
-        # Double-check to prevent duplicates using both maps
+        # Check to prevent duplicates
         if rec_id in self.recordings_map:
             logger.debug(f"Avoiding duplicate insertion of recording ID {rec_id} (already in recordings_map)")
-            return None
-        elif rec_id in self.seen_recording_ids:
-            logger.debug(f"Avoiding duplicate insertion of recording ID {rec_id} (already in seen_recording_ids)")
             return None
             
         # Check if parent_item is still valid - an extra guard against items with deleted parents
@@ -543,8 +543,6 @@ Args:
         self.setItemWidget(tree_item, 0, list_item_widget)
         self.recordings_map[rec_id] = list_item_widget # Map ID to widget
         self.item_map[("recording", rec_id)] = tree_item # Add to item_map
-        self.seen_recording_ids.add(rec_id) # Add to seen IDs to prevent duplicates
-        logger.debug(f"Added recording ID {rec_id} to seen_recording_ids (size now: {len(self.seen_recording_ids)})")
         
         logger.debug(f"Added recording ID {rec_id} to parent folder")
         return tree_item
@@ -586,13 +584,10 @@ Args:
         if item_type and item_id is not None:
             self.item_map.pop((item_type, item_id), None)
         
-        # If it's a recording, remove from recordings_map and seen_recording_ids
+        # If it's a recording, remove from recordings_map
         if item_type == "recording":
             self.recordings_map.pop(item_id, None)
-            # Also remove from seen IDs set
-            if item_id in self.seen_recording_ids:
-                self.seen_recording_ids.remove(item_id)
-                logger.debug(f"Removed recording ID {item_id} from seen_recording_ids in _remove_tree_item (size now: {len(self.seen_recording_ids)})")
+            logger.debug(f"Removed recording ID {item_id} from recordings_map")
         
         # If it's a folder, remove all children recursively
         if item_type == "folder":
@@ -1088,7 +1083,8 @@ Args:
                         logger.info(f"Deleted file: {file_path}")
                 except OSError as e:
                     logger.warning(f"Could not delete file {file_path}: {e}")
-                    show_error_message(self, "File Deletion Error", f"Could not delete file:\n{file_path}\nError: {e}\n\nDatabase entry removed.")
+                    show_error_message(self, "File Deletion Error", 
+                        f"Could not delete file:\n{file_path}\nError: {e}\n\nDatabase entry removed.")
 
                 # Direct removal from tree view
                 item = self.find_item_by_id(recording_id, "recording")
@@ -1257,6 +1253,90 @@ Args:
     def is_loading(self):
         return getattr(self, '_is_loading', False)
         
+    def handle_data_changed(self):
+        """
+        Central handler for DatabaseManager.dataChanged signal.
+        This is the unified method for handling all data changes to avoid race conditions.
+        It performs a complete rebuild of the tree while preserving state.
+        """
+        logger.info("Database data changed, performing unified refresh")
+        
+        # Increment load token to invalidate any pending callbacks
+        self._load_token += 1
+        current_token = self._load_token
+        
+        # Save the current selection (ID and type)
+        selected_id = None
+        selected_type = None
+        current_item = self.currentItem()
+        if current_item:
+            data = current_item.data(0, Qt.ItemDataRole.UserRole)
+            if data:
+                selected_id = data.get("id")
+                selected_type = data.get("type")
+                logger.debug(f"Saving selection: {selected_type} with ID {selected_id}")
+        
+        # Save IDs of all currently expanded folders
+        expanded_folder_ids = []
+        
+        def collect_expanded_folders(item):
+            if item.isExpanded():
+                data = item.data(0, Qt.ItemDataRole.UserRole)
+                if data and data.get("type") == "folder":
+                    expanded_folder_ids.append(data.get("id"))
+            for i in range(item.childCount()):
+                collect_expanded_folders(item.child(i))
+        
+        # Start collecting from the root item
+        root_item = self.invisibleRootItem()
+        for i in range(root_item.childCount()):
+            collect_expanded_folders(root_item.child(i))
+        
+        # Pause UI updates to reduce flicker
+        self.setUpdatesEnabled(False)
+        
+        # Set loading flag to prevent unwanted signals during rebuild
+        self._is_loading = True
+        
+        try:
+            # Clear all items from the tree and internal caches
+            self.clear()
+            self.recordings_map.clear()  
+            self.item_map.clear()
+            
+            # Show a "Loading..." placeholder in the tree while refreshing
+            temp_item = QTreeWidgetItem(self)
+            temp_item.setText(0, "Loading...")
+            
+            # Define a function to rebuild the tree once folder data is ready
+            def rebuild_tree_after_folder_load():
+                # Check if this callback is still valid
+                if current_token != self._load_token:
+                    logger.debug(f"Aborting stale rebuild (token {current_token} vs current {self._load_token})")
+                    return
+                
+                # Remove the temporary item
+                self.takeTopLevelItem(0)
+                
+                # Now rebuild the tree with fresh data
+                self.load_structure(selected_id, selected_type, expanded_folder_ids)
+                
+                # Enable UI updates again and refresh
+                self.setUpdatesEnabled(True)
+                self.update()
+                self._is_loading = False
+                
+                logger.info("Unified data refresh complete")
+            
+            # Make sure the folder manager refreshes its internal data
+            # and rebuild the tree only after folders are fully loaded
+            self.folder_manager.load_folders(callback=rebuild_tree_after_folder_load)
+            
+        except Exception as e:
+            logger.error(f"Error in unified refresh: {e}", exc_info=True)
+            self._is_loading = False
+            self.setUpdatesEnabled(True)
+            
     def refresh_all_folders(self):
         """Refresh all folders to update counts and contents."""
         logger.debug("Refreshing all folders in UnifiedFolderListWidget")
@@ -1333,16 +1413,12 @@ Args:
                     # Clean up item_map
                     self.item_map.pop(("recording", rec_id), None)
                     
-                    # Clean up widget reference in recordings_map and seen_recording_ids
+                    # Clean up widget reference in recordings_map
                     if rec_id in self.recordings_map:
                         # Don't delete if it's being shown in another folder
                         # The recordings_map is shared among all instances
                         self.recordings_map.pop(rec_id, None)
-                        
-                    # Also remove from seen IDs set to prevent duplicate checking issues
-                    if rec_id in self.seen_recording_ids:
-                        self.seen_recording_ids.remove(rec_id)
-                        logger.debug(f"Removed recording ID {rec_id} from seen_recording_ids (size now: {len(self.seen_recording_ids)})")
+                        logger.debug(f"Removed recording ID {rec_id} from recordings_map")
         
         # Now remove the items
         for item in items_to_remove:
@@ -1350,11 +1426,7 @@ Args:
             
         # Log what we did for debugging
         if items_to_remove:
-            logger.debug(f"Removed {len(items_to_remove)} recordings from folder")
-            
-        # Consistency check
-        if len(self.recordings_map) != len(self.seen_recording_ids):
-            logger.warning(f"DUPLICATE CHECK: Consistency issue detected! recordings_map size ({len(self.recordings_map)}) != seen_recording_ids size ({len(self.seen_recording_ids)})")
+            logger.debug(f"Cleared {len(items_to_remove)} recording items from folder")
     
     def _load_all_nested_folder_recordings(self, parent_item, expanded_folder_ids=None):
         """Recursively load recordings for all child folders.
@@ -1774,8 +1846,8 @@ class RecentRecordingsWidget(ResponsiveWidget):
         self.search_widget.filterCriteriaChanged.connect(self.filter_recordings)
         self.layout.addWidget(self.search_widget)
 
-        # Unified folder and recordings view
-        self.unified_view = UnifiedFolderListWidget(self.db_manager, self)
+        # Unified folder and recordings view using model/view framework
+        self.unified_view = UnifiedFolderTreeView(self.db_manager, self)
         self.unified_view.folderSelected.connect(self.on_folder_selected)
         self.unified_view.recordingSelected.connect(self.recordingItemSelected.emit) # Pass signal through
         self.unified_view.recordingNameChanged.connect(self.handle_recording_rename) # Connect rename handler
@@ -2087,92 +2159,30 @@ class RecentRecordingsWidget(ResponsiveWidget):
             
         logger.info(f"Filtering recordings - Search: '{search_text}', Criteria: {filter_criteria}")
         
-        # Special case: if all filters are empty/default, just show everything
-        if not search_text and filter_criteria == "All":
-            # Make all items visible and collapse folders (except root)
-            root_item = self.unified_view.invisibleRootItem()
-            for i in range(root_item.childCount()):
-                folder_item = root_item.child(i)
-                folder_data = folder_item.data(0, Qt.ItemDataRole.UserRole)
-                if folder_data and folder_data.get("type") == "folder":
-                    folder_id = folder_data.get("id")
-                    # Always keep root expanded
-                    if folder_id == -1:
-                        folder_item.setExpanded(True)
-                    self._make_all_visible(folder_item)
-            
-            # Force update
-            self.unified_view.viewport().update()
-            logger.info("Showing all items (no filtering)")
-            return
+        # Use the unified_view's set_filter method to apply filtering through the proxy model
+        self.unified_view.set_filter(search_text, filter_criteria)
         
-        # Otherwise, call the apply_filter method on the unified view (in-place filtering)
-        self.unified_view.apply_filter(search_text, filter_criteria)
-        
-        # After filtering is applied, determine if any matches were found
-        any_visible = self._check_for_visible_items(self.unified_view.invisibleRootItem())
-        if search_text and not any_visible:
-            self.show_status_message(f"No matches found for: '{search_text}'", 5000)
-        elif search_text or filter_criteria != "All":
-            # Count visible items
-            visible_count = self._count_visible_items(self.unified_view.invisibleRootItem())
-            self.show_status_message(f"Showing {visible_count} matching recording(s)", 3000)
+        # The QSortFilterProxyModel handles all the showing/hiding of items automatically
+        # We no longer need to manually check visibility, but we might want to 
+        # provide count feedback to users in the future when we have access to that data
     
     def _make_all_visible(self, item):
-        """Make an item and all its children visible."""
-        if not item:
-            return
-            
-        # Make this item visible
-        item.setHidden(False)
-        
-        # Make all child items visible
-        for i in range(item.childCount()):
-            child = item.child(i)
-            child.setHidden(False)
-            
-            # Make the child's widget visible if it's a recording
-            child_data = child.data(0, Qt.ItemDataRole.UserRole)
-            if child_data and child_data.get("type") == "recording":
-                widget = child_data.get("widget")
-                if widget:
-                    widget.setVisible(True)
-            
-            # Recursively make grandchildren visible
-            self._make_all_visible(child)
+        """No longer needed with model-based filtering."""
+        # This method is kept as a stub for compatibility
+        # With QSortFilterProxyModel, visibility is handled automatically
+        pass
             
     def _count_visible_items(self, parent_item):
-        """Count the number of visible recording items after filtering."""
-        if not parent_item:
-            return 0
-            
-        count = 0
-        data = parent_item.data(0, Qt.ItemDataRole.UserRole)
-        if data and data.get("type") == "recording":
-            count = 1
-            
-        # Count children recursively
-        for i in range(parent_item.childCount()):
-            count += self._count_visible_items(parent_item.child(i))
-                
-        return count
+        """No longer needed with model-based filtering."""
+        # This method is kept as a stub for compatibility
+        # With QSortFilterProxyModel, visibility is handled automatically
+        return 0
 
     def _check_for_visible_items(self, parent_item):
-        """Check if any recording items are visible after filtering."""
-        if not parent_item:
-            return False
-            
-        # Check if this is a recording item and it's visible
-        data = parent_item.data(0, Qt.ItemDataRole.UserRole)
-        if data and data.get("type") == "recording" and not parent_item.isHidden():
-            return True
-            
-        # Check children
-        for i in range(parent_item.childCount()):
-            if self._check_for_visible_items(parent_item.child(i)):
-                return True
-                
-        return False
+        """No longer needed with model-based filtering."""
+        # This method is kept as a stub for compatibility
+        # With QSortFilterProxyModel, visibility is handled automatically
+        return True
 
     def load_recordings(self):
         """Load initial recordings."""

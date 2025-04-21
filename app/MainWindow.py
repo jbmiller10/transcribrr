@@ -11,7 +11,7 @@ from app.MainTranscriptionWidget import MainTranscriptionWidget
 from app.ControlPanelWidget import ControlPanelWidget
 from app.DatabaseManager import DatabaseManager
 from app.RecentRecordingsWidget import RecentRecordingsWidget
-from app.utils import resource_path
+from app.path_utils import resource_path
 from app.file_utils import calculate_duration
 from app.ui_utils import show_status_message
 from app.constants import APP_NAME

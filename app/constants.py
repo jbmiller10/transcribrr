@@ -1,56 +1,16 @@
 """Application constants."""
 
 import os
-import sys
-import appdirs
 from typing import Dict, List, Set
 from enum import Enum, auto
+from .path_utils import resource_path, get_user_data_path
 
 APP_NAME = "Transcribrr"
 APP_VERSION = "1.0.0"
 APP_AUTHOR = "John Miller"
 
-def get_resource_path():
-    """Return path to read-only resources."""
-    try:
-        # Check if running as PyInstaller bundle
-        if hasattr(sys, '_MEIPASS'):
-            return sys._MEIPASS
-        
-        # Check if running as a py2app bundle
-        elif getattr(sys, 'frozen', False) and 'MacOS' in sys.executable:
-            bundle_dir = os.path.normpath(os.path.join(
-                os.path.dirname(sys.executable), 
-                os.pardir, 'Resources'
-            ))
-            return bundle_dir
-        
-    except AttributeError:
-        pass
-    
-    # Not running as bundled app, use current working directory
-    return os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-
-def get_user_data_path():
-    """Return path to user data directory."""
-    # First, check if the app has provided a specific user data directory
-    if "TRANSCRIBRR_USER_DATA_DIR" in os.environ:
-        user_data_dir = os.environ["TRANSCRIBRR_USER_DATA_DIR"]
-        os.makedirs(user_data_dir, exist_ok=True)
-        return user_data_dir
-    
-    # When packaged, we need to use the user's data directory
-    if hasattr(sys, '_MEIPASS') or getattr(sys, 'frozen', False):
-        # Use appdirs to get standard user data directory
-        user_data_dir = appdirs.user_data_dir(APP_NAME, APP_AUTHOR)
-        # Create the directory if it doesn't exist
-        os.makedirs(user_data_dir, exist_ok=True)
-        return user_data_dir
-    else:
-        # In development mode, use the project directory
-        return os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-
-RESOURCE_DIR = get_resource_path()  # Read-only bundled resources
+# Use the consolidated resource_path function
+RESOURCE_DIR = resource_path()  # Read-only bundled resources
 USER_DATA_DIR = get_user_data_path()  # Read-write user data
 
 ICONS_DIR = os.path.join(RESOURCE_DIR, "icons")

@@ -8,6 +8,7 @@ import os
 import sys
 import logging
 # Use managers and ui_utils
+from app.path_utils import resource_path
 from app.utils import validate_url, resource_path, ConfigManager
 from app.ui_utils import show_error_message, show_info_message, FeedbackManager
 from app.threads.TranscodingThread import TranscodingThread

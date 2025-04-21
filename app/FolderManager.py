@@ -32,8 +32,13 @@ class FolderManager:
         """Init folder tables."""
         logger.debug("Folder tables are initialized during database creation")
     
-    def load_folders(self):
-        """Load folders asynchronously from database."""
+    def load_folders(self, callback=None):
+        """
+        Load folders asynchronously from database.
+        
+        Args:
+            callback: Optional callback to be called when folders are fully loaded
+        """
         query = '''
             SELECT id, name, parent_id, created_at
             FROM folders
@@ -56,6 +61,10 @@ class FolderManager:
             # Process relationships
             self.build_folder_structure()
             logger.info(f"Loaded {len(self.folders)} folders")
+            
+            # Call the callback if provided
+            if callback and callable(callback):
+                callback()
         
         self.db_manager.execute_query(query, callback=on_folders_loaded)
     

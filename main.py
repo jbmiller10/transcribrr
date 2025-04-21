@@ -17,7 +17,8 @@ from PyQt6.QtGui import QPixmap, QFont, QIcon, QColor
 from PyQt6.QtCore import Qt, QTimer, QSize, QThread, pyqtSignal, pyqtSlot, QRect
 from PyQt6.QtSvg import QSvgRenderer
 from app.MainWindow import MainWindow
-from app.utils import resource_path, check_system_requirements, cleanup_temp_files, ConfigManager, ensure_ffmpeg_available
+from app.path_utils import resource_path
+from app.utils import check_system_requirements, cleanup_temp_files, ConfigManager, ensure_ffmpeg_available
 from app.ThemeManager import ThemeManager
 from app.ResponsiveUI import ResponsiveUIManager, ResponsiveEventFilter
 from app.services.transcription_service import ModelManager
@@ -436,24 +437,15 @@ def on_initialization_error(error_message, main_window, splash):
 def copy_initial_data_files():
     """Copy default configuration and preset files to user data directory on first run"""
     from app.constants import USER_DATA_DIR, RESOURCE_DIR, CONFIG_PATH, PROMPTS_PATH
+    from app.path_utils import resource_path
     import shutil
     
     # Check if running in a bundled app
     is_frozen = getattr(sys, 'frozen', False)
     
     if is_frozen:
-        # Determine resource path based on bundling method
-        if hasattr(sys, '_MEIPASS'):
-            # PyInstaller
-            resource_dir = sys._MEIPASS
-        elif 'MacOS' in sys.executable:
-            # py2app
-            resource_dir = os.path.normpath(os.path.join(
-                os.path.dirname(sys.executable), 
-                os.pardir, 'Resources'
-            ))
-        else:
-            resource_dir = os.getcwd()
+        # Use resource_path to get the correct resource directory
+        resource_dir = resource_path()
             
         # Copy config.json if it doesn't exist in user data directory
         if not os.path.exists(CONFIG_PATH):

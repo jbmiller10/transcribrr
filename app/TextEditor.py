@@ -18,7 +18,8 @@ import docx
 from htmldocx import HtmlToDocx
 from PyPDF2 import PdfFileWriter
 
-from app.utils import resource_path
+from app.path_utils import resource_path
+
 from app.ui_utils import SpinnerManager, show_error_message, show_info_message
 
 logger = logging.getLogger('transcribrr')

@@ -14,7 +14,9 @@ from openai import OpenAI
 import torch
 from threading import Lock
 
-from app.utils import resource_path, ConfigManager, PromptManager
+from app.path_utils import resource_path
+from app.path_utils import resource_path
+from app.utils import ConfigManager, PromptManager
 from app.PromptManagerDialog import PromptManagerDialog
 from app.ThemeManager import ThemeManager
 # Use ui_utils for messages

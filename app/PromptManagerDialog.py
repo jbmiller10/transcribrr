@@ -7,7 +7,9 @@ from PyQt6.QtCore import pyqtSignal, Qt, QSize
 from PyQt6.QtGui import QIcon, QFont
 import json
 import os
-from app.utils import resource_path, PromptManager
+from app.path_utils import resource_path
+from app.path_utils import resource_path
+from app.utils import PromptManager
 from app.ui_utils import show_error_message, show_info_message, show_confirmation_dialog
 
 class PromptEditorWidget(QWidget):

@@ -17,19 +17,21 @@ class DatabaseWorker(QThread):
     """Thread for DB operations."""
     operation_complete = pyqtSignal(dict)
     error_occurred = pyqtSignal(str, str)  # operation_name, error_message
+    dataChanged = pyqtSignal()  # Signal emitted when data is modified (create, update, delete)
 
     def __init__(self, parent=None):
         super().__init__(parent)
         self.operations_queue = queue.Queue()
         self.running = True
         self.mutex = QMutex()
+        # Create a persistent connection for the worker thread
+        self.conn = get_connection()
+        # Ensure foreign keys are enabled
+        self.conn.execute("PRAGMA foreign_keys = ON;")
 
     def run(self):
         """Process queued operations."""
-        conn = None
         try:
-            conn = get_connection()
-            
             while self.running:
                 try:
                     operation = self.operations_queue.get(timeout=0.5)
@@ -42,38 +44,73 @@ class DatabaseWorker(QThread):
                     op_kwargs = operation.get('kwargs', {})
                     result = None
                     
-                    needs_transaction = op_type in ('execute_query', 'create_table', 'create_recording', 
-                                                   'update_recording', 'delete_recording', 'search_recordings')
+                    # Flag to track if data was modified (for dataChanged signal)
+                    data_modified = False
                     
                     try:
+                        # Determine if operation is a write operation that requires a transaction
+                        is_write_operation = op_type in ('execute_query', 'create_table', 'create_recording', 
+                                                        'update_recording', 'delete_recording')
+                        
                         if op_type == 'execute_query':
                             query = op_args[0]
                             params = op_args[1] if len(op_args) > 1 else []
-                            cursor = conn.cursor()
-                            cursor.execute(query, params)
-                            result = cursor.fetchall()
-                            if needs_transaction:
-                                conn.commit()
+                            
+                            # Check if this is a modifying query
+                            query_lower = query.lower().strip()
+                            is_modifying_query = any(query_lower.startswith(prefix) for prefix in ['insert', 'update', 'delete'])
+                            
+                            if is_modifying_query and ('recording_folders' in query_lower or 'recordings' in query_lower or 'folders' in query_lower):
+                                data_modified = True
+                                
+                            # Use transaction for write operations
+                            if is_modifying_query:
+                                with self.conn:  # This automatically handles commit/rollback
+                                    cursor = self.conn.cursor()
+                                    cursor.execute(query, params)
+                                    result = cursor.fetchall()
+                            else:
+                                cursor = self.conn.cursor()
+                                cursor.execute(query, params)
+                                result = cursor.fetchall()
+                                
                         elif op_type == 'create_table':
-                            create_recordings_table(conn)
+                            with self.conn:  # Auto commit/rollback
+                                create_recordings_table(self.conn)
+                                
                         elif op_type == 'create_recording':
-                            result = create_recording(conn, op_args[0])
+                            with self.conn:  # Auto commit/rollback
+                                result = create_recording(self.conn, op_args[0])
+                                data_modified = True
+                                
                         elif op_type == 'get_all_recordings':
-                            result = get_all_recordings(conn)
+                            result = get_all_recordings(self.conn)
+                            
                         elif op_type == 'get_recording_by_id':
-                            result = get_recording_by_id(conn, op_args[0])
+                            result = get_recording_by_id(self.conn, op_args[0])
+                            
                         elif op_type == 'update_recording':
-                            update_recording(conn, op_args[0], **op_kwargs)
+                            with self.conn:  # Auto commit/rollback
+                                update_recording(self.conn, op_args[0], **op_kwargs)
+                                data_modified = True
+                                
                         elif op_type == 'delete_recording':
-                            delete_recording(conn, op_args[0])
+                            with self.conn:  # Auto commit/rollback
+                                delete_recording(self.conn, op_args[0])
+                                data_modified = True
+                                
                         elif op_type == 'search_recordings':
-                            result = search_recordings(conn, op_args[0])
+                            result = search_recordings(self.conn, op_args[0])
                                 
                         self.operation_complete.emit({
                             'id': op_id,
                             'type': op_type,
                             'result': result
                         })
+                        
+                        # Emit dataChanged signal if data was modified
+                        if data_modified:
+                            self.dataChanged.emit()
                         
                     except Exception as e:
                         logger.error(f"Database operation error in {op_type}: {e}", exc_info=True)
@@ -95,12 +132,14 @@ class DatabaseWorker(QThread):
             logger.error(f"Database worker error: {e}", exc_info=True)
             self.error_occurred.emit("worker_init", str(e))
         finally:
-            if conn:
-                try:
-                    conn.close()
-                except Exception as e:
-                    logger.error(f"Error closing database connection: {e}")
-                    self.error_occurred.emit("connection_close", str(e))
+            # Ensure connection is closed when worker is finished
+            try:
+                if hasattr(self, 'conn') and self.conn:
+                    self.conn.close()
+                    logger.debug("Database worker connection closed")
+            except Exception as e:
+                logger.error(f"Error closing database connection: {e}")
+                self.error_occurred.emit("connection_close", str(e))
 
     def add_operation(self, operation_type, operation_id=None, *args, **kwargs):
         """Enqueue operation."""
@@ -125,6 +164,7 @@ class DatabaseManager(QObject):
     """DB manager with worker thread."""
     operation_complete = pyqtSignal(dict)
     error_occurred = pyqtSignal(str, str)  # operation_name, error_message
+    dataChanged = pyqtSignal()  # Signal emitted when data is modified (create, update, delete)
 
     def __init__(self, parent=None):
         super().__init__(parent)
@@ -137,6 +177,7 @@ class DatabaseManager(QObject):
         self.worker = DatabaseWorker()
         self.worker.operation_complete.connect(self.operation_complete)
         self.worker.error_occurred.connect(self.error_occurred)
+        self.worker.dataChanged.connect(self.dataChanged)
         self.worker.start()
 
     def create_recording(self, recording_data, callback=None):

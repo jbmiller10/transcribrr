@@ -4,7 +4,9 @@ import logging
 from PyQt6.QtGui import QColor, QPalette
 from PyQt6.QtWidgets import QApplication
 from PyQt6.QtCore import pyqtSlot, QObject
-from app.utils import resource_path, ConfigManager
+from app.path_utils import resource_path
+from app.path_utils import resource_path
+from app.utils import ConfigManager
 
 logger = logging.getLogger('transcribrr')
 

@@ -7,7 +7,8 @@ from PyQt6.QtWidgets import (
 )
 from PyQt6.QtCore import Qt, QSize, QTimer
 from PyQt6.QtGui import QMovie, QIcon, QAction
-from app.utils import resource_path
+from app.path_utils import resource_path
+
 
 # Configure logging (use app name)
 logger = logging.getLogger('transcribrr') # Ensure logger name consistency

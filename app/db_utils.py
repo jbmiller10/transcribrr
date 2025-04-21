@@ -55,8 +55,10 @@ def get_connection() -> sqlite3.Connection:
     db_dir = os.path.dirname(DATABASE_PATH)
     os.makedirs(db_dir, exist_ok=True) # Ensure directory exists
     try:
-        # Consider adding timeout parameter: sqlite3.connect(DATABASE_PATH, timeout=10)
-        conn = sqlite3.connect(DATABASE_PATH)
+        # Use a longer timeout to handle potential lock contention
+        # check_same_thread=False since we're using a connection per thread pattern
+        # isolation_level=None enables autocommit mode, letting us use explicit "with conn:" blocks for transactions
+        conn = sqlite3.connect(DATABASE_PATH, timeout=30.0, isolation_level=None, check_same_thread=False)
         conn.execute("PRAGMA foreign_keys = ON")
         return conn
     except sqlite3.Error as e:

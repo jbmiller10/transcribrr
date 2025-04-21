@@ -16,7 +16,9 @@ import tempfile
 import numpy as np
 import time
 from app.SVGToggleButton import SVGToggleButton
-from app.utils import resource_path, format_time_duration
+from app.path_utils import resource_path
+from app.path_utils import resource_path
+from app.utils import format_time_duration
 from app.ThreadManager import ThreadManager
 
 # Logging configuration should be done in main.py, not here
