@@ -12,6 +12,5 @@ config.json
 .DS_Storen
 *.sqlite
 
-config.json
 /output
 .idea/transcribrr.iml

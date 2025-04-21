@@ -1,0 +1,12 @@
+{
+    "transcription_quality": "openai/whisper-tiny",
+    "transcription_method": "local",
+    "gpt_model": "gpt-4o-mini",
+    "max_tokens": 16000,
+    "temperature": 1.0,
+    "speaker_detection_enabled": false,
+    "transcription_language": "English",
+    "theme": "light",
+    "chunk_enabled": true,
+    "chunk_duration": 1
+}
