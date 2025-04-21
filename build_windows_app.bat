@@ -6,7 +6,9 @@ setlocal EnableDelayedExpansion
 
 :: --- Configuration ---
 set APP_NAME=Transcribrr
-set VERSION=1.0.0
+:: Extract version from app/__init__.py
+for /f "tokens=*" %%a in ('python -c "import importlib.util, pathlib; p = pathlib.Path('app/__init__.py'); spec = importlib.util.spec_from_file_location('meta', p); m = importlib.util.module_from_spec(spec); spec.loader.exec_module(m); print(m.__version__)"') do set VERSION=%%a
+echo Building %APP_NAME% version %VERSION% for Windows...
 
 :: -----------------------------------------------------------------
 :: We decide on BUILD_TYPE (cpu / cuda) AFTER we have parsed any

@@ -19,8 +19,26 @@
   #define OutputDirName "cuda"
 #endif
 
-; Dynamic version reading from app/constants.py
-#define MyAppVersion "1.0.0"
+; Read version from app/__init__.py
+#define FindVersionLine(str FileName) \
+   Local[0] = FileOpen(FileName), \
+   Local[1] = "", \
+   Local[2] = "", \
+   While (!FileEof(Local[0])) Do \
+   ( \
+     Local[1] = FileRead(Local[0]), \
+     If Pos("__version__", Local[1]) > 0 Then \
+       Local[2] = Local[1] \
+   ), \
+   FileClose(Local[0]), \
+   Local[2]
+
+#define ExtractVersion(str VersionLine) \
+   Copy(VersionLine, Pos('"', VersionLine) + 1, \
+   Pos('"', VersionLine, Pos('"', VersionLine) + 1) - Pos('"', VersionLine) - 1)
+
+#define VersionLine FindVersionLine("..\app\__init__.py")
+#define MyAppVersion ExtractVersion(VersionLine)
 
 [Setup]
 ; NOTE: The value of AppId uniquely identifies this application.

@@ -4,8 +4,17 @@
 set -e
 
 APP_NAME="Transcribrr"
-VERSION="1.0.0"
+# Extract version from app/__init__.py
+VERSION=$(python3 - <<'PY'
+import importlib.util, pathlib, sys
+p = pathlib.Path('app/__init__.py')
+spec = importlib.util.spec_from_file_location('meta', p)
+m = importlib.util.module_from_spec(spec); spec.loader.exec_module(m)
+print(m.__version__)
+PY)
 BUNDLE_ID="com.transcribrr.app"
+
+echo "Building $APP_NAME version $VERSION for macOS..."
 
 if ! command -v brew &> /dev/null; then
     echo "Error: Homebrew is required to install ffmpeg. Please install Homebrew first."
