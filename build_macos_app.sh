@@ -120,7 +120,7 @@ cp main.py "${APP_DIR}/Contents/Resources/"
 
 echo "Creating virtual environment..."
 echo "Creating virtual environment..."
-python -m venv "${APP_DIR}/Contents/Resources/python"
+python3 -m venv "${APP_DIR}/Contents/Resources/python"
 
 echo "Installing dependencies..."
 echo "Installing dependencies..."
