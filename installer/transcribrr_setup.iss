@@ -18,7 +18,7 @@
 #endif
 
 ; Dynamic version reading from app/constants.py
-#define VersionLine FileRead("..\app\constants.py", "APP_VERSION = """)
+#define VersionLine FileRead("..\app\constants.py")
 #if pos(VersionLine, "APP_VERSION = """) > 0
   #define StartPos pos(VersionLine, "APP_VERSION = """) + 14
   #define EndPos pos(VersionLine, """", StartPos)
