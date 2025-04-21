@@ -26,7 +26,7 @@ permissions:
   contents: write   # required for release‑uploads on tag pushes
 
 env:
-  PYTHON_VERSION: '3.9.6'
+  PYTHON_VERSION: '3.9'
 
 jobs:
 
@@ -47,7 +47,7 @@ jobs:
           python-version: ${{ env.PYTHON_VERSION }}
           
       - name: Verify Python Version
-        run: python -c "import sys; version = sys.version_info[:3]; expected = (3, 9, 6); assert version == expected, f'Expected Python {expected}, but got {version}'"
+        run: python -c "import sys; version = sys.version_info[:2]; expected = (3, 9); assert version == expected, f'Expected Python {expected}.x, but got {version}'"
         shell: bash
           
       - name: Install system dependencies
@@ -92,7 +92,7 @@ jobs:
           python-version: ${{ env.PYTHON_VERSION }}
 
       - name: Verify Python Version
-        run: python -c "import sys; version = sys.version_info[:3]; expected = (3, 9, 6); assert version == expected, f'Expected Python {expected}, but got {version}'"
+        run: python -c "import sys; version = sys.version_info[:2]; expected = (3, 9); assert version == expected, f'Expected Python {expected}.x, but got {version}'"
         shell: bash
 
       - name: Install Python dependencies for icon creation
