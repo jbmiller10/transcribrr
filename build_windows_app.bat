@@ -7,7 +7,8 @@ setlocal EnableDelayedExpansion
 :: --- Configuration ---
 set APP_NAME=Transcribrr
 :: Extract version from app/__init__.py
-for /f "tokens=*" %%a in ('python -c "import importlib.util, pathlib; p = pathlib.Path('app/__init__.py'); spec = importlib.util.spec_from_file_location('meta', p); m = importlib.util.module_from_spec(spec); spec.loader.exec_module(m); print(m.__version__)"') do set VERSION=%%a
+:: Use PYTHON_EXECUTABLE after setting it
+set VERSION=1.0.0
 echo Building %APP_NAME% version %VERSION% for Windows...
 
 :: -----------------------------------------------------------------
@@ -60,12 +61,16 @@ if %INSTALL_CUDA% == 1 (
 set OUTPUT_DIR=dist\%APP_NAME%_%BUILD_TYPE%
 
 :: Check Python version
-for /f "tokens=*" %%a in ('"%PYTHON_EXECUTABLE%" -c "import platform; print(platform.python_version())"') do set CURRENT_PY_VERSION=%%a
-for /f "tokens=*" %%a in ('"%PYTHON_EXECUTABLE%" -c "import platform; v=platform.python_version().split('.'); print(f'{v[0]}.{v[1]}')"') do set MAJOR_MINOR=%%a
+for /f "tokens=*" %%a in ('%PYTHON_EXECUTABLE% -c "import platform; print(platform.python_version())"') do set CURRENT_PY_VERSION=%%a
+for /f "tokens=*" %%a in ('%PYTHON_EXECUTABLE% -c "import platform; v=platform.python_version().split(\".\"); print(v[0] + \".\" + v[1])"') do set MAJOR_MINOR=%%a
 if "!MAJOR_MINOR!" NEQ "3.9" (
   echo Error: Expected Python 3.9.x for build, found !CURRENT_PY_VERSION!
   exit /b 1
 )
+
+:: Extract version from app/__init__.py (now that we've verified Python version)
+for /f "tokens=*" %%a in ('%PYTHON_EXECUTABLE% -c "import importlib.util, pathlib; p = pathlib.Path(\"app/__init__.py\"); spec = importlib.util.spec_from_file_location(\"meta\", p); m = importlib.util.module_from_spec(spec); spec.loader.exec_module(m); print(m.__version__)"') do set VERSION=%%a
+echo Detected app version: %VERSION%
 
 :: --- Build Process ---
 echo Building %APP_NAME% version %VERSION% for Windows...
