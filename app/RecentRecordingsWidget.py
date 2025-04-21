@@ -136,6 +136,7 @@ class UnifiedFolderListWidget(QTreeWidget):
         self.current_folder_id = -1
         self.recordings_map = {} # Store RecordingListItem widgets by ID
         self.item_map = {} # Store QTreeWidgetItems by (type, id) for quick lookup
+        self.seen_recording_ids = set() # Track seen recording IDs to prevent duplicates
         self._load_token = 0 # Monotonically increasing token to track valid callbacks
         self._is_loading = False # Flag to prevent signals during load
         
@@ -201,6 +202,7 @@ Args:
         self.clear()
         self.recordings_map.clear()
         self.item_map.clear()
+        self.seen_recording_ids.clear() # Clear seen recordings set
         # Refresh with empty maps
         logger.debug("Starting tree structure refresh")
         self._is_loading = True # Flag to prevent signals during load
@@ -509,10 +511,19 @@ Args:
         """Helper method to add a recording item to the tree."""
         rec_id = recording_data[0]
         
-        # Check to prevent duplicates
-        if rec_id in self.recordings_map:
-            logger.debug(f"Avoiding duplicate insertion of recording ID {rec_id} (already in recordings_map)")
+        # Check to prevent duplicates using canonical source of truth
+        key = ("recording", rec_id)
+        if key in self.item_map:
+            logger.debug(f"Avoiding duplicate insertion of recording ID {rec_id} (already in item_map)")
             return None
+            
+        # Also check seen_recording_ids for duplicates across different refresh cycles
+        if rec_id in self.seen_recording_ids:
+            logger.debug(f"Avoiding duplicate insertion of recording ID {rec_id} (already in seen_recording_ids)")
+            return None
+            
+        # Add to seen set for deduplication checks
+        self.seen_recording_ids.add(rec_id)
             
         # Check if parent_item is still valid - an extra guard against items with deleted parents
         try:
@@ -1410,15 +1421,17 @@ Args:
                     rec_id = child_data.get("id")
                     removed_ids.append(rec_id)
                     
-                    # Clean up item_map
-                    self.item_map.pop(("recording", rec_id), None)
+                    # Get the actual widget from the tree item
+                    widget = self.itemWidget(child, 0)
+                    if widget is not None:
+                        self.removeItemWidget(child, 0)  # Detach widget
+                        widget.deleteLater()  # Schedule widget for deletion
                     
-                    # Clean up widget reference in recordings_map
-                    if rec_id in self.recordings_map:
-                        # Don't delete if it's being shown in another folder
-                        # The recordings_map is shared among all instances
-                        self.recordings_map.pop(rec_id, None)
-                        logger.debug(f"Removed recording ID {rec_id} from recordings_map")
+                    # Clean up ALL tracking maps
+                    self.item_map.pop(("recording", rec_id), None)
+                    self.recordings_map.pop(rec_id, None)
+                    self.seen_recording_ids.discard(rec_id)
+                    logger.debug(f"Removed recording ID {rec_id} from tracking maps")
         
         # Now remove the items
         for item in items_to_remove:
@@ -1898,10 +1911,9 @@ class RecentRecordingsWidget(ResponsiveWidget):
     # --- Actions ---
     def create_new_folder(self):
         """Trigger folder creation in the unified view."""
-        # Let the unified view handle the dialog and DB interaction
-        root_item = self.unified_view.topLevelItem(0)
-        if root_item:
-            self.unified_view.create_subfolder(root_item, -1) # Create at root level
+        # Let the unified view handle the dialog and DB interaction - use UnifiedFolderTreeView API
+        # Pass the parent folder ID directly (root level is -1)
+        self.unified_view.create_subfolder(-1)
 
     def refresh_recordings(self):
         """Refresh the recordings list."""
@@ -2190,8 +2202,8 @@ class RecentRecordingsWidget(ResponsiveWidget):
 
     def add_recording_to_list(self, recording_id, filename, file_path, date_created, duration, raw_transcript, processed_text):
         """Add a new recording to the recordings list."""
-        # Find the root "All Recordings" folder
-        root_item = self.unified_view.item_map.get(("folder", -1))
+        # Find the root "All Recordings" folder - fix item_map reference
+        root_item = self.unified_view.source_model.get_item_by_id(-1, "folder")
         if not root_item:
             logger.error("Root 'All Recordings' folder not found")
             return
@@ -2201,10 +2213,25 @@ class RecentRecordingsWidget(ResponsiveWidget):
         try:
             # Add recording to the tree
             self.unified_view._add_recording_item(root_item, recording_data)
-            # Make sure the recording is visible in the UI
-            root_item.setExpanded(True)
+            
+            # Make sure the recording is visible in the UI - handle both QTreeView and QTreeWidget APIs
+            try:
+                # Try QTreeView approach first (for UnifiedFolderTreeView)
+                index = self.unified_view.proxy_model.mapFromSource(root_item.index())
+                self.unified_view.setExpanded(index, True)
+            except (AttributeError, Exception) as e:
+                # Fall back to QTreeWidget approach
+                try:
+                    root_item.setExpanded(True)
+                except Exception:
+                    logger.warning(f"Could not expand root item: {e}")
+                    
             # Refresh the filter
-            self.filter_recordings()
+            try:
+                self.filter_recordings()
+            except Exception as e:
+                logger.warning(f"Error refreshing filter: {e}")
+                
             logger.info(f"Added recording to the list: {filename}")
         except Exception as e:
             logger.error(f"Error adding recording to list: {e}", exc_info=True)
