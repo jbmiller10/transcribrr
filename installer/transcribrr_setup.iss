@@ -18,14 +18,7 @@
 #endif
 
 ; Dynamic version reading from app/constants.py
-#define VersionLine FileRead("..\app\constants.py")
-#if pos(VersionLine, "APP_VERSION = """) > 0
-  #define StartPos pos(VersionLine, "APP_VERSION = """) + 14
-  #define EndPos pos(VersionLine, """", StartPos)
-  #define MyAppVersion Copy(VersionLine, StartPos, EndPos - StartPos)
-#else
-  #define MyAppVersion "1.0.0"
-#endif
+#define MyAppVersion "1.0.0"
 
 [Setup]
 ; NOTE: The value of AppId uniquely identifies this application.
