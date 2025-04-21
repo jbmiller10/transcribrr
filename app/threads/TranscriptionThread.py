@@ -85,12 +85,14 @@ class TranscriptionThread(QThread):
             if not self._is_canceled:
                 logger.info("Cancellation requested for transcription thread.")
                 self._is_canceled = True
+                self.requestInterruption()  # Use QThread's built-in interruption
                 # Note: Cannot easily interrupt underlying model inference once started.
                 # Cancellation primarily prevents starting new steps or chunks.
 
     def is_canceled(self):
+        # Check both the custom flag and QThread's interruption status
         with self._lock:
-            return self._is_canceled
+            return self._is_canceled or self.isInterruptionRequested()
 
     def run(self):
         if self.is_canceled():

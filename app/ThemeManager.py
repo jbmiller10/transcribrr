@@ -3,11 +3,12 @@ import os
 import logging
 from PyQt6.QtGui import QColor, QPalette
 from PyQt6.QtWidgets import QApplication
-from app.utils import resource_path
+from PyQt6.QtCore import pyqtSlot, QObject
+from app.utils import resource_path, ConfigManager
 
 logger = logging.getLogger('transcribrr')
 
-class ThemeManager:
+class ThemeManager(QObject):
     """Manage app themes."""
     
     _instance = None
@@ -21,6 +22,7 @@ class ThemeManager:
     
     def __init__(self):
         """Init ThemeManager."""
+        super().__init__()
         # Base theme variables (shared between light and dark)
         self.base_variables = {
             # Primary colors
@@ -104,38 +106,82 @@ class ThemeManager:
         self.current_variables = {}
         self.current_stylesheet = ""
         
-        # Load saved theme preference
+        # Initialize ConfigManager and connect signal handler
+        self.config_manager = ConfigManager.instance()
+        self.config_manager.config_updated.connect(self._handle_config_update)
+        
+        # Migrate from old config.json if needed
+        self._migrate_legacy_config()
+        
+        # Load theme preference
         self.load_theme_preference()
     
+    def _migrate_legacy_config(self):
+        """Migrate theme settings from legacy config.json to ConfigManager."""
+        legacy_config_path = resource_path('config.json')
+        if os.path.exists(legacy_config_path):
+            try:
+                with open(legacy_config_path, 'r') as config_file:
+                    legacy_config = json.load(config_file)
+                    
+                    # Only process the legacy file if it has a theme key
+                    if 'theme' in legacy_config:
+                        legacy_theme = legacy_config.get('theme', 'light').lower()
+                        if legacy_theme in ['light', 'dark']:
+                            # Save to ConfigManager
+                            logger.info(f"Migrating theme '{legacy_theme}' from legacy config to ConfigManager")
+                            self.config_manager.set('theme', legacy_theme)
+                
+                # Delete the legacy file after migration
+                os.remove(legacy_config_path)
+                logger.info(f"Removed legacy config file: {legacy_config_path}")
+            except Exception as e:
+                logger.error(f"Error migrating legacy theme config: {e}")
+    
     def load_theme_preference(self):
-        """Load theme preference."""
-        config_path = resource_path('config.json')
+        """Load theme preference from ConfigManager."""
         try:
-            if os.path.exists(config_path):
-                with open(config_path, 'r') as config_file:
-                    config = json.load(config_file)
-                    theme = config.get('theme', 'light').lower()
-                    if theme in ['light', 'dark']:
-                        self.current_theme = theme
+            theme = self.config_manager.get('theme', 'light').lower()
+            if theme in ['light', 'dark']:
+                self.current_theme = theme
+                
+                # Apply the theme immediately
+                self._update_theme_variables()
         except Exception as e:
             logger.error(f"Error loading theme preference: {e}")
     
     def save_theme_preference(self, theme):
-        """Save theme preference."""
-        config_path = resource_path('config.json')
+        """Save theme preference using ConfigManager."""
         try:
-            if os.path.exists(config_path):
-                with open(config_path, 'r') as config_file:
-                    config = json.load(config_file)
-            else:
-                config = {}
-            
-            config['theme'] = theme
-            
-            with open(config_path, 'w') as config_file:
-                json.dump(config, config_file, indent=4)
+            self.config_manager.set('theme', theme)
         except Exception as e:
             logger.error(f"Error saving theme preference: {e}")
+    
+    @pyqtSlot(dict)
+    def _handle_config_update(self, changes):
+        """Handle config updates from ConfigManager."""
+        if 'theme' in changes:
+            new_theme = changes['theme'].lower()
+            if new_theme in ['light', 'dark'] and new_theme != self.current_theme:
+                logger.info(f"Applying theme '{new_theme}' from config update")
+                self.current_theme = new_theme
+                self._update_theme_variables()
+    
+    def _update_theme_variables(self):
+        """Update current variables based on current theme."""
+        # Combine base variables with theme-specific variables
+        self.current_variables = {**self.base_variables}
+        if self.current_theme == 'dark':
+            self.current_variables.update(self.dark_variables)
+        else:
+            self.current_variables.update(self.light_variables)
+        
+        # Generate stylesheet
+        self.current_stylesheet = self._generate_stylesheet()
+        
+        # Apply to application
+        if QApplication.instance():
+            QApplication.instance().setStyleSheet(self.current_stylesheet)
     
     def toggle_theme(self):
         """Toggle theme."""
@@ -150,24 +196,14 @@ class ThemeManager:
             logger.warning(f"Unknown theme: {theme_name}, defaulting to light")
             theme_name = 'light'
         
-        self.current_theme = theme_name
-        
-        # Save preference
-        self.save_theme_preference(theme_name)
-        
-        # Combine base variables with theme-specific variables
-        self.current_variables = {**self.base_variables}
-        if theme_name == 'dark':
-            self.current_variables.update(self.dark_variables)
-        else:
-            self.current_variables.update(self.light_variables)
-        
-        # Generate stylesheet
-        self.current_stylesheet = self._generate_stylesheet()
-        
-        # Apply to application
-        if QApplication.instance():
-            QApplication.instance().setStyleSheet(self.current_stylesheet)
+        if theme_name != self.current_theme:
+            self.current_theme = theme_name
+            
+            # Save preference to ConfigManager
+            self.save_theme_preference(theme_name)
+            
+            # Update variables and apply stylesheet
+            self._update_theme_variables()
     
     def _generate_stylesheet(self):
         """Generate stylesheet."""

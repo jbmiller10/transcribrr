@@ -2,7 +2,7 @@ import os
 import logging
 import queue
 import sqlite3
-from PyQt6.QtCore import QObject, pyqtSignal, QThread, QMutex
+from PyQt6.QtCore import QObject, pyqtSignal, QThread, QMutex, Qt
 
 from app.constants import DATABASE_PATH
 from app.db_utils import (
@@ -165,8 +165,9 @@ class DatabaseManager(QObject):
                 if op_name == "create_recording":
                     _finalise()
 
-            self.operation_complete.connect(handler)
-            self.error_occurred.connect(error_handler)
+            # Use UniqueConnection to prevent duplicate connections
+            self.operation_complete.connect(handler, Qt.ConnectionType.UniqueConnection)
+            self.error_occurred.connect(error_handler, Qt.ConnectionType.UniqueConnection)
 
     def get_all_recordings(self, callback):
         """Fetch all recordings, call callback with result."""
@@ -180,9 +181,12 @@ class DatabaseManager(QObject):
         def handler(result):
             if result['id'] == operation_id:
                 callback(result['result'])
-                self.operation_complete.disconnect(handler)
+                try:
+                    self.operation_complete.disconnect(handler)
+                except TypeError:
+                    pass
         
-        self.operation_complete.connect(handler)
+        self.operation_complete.connect(handler, Qt.ConnectionType.UniqueConnection)
 
     def get_recording_by_id(self, recording_id, callback):
         """
@@ -202,9 +206,12 @@ class DatabaseManager(QObject):
         def handler(result):
             if result['id'] == operation_id:
                 callback(result['result'])
-                self.operation_complete.disconnect(handler)
+                try:
+                    self.operation_complete.disconnect(handler)
+                except TypeError:
+                    pass
         
-        self.operation_complete.connect(handler)
+        self.operation_complete.connect(handler, Qt.ConnectionType.UniqueConnection)
 
     def update_recording(self, recording_id, callback=None, **kwargs):
         """
@@ -238,8 +245,8 @@ class DatabaseManager(QObject):
                 if op_name == "update_recording":
                     _finalise()
 
-            self.operation_complete.connect(handler)
-            self.error_occurred.connect(error_handler)
+            self.operation_complete.connect(handler, Qt.ConnectionType.UniqueConnection)
+            self.error_occurred.connect(error_handler, Qt.ConnectionType.UniqueConnection)
 
     def delete_recording(self, recording_id, callback=None):
         """
@@ -272,8 +279,8 @@ class DatabaseManager(QObject):
                 if op_name == "delete_recording":
                     _finalise()
 
-            self.operation_complete.connect(handler)
-            self.error_occurred.connect(error_handler)
+            self.operation_complete.connect(handler, Qt.ConnectionType.UniqueConnection)
+            self.error_occurred.connect(error_handler, Qt.ConnectionType.UniqueConnection)
 
     def execute_query(self, query, params=None, callback=None):
         """
@@ -291,9 +298,12 @@ class DatabaseManager(QObject):
             def handler(result):
                 if result['id'] == operation_id:
                     callback(result['result'])
-                    self.operation_complete.disconnect(handler)
+                    try:
+                        self.operation_complete.disconnect(handler)
+                    except TypeError:
+                        pass
             
-            self.operation_complete.connect(handler)
+            self.operation_complete.connect(handler, Qt.ConnectionType.UniqueConnection)
 
     def search_recordings(self, search_term, callback):
         """
@@ -313,9 +323,12 @@ class DatabaseManager(QObject):
         def handler(result):
             if result['id'] == operation_id:
                 callback(result['result'])
-                self.operation_complete.disconnect(handler)
+                try:
+                    self.operation_complete.disconnect(handler)
+                except TypeError:
+                    pass
         
-        self.operation_complete.connect(handler)
+        self.operation_complete.connect(handler, Qt.ConnectionType.UniqueConnection)
 
     def shutdown(self):
         """Shut down the database manager and worker thread."""
@@ -323,4 +336,9 @@ class DatabaseManager(QObject):
             self.worker.stop()
             logger.info("Database worker stopped")
 
-
+    def get_signal_receiver_count(self):
+        """Return the number of receivers for each signal. Used for testing."""
+        return {
+            'operation_complete': len(self.operation_complete.receivers()),
+            'error_occurred': len(self.error_occurred.receivers())
+        }

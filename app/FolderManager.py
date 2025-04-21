@@ -85,6 +85,10 @@ class FolderManager:
             INSERT INTO folders (name, parent_id, created_at)
             VALUES (?, ?, ?)
         '''
+        params = (name, parent_id, created_at)
+        
+        def on_folder_created(result):
+            if result and len(result) > 0:
                 folder_id = result[0][0] if isinstance(result[0], tuple) else result[0]
                 
                 # Add new folder to memory

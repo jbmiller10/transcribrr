@@ -122,6 +122,9 @@ class UnifiedFolderListWidget(QTreeWidget):
     folderSelected = pyqtSignal(int, str)
     recordingSelected = pyqtSignal(RecordingListItem) # Keep emitting item for compatibility
     recordingNameChanged = pyqtSignal(int, str) # Signal for rename request
+    
+    # Module-level set to track seen recording IDs during refresh
+    seen_recording_ids = set()
 
     def __init__(self, db_manager, parent=None):
         super().__init__(parent)
@@ -130,6 +133,8 @@ class UnifiedFolderListWidget(QTreeWidget):
         self.current_folder_id = -1
         self.recordings_map = {} # Store RecordingListItem widgets by ID
         self.item_map = {} # Store QTreeWidgetItems by (type, id) for quick lookup
+        self._load_token = 0 # Monotonically increasing token to track valid callbacks
+        self._is_loading = False # Flag to prevent signals during load
         
         self.init_ui()
 
@@ -190,7 +195,11 @@ Args:
         self.clear()
         self.recordings_map.clear()
         self.item_map.clear()
+        self.seen_recording_ids.clear()  # Clear the set of seen recording IDs
+        logger.info(f"Starting refresh with empty seen_recording_ids set (size: {len(self.seen_recording_ids)})")
         self._is_loading = True # Flag to prevent signals during load
+        self._load_token += 1 # Increment token to invalidate any pending callbacks
+        current_token = self._load_token # Store current token for callbacks
 
         # Initialize expanded_folders if not provided
         if expanded_folder_ids is None:
@@ -225,7 +234,7 @@ Args:
             folder_item.setExpanded(should_expand)
             
             # Load recordings for the folder
-            self.load_recordings_for_item(folder_item, initial_load=True)
+            self.load_recordings_for_item(folder_item, initial_load=True, current_token=self._load_token)
             
             # Recursively add child folders with their expansion states
             self._load_nested_folders_with_expansion(folder_item, folder, expanded_folder_ids)
@@ -234,7 +243,7 @@ Args:
         root_item.setExpanded(True)
 
         # Load recordings for the root ("Unorganized Recordings")
-        self.load_recordings_for_item(root_item, initial_load=True)
+        self.load_recordings_for_item(root_item, initial_load=True, current_token=current_token)
 
         # Restore selection if provided
         item_to_select = root_item # Default to root
@@ -250,6 +259,12 @@ Args:
 
         self.setCurrentItem(item_to_select)
         self._is_loading = False
+        
+        # Final consistency check
+        if len(self.recordings_map) != len(self.seen_recording_ids):
+            logger.warning(f"DUPLICATE CHECK: After load_structure: recordings_map size ({len(self.recordings_map)}) != seen_recording_ids size ({len(self.seen_recording_ids)})")
+        else:
+            logger.info(f"DUPLICATE CHECK: Verified no duplicates. recordings_map and seen_recording_ids both have {len(self.recordings_map)} items.")
         
     def _load_nested_folders_with_expansion(self, parent_item, parent_data, expanded_folder_ids):
         """Recursively add child folders with proper expansion state.
@@ -269,7 +284,7 @@ Args:
             child_item.setExpanded(should_expand)
             
             # Load recordings for this folder
-            self.load_recordings_for_item(child_item, initial_load=True)
+            self.load_recordings_for_item(child_item, initial_load=True, current_token=self._load_token)
             
             # Process grandchildren recursively
             self._load_nested_folders_with_expansion(child_item, child_folder, expanded_folder_ids)
@@ -332,21 +347,26 @@ Args:
         # Return the created item so the caller can use it
         return item
 
-    def load_recordings_for_item(self, folder_item, initial_load=False, force_ui_update=False):
+    def load_recordings_for_item(self, folder_item, initial_load=False, force_ui_update=False, current_token=None):
         """Load recordings for the specified folder item.
         
         Args:
             folder_item: The folder tree item to load recordings for
             initial_load: Whether this is part of the initial tree construction
             force_ui_update: Whether to force an immediate UI update (for drag operations)
+            current_token: Token to validate callbacks against the current load operation
         """
         folder_data = folder_item.data(0, Qt.ItemDataRole.UserRole)
         if not folder_data or folder_data.get("type") != "folder": return
 
         folder_id = folder_data.get("id")
         
+        # Capture the current token value if not provided
+        if current_token is None:
+            current_token = self._load_token
+            
         # Add a debug log to help diagnose the duplication issue
-        logger.debug(f"Loading recordings for folder ID {folder_id} (initial_load={initial_load}, force_update={force_ui_update})")
+        logger.debug(f"Loading recordings for folder ID {folder_id} (initial_load={initial_load}, force_update={force_ui_update}, token={current_token})")
 
         # Check if we're filtering
         is_filtering = getattr(self, '_is_filtering', False)
@@ -358,6 +378,11 @@ Args:
 
         # Define callback to add recordings to the UI
         def _add_recordings_to_ui(recordings):
+            # Check if this callback is still valid
+            if current_token != self._load_token:
+                logger.debug(f"Aborting stale callback (token {current_token} vs current {self._load_token})")
+                return  # Abort if token has changed
+                
             if self.is_loading() and not initial_load: return # Abort if loading cancelled
             # Check if folder_item is still valid
             try: folder_item.text(0)
@@ -481,9 +506,22 @@ Args:
         """Helper method to add a recording item to the tree."""
         rec_id = recording_data[0]
         
-        # Double-check to prevent duplicates - check if this recording already exists in the tree
+        # Double-check to prevent duplicates using both maps
         if rec_id in self.recordings_map:
-            logger.debug(f"Avoiding duplicate insertion of recording ID {rec_id}")
+            logger.debug(f"Avoiding duplicate insertion of recording ID {rec_id} (already in recordings_map)")
+            return None
+        elif rec_id in self.seen_recording_ids:
+            logger.debug(f"Avoiding duplicate insertion of recording ID {rec_id} (already in seen_recording_ids)")
+            return None
+            
+        # Check if parent_item is still valid - an extra guard against items with deleted parents
+        try:
+            parent_valid = parent_item and parent_item.treeWidget() is self
+            if not parent_valid:
+                logger.debug(f"Parent item for recording ID {rec_id} was deleted")
+                return None
+        except RuntimeError:
+            logger.debug(f"Parent item for recording ID {rec_id} had a runtime error - likely deleted")
             return None
         
         # Create widget
@@ -505,6 +543,8 @@ Args:
         self.setItemWidget(tree_item, 0, list_item_widget)
         self.recordings_map[rec_id] = list_item_widget # Map ID to widget
         self.item_map[("recording", rec_id)] = tree_item # Add to item_map
+        self.seen_recording_ids.add(rec_id) # Add to seen IDs to prevent duplicates
+        logger.debug(f"Added recording ID {rec_id} to seen_recording_ids (size now: {len(self.seen_recording_ids)})")
         
         logger.debug(f"Added recording ID {rec_id} to parent folder")
         return tree_item
@@ -546,9 +586,13 @@ Args:
         if item_type and item_id is not None:
             self.item_map.pop((item_type, item_id), None)
         
-        # If it's a recording, remove from recordings_map
+        # If it's a recording, remove from recordings_map and seen_recording_ids
         if item_type == "recording":
             self.recordings_map.pop(item_id, None)
+            # Also remove from seen IDs set
+            if item_id in self.seen_recording_ids:
+                self.seen_recording_ids.remove(item_id)
+                logger.debug(f"Removed recording ID {item_id} from seen_recording_ids in _remove_tree_item (size now: {len(self.seen_recording_ids)})")
         
         # If it's a folder, remove all children recursively
         if item_type == "folder":
@@ -1217,6 +1261,9 @@ Args:
         """Refresh all folders to update counts and contents."""
         logger.debug("Refreshing all folders in UnifiedFolderListWidget")
         
+        # Increment load token to invalidate any pending callbacks
+        self._load_token += 1
+        
         # First, get all expanded folder IDs to preserve expansion state
         expanded_folder_ids = []
         selected_id = None
@@ -1244,7 +1291,8 @@ Args:
         for i in range(root_item.childCount()):
             collect_expanded_folders(root_item.child(i))
         
-        # Clear the maps to prevent duplicates
+        # Set loading flag and clear the maps to prevent duplicates
+        self._is_loading = True
         logger.debug(f"Clearing recordings_map with {len(self.recordings_map)} entries before refresh")
         self.recordings_map.clear()
         self.item_map.clear()
@@ -1285,11 +1333,16 @@ Args:
                     # Clean up item_map
                     self.item_map.pop(("recording", rec_id), None)
                     
-                    # Clean up widget reference in recordings_map
+                    # Clean up widget reference in recordings_map and seen_recording_ids
                     if rec_id in self.recordings_map:
                         # Don't delete if it's being shown in another folder
                         # The recordings_map is shared among all instances
                         self.recordings_map.pop(rec_id, None)
+                        
+                    # Also remove from seen IDs set to prevent duplicate checking issues
+                    if rec_id in self.seen_recording_ids:
+                        self.seen_recording_ids.remove(rec_id)
+                        logger.debug(f"Removed recording ID {rec_id} from seen_recording_ids (size now: {len(self.seen_recording_ids)})")
         
         # Now remove the items
         for item in items_to_remove:
@@ -1298,6 +1351,10 @@ Args:
         # Log what we did for debugging
         if items_to_remove:
             logger.debug(f"Removed {len(items_to_remove)} recordings from folder")
+            
+        # Consistency check
+        if len(self.recordings_map) != len(self.seen_recording_ids):
+            logger.warning(f"DUPLICATE CHECK: Consistency issue detected! recordings_map size ({len(self.recordings_map)}) != seen_recording_ids size ({len(self.seen_recording_ids)})")
     
     def _load_all_nested_folder_recordings(self, parent_item, expanded_folder_ids=None):
         """Recursively load recordings for all child folders.
@@ -1342,37 +1399,159 @@ Args:
         self._current_search = search_text
         self._current_filter = filter_criteria
         
-        # ALTERNATE APPROACH: Just rebuild the tree with filter applied
-        # Save the current selection if possible
-        selected_items = self.selectedItems()
-        selected_id = None
-        selected_type = None
-        if selected_items:
-            data = selected_items[0].data(0, Qt.ItemDataRole.UserRole)
-            if data:
-                selected_id = data.get("id")
-                selected_type = data.get("type")
+        # In-place filtering approach: keep tree structure intact, just show/hide items
+        logger.debug("Applying in-place filtering")
+        self.blockSignals(True)  # Block signals during filtering
         
-        # Completely reload the structure with filtering
-        logger.info("Rebuilding tree with filter applied")
-        self.blockSignals(True)  # Block signals during rebuild
-        self.clear()  # Clear all items
-        
-        # Reset flags and rebuild with filter
+        # Reset flags for filtering
         self._is_filtering = True
         self._filtering_search = search_text
         self._filtering_criteria = filter_criteria
         
-        # Reload structure with filtering
-        self.load_structure(selected_id, selected_type)
+        # Get a reference to the root item
+        root_item = self.invisibleRootItem()
         
+        # Apply filtering recursively to all items without rebuilding the tree
+        # Start with root-level items
+        for i in range(root_item.childCount()):
+            folder_item = root_item.child(i)
+            self._filter_tree_item_recursive(folder_item, search_text.lower(), filter_criteria)
+        
+        # Keep root folder always visible 
+        root_folder = self.item_map.get(("folder", -1))
+        if root_folder:
+            root_folder.setHidden(False)
+            root_folder.setExpanded(True)  # Always expand root when filtering
+                
         # Reset flags
         self._is_filtering = False
         self.blockSignals(False)  # Unblock signals
         
-        # Force update
+        # Force update only once after all changes are made
         self.viewport().update()
         logger.info("Filtering complete")
+        
+    def _filter_tree_item_recursive(self, item, search_text: str, filter_criteria: str) -> bool:
+        """
+        Apply filtering to an item and its children without rebuilding the tree.
+        Returns True if the item or any of its children should be visible.
+        """
+        if not item:
+            return False
+            
+        # Get item data
+        data = item.data(0, Qt.ItemDataRole.UserRole)
+        if not data:
+            return False
+            
+        item_type = data.get("type")
+        item_visible = False
+        
+        # Process based on item type
+        if item_type == "recording":
+            # Handle recording items
+            widget = data.get("widget")
+            if not widget:
+                item.setHidden(True)
+                return False
+                
+            # Check if recording matches search text
+            matches_search = True
+            if search_text:
+                # Search in filename
+                name_matches = search_text in widget.filename_no_ext.lower()
+                
+                # Search in transcripts if name doesn't match
+                transcript_matches = False
+                if not name_matches:
+                    # Check raw transcript
+                    if widget.raw_transcript:
+                        transcript_matches = search_text in widget.raw_transcript.lower()
+                    
+                    # If still no match, check processed text
+                    if not transcript_matches and widget.processed_text:
+                        transcript_matches = search_text in widget.processed_text.lower()
+                
+                matches_search = name_matches or transcript_matches
+                
+            # Check if recording matches filter criteria
+            matches_criteria = True
+            if filter_criteria == "Has Transcript":
+                matches_criteria = bool(widget.raw_transcript)
+            elif filter_criteria == "No Transcript":
+                matches_criteria = not bool(widget.raw_transcript)
+            elif filter_criteria == "Recent (24h)":
+                try:
+                    created_date = datetime.datetime.strptime(widget.date_created, "%Y-%m-%d %H:%M:%S")
+                    now = datetime.datetime.now()
+                    matches_criteria = (now - created_date).total_seconds() < 86400  # 24 hours in seconds
+                except (ValueError, TypeError) as e:
+                    logger.error(f"Error parsing date '{widget.date_created}': {e}")
+                    matches_criteria = False
+            elif filter_criteria == "This Week":
+                try:
+                    created_date = datetime.datetime.strptime(widget.date_created, "%Y-%m-%d %H:%M:%S")
+                    now = datetime.datetime.now()
+                    # Get start of current week (Monday)
+                    start_of_week = now - datetime.timedelta(days=now.weekday())
+                    start_of_week = datetime.datetime(start_of_week.year, start_of_week.month, start_of_week.day)
+                    matches_criteria = created_date >= start_of_week
+                except (ValueError, TypeError) as e:
+                    logger.error(f"Error parsing date for week filter: {e}")
+                    matches_criteria = False
+                    
+            # Recording is visible if it matches both search and criteria
+            item_visible = matches_search and matches_criteria
+            item.setHidden(not item_visible)
+            
+            # Also set the widget visibility to match
+            if widget:
+                widget.setVisible(item_visible)
+            
+            return item_visible
+            
+        elif item_type == "folder":
+            # Handle folder items
+            folder_name = data.get("name", "").lower()
+            folder_id = data.get("id")
+            
+            # Check if folder name matches search text
+            folder_matches_search = True
+            if search_text:
+                folder_matches_search = search_text in folder_name
+            
+            # Process all children recursively
+            any_child_visible = False
+            for i in range(item.childCount()):
+                child = item.child(i)
+                child_visible = self._filter_tree_item_recursive(child, search_text, filter_criteria)
+                if child_visible:
+                    any_child_visible = True
+            
+            # Folder is visible if it matches search or any child is visible
+            item_visible = folder_matches_search or any_child_visible
+            
+            # Special handling for root folder (folder ID -1)
+            if folder_id == -1:
+                item_visible = True  # Root is always visible
+                item.setExpanded(True)  # Always expand root when filtering
+            else:
+                # Hide or show based on visibility
+                item.setHidden(not item_visible)
+                
+                # Auto-expand folders with visible children
+                if item_visible and any_child_visible:
+                    item.setExpanded(True)
+            
+            return item_visible
+        elif item_type == "placeholder":
+            # Always hide placeholders when filtering
+            item.setHidden(True)
+            return False
+        
+        # Default for unrecognized types
+        item.setHidden(True)
+        return False
         
     def _set_all_items_visible(self, item):
         """Helper function to make all items visible."""
@@ -1383,6 +1562,15 @@ Args:
         for i in range(item.childCount()):
             child = item.child(i)
             child.setHidden(False)
+            
+            # Also make widget visible if this is a recording
+            child_data = child.data(0, Qt.ItemDataRole.UserRole)
+            if child_data and child_data.get("type") == "recording":
+                widget = child_data.get("widget")
+                if widget:
+                    widget.setVisible(True)
+            
+            # Recursively process children
             self._set_all_items_visible(child)
         
     def _apply_filter_recursive(self, item, search_text: str, filter_criteria: str) -> bool:
@@ -1564,6 +1752,14 @@ class RecentRecordingsWidget(ResponsiveWidget):
         self.db_manager = db_manager or DatabaseManager(self)
         self.current_folder_id = -1 # Default to "All Recordings"
 
+        # Create a timer for debouncing search
+        self.filter_timer = QTimer()
+        self.filter_timer.setSingleShot(True)
+        self.filter_timer.setInterval(250)  # 250ms debounce delay
+        self.filter_timer.timeout.connect(self._apply_filter)
+        self.pending_search_text = ""
+        self.pending_filter_criteria = "All"
+        
         self.init_toolbar() # Add toolbar
 
         # Header (Simplified - folder name updated by Unified view selection)
@@ -1601,8 +1797,8 @@ class RecentRecordingsWidget(ResponsiveWidget):
         # Clear search on initialize
         self.search_widget.clear_search()
         
-        # Initial filter application
-        self.filter_recordings()
+        # Initial filter application (without debounce)
+        self._apply_filter()
 
     def init_toolbar(self):
         toolbar = QToolBar()
@@ -1736,8 +1932,11 @@ class RecentRecordingsWidget(ResponsiveWidget):
         # The header might not be needed if the unified view makes the selection clear
         # self.header_label.setText(folder_name)
         self.show_status_message(f"Selected folder: {folder_name}")
-        # TODO: Implement filtering of recordings based on the selected folder
-        self.filter_recordings()
+        
+        # Apply filtering immediately without debounce when folder is selected
+        self.pending_search_text = self.search_widget.get_search_text().lower()
+        self.pending_filter_criteria = self.search_widget.get_filter_criteria()
+        self._apply_filter()
         
         # Refresh the selected folder to ensure we have the latest contents
         folder_item = self.unified_view.find_item_by_id(folder_id, "folder")
@@ -1762,7 +1961,10 @@ class RecentRecordingsWidget(ResponsiveWidget):
         self.unified_view.viewport().update()
 
     def handle_recording_rename(self, recording_id: int, new_name_no_ext: str):
-         """Handle the rename request from a RecordingListItem."""
+         """
+         Handle the rename request from a RecordingListItem.
+         Synchronizes both database and filesystem changes.
+         """
          logger.info(f"Handling rename for ID {recording_id} to '{new_name_no_ext}'")
 
          # Construct new full filename (keep original extension)
@@ -1774,18 +1976,64 @@ class RecentRecordingsWidget(ResponsiveWidget):
          _ , ext = os.path.splitext(widget.get_filename())
          new_full_filename = new_name_no_ext + ext
 
-         # --- Database Update ---
+         # Get current file path
+         old_file_path = widget.file_path
+         if not os.path.exists(old_file_path):
+              logger.error(f"Cannot rename: Original file does not exist at {old_file_path}")
+              show_error_message(self, "Rename Failed", "The original file could not be found on disk.")
+              return
+
+         # Generate new file path (same directory, new name)
+         directory = os.path.dirname(old_file_path)
+         new_file_path = os.path.join(directory, new_full_filename)
+
+         # Check if target path already exists
+         if os.path.exists(new_file_path):
+              logger.error(f"Cannot rename: Target path already exists at {new_file_path}")
+              show_error_message(self, "Rename Failed", "A file with this name already exists.")
+              # Revert UI change
+              widget.name_editable.setText(widget.filename_no_ext)
+              return
+
+         # --- Database Update with Filesystem Sync ---
          def on_rename_complete():
-              logger.info(f"Successfully renamed recording {recording_id} in DB.")
-              # Update the widget's internal state and UI
-              widget.update_data({'filename': new_name_no_ext}) # Pass only the base name
-              self.show_status_message(f"Renamed to '{new_name_no_ext}'")
+             try:
+                 # Attempt to rename the physical file
+                 os.rename(old_file_path, new_file_path)
+                 logger.info(f"Successfully renamed file on disk from {old_file_path} to {new_file_path}")
+                 
+                 # Update the database with the new file path
+                 self.db_manager.update_recording(
+                     recording_id,
+                     lambda: on_filesystem_sync_complete(),
+                     file_path=new_file_path
+                 )
+             except OSError as e:
+                 logger.error(f"Failed to rename file on disk: {e}")
+                 show_error_message(self, "Rename Failed", f"Could not rename file on disk: {str(e)}")
+                 # Revert the database change
+                 self.db_manager.update_recording(
+                     recording_id,
+                     lambda: logger.info(f"Reverted database filename back to original"),
+                     filename=os.path.basename(old_file_path)
+                 )
+                 # Revert UI change
+                 widget.name_editable.setText(widget.filename_no_ext)
+
+         def on_filesystem_sync_complete():
+             logger.info(f"Successfully completed rename operation for recording {recording_id}")
+             # Update the widget's internal state and UI
+             widget.update_data({
+                 'filename': new_name_no_ext,  # base name for UI
+                 'file_path': new_file_path    # update file path reference
+             })
+             self.show_status_message(f"Renamed to '{new_name_no_ext}'")
 
          def on_rename_error(op_name, error_msg):
-              logger.error(f"Failed to rename recording {recording_id} in DB: {error_msg}")
-              show_error_message(self, "Rename Failed", f"Could not rename recording: {error_msg}")
-              # Revert UI change if necessary (optional)
-              widget.name_editable.setText(widget.filename_no_ext) # Revert the line edit
+             logger.error(f"Failed to rename recording {recording_id} in DB: {error_msg}")
+             show_error_message(self, "Rename Failed", f"Could not rename recording: {error_msg}")
+             # Revert UI change if necessary
+             widget.name_editable.setText(widget.filename_no_ext)
 
          # Create a unique connection ID for this specific rename operation
          connection_id = f"rename_{recording_id}_{new_name_no_ext}"
@@ -1801,20 +2049,35 @@ class RecentRecordingsWidget(ResponsiveWidget):
          # Connect the new error handler
          self.db_manager.error_occurred.connect(on_rename_error)
 
+         # Start the transaction - first update the filename in DB
          self.db_manager.update_recording(
              recording_id,
              on_rename_complete,
-             filename=new_full_filename # Save full filename to DB
+             filename=new_full_filename
          )
 
 
     def filter_recordings(self):
-        """Filter recordings displayed in the unified view."""
-        search_text = self.search_widget.get_search_text().lower()
-        filter_criteria = self.search_widget.get_filter_criteria()
+        """Debounced filter for recordings displayed in the unified view."""
+        # Store values for later use when the timer fires
+        self.pending_search_text = self.search_widget.get_search_text().lower()
+        self.pending_filter_criteria = self.search_widget.get_filter_criteria()
+        
+        # Reset and start the debounce timer
+        self.filter_timer.stop()
+        self.filter_timer.start()
+        
+        # Quick feedback to the user that filtering is pending
+        if self.pending_search_text:
+            self.show_status_message(f"Filtering for: '{self.pending_search_text}'...", 250)
+    
+    def _apply_filter(self):
+        """Apply the actual filtering logic after debounce."""
+        search_text = self.pending_search_text
+        filter_criteria = self.pending_filter_criteria
         folder_id = self.current_folder_id
         
-        # Show status message if searching
+        # Show status message based on filtering parameters
         if search_text:
             self.show_status_message(f"Searching for: '{search_text}' in names and transcripts")
         elif filter_criteria != "All":
@@ -1824,11 +2087,27 @@ class RecentRecordingsWidget(ResponsiveWidget):
             
         logger.info(f"Filtering recordings - Search: '{search_text}', Criteria: {filter_criteria}")
         
-        # Call the apply_filter method on the unified view
-        self.unified_view.apply_filter(search_text, filter_criteria)
+        # Special case: if all filters are empty/default, just show everything
+        if not search_text and filter_criteria == "All":
+            # Make all items visible and collapse folders (except root)
+            root_item = self.unified_view.invisibleRootItem()
+            for i in range(root_item.childCount()):
+                folder_item = root_item.child(i)
+                folder_data = folder_item.data(0, Qt.ItemDataRole.UserRole)
+                if folder_data and folder_data.get("type") == "folder":
+                    folder_id = folder_data.get("id")
+                    # Always keep root expanded
+                    if folder_id == -1:
+                        folder_item.setExpanded(True)
+                    self._make_all_visible(folder_item)
+            
+            # Force update
+            self.unified_view.viewport().update()
+            logger.info("Showing all items (no filtering)")
+            return
         
-        # Force update of the tree view
-        self.unified_view.update()
+        # Otherwise, call the apply_filter method on the unified view (in-place filtering)
+        self.unified_view.apply_filter(search_text, filter_criteria)
         
         # After filtering is applied, determine if any matches were found
         any_visible = self._check_for_visible_items(self.unified_view.invisibleRootItem())
@@ -1838,6 +2117,29 @@ class RecentRecordingsWidget(ResponsiveWidget):
             # Count visible items
             visible_count = self._count_visible_items(self.unified_view.invisibleRootItem())
             self.show_status_message(f"Showing {visible_count} matching recording(s)", 3000)
+    
+    def _make_all_visible(self, item):
+        """Make an item and all its children visible."""
+        if not item:
+            return
+            
+        # Make this item visible
+        item.setHidden(False)
+        
+        # Make all child items visible
+        for i in range(item.childCount()):
+            child = item.child(i)
+            child.setHidden(False)
+            
+            # Make the child's widget visible if it's a recording
+            child_data = child.data(0, Qt.ItemDataRole.UserRole)
+            if child_data and child_data.get("type") == "recording":
+                widget = child_data.get("widget")
+                if widget:
+                    widget.setVisible(True)
+            
+            # Recursively make grandchildren visible
+            self._make_all_visible(child)
             
     def _count_visible_items(self, parent_item):
         """Count the number of visible recording items after filtering."""

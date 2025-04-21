@@ -27,14 +27,16 @@ class YouTubeDownloadThread(QThread):
              if not self._is_canceled:
                   logger.info("Cancellation requested for YouTube download thread.")
                   self._is_canceled = True
+                  self.requestInterruption()  # Use QThread's built-in interruption
                   # Attempt to interrupt yt-dlp (might not always work)
                   # yt-dlp doesn't have a direct public API for interruption.
                   # We mostly rely on checking the flag between steps.
 
 
     def is_canceled(self):
+        # Check both the custom flag and QThread's interruption status
         with self._lock:
-            return self._is_canceled
+            return self._is_canceled or self.isInterruptionRequested()
 
     def run(self):
         if self.is_canceled():

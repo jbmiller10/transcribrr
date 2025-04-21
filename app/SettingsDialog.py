@@ -609,10 +609,8 @@ class SettingsDialog(QDialog):
             self.config_manager.update(config_updates)
             logger.info("Configuration saved via ConfigManager")
 
-            # Apply theme immediately if changed
-            selected_theme = config_updates['theme']
-            if selected_theme != self.theme_manager.current_theme:
-                self.theme_manager.apply_theme(selected_theme)
+            # The theme will be automatically applied via the ConfigManager signal
+            # No need to manually call apply_theme since ThemeManager listens for config changes
 
         except Exception as e:
              logger.error(f"Error saving configuration: {e}")

@@ -200,18 +200,59 @@ class FeedbackManager:
     """
     def __init__(self, parent_widget: QWidget):
         self.parent = parent_widget
-        self.spinner_manager = SpinnerManager(parent_widget)
+        
+        # Check if parent already has a spinner manager
+        if hasattr(parent_widget, 'spinner_manager') and isinstance(parent_widget.spinner_manager, SpinnerManager):
+            # Reuse the existing spinner manager
+            self.spinner_manager = parent_widget.spinner_manager
+            logger.debug("FeedbackManager reusing existing SpinnerManager")
+        else:
+            # Create a new spinner manager
+            self.spinner_manager = SpinnerManager(parent_widget)
+            logger.debug("FeedbackManager created new SpinnerManager")
+            
         self.progress_dialogs = {}  # Store references to active progress dialogs
         self.ui_state = {} # Track UI elements disabled state
         self.operation_count = 0 # Count of active operations
         
     def start_spinner(self, spinner_name: str) -> bool:
-        """Start a spinner for indeterminate operations."""
+        """Start a spinner for indeterminate operations.
+        
+        Args:
+            spinner_name: The name of the spinner to start
+            
+        Returns:
+            bool: True if spinner was successfully started, False otherwise
+        """
+        # Check if the spinner exists before trying to toggle it
+        if spinner_name not in self.spinner_manager.spinners:
+            logger.error(f"Spinner '{spinner_name}' not found")
+            return False
+            
         return self.spinner_manager.toggle_spinner(spinner_name)
         
-    def stop_spinner(self, spinner_name: str):
-        """Stop a specific spinner."""
+    def stop_spinner(self, spinner_name: str) -> bool:
+        """Stop a specific spinner.
+        
+        Args:
+            spinner_name: The name of the spinner to stop
+            
+        Returns:
+            bool: True if spinner was successfully stopped, False if it was already stopped
+                 or if the spinner doesn't exist
+        """
+        # Check if the spinner exists and is active
+        if spinner_name not in self.spinner_manager.spinners:
+            logger.error(f"Spinner '{spinner_name}' not found")
+            return False
+            
+        if not self.spinner_manager.is_active(spinner_name):
+            # Already stopped, no action needed
+            return True
+            
+        # Stop the spinner and return False (not active anymore)
         self.spinner_manager.set_spinner_state(spinner_name, False)
+        return True
         
     def start_progress(self, operation_id: str, title: str, message: str, 
                       maximum: int = 100, cancelable: bool = True,

@@ -13,7 +13,7 @@ logger = logging.getLogger('transcribrr')
 
 class TranscodingThread(QThread):
     update_progress = pyqtSignal(str)
-    completed = pyqtSignal(list)
+    completed = pyqtSignal(object)
     error = pyqtSignal(str)
 
     def __init__(self, file_path=None, target_format='mp3', chunk_duration=10, chunk_enabled=True, *args, **kwargs):
@@ -33,12 +33,14 @@ class TranscodingThread(QThread):
             if not self._is_canceled:
                 logger.info("Cancellation requested for transcoding thread.")
                 self._is_canceled = True
+                self.requestInterruption()  # Use QThread's built-in interruption
                 # Note: Can't easily interrupt underlying transcoding operations
                 # This will primarily prevent starting new operations
                 
     def is_canceled(self):
+        # Check both the custom flag and QThread's interruption status
         with self._lock:
-            return self._is_canceled
+            return self._is_canceled or self.isInterruptionRequested()
             
     def run(self):
         temp_files = [] # Track temporary files for cleanup in case of cancellation

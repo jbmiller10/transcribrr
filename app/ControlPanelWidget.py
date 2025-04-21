@@ -446,7 +446,7 @@ class ControlPanelWidget(QWidget):
                 message
             )
 
-    def on_transcoding_complete(self, filepath_or_paths):
+    def on_transcoding_complete(self, file_paths):
         """Handle transcoding completion."""
         try:
             # Finish progress dialog
@@ -457,25 +457,25 @@ class ControlPanelWidget(QWidget):
             # Re-enable UI elements
             self.feedback_manager.set_ui_busy(False)
                 
-            if isinstance(filepath_or_paths, list):
+            # Always treat as list since TranscodingThread now always emits lists
+            if not isinstance(file_paths, list):
+                file_paths = [file_paths]
+                
+            num_files = len(file_paths)
+            if num_files > 1:
                 # Multiple chunks produced
-                num_chunks = len(filepath_or_paths)
-                logger.info(f"Transcoding completed. {num_chunks} chunks created.")
+                logger.info(f"Transcoding completed. {num_files} chunks created.")
                 
                 # Show status and emit file ready
-                self.feedback_manager.show_status(f"Ready: {num_chunks} audio chunks")
-                self.file_ready_for_processing.emit(filepath_or_paths)
-                
-            elif isinstance(filepath_or_paths, str):
-                # Single file produced
-                logger.info(f"Transcoding completed. File saved to: {filepath_or_paths}")
-                
-                # Show status and emit file ready
-                self.feedback_manager.show_status(f"Ready: {os.path.basename(filepath_or_paths)}")
-                self.file_ready_for_processing.emit(filepath_or_paths)
-                
+                self.feedback_manager.show_status(f"Ready: {num_files} audio chunks")
             else:
-                self.on_error("Transcoding completed but returned unexpected result type.")
+                # Single file produced
+                logger.info(f"Transcoding completed. File saved to: {file_paths[0]}")
+                
+                # Show status and emit file ready
+                self.feedback_manager.show_status(f"Ready: {os.path.basename(file_paths[0])}")
+                
+            self.file_ready_for_processing.emit(file_paths)
         except Exception as e:
             logger.error(f"Error in transcoding completion handler: {e}")
             self.on_error(f"Failed to complete transcoding: {e}")

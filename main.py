@@ -14,7 +14,7 @@ from PyQt6.QtWidgets import (
     QLabel, QProgressBar, QWidget, QStyleFactory
 )
 from PyQt6.QtGui import QPixmap, QFont, QIcon, QColor
-from PyQt6.QtCore import Qt, QTimer, QSize, QThread, pyqtSignal, QRect
+from PyQt6.QtCore import Qt, QTimer, QSize, QThread, pyqtSignal, pyqtSlot, QRect
 from PyQt6.QtSvg import QSvgRenderer
 from app.MainWindow import MainWindow
 from app.utils import resource_path, check_system_requirements, cleanup_temp_files, ConfigManager, ensure_ffmpeg_available
@@ -56,6 +56,8 @@ class StartupThread(QThread):
     update_progress = pyqtSignal(int, str)
     initialization_done = pyqtSignal(dict)
     error = pyqtSignal(str)
+    apply_theme = pyqtSignal(str)
+    apply_responsive_ui = pyqtSignal(dict)
 
     def __init__(self):
         super().__init__()
@@ -87,18 +89,22 @@ class StartupThread(QThread):
             config_manager = ConfigManager.instance()
             config = config_manager.get_all()
             
-            # Initialize theme manager with config
+            # Signal to initialize theme manager with config (don't call directly from thread)
             self.update_progress.emit(60, "Setting up theme...")
             theme = config.get("theme", "light")
-            ThemeManager.instance().apply_theme(theme)
+            # Emit signal for GUI thread to apply theme
+            self.apply_theme.emit(theme)
             
             # Pre-initialize model manager without loading models
             self.update_progress.emit(70, "Initializing model manager...")
             model_manager = ModelManager.instance()
             
-            # Initialize responsive UI manager
+            # Initialize responsive UI manager via signal
             self.update_progress.emit(80, "Setting up UI manager...")
-            responsive_manager = ResponsiveUIManager.instance()
+            # Don't create the responsive manager in the worker thread
+            # Just send a signal with the parameters for the main thread to handle
+            # We'll emit with dummy size values first - real ones will be set in on_initialization_done
+            self.apply_responsive_ui.emit({"width": 1024, "height": 768})
             
             # Check system requirements
             self.update_progress.emit(90, "Checking system requirements...")
@@ -274,6 +280,22 @@ def create_splash_screen():
     return splash, progress, status
 
 
+@pyqtSlot(str)
+def apply_theme_main_thread(theme):
+    """Apply theme on the main thread"""
+    logger.info(f"Applying theme on main thread: {theme}")
+    ThemeManager.instance().apply_theme(theme)
+
+@pyqtSlot(dict)
+def apply_responsive_ui_main_thread(ui_params):
+    """Apply responsive UI settings on the main thread"""
+    width = ui_params.get("width", 1024)
+    height = ui_params.get("height", 768)
+    logger.info(f"Applying responsive UI on main thread: {width}x{height}")
+    # Fetch the singleton in the main thread
+    responsive_manager = ResponsiveUIManager.instance()
+    responsive_manager.update_size(width, height)
+
 def initialize_app():
     """Initialize the application with proper error handling."""
     try:
@@ -286,10 +308,10 @@ def initialize_app():
         app.setApplicationVersion("1.0.0")
         app.setWindowIcon(QIcon(resource_path('./icons/app/app_icon.svg')))
 
-        # Initialize and apply theme using ThemeManager
+        # Initialize theme manager (defer applying theme until we're signaled)
         theme_manager = ThemeManager.instance()
 
-        # Initialize the responsive UI manager
+        # Initialize the responsive UI manager (defer applying until we're signaled)
         responsive_manager = ResponsiveUIManager.instance()
         
         # Create an event filter to handle window resize events
@@ -313,16 +335,17 @@ def initialize_app():
 
         # Create main window instance (but don't show it yet)
         main_window = MainWindow()
-        
-        # Set initial size for responsive UI manager
-        responsive_manager.update_size(main_window.width(), main_window.height())
 
         # Initialize background startup thread
         global startup_thread
         startup_thread = StartupThread()
+        
+        # Connect signals to main thread handlers
         startup_thread.update_progress.connect(update_splash)
         startup_thread.initialization_done.connect(lambda results: on_initialization_done(results, main_window, splash))
         startup_thread.error.connect(lambda msg: on_initialization_error(msg, main_window, splash))
+        startup_thread.apply_theme.connect(apply_theme_main_thread)
+        startup_thread.apply_responsive_ui.connect(apply_responsive_ui_main_thread)
         
         # Register with ThreadManager before starting
         ThreadManager.instance().register_thread(startup_thread)
@@ -348,6 +371,7 @@ def initialize_app():
         sys.exit(1)
 
 
+@pyqtSlot(dict)
 def on_initialization_done(results: Dict[str, Any], main_window: MainWindow, splash: QSplashScreen) -> None:
     """
     Handle successful initialization.
@@ -366,16 +390,18 @@ def on_initialization_done(results: Dict[str, Any], main_window: MainWindow, spl
         QMessageBox.warning(main_window, "Missing Dependency",
                           "PyAudio is not properly installed. Recording functionality may not work.")
 
-    # Set application theme from config
+    # Log configuration information
     if "config" in results:
-        theme = results["config"].get("theme", "light")
-        ThemeManager.instance().apply_theme(theme)
-        
-        # Log configuration information
         logger.info(f"Loaded configuration with {len(results['config'])} settings")
-        logger.info(f"Theme: {theme}")
+        logger.info(f"Theme: {results['config'].get('theme', 'light')}")
         logger.info(f"Transcription model: {results['config'].get('transcription_quality', 'Not set')}")
         logger.info(f"Transcription method: {results['config'].get('transcription_method', 'local')}")
+
+    # Apply responsive UI sizing on the main thread
+    if main_window:
+        # Apply responsive UI scaling based on main window dimensions
+        responsive_manager = ResponsiveUIManager.instance()
+        responsive_manager.update_size(main_window.width(), main_window.height())
 
     # Log system information
     logger.info(f"Application started")
@@ -393,6 +419,7 @@ def on_initialization_done(results: Dict[str, Any], main_window: MainWindow, spl
     ))
 
 
+@pyqtSlot(str)
 def on_initialization_error(error_message, main_window, splash):
     """Handle initialization errors."""
     # Close splash screen

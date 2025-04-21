@@ -3,6 +3,7 @@ import os
 import traceback
 import keyring
 import torch
+import logging
 from PyQt6.QtWidgets import (
     QWidget, QVBoxLayout, QMessageBox, QComboBox, QHBoxLayout, QLabel,
     QSizePolicy, QTextEdit, QDoubleSpinBox, QSpinBox, QSplitter, QPushButton,
@@ -57,7 +58,7 @@ class MainTranscriptionWidget(ResponsiveWidget):
         # UI feedback managers
         self.spinner_manager = SpinnerManager(self) # For backward compatibility
         self.feedback_manager = FeedbackManager(self) # Centralized feedback management
-
+        
         # State variables
         self.is_editing_existing_prompt = False
         # self.file_path = None # Stored within current_recording_data
@@ -104,6 +105,10 @@ class MainTranscriptionWidget(ResponsiveWidget):
             self.transcript_text.gpt4_processing_requested.connect(self.start_gpt4_processing)
             self.transcript_text.smart_format_requested.connect(self.start_smart_format_processing)
             self.transcript_text.save_requested.connect(self.save_editor_state)
+            
+            # Expose our status update signals to TextEditor's status bar
+            # This fixes the "Cannot show status message" warnings
+            self.status_update.connect(lambda msg: self.transcript_text.show_status_message(msg))
 
         # Connect toolbar signals
         if hasattr(self, 'mode_switch'):
@@ -197,6 +202,39 @@ class MainTranscriptionWidget(ResponsiveWidget):
         # Main text editor - now with integrated transcription actions in its toolbar
         self.transcript_text = TextEditor() # The rich text editor
         editor_layout.addWidget(self.transcript_text)
+        
+        # Register spinners for toolbar buttons
+        self.spinner_manager.create_spinner(
+            name='transcribe',
+            toolbar=self.transcript_text.toolbar,
+            action_icon=resource_path('./icons/transcribe.svg'),
+            action_tooltip='Start Transcription',
+            callback=self.transcript_text.start_transcription
+        )
+        
+        self.spinner_manager.create_spinner(
+            name='gpt_process',
+            toolbar=self.transcript_text.toolbar,
+            action_icon=resource_path('./icons/magic_wand.svg'),
+            action_tooltip='Process with GPT-4',
+            callback=self.transcript_text.process_with_gpt4
+        )
+        
+        self.spinner_manager.create_spinner(
+            name='smart_format',
+            toolbar=self.transcript_text.toolbar,
+            action_icon=resource_path('./icons/smart_format.svg'),
+            action_tooltip='Smart Format',
+            callback=self.transcript_text.smart_format_text
+        )
+        
+        self.spinner_manager.create_spinner(
+            name='refinement',
+            toolbar=self.transcript_text.toolbar,
+            action_icon=resource_path('./icons/quill.svg'),
+            action_tooltip='Refine Text',
+            callback=self.start_refinement_processing
+        )
         
         # Add the editor widget to the main content layout
         content_layout.addWidget(editor_widget)
@@ -469,8 +507,21 @@ class MainTranscriptionWidget(ResponsiveWidget):
         
         # Setup feedback
         self.feedback_manager.set_ui_busy(True, ui_elements)  
-        self.feedback_manager.start_spinner('transcribe')  # Start spinner animation
+        # Start spinner animation and check the result
+        spinner_active = self.feedback_manager.start_spinner('transcribe')
+        assert spinner_active, "Spinner 'transcribe' failed to start"
         self.feedback_manager.show_status("Starting transcription...")
+        
+        # Create progress dialog for transcription
+        self.transcription_progress_id = 'transcription'
+        self.feedback_manager.start_progress(
+            self.transcription_progress_id,
+            "Transcription Progress",
+            f"Transcribing {os.path.basename(file_path)}...",
+            maximum=100,  # Use determinate progress if possible
+            cancelable=True,
+            cancel_callback=lambda: self.cancel_transcription()
+        )
         
         # Emit signals
         self.status_update.emit("Starting transcription...")
@@ -527,6 +578,13 @@ class MainTranscriptionWidget(ResponsiveWidget):
 
         return elements
         
+    def cancel_transcription(self):
+        """Cancel an ongoing transcription operation."""
+        if self.transcription_thread and self.transcription_thread.isRunning():
+            logger.info("User requested cancellation of transcription")
+            self.transcription_thread.cancel()
+            self.feedback_manager.show_status("Cancelling transcription...")
+            
     def on_transcription_progress(self, message):
         """Handle progress updates from transcription thread."""
         self.status_update.emit(message)  # Forward to status bar
@@ -548,6 +606,14 @@ class MainTranscriptionWidget(ResponsiveWidget):
                         return
             except (ValueError, IndexError):
                 pass  # If parsing fails, treat as indeterminate
+                
+        # For messages without specific progress percentage, just update the message
+        if hasattr(self, 'transcription_progress_id'):
+            self.feedback_manager.update_progress(
+                self.transcription_progress_id,
+                0,  # Keep current progress value
+                message
+            )
 
     def on_transcription_completed(self, transcript):
         if not self.current_recording_data: return # Recording deselected during process
@@ -569,6 +635,14 @@ class MainTranscriptionWidget(ResponsiveWidget):
 
         self.mode_switch.setValue(0) # Show raw view
         self.status_update.emit("Transcription complete. Saving...")
+        
+        # Update progress dialog
+        if hasattr(self, 'transcription_progress_id'):
+            self.feedback_manager.update_progress(
+                self.transcription_progress_id,
+                90,  # Show almost complete
+                "Transcription finished. Saving to database..."
+            )
 
         # Define callback for when database update completes
         def on_update_complete():
@@ -579,6 +653,14 @@ class MainTranscriptionWidget(ResponsiveWidget):
             # Check if the refinement widget should be hidden (likely yes after raw transcription)
             self.refinement_widget.setVisible(False)
             logger.info(f"Transcription saved for recording ID: {recording_id}")
+            
+            # Update progress to 100%
+            if hasattr(self, 'transcription_progress_id'):
+                self.feedback_manager.update_progress(
+                    self.transcription_progress_id,
+                    100,  # Fully complete
+                    "Transcription saved successfully!"
+                )
             
             # Emit signal to update UI in other components
             status_updates = {
@@ -604,9 +686,19 @@ class MainTranscriptionWidget(ResponsiveWidget):
         # Update status feedback
         self.status_update.emit(f"Transcription failed: {error_message}")
         
-        # Make sure spinner is hidden and progress indicator is cleared, if any
+        # Make sure spinner is hidden and progress indicator is closed
         if hasattr(self, 'transcription_progress_id'):
+            # Show error message in progress dialog before closing it
+            self.feedback_manager.update_progress(
+                self.transcription_progress_id,
+                0,
+                f"Error: {error_message}"
+            )
             self.feedback_manager.close_progress(self.transcription_progress_id)
+        
+        # Immediately re-enable UI elements
+        self.feedback_manager.stop_spinner('transcribe')
+        self.feedback_manager.set_ui_busy(False)
             
         # no need to call finished manually, it will be called
 
@@ -619,7 +711,19 @@ class MainTranscriptionWidget(ResponsiveWidget):
         # Clean up feedback indicators
         self.feedback_manager.stop_spinner('transcribe')  
         if hasattr(self, 'transcription_progress_id'):
-            self.feedback_manager.close_progress(self.transcription_progress_id)
+            # Show brief completion message before closing the dialog
+            if self.transcription_thread and not self.transcription_thread.is_canceled():
+                self.feedback_manager.finish_progress(
+                    self.transcription_progress_id,
+                    "Transcription complete!",
+                    auto_close=True,
+                    delay=1000  # Show completion for 1 second
+                )
+            else:
+                # Immediate close for cancellation
+                self.feedback_manager.close_progress(self.transcription_progress_id)
+            
+            # Clean up the progress dialog ID
             delattr(self, 'transcription_progress_id')
         
         # Re-enable UI elements
@@ -665,7 +769,9 @@ class MainTranscriptionWidget(ResponsiveWidget):
         
         # Setup feedback
         self.feedback_manager.set_ui_busy(True, ui_elements)
-        self.feedback_manager.start_spinner('gpt_process')  # Start spinner animation
+        # Start spinner animation and check the result
+        spinner_active = self.feedback_manager.start_spinner('gpt_process')
+        assert spinner_active, "Spinner 'gpt_process' failed to start"
         self.feedback_manager.show_status(f"Starting GPT processing with {gpt_model}...")
         
         # Create indeterminate progress dialog for GPT
@@ -809,6 +915,10 @@ class MainTranscriptionWidget(ResponsiveWidget):
             self.transcript_text.toggle_spinner('gpt')
             self.transcript_text.toggle_spinner('transcription')
         
+        # Immediately re-enable UI elements
+        self.feedback_manager.stop_spinner('gpt_process')
+        self.feedback_manager.set_ui_busy(False)
+        
         # Finished signal will handle cleanup
 
     def on_gpt4_processing_finished(self):
@@ -853,7 +963,9 @@ class MainTranscriptionWidget(ResponsiveWidget):
         # Setup feedback
         ui_elements = self.get_gpt_ui_elements()
         self.feedback_manager.set_ui_busy(True, ui_elements)
-        self.feedback_manager.start_spinner('smart_format')
+        # Start spinner animation and check the result
+        spinner_active = self.feedback_manager.start_spinner('smart_format')
+        assert spinner_active, "Spinner 'smart_format' failed to start"
         self.feedback_manager.show_status(f"Starting smart formatting with {gpt_model}...")
         
         # Create progress indicator
@@ -881,7 +993,7 @@ class MainTranscriptionWidget(ResponsiveWidget):
         )
         self.gpt4_smart_format_thread.completed.connect(self.on_smart_format_completed)
         self.gpt4_smart_format_thread.update_progress.connect(self.on_smart_format_progress)
-        self.gpt4_smart_format_thread.error.connect(self.on_gpt4_processing_error) # Reuse error handler
+        self.gpt4_smart_format_thread.error.connect(self.on_smart_format_error)
         self.gpt4_smart_format_thread.finished.connect(self.on_smart_format_finished)
         
         # Register thread with ThreadManager
@@ -905,6 +1017,22 @@ class MainTranscriptionWidget(ResponsiveWidget):
                 0,  # Still indeterminate
                 message
             )
+    
+    def on_smart_format_error(self, error_message):
+        """Handle errors from smart format thread."""
+        # Show error to user
+        show_error_message(self, 'Smart Format Error', error_message)
+        
+        # Update status
+        self.status_update.emit(f"Smart formatting failed: {error_message}")
+        
+        # Reset feedback
+        if hasattr(self, 'smart_format_progress_id'):
+            self.feedback_manager.close_progress(self.smart_format_progress_id)
+            
+        # Immediately re-enable UI elements
+        self.feedback_manager.stop_spinner('smart_format')
+        self.feedback_manager.set_ui_busy(False)
             
     def on_smart_format_finished(self):
         """Called when smart formatting thread finishes."""
@@ -1026,7 +1154,9 @@ class MainTranscriptionWidget(ResponsiveWidget):
         # Set up feedback
         ui_elements = self.get_gpt_ui_elements() + [self.refinement_input, self.refinement_submit_button]
         self.feedback_manager.set_ui_busy(True, ui_elements)
-        self.feedback_manager.start_spinner('refinement')
+        # Start spinner animation and check the result
+        spinner_active = self.feedback_manager.start_spinner('refinement')
+        assert spinner_active, "Spinner 'refinement' failed to start"
         self.feedback_manager.show_status("Starting refinement processing...")
         
         # Create progress indicator
@@ -1093,6 +1223,10 @@ class MainTranscriptionWidget(ResponsiveWidget):
         # Reset feedback
         if hasattr(self, 'refinement_progress_id'):
             self.feedback_manager.close_progress(self.refinement_progress_id)
+            
+        # Immediately re-enable UI elements
+        self.feedback_manager.stop_spinner('refinement')
+        self.feedback_manager.set_ui_busy(False)
         
     def on_refinement_finished(self):
         """Called when refinement thread finishes."""

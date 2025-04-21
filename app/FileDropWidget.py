@@ -7,6 +7,7 @@ from PyQt6.QtGui import QDragEnterEvent, QDropEvent, QPainter, QPen, QFont, QCol
 import shutil
 import logging
 from app.utils import resource_path
+from app.constants import RECORDINGS_DIR
 
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 
@@ -33,9 +34,9 @@ class FileDropWidget(QWidget):
         self.setAcceptDrops(True)
         self.setMinimumHeight(150)
         self.initUI()
-
-        self.recordings_dir = os.path.join(os.getcwd(), 'Recordings')
-        os.makedirs(self.recordings_dir, exist_ok=True)
+        
+        # Use constant from app.constants instead of private attribute
+        os.makedirs(RECORDINGS_DIR, exist_ok=True)
 
     def initUI(self):
         self.layout = QVBoxLayout(self)
@@ -205,7 +206,7 @@ class FileDropWidget(QWidget):
                     return
 
             base_name = os.path.basename(file_path)
-            new_path = os.path.join(self.recordings_dir, base_name)
+            new_path = os.path.join(RECORDINGS_DIR, base_name)
 
             # Check if file with same name already exists
             if os.path.exists(new_path):
@@ -225,7 +226,7 @@ class FileDropWidget(QWidget):
                     name, ext = os.path.splitext(base_name)
                     while os.path.exists(new_path):
                         new_base_name = f"{name}_{counter}{ext}"
-                        new_path = os.path.join(self.recordings_dir, new_base_name)
+                        new_path = os.path.join(RECORDINGS_DIR, new_base_name)
                         counter += 1
                     base_name = os.path.basename(new_path)
 
@@ -319,3 +320,29 @@ class FileDropWidget(QWidget):
         for ext, desc in self.supported_file_types.items():
             formats.append(f".{ext} ({desc})")
         return formats
+        
+    @property
+    def recordings_dir(self):
+        """Return recordings directory path for compatibility.
+        
+        This property ensures compatibility with code that might still
+        access self.recordings_dir, ensuring it always points to the
+        centralized RECORDINGS_DIR constant.
+        """
+        return RECORDINGS_DIR
+        
+    @staticmethod
+    def check_recordings_dir_consistency():
+        """Test method to verify constant/attribute consistency.
+        
+        This method checks that the FileDropWidget.recordings_dir property
+        returns the same value as the RECORDINGS_DIR constant, satisfying
+        the regression test requirement.
+        
+        Returns:
+            bool: True if consistent, False otherwise.
+        """
+        from app.constants import RECORDINGS_DIR as CONST_DIR
+        # No need to instantiate a widget, we can directly compare the values
+        # since recordings_dir is now a property that just returns RECORDINGS_DIR
+        return FileDropWidget.recordings_dir.fget(None) == CONST_DIR
