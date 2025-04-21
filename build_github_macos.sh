@@ -75,8 +75,9 @@ export PATH="$DIR/bin:$PATH"
 
 export SSL_CERT_FILE="$RESOURCES_DIR/cacert.pem"
 
-# Activate the virtual environment using source
-source "$RESOURCES_DIR/python/bin/activate"
+# Use embedded Python framework
+PY_VER=3.9
+PY="@executable_path/../Frameworks/Python.framework/Versions/$PY_VER/bin/python3"
 
 # Create a user-writable log directory in ~/Library/Application Support
 APP_SUPPORT_DIR="$HOME/Library/Application Support/Transcribrr"
@@ -92,17 +93,15 @@ echo "Starting application at $(date)" > "$APP_LOGS_DIR/launch.log"
 echo "RESOURCES_DIR: $RESOURCES_DIR" >> "$APP_LOGS_DIR/launch.log" 
 echo "APP_SUPPORT_DIR: $APP_SUPPORT_DIR" >> "$APP_LOGS_DIR/launch.log"
 echo "PYTHONPATH: $PYTHONPATH" >> "$APP_LOGS_DIR/launch.log"
-echo "Python executable: $(which python3)" >> "$APP_LOGS_DIR/launch.log"
-echo "Python version: $(python3 --version)" >> "$APP_LOGS_DIR/launch.log"
-echo "Available modules:" >> "$APP_LOGS_DIR/launch.log"
-python3 -c "help('modules')" >> "$APP_LOGS_DIR/launch.log" 2>&1
+echo "Python executable: $PY" >> "$APP_LOGS_DIR/launch.log"
+echo "Python version: $($PY --version)" >> "$APP_LOGS_DIR/launch.log" 2>&1
 
 # Set environment variable to tell the app to use the user data directory
 export TRANSCRIBRR_USER_DATA_DIR="$APP_SUPPORT_DIR"
 
 # Launch the app with Python
 cd "$RESOURCES_DIR"  # Change to resources directory before launching
-exec python3 "$RESOURCES_DIR/main.py"
+exec "$PY" "$RESOURCES_DIR/main.py"
 EOF
 
 # Make the launcher executable
@@ -131,15 +130,18 @@ cp config.json "${APP_DIR}/Contents/Resources/"
 cp preset_prompts.json "${APP_DIR}/Contents/Resources/"
 cp main.py "${APP_DIR}/Contents/Resources/"
 
-# Create a virtual environment in the Resources directory
-echo "Creating virtual environment..."
-python3 -m venv "${APP_DIR}/Contents/Resources/python"
+# Copy Python framework
+PY_VER=3.9
+echo "Copying Python framework..."
+FW_SRC="$(brew --prefix)/Frameworks/Python.framework"
+FW_DST="${APP_DIR}/Contents/Frameworks/Python.framework"
+cp -R "$FW_SRC" "$FW_DST"
 
-# Install dependencies in the virtual environment
+# Install dependencies using the embedded Python
 echo "Installing dependencies..."
-"${APP_DIR}/Contents/Resources/python/bin/pip" install --upgrade pip
-"${APP_DIR}/Contents/Resources/python/bin/pip" install PyQt6 PyQt6-Qt6 appdirs colorlog
-"${APP_DIR}/Contents/Resources/python/bin/pip" install -r requirements.txt
+"${APP_DIR}/Contents/Frameworks/Python.framework/Versions/$PY_VER/bin/pip3" install --upgrade pip
+"${APP_DIR}/Contents/Frameworks/Python.framework/Versions/$PY_VER/bin/pip3" install PyQt6 PyQt6-Qt6 appdirs colorlog
+"${APP_DIR}/Contents/Frameworks/Python.framework/Versions/$PY_VER/bin/pip3" install -r requirements.txt
 
 # Download CA certificates
 echo "Downloading CA certificates..."
