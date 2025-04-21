@@ -44,6 +44,22 @@ if %INSTALL_CUDA% == 1 (
 )
 echo.
 
+:: Create ICO file for installer if it doesn't exist
+echo --- Checking Icon Files ---
+if not exist "icons\app\app_icon.ico" (
+    echo Creating ICO file from SVG...
+    %PYTHON_EXECUTABLE% -m pip install cairosvg Pillow
+    %PYTHON_EXECUTABLE% create_ico.py
+    if %ERRORLEVEL% NEQ 0 (
+        echo Warning: Failed to create ICO file. Continuing without app icon.
+    ) else (
+        echo ICO file created successfully.
+    )
+) else (
+    echo ICO file already exists.
+)
+echo.
+
 :: Check if Python is installed
 echo --- Checking Python ---
 %PYTHON_EXECUTABLE% --version >nul 2>&1

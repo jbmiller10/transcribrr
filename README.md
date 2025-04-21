@@ -17,7 +17,18 @@ Transcribrr is a desktop application designed for converting audio into text and
 
 ## Installation
 
-### Prerequisites
+### Pre-built Installers (Recommended)
+
+Download the latest release from the [GitHub Releases](https://github.com/jbmiller10/transcribrr/releases) page:
+
+- **Windows**: Choose between:
+  - `Transcribrr-windows-cpu-setup.exe` - Standard version
+  - `Transcribrr-windows-cuda-setup.exe` - Version with CUDA support for GPU acceleration
+- **macOS**: Download the `Transcribrr-macOS.zip` file and extract the application
+
+### Manual Installation
+
+#### Prerequisites
 
 Ensure you have the following before installing the application:
 
@@ -25,7 +36,7 @@ Ensure you have the following before installing the application:
 - [Cuda 11.8 or higher](https://docs.nvidia.com/cuda/cuda-quick-start-guide/index.html) (optional for GPU acceleration)
 - [FFmpeg](https://ffmpeg.org/download.html)
 
-### Clone the Repository
+#### Clone the Repository
 
 Clone the project repository to your local machine:
 

@@ -97,12 +97,29 @@ jobs:
             .\build_windows_app.bat
           )
 
-      - name: Compress artefact
+      - name: Install Inno Setup
         shell: pwsh
         run: |
-          Write-Host "Checking dist directory contents:"
-          Get-ChildItem -Path dist -Recurse | ForEach-Object { Write-Host $_.FullName }
+          # Download Inno Setup installer
+          $innoSetupUrl = "https://files.jrsoftware.org/is/6/innosetup-6.2.2.exe"
+          $innoSetupInstaller = "$env:TEMP\innosetup-installer.exe"
           
+          Write-Host "Downloading Inno Setup..."
+          Invoke-WebRequest -Uri $innoSetupUrl -OutFile $innoSetupInstaller
+          
+          # Install Inno Setup silently
+          Write-Host "Installing Inno Setup..."
+          Start-Process -FilePath $innoSetupInstaller -ArgumentList "/VERYSILENT /SUPPRESSMSGBOXES /NORESTART /SP-" -Wait
+          
+          # Add Inno Setup to PATH
+          $innoSetupPath = "C:\Program Files (x86)\Inno Setup 6"
+          Write-Host "Adding Inno Setup to PATH: $innoSetupPath"
+          $env:PATH = "$env:PATH;$innoSetupPath"
+          [Environment]::SetEnvironmentVariable("PATH", $env:PATH, "Machine")
+
+      - name: Create Windows Installer
+        shell: pwsh
+        run: |
           $flavor = "${{ matrix.flavour }}"
           $outputPath = "dist\Transcribrr_$flavor"
           
@@ -117,12 +134,37 @@ jobs:
             }
           }
           
+          # Ensure installer directory exists
+          if (-Not (Test-Path "installer")) {
+            Write-Host "Creating installer directory"
+            New-Item -ItemType Directory -Path "installer"
+          }
+          
+          Write-Host "Creating Windows installer for $flavor build..."
+          & "C:\Program Files (x86)\Inno Setup 6\ISCC.exe" /DFlavour=$flavor "installer\transcribrr_setup.iss"
+          
+          # Check if installer was created successfully
+          if (Test-Path "dist\Transcribrr-windows-$flavor-setup.exe") {
+            Write-Host "Installer created successfully."
+          } else {
+            Write-Host "Error: Installer creation failed."
+            exit 1
+          }
+          
+          # Also create zip archive for backward compatibility or those who prefer portable versions
+          Write-Host "Creating zip archive of application directory..."
           Compress-Archive -Path $outputPath -DestinationPath "dist\Transcribrr-windows-$flavor.zip" -Force
 
-      - name: Upload artefact (windows-${{ matrix.flavour }})
+      - name: Upload installer artifact
         uses: actions/upload-artifact@v4
         with:
-          name: Transcribrr_windows_${{ matrix.flavour }}
+          name: Transcribrr_windows_${{ matrix.flavour }}_installer
+          path: dist/Transcribrr-windows-${{ matrix.flavour }}-setup.exe
+          
+      - name: Upload portable app artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: Transcribrr_windows_${{ matrix.flavour }}_portable
           path: dist/Transcribrr-windows-${{ matrix.flavour }}.zip
 
   # ────────────────────────────────────────────────────────────
@@ -143,5 +185,7 @@ jobs:
           draft: false
           files: |
             Transcribrr_macOS/Transcribrr-macOS.zip
-            Transcribrr_windows_cpu/Transcribrr-windows-cpu.zip
-            Transcribrr_windows_cuda/Transcribrr-windows-cuda.zip
+            Transcribrr_windows_cpu_installer/Transcribrr-windows-cpu-setup.exe
+            Transcribrr_windows_cuda_installer/Transcribrr-windows-cuda-setup.exe
+            Transcribrr_windows_cpu_portable/Transcribrr-windows-cpu.zip
+            Transcribrr_windows_cuda_portable/Transcribrr-windows-cuda.zip
