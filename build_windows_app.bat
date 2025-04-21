@@ -20,7 +20,7 @@ echo Building %APP_NAME% version %VERSION% for Windows...
 
 :: Default values
 set INSTALL_CUDA=0
-set PYTHON_EXECUTABLE=py -3.9-64
+set PYTHON_EXECUTABLE=python
 
 :: --- Argument Parsing ---
 :ArgLoop
