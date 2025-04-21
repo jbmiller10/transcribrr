@@ -12,8 +12,8 @@ name: Build Transcribrr executables
 #   • build_windows_app.bat
 #
 # The workflow simply invokes those scripts on the appropriate
-# GitHub Actions runners and uploads the resulting artefacts so they can
-# be downloaded from the “Actions” tab or attached to a release later.
+# GitHub Actions runners and uploads the resulting artefacts so they can
+# be downloaded from the "Actions" tab or attached to a release later.
 # -------------------------------------------------------------------
 
 on:
@@ -87,6 +87,94 @@ jobs:
         with:
           python-version: ${{ env.PYTHON_VERSION }}
 
+      - name: Install Python dependencies for icon creation
+        run: |
+          python -m pip install pillow
+
+      - name: Create Inno Setup compatible icon
+        shell: pwsh
+        run: |
+          # Create a simple script that creates an Inno Setup compatible ICO file
+          # Inno Setup requires the first image in ICO to be large (128x256 or 256x256)
+          $iconScript = @"
+          from PIL import Image
+          import os
+
+          def create_inno_compatible_ico(output_path, sizes=[256, 128, 64, 48, 32, 24, 16]):
+              # Create a simple colored square icon with "T" in the middle
+              # Start with the largest size (crucial for Inno Setup)
+              icons = []
+              
+              for size in sizes:
+                  # Create a new RGBA image with transparent background
+                  img = Image.new('RGBA', (size, size), color=(0, 0, 0, 0))
+                  
+                  # Draw a filled blue circle
+                  from PIL import ImageDraw
+                  draw = ImageDraw.Draw(img)
+                  padding = size // 10
+                  draw.ellipse(
+                      [padding, padding, size - padding, size - padding],
+                      fill=(48, 87, 255, 255)  # Blue color
+                  )
+                  
+                  # Add text "T" in white
+                  from PIL import ImageFont
+                  try:
+                      # Try to use Arial font
+                      font_size = size // 2
+                      font = ImageFont.truetype("arial.ttf", font_size)
+                  except:
+                      # Fall back to default font
+                      font = ImageFont.load_default()
+                      
+                  # Position text in center
+                  text = "T"
+                  text_width = font_size * 0.6  # approximate
+                  text_height = font_size
+                  position = ((size - text_width) // 2, (size - text_height) // 2)
+                  draw.text(position, text, fill=(255, 255, 255, 255), font=font)
+                  
+                  icons.append(img)
+              
+              # Save as ICO with all sizes
+              # Make sure to make the first/largest one appear first in the file
+              icons[0].save(
+                  output_path,
+                  format='ICO',
+                  sizes=[(img.width, img.height) for img in icons],
+                  append_images=icons[1:]
+              )
+              print(f"Created Inno Setup compatible ICO at {output_path}")
+
+          # Output path
+          script_dir = os.path.dirname(os.path.abspath(__file__))
+          ico_path = os.path.join(script_dir, "icons", "app", "app_icon.ico")
+          os.makedirs(os.path.dirname(ico_path), exist_ok=True)
+          
+          # Create the icon
+          create_inno_compatible_ico(ico_path)
+          "@ 
+          
+          # Write to a temporary Python file
+          $iconScript | Out-File -FilePath "create_inno_icon.py" -Encoding utf8
+          
+          # Run the Python script
+          python create_inno_icon.py
+          
+          # Verify the ICO file was created 
+          if (Test-Path "icons\app\app_icon.ico") {
+              $fileInfo = Get-Item "icons\app\app_icon.ico"
+              Write-Host "ICO file created successfully: $($fileInfo.Length) bytes"
+              if ($fileInfo.Length -lt 100) {
+                  Write-Error "ICO file is too small and likely invalid"
+                  exit 1
+              }
+          } else {
+              Write-Error "Failed to create ICO file"
+              exit 1
+          }
+
       - name: Build (flavour=${{ matrix.flavour }})
         shell: cmd
         run: |
@@ -117,55 +205,6 @@ jobs:
           $env:PATH = "$env:PATH;$innoSetupPath"
           [Environment]::SetEnvironmentVariable("PATH", $env:PATH, "Machine")
 
-      - name: Create Windows icon directly from SVG using rsvg-convert
-        shell: pwsh
-        run: |
-          # Create a simple PowerShell script to create the ICO file
-          # This avoids Cairo dependency issues on Windows
-          $iconScript = @"
-          # Convert SVG to PNG using ImageMagick
-          Add-Type -AssemblyName System.Drawing
-          
-          # Define paths
-          `$svgPath = "icons\app\app_icon.svg"
-          `$icoPath = "icons\app\app_icon.ico"
-          
-          # Use System.Drawing to create a basic icon
-          # This is a fallback that creates a simple icon from scratch
-          `$bmp = New-Object System.Drawing.Bitmap 64, 64
-          `$g = [System.Drawing.Graphics]::FromImage(`$bmp)
-          `$g.Clear([System.Drawing.Color]::Transparent)
-          `$g.DrawString("T", (New-Object System.Drawing.Font "Arial", 40), [System.Drawing.Brushes]::DarkBlue, 10, 5)
-          `$g.Dispose()
-          
-          # Save as icon
-          `$ico = New-Object System.IO.FileStream `$icoPath, 'Create'
-          `$bmp.Save(`$ico, [System.Drawing.Imaging.ImageFormat]::Icon)
-          `$ico.Close()
-          `$bmp.Dispose()
-          
-          if (Test-Path `$icoPath) {
-              Write-Host "Basic ICO file created successfully"
-          } else {
-              Write-Host "Failed to create ICO file"
-              exit 1
-          }
-          "@
-          
-          # Write the script to a file
-          $iconScript | Out-File -FilePath "create_basic_ico.ps1"
-          
-          # Run the script
-          & powershell -File "create_basic_ico.ps1"
-          
-          # Verify the ico file was created
-          if (Test-Path "icons\app\app_icon.ico") {
-            Write-Host "ICO file created successfully."
-          } else {
-            Write-Host "Error: ICO file creation failed."
-            exit 1
-          }
-
       - name: Create Windows Installer
         shell: pwsh
         run: |
@@ -188,6 +227,15 @@ jobs:
             Write-Host "Creating installer directory"
             New-Item -ItemType Directory -Path "installer"
           }
+          
+          # Verify the ico file exists before running the installer
+          if (-Not (Test-Path "icons\app\app_icon.ico")) {
+            Write-Host "Error: Icon file does not exist!"
+            exit 1
+          }
+          
+          $icoFileSize = (Get-Item "icons\app\app_icon.ico").Length
+          Write-Host "ICO file size: $icoFileSize bytes"
           
           Write-Host "Creating Windows installer for $flavor build..."
           & "C:\Program Files (x86)\Inno Setup 6\ISCC.exe" /DFlavour=$flavor "installer\transcribrr_setup.iss"
