@@ -19,7 +19,6 @@ logger = logging.getLogger('transcribrr')
 
 
 def ensure_database_exists() -> None:
-    """Init database and tables."""
     conn = None
     try:
         conn = get_connection()
@@ -42,7 +41,6 @@ def ensure_database_exists() -> None:
 
 
 def create_config_file() -> None:
-    """Create config file."""
     try:
         with open(CONFIG_PATH, 'w') as config_file:
             json.dump(DEFAULT_CONFIG, config_file, indent=4)
@@ -67,7 +65,6 @@ def get_connection() -> sqlite3.Connection:
 
 # --- Table Creation ---
 def create_recordings_table(conn: sqlite3.Connection) -> None:
-    """Create recordings table."""
     sql_create_recordings_table = f"""
     CREATE TABLE IF NOT EXISTS {TABLE_RECORDINGS} (
         {FIELD_ID} INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -96,7 +93,6 @@ def create_recordings_table(conn: sqlite3.Connection) -> None:
 
 
 def create_folders_table(conn: sqlite3.Connection) -> None:
-    """Create folders table."""
     sql_create_folders_table = """
     CREATE TABLE IF NOT EXISTS folders (
         id INTEGER PRIMARY KEY,
@@ -117,7 +113,6 @@ def create_folders_table(conn: sqlite3.Connection) -> None:
 
 
 def create_recording_folders_table(conn: sqlite3.Connection) -> None:
-    """Create recording_folders table."""
     sql_create_recording_folders_table = """
     CREATE TABLE IF NOT EXISTS recording_folders (
         recording_id INTEGER NOT NULL,

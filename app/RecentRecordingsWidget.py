@@ -1211,7 +1211,6 @@ Args:
         event.acceptProposedAction()
 
     def is_loading(self):
-        """Check the loading flag."""
         return getattr(self, '_is_loading', False)
         
     def refresh_all_folders(self):
@@ -1258,8 +1257,7 @@ Args:
         logger.debug("Folder refresh complete")
         
     def _clear_folder_recordings(self, folder_item):
-        """Properly remove all recording items from a folder.
-        
+        """
         Args:
             folder_item: The folder item to clear recordings from
         """

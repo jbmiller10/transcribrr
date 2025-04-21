@@ -40,7 +40,6 @@ class ResponsiveWidget(QWidget):
         self.setSizePolicy(ResponsiveSizePolicy.expanding())
         
     def createLayout(self, orientation=Qt.Orientation.Vertical, margins=(8, 8, 8, 8)):
-        """Create layout with margins."""
         if orientation == Qt.Orientation.Vertical:
             layout = QVBoxLayout(self)
         else:

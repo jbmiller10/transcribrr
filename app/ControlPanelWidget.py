@@ -173,7 +173,6 @@ class ControlPanelWidget(QWidget):
 
     # --- Progress and Status Updates ---
     def show_progress(self, message):
-        """Show progress."""
         self.progress_label.setText(message)
         self.progress_bar.setRange(0, 0) # Indeterminate
         self.progress_bar.setValue(-1) # For some styles

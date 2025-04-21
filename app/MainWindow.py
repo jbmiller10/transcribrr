@@ -207,7 +207,6 @@ Args:
         logger.debug(f"Status bar updated: {message}")
         
     def _find_and_select_recording_item(self, parent_item, recording_id):
-        """Recursively search for and select a recording item by ID."""
         # First check this item
         item_data = parent_item.data(0, Qt.ItemDataRole.UserRole)
         if item_data and item_data.get("type") == "recording" and item_data.get("id") == recording_id:

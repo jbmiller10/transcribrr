@@ -10,7 +10,6 @@ logger = logging.getLogger('transcribrr')
 class ThemeManager:
     """Manage app themes."""
     
-    # Singleton instance
     _instance = None
     
     @classmethod
@@ -101,7 +100,6 @@ class ThemeManager:
             'overlay': 'rgba(0, 0, 0, 0.25)',
         }
         
-        # Current theme
         self.current_theme = 'light'
         self.current_variables = {}
         self.current_stylesheet = ""

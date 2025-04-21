@@ -54,7 +54,6 @@ class EditableLineEdit(QLineEdit):
               super().keyPressEvent(event)
 
     def setReadOnly(self, readOnly):
-        """Store original text on edit start."""
         if not readOnly and self.isReadOnly(): # Transitioning to editable
              self._original_text = self.text()
         super().setReadOnly(readOnly)
@@ -128,7 +127,6 @@ class RecordingListItem(QWidget):
         self.timer = self.startTimer(60000) # Update every minute
 
     def timerEvent(self, event):
-        """Update relative time."""
         self.update_relative_time()
         event.accept()
 
