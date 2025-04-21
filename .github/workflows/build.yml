@@ -91,6 +91,17 @@ jobs:
         run: |
           python -m pip install pillow
 
+      - name: Install CUDA/VC++ runtimes for build script access
+        if: matrix.flavour == 'cuda'
+        shell: pwsh
+        run: |
+          Write-Host "Installing cuDNN and VC++ Redistributable..."
+          choco install cudnn --version=8.9.7 -y # Or latest compatible 8.x
+          choco install vcredist140 -y # Installs VC++ 2015-2022 Redist
+          # Add paths if needed (Choco usually handles this, but double-check)
+          # $env:PATH = "$env:PATH;C:\Program Files\NVIDIA GPU Computing Toolkit\CUDA\v11.8\bin" # Adjust path as needed
+          # [Environment]::SetEnvironmentVariable("PATH", $env:PATH, "Machine")
+
       - name: Create Inno Setup compatible icon
         shell: pwsh
         run: |

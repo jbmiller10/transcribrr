@@ -248,6 +248,61 @@ echo --- Creating Executable Wrapper ---
 echo Executable wrapper created.
 echo.
 
+:: --- Copy CUDA/VC++ Runtime DLLs if CUDA build ---
+if %INSTALL_CUDA% == 1 (
+    echo --- Copying CUDA/VC++ Runtime DLLs ---
+    
+    :: Check common locations for cuDNN DLLs (installed via choco or manual CUDA toolkit)
+    set CUDNN_PATHS=
+    set CUDNN_PATHS=%CUDNN_PATHS% "C:\Program Files\NVIDIA GPU Computing Toolkit\CUDA\v11.8\bin"
+    set CUDNN_PATHS=%CUDNN_PATHS% "C:\tools\cudnn\bin"
+    set CUDNN_PATHS=%CUDNN_PATHS% "%CHOCOLATEYINSTALL%\lib\cudnn\tools\cuda\bin"
+
+    :: Loop through possible paths and check for cuDNN DLLs
+    set CUDNN_FOUND=0
+    for %%p in (%CUDNN_PATHS%) do (
+        if exist %%p\cudnn*.dll (
+            echo Found cuDNN DLLs in %%p
+            for %%f in (%%p\cudnn*.dll) do (
+                echo   Copying %%~nxf to "%OUTPUT_DIR%\bin\"
+                copy /Y "%%f" "%OUTPUT_DIR%\bin\" > nul
+                set CUDNN_FOUND=1
+            )
+        )
+    )
+
+    :: Copy VC++ Runtime DLLs
+    set VCRUNTIME_PATH=C:\Windows\System32
+    echo Copying VC++ Runtime DLLs from %VCRUNTIME_PATH%
+    if exist "%VCRUNTIME_PATH%\msvcp140.dll" copy /Y "%VCRUNTIME_PATH%\msvcp140.dll" "%OUTPUT_DIR%\bin\" > nul
+    if exist "%VCRUNTIME_PATH%\vcruntime140.dll" copy /Y "%VCRUNTIME_PATH%\vcruntime140.dll" "%OUTPUT_DIR%\bin\" > nul
+    if exist "%VCRUNTIME_PATH%\vcruntime140_1.dll" copy /Y "%VCRUNTIME_PATH%\vcruntime140_1.dll" "%OUTPUT_DIR%\bin\" > nul
+    if exist "%VCRUNTIME_PATH%\msvcp140_1.dll" copy /Y "%VCRUNTIME_PATH%\msvcp140_1.dll" "%OUTPUT_DIR%\bin\" > nul
+    if exist "%VCRUNTIME_PATH%\msvcp140_2.dll" copy /Y "%VCRUNTIME_PATH%\msvcp140_2.dll" "%OUTPUT_DIR%\bin\" > nul
+    if exist "%VCRUNTIME_PATH%\concrt140.dll" copy /Y "%VCRUNTIME_PATH%\concrt140.dll" "%OUTPUT_DIR%\bin\" > nul
+
+    :: Search for any CUDA DLLs in PyTorch directory to determine what's needed
+    echo Searching for CUDA DLLs referenced by PyTorch...
+    set TORCH_DIR="%OUTPUT_DIR%\venv\Lib\site-packages\torch\lib"
+    if exist %TORCH_DIR% (
+        dir /b %TORCH_DIR%\*.dll | findstr /i "cu" > cuda_dlls.txt
+        for /F "tokens=*" %%f in (cuda_dlls.txt) do (
+            echo   Found CUDA DLL: %%f
+        )
+        del cuda_dlls.txt
+    )
+
+    :: Check if we successfully copied cuDNN DLLs
+    if %CUDNN_FOUND% == 0 (
+        echo WARNING: Failed to find and copy cuDNN DLLs. CUDA build might fail at runtime.
+        echo Searched paths:
+        for %%p in (%CUDNN_PATHS%) do echo   - %%p
+    ) else (
+        echo CUDA/VC++ DLLs copied successfully to %OUTPUT_DIR%\bin\
+    )
+    echo.
+)
+
 :: --- Verify venv contents ---
 echo --- Listing venv/Lib/site-packages ---
 dir "%OUTPUT_DIR%\venv\Lib\site-packages" /b
