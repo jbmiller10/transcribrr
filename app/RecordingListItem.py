@@ -98,6 +98,9 @@ class StatusIndicator(QWidget):
 class RecordingListItem(QWidget):
     # Signal emitted when the user finishes editing the name
     nameChanged = pyqtSignal(int, str) # id, new_name
+    
+    # Reference to the DatabaseManager - will be set after initialization
+    _db_manager = None
 
     def __init__(self, id, filename, file_path, date_created, duration,
                  raw_transcript, processed_text, raw_transcript_formatted=None,
@@ -119,8 +122,9 @@ class RecordingListItem(QWidget):
         self.filename_no_ext = os.path.splitext(self.filename)[0]
 
         self.folders = []
-        self.load_folders() # Initial load
-
+        # We'll load folders later when db_manager is properly set
+        # Avoid calling load_folders() here
+        
         self.setup_ui()
 
         # Update relative time initially and periodically
@@ -315,6 +319,55 @@ class RecordingListItem(QWidget):
 
 
     # --- Update from External Data ---
+    @property
+    def db_manager(self):
+        """Get the database manager."""
+        return self._db_manager
+        
+    @db_manager.setter
+    def db_manager(self, manager):
+        """Set the database manager and load folders."""
+        self._db_manager = manager
+        if self._db_manager is not None:
+            # Load folders now that we have a DB manager
+            self.load_folders()
+            
+    def load_folders(self):
+        """Load folders for this recording."""
+        if not hasattr(self, '_db_manager') or self._db_manager is None:
+            logger.warning(f"Cannot load folders for recording {self.id} - no database manager")
+            return
+            
+        # Get the folder manager
+        folder_manager = FolderManager.instance()
+        
+        def on_folders_loaded(success, result):
+            if not success:
+                logger.error(f"Failed to load folders for recording {self.id}")
+                return
+                
+            # Clear existing folders
+            self.folders = []
+            
+            # Process folders
+            for folder_row in result:
+                folder = {
+                    'id': folder_row[0],
+                    'name': folder_row[1],
+                    'parent_id': folder_row[2],
+                    'created_at': folder_row[3]
+                }
+                self.folders.append(folder)
+                
+            logger.info(f"Loaded {len(self.folders)} folders for recording {self.id}")
+            
+        # Load folders from database
+        folder_manager.get_folders_for_recording(self.id, on_folders_loaded)
+        
+    def refresh_folders(self):
+        """Refresh folders for this recording."""
+        self.load_folders()
+        
     def update_data(self, data: dict):
         """Update item's data and UI, e.g., after DB update."""
         # Check for direct status flags first

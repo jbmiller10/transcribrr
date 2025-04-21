@@ -4,6 +4,14 @@
 # Stop on errors
 set -e
 
+# Verify correct Python version
+EXPECTED_PY_VERSION="3.9.6"
+CURRENT_PY_VERSION=$(python3 -c "import platform; print(platform.python_version())")
+if [ "$CURRENT_PY_VERSION" != "$EXPECTED_PY_VERSION" ]; then
+  echo "Error: Expected Python $EXPECTED_PY_VERSION for build, found $CURRENT_PY_VERSION"
+  exit 1
+fi
+
 # App information
 APP_NAME="Transcribrr"
 # Extract version from app/__init__.py
@@ -84,6 +92,9 @@ export PATH="$DIR/bin:$PATH"
 
 export SSL_CERT_FILE="$RESOURCES_DIR/cacert.pem"
 
+# Set Qt plugins path to find platform plugins
+export QT_PLUGIN_PATH="@executable_path/../PlugIns"
+
 # Use embedded Python framework
 PY_VER=3.9
 PY="@executable_path/../Frameworks/Python.framework/Versions/$PY_VER/bin/python3"
@@ -103,6 +114,7 @@ echo "RESOURCES_DIR: $RESOURCES_DIR" >> "$APP_LOGS_DIR/launch.log"
 echo "APP_SUPPORT_DIR: $APP_SUPPORT_DIR" >> "$APP_LOGS_DIR/launch.log"
 echo "PYTHONPATH: $PYTHONPATH" >> "$APP_LOGS_DIR/launch.log"
 echo "PATH: $PATH" >> "$APP_LOGS_DIR/launch.log"
+echo "QT_PLUGIN_PATH: $QT_PLUGIN_PATH" >> "$APP_LOGS_DIR/launch.log"
 echo "Python executable: $PY" >> "$APP_LOGS_DIR/launch.log"
 echo "Python version: $($PY --version)" >> "$APP_LOGS_DIR/launch.log" 2>&1
 echo "ffmpeg location: $(which ffmpeg)" >> "$APP_LOGS_DIR/launch.log" 2>&1
@@ -180,6 +192,28 @@ if [ -f "$FFMPEG_PATH" ] && [ -f "$FFPROBE_PATH" ]; then
 else
     echo "Warning: Could not find ffmpeg or ffprobe executables."
     echo "Your app may not work correctly without these binaries."
+fi
+
+# Copy Qt plugins
+echo "Copying Qt plugins..."
+# Path to PyQt6 Qt plugins
+PY_SITE_PACKAGES="${APP_DIR}/Contents/Frameworks/Python.framework/Versions/$PY_VER/lib/python$PY_VER/site-packages"
+QT_PLUGIN_PATH="${PY_SITE_PACKAGES}/PyQt6/Qt6/plugins"
+
+if [ -d "$QT_PLUGIN_PATH" ]; then
+    # Create plugins directory
+    mkdir -p "${APP_DIR}/Contents/PlugIns"
+    
+    # Copy the entire plugins directory
+    echo "Copying Qt plugins from $QT_PLUGIN_PATH to ${APP_DIR}/Contents/PlugIns"
+    cp -R "$QT_PLUGIN_PATH"/* "${APP_DIR}/Contents/PlugIns/"
+    
+    # Ensure correct permissions
+    chmod -R 755 "${APP_DIR}/Contents/PlugIns"
+    echo "Qt plugins copied successfully."
+else
+    echo "Warning: Qt plugins directory not found at $QT_PLUGIN_PATH"
+    echo "The application may not display correctly."
 fi
 
 echo "Build completed successfully! App is located at: ${APP_DIR}"

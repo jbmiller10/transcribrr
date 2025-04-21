@@ -17,7 +17,7 @@ class DatabaseWorker(QThread):
     """Thread for DB operations."""
     operation_complete = pyqtSignal(dict)
     error_occurred = pyqtSignal(str, str)  # operation_name, error_message
-    dataChanged = pyqtSignal()  # Signal emitted when data is modified (create, update, delete)
+    dataChanged = pyqtSignal()  # Basic signal with no parameters - parameters added by DatabaseManager
 
     def __init__(self, parent=None):
         super().__init__(parent)
@@ -60,9 +60,19 @@ class DatabaseWorker(QThread):
                             query_lower = query.lower().strip()
                             is_modifying_query = any(query_lower.startswith(prefix) for prefix in ['insert', 'update', 'delete'])
                             
-                            if is_modifying_query and ('recording_folders' in query_lower or 'recordings' in query_lower or 'folders' in query_lower):
+                            # Track which type of data was modified for more targeted refresh
+                            if is_modifying_query:
                                 data_modified = True
+                                logger.debug(f"Modifying query detected: {query_lower[:100]}")
                                 
+                                # More specific logging about what's being modified
+                                if 'recording_folders' in query_lower:
+                                    logger.info("Recording-folder association modified by query")
+                                elif 'recordings' in query_lower:
+                                    logger.info("Recording data modified by query")
+                                elif 'folders' in query_lower:
+                                    logger.info("Folder data modified by query")
+                            
                             # Use transaction for write operations
                             if is_modifying_query:
                                 with self.conn:  # This automatically handles commit/rollback
@@ -82,6 +92,7 @@ class DatabaseWorker(QThread):
                             with self.conn:  # Auto commit/rollback
                                 result = create_recording(self.conn, op_args[0])
                                 data_modified = True
+                                logger.info(f"Recording created with ID: {result}")
                                 
                         elif op_type == 'get_all_recordings':
                             result = get_all_recordings(self.conn)
@@ -93,11 +104,13 @@ class DatabaseWorker(QThread):
                             with self.conn:  # Auto commit/rollback
                                 update_recording(self.conn, op_args[0], **op_kwargs)
                                 data_modified = True
+                                logger.info(f"Recording updated with ID: {op_args[0]}")
                                 
                         elif op_type == 'delete_recording':
                             with self.conn:  # Auto commit/rollback
                                 delete_recording(self.conn, op_args[0])
                                 data_modified = True
+                                logger.info(f"Recording deleted with ID: {op_args[0]}")
                                 
                         elif op_type == 'search_recordings':
                             result = search_recordings(self.conn, op_args[0])
@@ -110,6 +123,7 @@ class DatabaseWorker(QThread):
                         
                         # Emit dataChanged signal if data was modified
                         if data_modified:
+                            logger.info("Database data modified, emitting dataChanged signal")
                             self.dataChanged.emit()
                         
                     except Exception as e:
@@ -164,7 +178,7 @@ class DatabaseManager(QObject):
     """DB manager with worker thread."""
     operation_complete = pyqtSignal(dict)
     error_occurred = pyqtSignal(str, str)  # operation_name, error_message
-    dataChanged = pyqtSignal()  # Signal emitted when data is modified (create, update, delete)
+    dataChanged = pyqtSignal(str, int)  # Signal emitted when data is modified (create, update, delete) with type and ID
 
     def __init__(self, parent=None):
         super().__init__(parent)
@@ -177,8 +191,15 @@ class DatabaseManager(QObject):
         self.worker = DatabaseWorker()
         self.worker.operation_complete.connect(self.operation_complete)
         self.worker.error_occurred.connect(self.error_occurred)
-        self.worker.dataChanged.connect(self.dataChanged)
+        # Connect worker's dataChanged signal to our custom handler
+        self.worker.dataChanged.connect(self._on_data_changed)
         self.worker.start()
+        
+    def _on_data_changed(self):
+        """Handle data change from worker and emit our signal with parameters."""
+        logger.info("Data changed signal received from worker thread, broadcasting to UI")
+        # Emit with default parameters to refresh everything
+        self.dataChanged.emit("recording", -1)
 
     def create_recording(self, recording_data, callback=None):
         """Create a recording. recording_data tuple, optional callback."""

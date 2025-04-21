@@ -323,8 +323,11 @@ class FolderManager:
         '''
         
         def on_recordings_fetched(result):
+            logger.info(f"Fetched {len(result) if result else 0} recordings from folder {folder_id}")
             if callback:
                 callback(True, result)
+            else:
+                logger.warning(f"get_recordings_in_folder called for folder {folder_id} without a callback")
             
             return result
         
@@ -333,7 +336,7 @@ class FolderManager:
         
         # The function can't return the recordings directly as they're fetched asynchronously
         # The results will be passed to the callback function
-        return []
+        return None  # Changed from [] to None to be more explicit that this isn't actual data
     
     def get_folders_for_recording(self, recording_id, callback=None):
         """Return folders for recording."""
@@ -376,8 +379,11 @@ class FolderManager:
         '''
         
         def on_recordings_fetched(result):
+            logger.info(f"Fetched {len(result) if result else 0} unassigned recordings from database")
             if callback:
                 callback(True, result)
+            else:
+                logger.warning("get_recordings_not_in_folders called without a callback")
             
             return result
         
@@ -386,7 +392,8 @@ class FolderManager:
         
         # The function can't return the recordings directly as they're fetched asynchronously
         # The results will be passed to the callback function
-        return []
+        # This empty return is just a placeholder - real data comes through the callback
+        return None  # Changed from [] to None to be more explicit that this isn't actual data
     
     def get_folder_by_id(self, folder_id):
         """Return folder by ID."""

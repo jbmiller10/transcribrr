@@ -20,7 +20,7 @@ echo Building %APP_NAME% version %VERSION% for Windows...
 
 :: Default values
 set INSTALL_CUDA=0
-set PYTHON_EXECUTABLE=python
+set PYTHON_EXECUTABLE=py -3.9-64
 
 :: --- Argument Parsing ---
 :ArgLoop
@@ -52,6 +52,13 @@ if %INSTALL_CUDA% == 1 (
 )
 
 set OUTPUT_DIR=dist\%APP_NAME%_%BUILD_TYPE%
+
+:: Check Python version
+for /f "tokens=*" %%a in ('"%PYTHON_EXECUTABLE%" -c "import platform; print(platform.python_version())"') do set CURRENT_PY_VERSION=%%a
+if "!CURRENT_PY_VERSION!" NEQ "3.9.6" (
+  echo Error: Expected Python 3.9.6 for build, found !CURRENT_PY_VERSION!
+  exit /b 1
+)
 
 :: --- Build Process ---
 echo Building %APP_NAME% version %VERSION% for Windows...
@@ -212,6 +219,7 @@ echo --- Creating Launcher Script ---
     echo set PYTHONPATH=%%SCRIPT_DIR%%
     echo set SSL_CERT_FILE=%%SCRIPT_DIR%%cacert.pem
     echo set PATH=%%SCRIPT_DIR%%bin;%%PATH%%
+    echo set QT_PLUGIN_PATH=%%SCRIPT_DIR%%PyQt6\Qt6\plugins
     echo.
     echo :: Create logs dir if it doesn't exist
     echo if not exist "%%SCRIPT_DIR%%logs" mkdir "%%SCRIPT_DIR%%logs"
@@ -222,6 +230,7 @@ echo --- Creating Launcher Script ---
     echo echo VENV_PYTHON: %%VENV_PYTHON%% ^>^> "%%SCRIPT_DIR%%logs\launch.log"
     echo echo PYTHONPATH: %%PYTHONPATH%% ^>^> "%%SCRIPT_DIR%%logs\launch.log"
     echo echo PATH: %%PATH%% ^>^> "%%SCRIPT_DIR%%logs\launch.log"
+    echo echo QT_PLUGIN_PATH: %%QT_PLUGIN_PATH%% ^>^> "%%SCRIPT_DIR%%logs\launch.log"
     echo.
     echo echo Running Python script using venv python... ^>^> "%%SCRIPT_DIR%%logs\launch.log"
     echo cd /d "%%SCRIPT_DIR%%"
@@ -304,6 +313,25 @@ if %INSTALL_CUDA% == 1 (
     )
     echo.
 )
+
+:: --- Copy Qt6 plugins ---
+echo --- Copying Qt6 Plugins ---
+set QT_PLUGIN_PATH=%OUTPUT_DIR%\venv\Lib\site-packages\PyQt6\Qt6\plugins
+if exist "%QT_PLUGIN_PATH%" (
+    echo Qt6 plugins found at %QT_PLUGIN_PATH%
+    
+    :: Create target directory
+    if not exist "%OUTPUT_DIR%\PyQt6\Qt6\plugins" mkdir "%OUTPUT_DIR%\PyQt6\Qt6\plugins"
+    
+    :: Copy the entire plugins directory
+    echo Copying Qt6 plugins...
+    xcopy /E /I /Y "%QT_PLUGIN_PATH%" "%OUTPUT_DIR%\PyQt6\Qt6\plugins\"
+    echo Qt6 plugins copied successfully.
+) else (
+    echo Warning: Qt6 plugins directory not found at %QT_PLUGIN_PATH%
+    echo The application may not display correctly.
+)
+echo.
 
 :: --- Verify venv contents ---
 echo --- Listing venv/Lib/site-packages ---

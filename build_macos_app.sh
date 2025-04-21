@@ -3,6 +3,14 @@
 
 set -e
 
+# Verify correct Python version
+EXPECTED_PY_VERSION="3.9.6"
+CURRENT_PY_VERSION=$(python3 -c "import platform; print(platform.python_version())")
+if [ "$CURRENT_PY_VERSION" != "$EXPECTED_PY_VERSION" ]; then
+  echo "Error: Expected Python $EXPECTED_PY_VERSION for build, found $CURRENT_PY_VERSION"
+  exit 1
+fi
+
 APP_NAME="Transcribrr"
 # Extract version from app/__init__.py
 VERSION=$(python3 - <<'PY'
@@ -91,6 +99,9 @@ export SSL_CERT_FILE="$RESOURCES_DIR/cacert.pem"
 # Add ffmpeg to PATH
 export PATH="$DIR/bin:$PATH"
 
+# Set Qt plugins path to find platform plugins
+export QT_PLUGIN_PATH="@executable_path/../PlugIns"
+
 # Use embedded Python framework
 PY_VER=3.9
 PY="@executable_path/../Frameworks/Python.framework/Versions/$PY_VER/bin/python3"
@@ -99,6 +110,7 @@ echo "Starting application at $(date)" > "$RESOURCES_DIR/launch.log"
 echo "RESOURCES_DIR: $RESOURCES_DIR" >> "$RESOURCES_DIR/launch.log" 
 echo "PYTHONPATH: $PYTHONPATH" >> "$RESOURCES_DIR/launch.log"
 echo "PATH: $PATH" >> "$RESOURCES_DIR/launch.log"
+echo "QT_PLUGIN_PATH: $QT_PLUGIN_PATH" >> "$RESOURCES_DIR/launch.log"
 echo "Python executable: $PY" >> "$RESOURCES_DIR/launch.log"
 echo "Python version: $($PY --version)" >> "$RESOURCES_DIR/launch.log" 2>&1
 echo "ffmpeg location: $(which ffmpeg)" >> "$RESOURCES_DIR/launch.log" 2>&1
@@ -155,21 +167,12 @@ FFPROBE_PATH=$(which ffprobe)
 if [ -f "$FFMPEG_PATH" ] && [ -f "$FFPROBE_PATH" ]; then
     mkdir -p "${APP_DIR}/Contents/MacOS/bin"
     
-chmod 755 "${APP_DIR}/Contents/MacOS/bin"
+    chmod 755 "${APP_DIR}/Contents/MacOS/bin"
     
-    # Use sudo for the copy operation if necessary
-    echo "Copying FFmpeg and FFprobe (may require your password)..."
-    if ! cp "$FFMPEG_PATH" "${APP_DIR}/Contents/MacOS/bin/"; then
-        echo "Using sudo to copy FFmpeg..."
-        sudo cp "$FFMPEG_PATH" "${APP_DIR}/Contents/MacOS/bin/"
-        sudo chown $(whoami) "${APP_DIR}/Contents/MacOS/bin/ffmpeg"
-    fi
-    
-    if ! cp "$FFPROBE_PATH" "${APP_DIR}/Contents/MacOS/bin/"; then
-        echo "Using sudo to copy FFprobe..."
-        sudo cp "$FFPROBE_PATH" "${APP_DIR}/Contents/MacOS/bin/"
-        sudo chown $(whoami) "${APP_DIR}/Contents/MacOS/bin/ffprobe"
-    fi
+    # Copy FFmpeg binaries directly without sudo
+    echo "Copying FFmpeg and FFprobe..."
+    cp "$FFMPEG_PATH" "${APP_DIR}/Contents/MacOS/bin/"
+    cp "$FFPROBE_PATH" "${APP_DIR}/Contents/MacOS/bin/"
     
     # Make executables executable
     chmod 755 "${APP_DIR}/Contents/MacOS/bin/ffmpeg"
@@ -178,6 +181,28 @@ chmod 755 "${APP_DIR}/Contents/MacOS/bin"
 else
     echo "Warning: Could not find ffmpeg or ffprobe executables."
     echo "Your app may not work correctly without these binaries."
+fi
+
+# Copy Qt plugins
+echo "Copying Qt plugins..."
+# Path to PyQt6 Qt plugins
+PY_SITE_PACKAGES="${APP_DIR}/Contents/Frameworks/Python.framework/Versions/$PY_VER/lib/python$PY_VER/site-packages"
+QT_PLUGIN_PATH="${PY_SITE_PACKAGES}/PyQt6/Qt6/plugins"
+
+if [ -d "$QT_PLUGIN_PATH" ]; then
+    # Create plugins directory
+    mkdir -p "${APP_DIR}/Contents/PlugIns"
+    
+    # Copy the entire plugins directory
+    echo "Copying Qt plugins from $QT_PLUGIN_PATH to ${APP_DIR}/Contents/PlugIns"
+    cp -R "$QT_PLUGIN_PATH"/* "${APP_DIR}/Contents/PlugIns/"
+    
+    # Ensure correct permissions
+    chmod -R 755 "${APP_DIR}/Contents/PlugIns"
+    echo "Qt plugins copied successfully."
+else
+    echo "Warning: Qt plugins directory not found at $QT_PLUGIN_PATH"
+    echo "The application may not display correctly."
 fi
 
 # Ensure executable permissions
