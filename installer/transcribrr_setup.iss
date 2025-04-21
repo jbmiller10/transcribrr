@@ -12,9 +12,11 @@
 #if Flavour == "cpu"
   #define FlavorName "CPU"
   #define FlavorDescription " (CPU Version)"
-#elif Flavour == "cuda"
+  #define OutputDirName "cpu"
+#elif Flavour == "cuda" 
   #define FlavorName "CUDA"
   #define FlavorDescription " (CUDA Version)"
+  #define OutputDirName "cuda"
 #endif
 
 ; Dynamic version reading from app/constants.py
@@ -61,7 +63,7 @@ Name: "quicklaunchicon"; Description: "{cm:CreateQuickLaunchIcon}"; GroupDescrip
 
 [Files]
 ; Include all application files from the build directory
-Source: "..\dist\{#MyAppName}_{#FlavorName}\*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs createallsubdirs
+Source: "..\dist\{#MyAppName}_{#OutputDirName}\*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs createallsubdirs
 
 [Icons]
 ; Start Menu shortcuts

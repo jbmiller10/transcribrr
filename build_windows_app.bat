@@ -7,8 +7,8 @@ setlocal EnableDelayedExpansion
 :: --- Configuration ---
 set APP_NAME=Transcribrr
 set VERSION=1.0.0
-set BUILD_TYPE=CPU
-if "%INSTALL_CUDA%"=="1" set BUILD_TYPE=CUDA
+set BUILD_TYPE=cpu
+if "%INSTALL_CUDA%"=="1" set BUILD_TYPE=cuda
 set OUTPUT_DIR=dist\%APP_NAME%_%BUILD_TYPE%
 set PYTHON_EXECUTABLE=python
 
@@ -20,7 +20,7 @@ set INSTALL_CUDA=0
 if "%1"=="" goto ArgsDone
 if /I "%1"=="--cuda" (
     set INSTALL_CUDA=1
-    set BUILD_TYPE=CUDA
+    set BUILD_TYPE=cuda
     set OUTPUT_DIR=dist\%APP_NAME%_%BUILD_TYPE%
     echo CUDA installation requested.
 ) else if /I "%1"=="--help" (
@@ -39,8 +39,10 @@ goto ArgLoop
 echo Building %APP_NAME% version %VERSION% for Windows...
 if %INSTALL_CUDA% == 1 (
     echo *** CUDA build enabled ***
+    echo Build directory: %OUTPUT_DIR%
 ) else (
     echo *** Standard CPU build ***
+    echo Build directory: %OUTPUT_DIR%
 )
 echo.
 
@@ -240,8 +242,10 @@ echo.
 echo Build completed successfully! App is located at: %OUTPUT_DIR%
 if %INSTALL_CUDA% == 1 (
     echo *** Build includes CUDA-enabled PyTorch ***
+    echo Build output directory: %OUTPUT_DIR% (case-sensitive)
 ) else (
     echo *** Build uses CPU-based PyTorch ***
+    echo Build output directory: %OUTPUT_DIR% (case-sensitive)
 )
 echo.
 goto End
