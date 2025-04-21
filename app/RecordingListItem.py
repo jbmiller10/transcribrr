@@ -40,7 +40,7 @@ class EditableLineEdit(QLineEdit):
         super().focusOutEvent(event)
 
     def keyPressEvent(self, event):
-         """Commit edit on Enter/Return, cancel on Escape."""
+         """Handle Enter/Escape in edit mode."""
          if not self.isReadOnly():
               if event.key() == Qt.Key.Key_Return or event.key() == Qt.Key.Key_Enter:
                    self.editingFinished.emit(self.text())
@@ -54,7 +54,7 @@ class EditableLineEdit(QLineEdit):
               super().keyPressEvent(event)
 
     def setReadOnly(self, readOnly):
-        """Store original text when becoming editable."""
+        """Store original text on edit start."""
         if not readOnly and self.isReadOnly(): # Transitioning to editable
              self._original_text = self.text()
         super().setReadOnly(readOnly)
@@ -128,7 +128,7 @@ class RecordingListItem(QWidget):
         self.timer = self.startTimer(60000) # Update every minute
 
     def timerEvent(self, event):
-        """Handle timer event to update relative time."""
+        """Update relative time."""
         self.update_relative_time()
         event.accept()
 

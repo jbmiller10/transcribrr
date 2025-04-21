@@ -8,20 +8,20 @@ from app.constants import DATABASE_PATH
 logger = logging.getLogger('transcribrr')
 
 class FolderManager:
-    """Manages user-created folder structure for organizing recordings."""
+    """Manage folder structure."""
     
     # Singleton instance
     _instance = None
     
     @classmethod
     def instance(cls):
-        """Get the singleton instance of FolderManager."""
+        """Return singleton instance."""
         if cls._instance is None:
             cls._instance = FolderManager()
         return cls._instance
     
     def __init__(self):
-        """Initialize the folder manager."""
+        """Init folder manager."""
         self.folders = []
         self.db_manager = DatabaseManager()
         
@@ -35,14 +35,14 @@ class FolderManager:
         self.load_folders()
     
     def init_database(self):
-        """Initialize database tables for folders."""
+        """Init folder tables."""
         # Tables are now created by db_utils.ensure_database_exists
         # This method remains for compatibility but is essentially a no-op
         # since the tables should already be created by DatabaseManager initialization
         logger.debug("Folder tables are initialized during database creation")
     
     def load_folders(self):
-        """Load folders from database."""
+        """Load folders."""
         query = '''
             SELECT id, name, parent_id, created_at
             FROM folders
@@ -70,7 +70,7 @@ class FolderManager:
         self.db_manager.execute_query(query, callback=on_folders_loaded)
     
     def build_folder_structure(self):
-        """Build hierarchical folder structure from flat list."""
+        """Build folder hierarchy."""
         # Create a temporary dictionary for quick lookup
         folder_dict = {folder['id']: folder for folder in self.folders}
         
@@ -82,7 +82,7 @@ class FolderManager:
                     parent_folder['children'].append(folder)
     
     def create_folder(self, name, parent_id=None, callback=None):
-        """Create a new folder in the database."""
+        """Create folder."""
         # Check for duplicate name at same level
         if self.folder_exists(name, parent_id):
             logger.warning(f"Folder with name '{name}' already exists at this level")
@@ -155,7 +155,7 @@ class FolderManager:
         return True
     
     def rename_folder(self, folder_id, new_name, callback=None):
-        """Rename an existing folder."""
+        """Rename folder."""
         # Check for duplicate name at same level
         folder = self.get_folder_by_id(folder_id)
         if not folder:
@@ -200,7 +200,7 @@ class FolderManager:
         return True
     
     def delete_folder(self, folder_id, callback=None):
-        """Delete a folder and remove all recording associations."""
+        """Delete folder and associations."""
         # First, store the folder info for in-memory updates later
         folder_to_delete = self.get_folder_by_id(folder_id)
         if not folder_to_delete:
@@ -261,11 +261,7 @@ class FolderManager:
         return True
     
     def add_recording_to_folder(self, recording_id, folder_id, callback=None):
-        """Add a recording to a folder.
-        
-        This will remove the recording from any other folders it might be in,
-        ensuring that a recording can only be in one folder at a time.
-        """
+        """Add recording to folder (removes from other folders)."""
         # First check if the association already exists
         check_query = '''
             SELECT 1 FROM recording_folders
@@ -312,7 +308,7 @@ class FolderManager:
         return True
     
     def remove_recording_from_folder(self, recording_id, folder_id, callback=None):
-        """Remove a recording from a folder."""
+        """Remove recording from folder."""
         query = '''
             DELETE FROM recording_folders
             WHERE recording_id = ? AND folder_id = ?
@@ -333,7 +329,7 @@ class FolderManager:
         return True
     
     def get_recordings_in_folder(self, folder_id, callback=None):
-        """Get all recordings in a folder."""
+        """Return recordings in folder."""
         query = '''
             SELECT r.id, r.filename, r.file_path, r.date_created, r.duration, 
                    r.raw_transcript, r.processed_text, r.raw_transcript_formatted, r.processed_text_formatted
@@ -357,7 +353,7 @@ class FolderManager:
         return []
     
     def get_folders_for_recording(self, recording_id, callback=None):
-        """Get all folders containing a recording."""
+        """Return folders for recording."""
         query = '''
             SELECT f.id, f.name, f.parent_id, f.created_at
             FROM folders f
@@ -380,11 +376,11 @@ class FolderManager:
         return []
     
     def get_all_root_folders(self):
-        """Get all root level folders (no parent)."""
+        """Return root folders."""
         return [folder for folder in self.folders if folder['parent_id'] is None]
         
     def get_recordings_not_in_folders(self, callback=None):
-        """Get all recordings that are not in any folder."""
+        """Return unassigned recordings."""
         query = '''
             SELECT r.id, r.filename, r.file_path, r.date_created, r.duration, 
                    r.raw_transcript, r.processed_text, r.raw_transcript_formatted, r.processed_text_formatted
@@ -410,14 +406,14 @@ class FolderManager:
         return []
     
     def get_folder_by_id(self, folder_id):
-        """Get a folder by ID."""
+        """Return folder by ID."""
         for folder in self.folders:
             if folder['id'] == folder_id:
                 return folder
         return None
     
     def get_folder_recording_count(self, folder_id, callback=None):
-        """Get the number of recordings in a folder."""
+        """Return recording count."""
         query = '''
             SELECT COUNT(*) FROM recording_folders
             WHERE folder_id = ?
@@ -443,7 +439,7 @@ class FolderManager:
         return 0
     
     def folder_exists(self, name, parent_id=None, exclude_id=None):
-        """Check if a folder with the given name exists at the specified level."""
+        """Check if folder name exists."""
         for folder in self.folders:
             if folder['name'] == name and folder['parent_id'] == parent_id:
                 if exclude_id and folder['id'] == exclude_id:
@@ -452,7 +448,7 @@ class FolderManager:
         return False
     
     def export_folder_structure(self):
-        """Export folder structure as JSON for backup."""
+        """Export folder structure as JSON."""
         return json.dumps(self.folders, indent=2)
     
     def import_folder_structure(self, json_data, callback=None):

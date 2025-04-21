@@ -34,12 +34,7 @@ def create_config_file():
         json.dump(config, config_file, indent=4)
 
 def create_recording(conn, recording):
-    """
-    Create a new recording into the recordings table
-    :param conn:
-    :param recording: (filename, file_path, date_created, duration, raw_transcript, processed_text)
-    :return: recording id
-    """
+    """Insert recording into table, return ID."""
     sql = ''' INSERT INTO recordings(filename, file_path, date_created, duration, raw_transcript, processed_text)
               VALUES(?,?,?,?,?,?) '''
     cur = conn.cursor()
@@ -48,11 +43,7 @@ def create_recording(conn, recording):
     return cur.lastrowid
 
 def get_all_recordings(conn):
-    """
-    Query all rows in the recordings table
-    :param conn: the Connection object
-    :return:
-    """
+    """Return all recordings."""
     cur = conn.cursor()
     cur.execute("SELECT * FROM recordings")
 
@@ -61,20 +52,14 @@ def get_all_recordings(conn):
     return rows
 
 def get_recording_by_id(conn, id):
-    """Get a single recording by its ID."""
+    """Return recording by ID."""
     cur = conn.cursor()
     cur.execute("SELECT * FROM recordings WHERE id=?", (id,))
     row = cur.fetchone()
     return row
 
 def update_recording(conn, recording_id, **kwargs):
-    """
-    Update fields of a recording given by recording_id with values in kwargs
-    :param conn: Database connection object
-    :param recording_id: ID of the recording to update
-    :param kwargs: Dictionary of column names and their new values
-    :return: None
-    """
+    """Update recording fields."""
     if not kwargs:
         return  # Nothing to update
     parameters = [f"{key} = ?" for key in kwargs]
@@ -86,12 +71,7 @@ def update_recording(conn, recording_id, **kwargs):
     conn.commit()
 
 def delete_recording(conn, id):
-    """
-    Delete a recording by recording id
-    :param conn:  Connection to the SQLite database
-    :param id: id of the recording
-    :return:
-    """
+    """Delete recording by ID."""
     sql = 'DELETE FROM recordings WHERE id=?'
     cur = conn.cursor()
     cur.execute(sql, (id,))

@@ -20,22 +20,19 @@ logger = logging.getLogger('transcribrr')
 
 
 class ModelManager:
-    """
-    Manages loading and caching of machine learning models for transcription.
-    Implements lazy loading to improve startup performance.
-    """
+    """Manage ML models for transcription."""
     
     _instance = None
     
     @classmethod
     def instance(cls) -> 'ModelManager':
-        """Get the singleton instance of ModelManager."""
+        """Return singleton ModelManager."""
         if cls._instance is None:
             cls._instance = ModelManager()
         return cls._instance
     
     def __init__(self):
-        """Initialize the model manager with empty caches."""
+        """Init ModelManager."""
         self._models: Dict[str, Any] = {}  # Cache for loaded models
         self._processors: Dict[str, Any] = {}  # Cache for loaded processors
         
@@ -49,15 +46,7 @@ class ModelManager:
         logger.info(f"ModelManager initialized with device: {self.device}")
         
     def _get_optimal_device(self, hw_acceleration_enabled: bool = True) -> str:
-        """
-        Determine the best available device for inference.
-        
-        Args:
-            hw_acceleration_enabled: Whether hardware acceleration is enabled in settings
-        
-        Returns:
-            Device string ("cuda", "mps", or "cpu")
-        """
+        """Return optimal device string."""
         if not hw_acceleration_enabled:
             logger.info("Hardware acceleration disabled in settings. Using CPU.")
             return "cpu"

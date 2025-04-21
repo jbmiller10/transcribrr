@@ -25,7 +25,7 @@ logger = logging.getLogger('transcribrr')
 
 
 class OpenAIModelFetcherThread(QThread):
-    """Thread for fetching available OpenAI models."""
+    """Fetch OpenAI models thread."""
     models_fetched = pyqtSignal(list)
     fetch_error = pyqtSignal(str)
 
@@ -490,7 +490,7 @@ class SettingsDialog(QDialog):
 
     # --- Load/Save Logic ---
     def load_settings(self):
-        """Load settings from ConfigManager and keyring."""
+        """Load settings."""
         try:
             config = self.config_manager.get_all()
 
@@ -565,7 +565,7 @@ class SettingsDialog(QDialog):
             show_error_message(self, "Configuration Error", f"Failed to load settings: {e}")
 
     def save_settings(self):
-        """Save settings via ConfigManager and keyring."""
+        """Save settings."""
         # --- Save API Keys to Keyring ---
         hf_api_key = self.hf_api_key_edit.text().strip()
         openai_api_key = self.openai_api_key_edit.text().strip()

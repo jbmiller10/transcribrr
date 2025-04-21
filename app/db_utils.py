@@ -1,6 +1,4 @@
-"""
-Database utility functions to standardize database operations.
-"""
+"""Database utilities."""
 
 import sqlite3
 import os
@@ -21,7 +19,7 @@ logger = logging.getLogger('transcribrr')
 
 
 def ensure_database_exists() -> None:
-    """Ensure the database and required tables exist."""
+    """Init database and tables."""
     conn = None
     try:
         conn = get_connection()
@@ -44,7 +42,7 @@ def ensure_database_exists() -> None:
 
 
 def create_config_file() -> None:
-    """Create default configuration file."""
+    """Create config file."""
     try:
         with open(CONFIG_PATH, 'w') as config_file:
             json.dump(DEFAULT_CONFIG, config_file, indent=4)
@@ -55,7 +53,7 @@ def create_config_file() -> None:
 
 # --- Connection ---
 def get_connection() -> sqlite3.Connection:
-    """Get a connection to the SQLite database."""
+    """Return DB connection."""
     db_dir = os.path.dirname(DATABASE_PATH)
     os.makedirs(db_dir, exist_ok=True) # Ensure directory exists
     try:
@@ -69,7 +67,7 @@ def get_connection() -> sqlite3.Connection:
 
 # --- Table Creation ---
 def create_recordings_table(conn: sqlite3.Connection) -> None:
-    """Create the recordings table if it doesn't exist."""
+    """Create recordings table."""
     sql_create_recordings_table = f"""
     CREATE TABLE IF NOT EXISTS {TABLE_RECORDINGS} (
         {FIELD_ID} INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -98,7 +96,7 @@ def create_recordings_table(conn: sqlite3.Connection) -> None:
 
 
 def create_folders_table(conn: sqlite3.Connection) -> None:
-    """Create the folders table if it doesn't exist."""
+    """Create folders table."""
     sql_create_folders_table = """
     CREATE TABLE IF NOT EXISTS folders (
         id INTEGER PRIMARY KEY,
@@ -119,7 +117,7 @@ def create_folders_table(conn: sqlite3.Connection) -> None:
 
 
 def create_recording_folders_table(conn: sqlite3.Connection) -> None:
-    """Create the recording_folders junction table if it doesn't exist."""
+    """Create recording_folders table."""
     sql_create_recording_folders_table = """
     CREATE TABLE IF NOT EXISTS recording_folders (
         recording_id INTEGER NOT NULL,
@@ -141,7 +139,7 @@ def create_recording_folders_table(conn: sqlite3.Connection) -> None:
 
 # --- CRUD Operations for Recordings ---
 def get_all_recordings(conn: sqlite3.Connection) -> List[Tuple]:
-    """Get all recordings, ordered by date descending."""
+    """Return all recordings."""
     try:
         cursor = conn.cursor()
         cursor.execute(f"SELECT * FROM {TABLE_RECORDINGS} ORDER BY {FIELD_DATE_CREATED} DESC")
@@ -151,7 +149,7 @@ def get_all_recordings(conn: sqlite3.Connection) -> List[Tuple]:
         raise
 
 def get_recording_by_id(conn: sqlite3.Connection, recording_id: int) -> Optional[Tuple]:
-    """Get a recording by its ID."""
+    """Return recording by ID."""
     try:
         cursor = conn.cursor()
         cursor.execute(f"SELECT * FROM {TABLE_RECORDINGS} WHERE {FIELD_ID}=?", (recording_id,))
@@ -161,7 +159,7 @@ def get_recording_by_id(conn: sqlite3.Connection, recording_id: int) -> Optional
         raise
 
 def create_recording(conn: sqlite3.Connection, recording_data: Tuple) -> int:
-    """Create a new recording."""
+    """Insert new recording."""
     # Expects (filename, file_path, date_created, duration, raw_transcript, processed_text)
     # Ensure date_created is in correct format 'YYYY-MM-DD HH:MM:SS'
     if len(recording_data) < 4:
@@ -193,7 +191,7 @@ def create_recording(conn: sqlite3.Connection, recording_data: Tuple) -> int:
         raise
 
 def update_recording(conn: sqlite3.Connection, recording_id: int, **kwargs) -> None:
-    """Update fields of a recording."""
+    """Update recording."""
     if not kwargs: return
     valid_fields = [FIELD_FILENAME, FIELD_FILE_PATH, FIELD_DATE_CREATED, FIELD_DURATION,
                     FIELD_RAW_TRANSCRIPT, FIELD_PROCESSED_TEXT,
@@ -224,7 +222,7 @@ def update_recording(conn: sqlite3.Connection, recording_id: int, **kwargs) -> N
         raise
 
 def delete_recording(conn: sqlite3.Connection, recording_id: int) -> None:
-    """Delete a recording by ID."""
+    """Delete recording."""
     # Note: Foreign key constraints should handle deleting associated entries
     # in recording_folders if set up correctly in FolderManager's init_database.
     sql = f'DELETE FROM {TABLE_RECORDINGS} WHERE {FIELD_ID}=?'
@@ -250,7 +248,7 @@ def recording_exists(conn: sqlite3.Connection, file_path: str) -> bool:
         raise
 
 def search_recordings(conn: sqlite3.Connection, search_term: str) -> List[Tuple]:
-    """Search recordings by filename or transcript content (case-insensitive)."""
+    """Search recordings."""
     search_pattern = f"%{search_term}%"
     sql = f"""
     SELECT * FROM {TABLE_RECORDINGS}

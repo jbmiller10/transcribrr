@@ -12,7 +12,7 @@ from app.utils import resource_path, PromptManager
 from app.ui_utils import show_error_message, show_info_message, show_confirmation_dialog
 
 class PromptEditorWidget(QWidget):
-    """Widget for editing a single prompt with preview."""
+    """Prompt edit widget."""
     # (Content mostly unchanged, maybe slight UI tweaks if desired)
     def __init__(self, parent=None):
         super().__init__(parent)
@@ -121,7 +121,7 @@ class PromptManagerDialog(QDialog):
         self.layout.addLayout(self.button_layout)
 
     def _load_and_organize_prompts(self):
-        """Load prompts from PromptManager and organize for UI."""
+        """Load prompts for UI."""
         all_prompts = self.prompt_manager.get_prompts()
         self.categorized_prompts = {}
         for name, data in all_prompts.items():
@@ -137,7 +137,7 @@ class PromptManagerDialog(QDialog):
              self._update_category_filter()
 
     def _update_category_filter(self):
-         """Update the category filter dropdown."""
+         """Update category filter."""
          current_text = self.category_filter.currentText()
          self.category_filter.blockSignals(True)
          self.category_filter.clear()
@@ -290,7 +290,7 @@ class PromptManagerDialog(QDialog):
         self.prompt_editor.clear()
 
     def save_edited_prompt_from_tab(self):
-        """Save the prompt currently in the editor tab."""
+        """Save prompt."""
         data = self.prompt_editor.get_prompt_data()
         if not data["name"]:
             show_error_message(self, "Missing Name", "Prompt name cannot be empty.")

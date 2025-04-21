@@ -65,7 +65,7 @@ class FileDropWidget(QWidget):
         """)
 
     def dragEnterEvent(self, event: QDragEnterEvent):
-        """Handle drag enter events with improved feedback."""
+        """Handle drag enter."""
         if event.mimeData().hasUrls():
             url = event.mimeData().urls()[0]
             if url.isLocalFile():
@@ -113,7 +113,7 @@ class FileDropWidget(QWidget):
             event.ignore()
 
     def dragLeaveEvent(self, event):
-        """Reset widget appearance when drag leaves."""
+        """Reset on drag leave."""
         self.label.setText("Drag audio/video files here or click to browse")
         self.setStyleSheet(f"""
             QLabel {{
@@ -133,12 +133,12 @@ class FileDropWidget(QWidget):
         """)
 
     def dragMoveEvent(self, event):
-        """Handle drag move events."""
+        """Handle drag move."""
         if event.mimeData().hasUrls():
             event.acceptProposedAction()
 
     def dropEvent(self, event: QDropEvent):
-        """Handle file drop events with progress reporting."""
+        """Handle file drop with progress."""
         self.label.setText("Drag audio/video files here or click to browse")
         self.dragLeaveEvent(None)  # Reset styling
 
@@ -157,12 +157,12 @@ class FileDropWidget(QWidget):
             event.ignore()
 
     def mousePressEvent(self, event):
-        """Handle mouse click events to open file dialog."""
+        """Open file dialog on click."""
         if event.button() == Qt.MouseButton.LeftButton:  # Fixed enum
             self.openFileDialog()
 
     def openFileDialog(self):
-        """Open file dialog with improved filter and error handling."""
+        """Open file dialog."""
         # Create a filter string that includes all supported file types with descriptions
         filter_parts = []
         for ext, desc in self.supported_file_types.items():
@@ -197,7 +197,7 @@ class FileDropWidget(QWidget):
                 self.showErrorMessage(f"The file type .{file_extension} is not supported.")
 
     def process_file(self, file_path):
-        """Process the selected file with error handling and progress reporting."""
+        """Process file with progress."""
         try:
             # Check if file exists
             if not os.path.exists(file_path):
@@ -278,7 +278,7 @@ class FileDropWidget(QWidget):
             logging.error(f"Error processing file: {e}", exc_info=True)
 
     def showErrorMessage(self, message):
-        """Show an error message with improved formatting."""
+        """Show error message."""
         error_box = QMessageBox(self)
         error_box.setIcon(QMessageBox.Icon.Critical)
         error_box.setWindowTitle("File Error")
@@ -287,7 +287,7 @@ class FileDropWidget(QWidget):
         error_box.exec()
 
     def paintEvent(self, event):
-        """Custom paint event for nicer visual appearance."""
+        """Custom paint event."""
         painter = QPainter(self)
         painter.setRenderHint(QPainter.RenderHint.Antialiasing)
 
@@ -326,7 +326,7 @@ class FileDropWidget(QWidget):
         super().paintEvent(event)
 
     def get_supported_format_list(self):
-        """Return a formatted list of supported file formats for display."""
+        """Return supported formats list."""
         formats = []
         for ext, desc in self.supported_file_types.items():
             formats.append(f".{ext} ({desc})")

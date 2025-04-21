@@ -11,7 +11,7 @@ from app.utils import resource_path
 logger = logging.getLogger('transcribrr')
 
 class FolderTreeWidget(QWidget):
-    """Tree widget for displaying and navigating folder structure."""
+    """Tree view for folder navigation."""
     
     # Signals
     folderSelected = pyqtSignal(int, str)  # Folder ID, Folder Name
@@ -29,7 +29,7 @@ class FolderTreeWidget(QWidget):
         self.load_folders()
     
     def init_ui(self):
-        """Initialize UI components."""
+        """Init UI."""
         main_layout = QVBoxLayout(self)
         main_layout.setContentsMargins(0, 0, 0, 0)
         main_layout.setSpacing(0)
@@ -105,7 +105,7 @@ class FolderTreeWidget(QWidget):
         self.folder_open_icon = QIcon(resource_path('icons/folder_open.svg'))
     
     def load_folders(self):
-        """Load and display folder structure from FolderManager."""
+        """Load folder tree."""
         # Preserve the selected item if any
         current_item = self.folder_tree.currentItem()
         current_folder_id = -1
@@ -164,7 +164,7 @@ class FolderTreeWidget(QWidget):
                 self.folderSelected.emit(-1, "Unorganized Recordings")
     
     def add_folder_to_tree(self, folder, parent_item):
-        """Recursively add folder and its children to the tree."""
+        """Add folder children recursively."""
         # Get recording count for this folder
         recording_count = self.get_folder_recording_count(folder['id'])
         
@@ -191,7 +191,7 @@ class FolderTreeWidget(QWidget):
             self.add_folder_to_tree(child, item)
     
     def get_folder_recording_count(self, folder_id):
-        """Get the number of recordings in a folder."""
+        """Return recording count in folder."""
         try:
             folder_manager = FolderManager.instance()
             recordings = folder_manager.get_recordings_in_folder(folder_id)

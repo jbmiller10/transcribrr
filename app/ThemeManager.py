@@ -8,20 +8,20 @@ from app.utils import resource_path
 logger = logging.getLogger('transcribrr')
 
 class ThemeManager:
-    """Centralized theme manager for the application."""
+    """Manage app themes."""
     
     # Singleton instance
     _instance = None
     
     @classmethod
     def instance(cls):
-        """Get the singleton instance of ThemeManager."""
+        """Return singleton ThemeManager."""
         if cls._instance is None:
             cls._instance = ThemeManager()
         return cls._instance
     
     def __init__(self):
-        """Initialize the theme manager."""
+        """Init ThemeManager."""
         # Base theme variables (shared between light and dark)
         self.base_variables = {
             # Primary colors
@@ -110,7 +110,7 @@ class ThemeManager:
         self.load_theme_preference()
     
     def load_theme_preference(self):
-        """Load theme preference from config file."""
+        """Load theme preference."""
         config_path = resource_path('config.json')
         try:
             if os.path.exists(config_path):
@@ -123,7 +123,7 @@ class ThemeManager:
             logger.error(f"Error loading theme preference: {e}")
     
     def save_theme_preference(self, theme):
-        """Save theme preference to config file."""
+        """Save theme preference."""
         config_path = resource_path('config.json')
         try:
             if os.path.exists(config_path):
@@ -140,14 +140,14 @@ class ThemeManager:
             logger.error(f"Error saving theme preference: {e}")
     
     def toggle_theme(self):
-        """Toggle between light and dark themes."""
+        """Toggle theme."""
         if self.current_theme == 'light':
             self.apply_theme('dark')
         else:
             self.apply_theme('light')
     
     def apply_theme(self, theme_name):
-        """Apply the specified theme."""
+        """Apply theme."""
         if theme_name not in ['light', 'dark']:
             logger.warning(f"Unknown theme: {theme_name}, defaulting to light")
             theme_name = 'light'
@@ -172,7 +172,7 @@ class ThemeManager:
             QApplication.instance().setStyleSheet(self.current_stylesheet)
     
     def _generate_stylesheet(self):
-        """Generate the stylesheet from the current variables."""
+        """Generate stylesheet."""
         v = self.current_variables  # Shorthand for variables
         
         # Common stylesheet for all widgets
@@ -576,16 +576,16 @@ class ThemeManager:
         return stylesheet
     
     def get_color(self, name):
-        """Get a color from the current theme variables."""
+        """Return color."""
         return self.current_variables.get(name, '#000000')
     
     def get_qcolor(self, name):
-        """Get a QColor from the current theme variables."""
+        """Return QColor."""
         color_str = self.get_color(name)
         return QColor(color_str)
     
     def get_palette(self):
-        """Get a QPalette for the current theme."""
+        """Return QPalette."""
         palette = QPalette()
         
         if self.current_theme == 'dark':

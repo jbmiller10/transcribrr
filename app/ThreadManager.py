@@ -1,9 +1,4 @@
-"""
-Thread Manager responsible for centralized thread tracking and lifecycle management.
-
-This module provides a singleton ThreadManager that keeps track of all active QThreads
-in the application, making thread cleanup and application exit more reliable.
-"""
+"""Manage QThread lifecycle via singleton registry."""
 
 import logging
 from typing import Dict, List, Optional
@@ -12,40 +7,24 @@ from PyQt6.QtCore import QThread
 logger = logging.getLogger(__name__)
 
 class ThreadManager:
-    """
-    Singleton class that manages all QThreads in the application.
-    
-    This class maintains a registry of active threads, provides methods to register
-    and unregister threads, and offers functionality to cancel all active threads
-    during application shutdown.
-    """
+    """Singleton for managing QThreads."""
     
     _instance: Optional['ThreadManager'] = None
     
     @classmethod
     def instance(cls) -> 'ThreadManager':
-        """
-        Get the singleton instance of ThreadManager.
-        
-        Returns:
-            ThreadManager: The singleton instance
-        """
+        """Return singleton ThreadManager."""
         if cls._instance is None:
             cls._instance = ThreadManager()
         return cls._instance
     
     def __init__(self):
-        """Initialize the ThreadManager."""
+        """Init ThreadManager."""
         self._active_threads: Dict[int, QThread] = {}
         logger.debug("ThreadManager initialized")
     
     def register_thread(self, thread: QThread) -> None:
-        """
-        Register a new thread with the manager.
-        
-        Args:
-            thread: QThread instance to register
-        """
+        """Register thread."""
         thread_id = id(thread)
         if thread_id in self._active_threads:
             logger.warning(f"Thread {thread_id} already registered")
@@ -70,12 +49,7 @@ class ThreadManager:
         thread.finished.connect(_auto_unregister)
     
     def unregister_thread(self, thread: QThread) -> None:
-        """
-        Unregister a thread from the manager.
-        
-        Args:
-            thread: QThread instance to unregister
-        """
+        """Unregister thread."""
         thread_id = id(thread)
         if thread_id in self._active_threads:
             del self._active_threads[thread_id]
@@ -84,21 +58,11 @@ class ThreadManager:
             logger.debug(f"Attempted to unregister non-registered thread: {thread.__class__.__name__} (id: {thread_id})")
     
     def get_active_threads(self) -> List[QThread]:
-        """
-        Get a list of all active threads.
-        
-        Returns:
-            List[QThread]: List of active thread instances
-        """
+        """Return active threads."""
         return list(self._active_threads.values())
     
     def cancel_all_threads(self, wait_timeout: int = 5000) -> None:
-        """
-        Cancel all active threads and wait for them to finish.
-        
-        Args:
-            wait_timeout: Maximum time in ms to wait for each thread to finish
-        """
+        """Cancel all active threads."""
         threads = self.get_active_threads()
         thread_count = len(threads)
         

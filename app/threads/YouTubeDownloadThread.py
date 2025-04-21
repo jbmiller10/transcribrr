@@ -23,7 +23,7 @@ class YouTubeDownloadThread(QThread):
         self._temp_files = [] # Track temporary files for cleanup
 
     def cancel(self):
-        """Request cancellation of the download."""
+        """Cancel download."""
         with self._lock:
              if not self._is_canceled:
                   logger.info("Cancellation requested for YouTube download thread.")
@@ -177,7 +177,7 @@ class YouTubeDownloadThread(QThread):
 
 
     def ydl_progress_hook(self, d):
-        """Progress hook for yt-dlp."""
+        """yt-dlp progress hook."""
         # Check cancellation status frequently
         if self.is_canceled():
             # Attempt to signal yt-dlp to stop (may not work reliably)

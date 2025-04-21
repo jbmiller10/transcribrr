@@ -27,7 +27,7 @@ class MainWindow(QMainWindow):
 
 
     def init_ui(self):
-        """Initialize the user interface components."""
+        """Init UI."""
         # Initialize the window properties
         self.setWindowTitle(APP_NAME)
         
@@ -127,11 +127,10 @@ class MainWindow(QMainWindow):
         pass
 
     def on_new_file(self, file_path_or_paths):
-        """
-        Handle new audio/video file(s) uploaded or recorded.
-        
-        Args:
-            file_path_or_paths: Either a single file path or a list of file paths (for chunked files)
+        """Handle new file(s).
+
+Args:
+    file_path_or_paths: path or list of paths
         """
         try:
             # Check if we have a list of files (chunks) or a single file

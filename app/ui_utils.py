@@ -13,7 +13,7 @@ from app.utils import resource_path
 logger = logging.getLogger('transcribrr') # Ensure logger name consistency
 
 class SpinnerManager:
-    """Centralized manager for spinner animations and button toggling in the UI."""
+    """Manage spinner animations and button toggling."""
     def __init__(self, parent_widget: QWidget):
         self.parent = parent_widget
         self.spinners: Dict[str, Dict[str, Any]] = {}
@@ -21,7 +21,7 @@ class SpinnerManager:
     def create_spinner(self, name: str, toolbar: QToolBar, action_icon: str,
                      action_tooltip: str, callback: Callable,
                      spinner_icon: str = './icons/spinner.gif') -> QAction:
-        """Create a spinner associated with a toolbar action/button."""
+        """Create spinner for toolbar action."""
         action_icon_path = resource_path(action_icon)
         spinner_icon_path = resource_path(spinner_icon)
 

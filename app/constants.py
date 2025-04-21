@@ -1,6 +1,4 @@
-"""
-Central location for application constants to avoid duplication and ensure consistency.
-"""
+"""Application constants."""
 
 import os
 import sys
@@ -15,7 +13,7 @@ APP_AUTHOR = "John Miller"
 
 # Determine base paths: differentiate between resource path and user data path
 def get_resource_path():
-    """Get the path for read-only resources bundled with the app"""
+    """Return path to read-only resources."""
     try:
         # Check if running as PyInstaller bundle
         if hasattr(sys, '_MEIPASS'):
@@ -36,7 +34,7 @@ def get_resource_path():
     return os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
 def get_user_data_path():
-    """Get the path for user data files that need to be read/write"""
+    """Return path to user data directory."""
     # First, check if the app has provided a specific user data directory
     if "TRANSCRIBRR_USER_DATA_DIR" in os.environ:
         user_data_dir = os.environ["TRANSCRIBRR_USER_DATA_DIR"]
@@ -89,7 +87,7 @@ FIELD_PROCESSED_TEXT_FORMATTED = "processed_text_formatted"
 
 # File types
 class FileType(Enum):
-    """Enum for file types supported by the application."""
+    """Supported file type enum."""
     AUDIO = auto()
     VIDEO = auto()
     DOCUMENT = auto()

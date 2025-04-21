@@ -58,22 +58,19 @@ logger = logging.getLogger(APP_NAME)
 
 
 def is_video_file(file_path):
-    """Check if a file is a video file based on its extension."""
+    """Return True if video file."""
     file_extension = os.path.splitext(file_path)[1].lower()
     return file_extension in VIDEO_EXTENSIONS
 
 
 def is_audio_file(file_path):
-    """Check if a file is an audio file based on its extension."""
+    """Return True if audio file."""
     file_extension = os.path.splitext(file_path)[1].lower()
     return file_extension in AUDIO_EXTENSIONS
 
 
 def ensure_ffmpeg_available():
-    """
-    Ensure ffmpeg is available, checking multiple locations.
-    Returns a tuple: (success, message)
-    """
+    """Check availability of ffmpeg."""
     logger = logging.getLogger('transcribrr')
     
     # Check if we're running in a bundled app
@@ -132,7 +129,7 @@ def ensure_ffmpeg_available():
 
 
 def validate_url(url):
-    """Validate if a URL is a valid YouTube URL."""
+    """Return True if YouTube URL."""
     # Modified regex pattern to handle more YouTube URL formats
     youtube_regex = r'(?:https?:\/\/)?(?:www\.|m\.)?(?:youtube\.com|youtu\.be)\/(?:watch\?v=|embed\/|v\/|shorts\/)?([a-zA-Z0-9_-]{11})' # More specific video ID
     # search() instead of match() so the pattern can appear anywhere in the URL
@@ -140,7 +137,7 @@ def validate_url(url):
 
 
 def resource_path(relative_path):
-    """ Get absolute path to resource, works for dev, PyInstaller, and py2app """
+    """Return absolute resource path."""
     try:
         # PyInstaller creates a temp folder and stores path in _MEIPASS
         if hasattr(sys, '_MEIPASS'):
@@ -172,7 +169,7 @@ def resource_path(relative_path):
 
 
 def language_to_iso(language_name):
-    """Convert a fully spelled-out language name to its ISO 639-1 code."""
+    """Convert language name to ISO code."""
     language_map = {
         "Afrikaans": "af", "Albanian": "sq", "Amharic": "am", "Arabic": "ar",
         "Armenian": "hy", "Azerbaijani": "az", "Basque": "eu", "Belarusian": "be",

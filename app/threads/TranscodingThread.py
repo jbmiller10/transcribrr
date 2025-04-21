@@ -29,7 +29,7 @@ class TranscodingThread(QThread):
         self._lock = Lock()
 
     def cancel(self):
-        """Request cancellation of the transcoding process."""
+        """Cancel transcoding thread."""
         with self._lock:
             if not self._is_canceled:
                 logger.info("Cancellation requested for transcoding thread.")
@@ -38,7 +38,7 @@ class TranscodingThread(QThread):
                 # This will primarily prevent starting new operations
                 
     def is_canceled(self):
-        """Check if cancellation has been requested."""
+        """Return True if canceled."""
         with self._lock:
             return self._is_canceled
             
@@ -147,15 +147,8 @@ class TranscodingThread(QThread):
         audio.export(target_path, format=self.target_format)
 
     def chunk_audio(self, audio_path, audio):
-        """Split audio into chunks of specified duration
-        
-        Args:
-            audio_path: Path to the original audio file
-            audio: AudioSegment object of the audio file
-            
-        Returns:
-            List of paths to the chunked audio files
-        """
+        """Split audio (AudioSegment) into chunk_duration-min chunks.
+        audio_path is source file path. Returns list of chunk file paths."""
         chunk_paths = []
         try:
             # Check for cancellation

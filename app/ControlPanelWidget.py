@@ -125,7 +125,7 @@ class ControlPanelWidget(QWidget):
             self.widget_animations[widget] = animation
 
     def toggle_widget(self, widget_to_show):
-        """Toggle visibility of one widget, hide others."""
+        """Toggle widgets visibility."""
         if self.active_widget == widget_to_show:
             # Hide the currently active widget
             self._animate_widget(self.active_widget, False)
@@ -142,7 +142,7 @@ class ControlPanelWidget(QWidget):
                  QTimer.singleShot(0, lambda: self.youtube_url_field.setFocus())
 
     def _animate_widget(self, widget, show):
-        """Helper function to animate widget visibility."""
+        """Animate widget visibility."""
         animation = self.widget_animations.get(widget)
         if not animation: return
 
@@ -173,7 +173,7 @@ class ControlPanelWidget(QWidget):
 
     # --- Progress and Status Updates ---
     def show_progress(self, message):
-        """Show indeterminate progress."""
+        """Show progress."""
         self.progress_label.setText(message)
         self.progress_bar.setRange(0, 0) # Indeterminate
         self.progress_bar.setValue(-1) # For some styles
@@ -181,7 +181,7 @@ class ControlPanelWidget(QWidget):
         self.status_update.emit(message) # Also emit general status
 
     def hide_progress(self, final_message=None, duration=2000):
-        """Hide progress bar after optional final message."""
+        """Hide progress."""
         if final_message:
             self.progress_label.setText(final_message)
             self.progress_bar.setRange(0, 100) # Determinate complete
@@ -284,7 +284,7 @@ class ControlPanelWidget(QWidget):
             self.on_error(f"Failed to start YouTube download: {e}")
             
     def get_youtube_ui_elements(self):
-        """Get UI elements to disable during YouTube download."""
+        """Return UI elements to disable for YouTube."""
         elements = []
         if hasattr(self, 'youtube_button'):
             elements.append(self.youtube_button)
@@ -299,14 +299,14 @@ class ControlPanelWidget(QWidget):
         return elements
         
     def cancel_youtube_download(self):
-        """Cancel YouTube download operation."""
+        """Cancel YouTube download."""
         if self.youtube_download_thread and self.youtube_download_thread.isRunning():
             logger.info("User requested cancellation of YouTube download")
             self.youtube_download_thread.cancel()
             self.feedback_manager.show_status("Cancelling YouTube download...")
             
     def on_youtube_progress(self, message):
-        """Handle progress updates from YouTube download thread."""
+        """Update YouTube download progress."""
         # Update status
         self.status_update.emit(message)
         
@@ -326,7 +326,7 @@ class ControlPanelWidget(QWidget):
                 pass
 
     def handle_io_complete(self, filepath):
-        """Common handler for completed file operations (upload, record, download)."""
+        """Handle completed file operations."""
         if not filepath or not os.path.exists(filepath):
              self.on_error(f"Processed file not found or invalid: {filepath}")
              return
@@ -403,7 +403,7 @@ class ControlPanelWidget(QWidget):
             self.file_ready_for_processing.emit(filepath)
             
     def get_transcoding_ui_elements(self):
-        """Get UI elements to disable during transcoding."""
+        """Return UI elements to disable for transcoding."""
         elements = []
         if hasattr(self, 'youtube_button'):
             elements.append(self.youtube_button)
@@ -414,14 +414,14 @@ class ControlPanelWidget(QWidget):
         return elements
         
     def cancel_transcoding(self):
-        """Cancel transcoding operation."""
+        """Cancel transcoding."""
         if self.transcoding_thread and self.transcoding_thread.isRunning():
             logger.info("User requested cancellation of transcoding")
             self.transcoding_thread.cancel()  # Call the thread's cancel method
             self.feedback_manager.show_status("Cancelling transcoding...")
             
     def on_transcoding_progress(self, message):
-        """Handle progress updates from transcoding thread."""
+        """Update transcoding progress."""
         # Update status
         self.status_update.emit(message)
         
@@ -448,7 +448,7 @@ class ControlPanelWidget(QWidget):
             )
 
     def on_transcoding_complete(self, filepath_or_paths):
-        """Handle completion of transcoding."""
+        """Handle transcoding completion."""
         try:
             # Finish progress dialog
             if hasattr(self, 'transcoding_progress_id'):
@@ -483,7 +483,7 @@ class ControlPanelWidget(QWidget):
 
 
     def on_error(self, message):
-        """Handle errors from threads."""
+        """Handle thread errors."""
         logger.error(f"Operation Error: {message}")
         
         # Clean up any active feedback

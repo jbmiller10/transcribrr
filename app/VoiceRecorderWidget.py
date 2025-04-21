@@ -25,7 +25,7 @@ logger = logging.getLogger('transcribrr')
 
 
 class AudioLevelMeter(QWidget):
-    """Audio level visualization widget."""
+    """Audio level meter."""
 
     def __init__(self, parent=None):
         super().__init__(parent)
@@ -41,13 +41,13 @@ class AudioLevelMeter(QWidget):
         self.decay_timer.start(50)  # 50ms updates
 
     def set_level(self, level):
-        """Set the current audio level (0.0 to 1.0)."""
+        """Set audio level (0.0–1.0)."""
         self.level = min(max(level, 0.0), 1.0)
         self.peak_level = max(self.peak_level, self.level)
         self.update()
 
     def decay_levels(self):
-        """Gradually decrease levels for smooth visual effect."""
+        """Decay levels."""
         if self.level > 0:
             self.level = max(0, self.level - self.decay_rate)
         if self.peak_level > 0:
@@ -55,7 +55,7 @@ class AudioLevelMeter(QWidget):
         self.update()
 
     def paintEvent(self, event):
-        """Draw the audio level visualization."""
+        """Paint audio level."""
         from PyQt6.QtGui import QPainter, QColor, QLinearGradient, QBrush
 
         painter = QPainter(self)
@@ -89,7 +89,7 @@ class AudioLevelMeter(QWidget):
 
 
 class RecordingThread(QThread):
-    """Thread for handling audio recording in the background."""
+    """Background recording thread."""
 
     update_level = pyqtSignal(float)
     update_time = pyqtSignal(int)
@@ -111,7 +111,7 @@ class RecordingThread(QThread):
         # Don't create timers here - we'll handle time tracking differently
 
     def run(self):
-        """Main recording loop."""
+        """Recording loop."""
         try:
             self.stream = self.audio.open(
                 format=self.format,
@@ -164,17 +164,17 @@ class RecordingThread(QThread):
     # Time updates are now handled directly in the run method
 
     def pauseRecording(self):
-        """Pause the recording."""
+        """Pause recording."""
         if self.is_recording:
             self.is_paused = True
 
     def resumeRecording(self):
-        """Resume the recording after pausing."""
+        """Resume recording."""
         if self.is_recording:
             self.is_paused = False
 
     def startRecording(self):
-        """Start the recording thread."""
+        """Start recording."""
         self.is_recording = True
         self.is_paused = False
         self.frames.clear()
@@ -182,22 +182,13 @@ class RecordingThread(QThread):
         self.start()
 
     def stopRecording(self):
-        """Stop the recording thread."""
+        """Stop recording."""
         self.is_recording = False
         self.is_paused = False
         self.level_timer.stop()
 
     def saveRecording(self, filename=None):
-        """
-        Save the recorded audio to a file.
-
-        Args:
-            filename (str, optional): Full path for saving the file.
-                                     If None, generates a timestamped filename.
-
-        Returns:
-            str: Path to the saved audio file
-        """
+        """Save recording to file; returns filepath."""
         if not self.frames:
             self.error.emit("No audio data to save")
             return None
@@ -246,7 +237,7 @@ class RecordingThread(QThread):
 
 
 class VoiceRecorderWidget(QWidget):
-    """Widget for recording audio from microphone."""
+    """Audio recorder widget."""
 
     recordingCompleted = pyqtSignal(str)
     recordingStarted = pyqtSignal()
@@ -265,7 +256,7 @@ class VoiceRecorderWidget(QWidget):
         self.ui_timer.timeout.connect(self.updateUI)
 
     def initUI(self):
-        """Initialize the user interface."""
+        """Init UI."""
         self.layout = QVBoxLayout(self)
         self.layout.setContentsMargins(10, 10, 10, 10)
         self.layout.setSpacing(10)
@@ -359,7 +350,7 @@ class VoiceRecorderWidget(QWidget):
         self.layout.addLayout(buttonLayout)
 
     def initAudio(self):
-        """Initialize audio parameters."""
+        """Init audio params."""
         self.format = pyaudio.paInt16
         self.channels = 1
         self.rate = 44100
@@ -384,7 +375,7 @@ class VoiceRecorderWidget(QWidget):
             self.recordButton.setEnabled(False)
 
     def toggleRecording(self):
-        """Toggle recording state (start/pause/resume)."""
+        """Toggle recording state."""
         if not self.is_recording:
             self.startRecording()
         elif self.is_paused:
@@ -393,7 +384,7 @@ class VoiceRecorderWidget(QWidget):
             self.pauseRecording()
 
     def startRecording(self):
-        """Start a new recording."""
+        """Start recording."""
         self.is_recording = True
         self.is_paused = False
         self.elapsed_time = 0  # Reset elapsed time
@@ -427,7 +418,7 @@ class VoiceRecorderWidget(QWidget):
             self.handleRecordingError(f"Failed to start recording: {e}")
 
     def pauseRecording(self):
-        """Pause the current recording."""
+        """Pause recording."""
         if self.recording_thread:
             self.is_paused = True
             self.recordButton.set_svg('record')
@@ -436,7 +427,7 @@ class VoiceRecorderWidget(QWidget):
             self.ui_timer.stop()
 
     def resumeRecording(self):
-        """Resume a paused recording."""
+        """Resume recording."""
         if self.recording_thread:
             self.is_paused = False
             self.recordButton.set_svg('pause')
@@ -445,7 +436,7 @@ class VoiceRecorderWidget(QWidget):
             self.ui_timer.start(100)
 
     def saveRecording(self):
-        """Save the current recording."""
+        """Save recording."""
         if self.recording_thread:
             # Stop recording if it's still active
             if self.is_recording:
@@ -501,7 +492,7 @@ class VoiceRecorderWidget(QWidget):
                 self.statusLabel.setText("Save cancelled")
 
     def deleteRecording(self):
-        """Delete the current recording without saving."""
+        """Delete recording."""
         if self.recording_thread:
             # Stop recording if it's still active
             if self.is_recording:
@@ -520,7 +511,7 @@ class VoiceRecorderWidget(QWidget):
             self.resetUI()
 
     def resetUI(self):
-        """Reset the UI to initial state."""
+        """Reset UI."""
         self.elapsed_time = 0
         self.timerLabel.setText("00:00:00")
         self.recordButton.set_svg('record')
@@ -531,20 +522,20 @@ class VoiceRecorderWidget(QWidget):
         self.level_meter.set_level(0)
 
     def updateUI(self):
-        """Update all UI elements that need regular updates."""
+        """Update UI elements."""
         # Update the timer display
         if self.is_recording:
             time_str = format_time_duration(self.elapsed_time)
             self.timerLabel.setText(time_str)
     
     def updateTimerValue(self, seconds):
-        """Update timer value from recording thread."""
+        """Update timer."""
         self.elapsed_time = seconds
         logger.debug(f"Received timer update: {seconds}s")
         # No need to force update - the regular UI timer will handle it
 
     def handleRecordingError(self, error_message):
-        """Handle recording errors."""
+        """Handle recording error."""
         logger.error(f"Recording error: {error_message}")
         self.statusLabel.setText(f"Error: {error_message}")
         self.recordingError.emit(error_message)

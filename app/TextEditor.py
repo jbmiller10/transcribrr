@@ -26,7 +26,7 @@ logger = logging.getLogger('transcribrr')
 
 
 class FindReplaceDialog(QDialog):
-    """Dialog for finding and replacing text."""
+    """Find/replace dialog."""
 
     def __init__(self, editor, parent=None):
         super().__init__(parent)
@@ -134,7 +134,7 @@ class FindReplaceDialog(QDialog):
         self.original_selection_formats = []
         
     def reset_search(self):
-        """Reset the search state when options change."""
+        """Reset search state."""
         self.search_wrapped = False
         self.search_start_position = None
         self.status_label.clear()
@@ -144,7 +144,7 @@ class FindReplaceDialog(QDialog):
             self.toggle_highlight_all(self.highlight_all.checkState())
 
     def update_buttons(self):
-        """Enable/disable buttons based on input."""
+        """Update button states based on input."""
         has_find_text = bool(self.find_text.text())
         self.find_button.setEnabled(has_find_text)
         self.find_prev_button.setEnabled(has_find_text)
@@ -157,7 +157,7 @@ class FindReplaceDialog(QDialog):
             self.status_label.clear()
 
     def get_search_flags(self):
-        """Get the search flags based on current options."""
+        """Return search flags based on options."""
         flags = QTextDocument.FindFlag(0)
         if self.case_sensitive.isChecked():
             flags |= QTextDocument.FindFlag.FindCaseSensitively
@@ -169,17 +169,17 @@ class FindReplaceDialog(QDialog):
         return flags
 
     def find_next(self):
-        """Find the next occurrence of the search text."""
+        """Find next occurrence."""
         self._is_find_previous = False
         return self._find_text()
         
     def find_previous(self):
-        """Find the previous occurrence of the search text."""
+        """Find previous occurrence."""
         self._is_find_previous = True
         return self._find_text()
         
     def _find_text(self):
-        """Core implementation of text finding."""
+        """Perform text search."""
         text = self.find_text.text()
         if not text:
             return False
@@ -233,7 +233,7 @@ class FindReplaceDialog(QDialog):
         return found
 
     def replace(self):
-        """Replace the current selection with the replacement text."""
+        """Replace current selection."""
         cursor = self.editor.editor.textCursor()
         if cursor.hasSelection():
             cursor.insertText(self.replace_text.text())
@@ -244,7 +244,7 @@ class FindReplaceDialog(QDialog):
         self._find_text()
 
     def replace_all(self):
-        """Replace all occurrences of the search text."""
+        """Replace all occurrences."""
         text = self.find_text.text()
         replacement = self.replace_text.text()
 
@@ -297,7 +297,7 @@ class FindReplaceDialog(QDialog):
             self.editor.editor.document().endEditBlock()
     
     def toggle_highlight_all(self, state):
-        """Highlight all matches of the search text."""
+        """Highlight all matches."""
         # Clear any existing highlights
         self.clear_all_highlights()
         
@@ -347,16 +347,16 @@ class FindReplaceDialog(QDialog):
             self.status_label.setText(f"Highlighted {count} matches")
             
     def clear_all_highlights(self):
-        """Clear all highlighted matches."""
+        """Clear highlights."""
         self.original_selection_formats = []
         self.editor.editor.setExtraSelections([])
         
     def cleanup_on_close(self):
-        """Clear any highlights when dialog is closed."""
+        """Clear highlights on close."""
         self.clear_all_highlights()
         
     def closeEvent(self, event):
-        """Handle dialog close events."""
+        """Handle close event."""
         self.cleanup_on_close()
         super().closeEvent(event)
 

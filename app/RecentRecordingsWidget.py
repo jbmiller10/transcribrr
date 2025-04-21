@@ -28,7 +28,7 @@ logger = logging.getLogger('transcribrr')
 
 
 class SearchWidget(QWidget):
-    """Widget for searching and filtering recordings."""
+    """Search/filter recordings."""
     # (Content mostly unchanged)
     searchTextChanged = pyqtSignal(str)
     filterCriteriaChanged = pyqtSignal(str)
@@ -57,7 +57,7 @@ class SearchWidget(QWidget):
 
 
 class BatchProcessWorker(QThread):
-    """Worker thread for batch processing recordings."""
+    """Thread for batch processing recordings."""
     # TODO: Implement actual batch processing logic by integrating
     #       with TranscriptionThread and GPT4ProcessingThread.
     #       This currently only simulates progress.
@@ -117,7 +117,7 @@ class BatchProcessWorker(QThread):
 
 
 class UnifiedFolderListWidget(QTreeWidget):
-    """Combined folder tree and recordings list."""
+    """Combined folder and recording tree."""
     # Signals
     folderSelected = pyqtSignal(int, str)
     recordingSelected = pyqtSignal(RecordingListItem) # Keep emitting item for compatibility
@@ -160,10 +160,10 @@ class UnifiedFolderListWidget(QTreeWidget):
         self.load_structure() # Initial load
 
     def _refresh_with_expansion(self, expanded_folder_ids):
-        """Refresh the tree view while preserving the expanded state of folders.
-        
-        Args:
-            expanded_folder_ids: List of folder IDs that were expanded before refresh
+        """Refresh tree, keeping expansion.
+
+Args:
+    expanded_folder_ids: folder IDs to expand
         """
         # Store the currently selected item
         current_item = self.currentItem()
@@ -180,12 +180,12 @@ class UnifiedFolderListWidget(QTreeWidget):
         self.load_structure(current_id, current_type, expanded_folder_ids)
         
     def load_structure(self, select_item_id=None, item_type=None, expanded_folder_ids=None):
-        """Load folder structure and recordings for the current view.
-        
-        Args:
-            select_item_id: ID of item to select after loading
-            item_type: Type of item to select ("folder" or "recording")
-            expanded_folder_ids: List of folder IDs that should be expanded
+        """Load tree structure and recordings.
+
+Args:
+    select_item_id: ID to select after load
+    item_type: "folder" or "recording"
+    expanded_folder_ids: folder IDs to expand
         """
         self.clear()
         self.recordings_map.clear()

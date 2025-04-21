@@ -1,6 +1,4 @@
-"""
-File utility functions for handling files and file paths.
-"""
+"""File utilities."""
 
 import os
 import shutil
@@ -22,15 +20,7 @@ from app.constants import (
 logger = logging.getLogger('transcribrr')
 
 def get_file_type(file_path: str) -> FileType:
-    """
-    Determine the type of file based on its extension.
-    
-    Args:
-        file_path: Path to the file
-        
-    Returns:
-        FileType enum value
-    """
+    """Return file type based on extension."""
     _, ext = os.path.splitext(file_path)
     ext = ext.lower()
     
@@ -44,15 +34,7 @@ def get_file_type(file_path: str) -> FileType:
         return FileType.UNKNOWN
 
 def is_valid_media_file(file_path: str) -> bool:
-    """
-    Check if a file is a valid media file that can be transcribed.
-    
-    Args:
-        file_path: Path to the file
-        
-    Returns:
-        True if file is a valid media file
-    """
+    """Return True if media file."""
     if not os.path.exists(file_path):
         return False
         
@@ -60,16 +42,7 @@ def is_valid_media_file(file_path: str) -> bool:
     return file_type in (FileType.AUDIO, FileType.VIDEO)
 
 def check_file_size(file_path: str, max_size_mb: int = MAX_FILE_SIZE_MB) -> Tuple[bool, float]:
-    """
-    Check if a file exceeds the maximum allowed size.
-    
-    Args:
-        file_path: Path to the file
-        max_size_mb: Maximum allowed size in MB
-        
-    Returns:
-        Tuple of (is_valid, size_in_mb)
-    """
+    """Check file size against max MB."""
     if not os.path.exists(file_path):
         return False, 0
         
@@ -77,26 +50,12 @@ def check_file_size(file_path: str, max_size_mb: int = MAX_FILE_SIZE_MB) -> Tupl
     return file_size_mb <= max_size_mb, file_size_mb
 
 def ensure_recordings_dir() -> str:
-    """
-    Ensure the recordings directory exists.
-    
-    Returns:
-        Path to the recordings directory
-    """
+    """Ensure recordings dir exists."""
     os.makedirs(RECORDINGS_DIR, exist_ok=True)
     return RECORDINGS_DIR
 
 def generate_new_filename(base_name: str, directory: str) -> str:
-    """
-    Generate a unique filename in the target directory.
-    
-    Args:
-        base_name: Base filename (without directory)
-        directory: Target directory
-        
-    Returns:
-        Unique file path in the target directory
-    """
+    """Generate unique filename in directory."""
     base_path = os.path.join(directory, base_name)
     
     # If file doesn't exist, use it directly
@@ -115,16 +74,7 @@ def generate_new_filename(base_name: str, directory: str) -> str:
     return new_path
 
 def safe_copy_file(source_path: str, target_dir: str = None) -> Optional[str]:
-    """
-    Safely copy a file to the target directory, handling errors.
-    
-    Args:
-        source_path: Path to the source file
-        target_dir: Target directory (defaults to recordings dir)
-        
-    Returns:
-        Path to the copied file or None if failed
-    """
+    """Copy file safely, return new path or None."""
     if not os.path.exists(source_path):
         logger.error(f"Source file does not exist: {source_path}")
         return None
@@ -148,24 +98,11 @@ def safe_copy_file(source_path: str, target_dir: str = None) -> Optional[str]:
         return None
 
 def get_timestamp_string() -> str:
-    """
-    Get a timestamp string for filenames.
-    
-    Returns:
-        Formatted timestamp string
-    """
+    """Return timestamp string."""
     return datetime.datetime.now().strftime("%Y%m%d-%H%M%S")
 
 def calculate_duration(file_path: str) -> str:
-    """
-    Calculate the duration of an audio or video file.
-    
-    Args:
-        file_path: Path to the media file
-        
-    Returns:
-        Duration as a formatted string (HH:MM:SS)
-    """
+    """Return media duration string."""
     try:
         file_type = get_file_type(file_path)
         
@@ -190,18 +127,7 @@ def calculate_duration(file_path: str) -> str:
         return "00:00:00"
 
 def save_temp_recording(frames: List[bytes], channels: int, sample_width: int, rate: int) -> Optional[str]:
-    """
-    Save audio frames to a temporary file.
-    
-    Args:
-        frames: List of audio frames bytes
-        channels: Number of audio channels
-        sample_width: Sample width in bytes
-        rate: Sample rate in Hz
-        
-    Returns:
-        Path to the saved file or None if failed
-    """
+    """Save audio frames to temp file."""
     if not frames:
         logger.error("No audio frames to save")
         return None

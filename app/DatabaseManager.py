@@ -15,7 +15,7 @@ from app.db_utils import (
 logger = logging.getLogger('transcribrr')
 
 class DatabaseWorker(QThread):
-    """Worker thread that processes database operations from a queue."""
+    """Thread for DB operations."""
     operation_complete = pyqtSignal(dict)
     error_occurred = pyqtSignal(str, str)  # operation_name, error_message
 
@@ -26,7 +26,7 @@ class DatabaseWorker(QThread):
         self.mutex = QMutex()
 
     def run(self):
-        """Process operations from the queue."""
+        """Process queued operations."""
         conn = None
         try:
             conn = get_connection()
@@ -111,7 +111,7 @@ class DatabaseWorker(QThread):
                     self.error_occurred.emit("connection_close", str(e))
 
     def add_operation(self, operation_type, operation_id=None, *args, **kwargs):
-        """Add an operation to the queue."""
+        """Enqueue operation."""
         self.operations_queue.put({
             'type': operation_type,
             'id': operation_id,
@@ -120,7 +120,7 @@ class DatabaseWorker(QThread):
         })
 
     def stop(self):
-        """Stop the worker thread."""
+        """Stop thread."""
         self.mutex.lock()
         self.running = False
         self.mutex.unlock()
@@ -130,7 +130,7 @@ class DatabaseWorker(QThread):
 
 
 class DatabaseManager(QObject):
-    """Manages database operations in a separate thread."""
+    """DB manager with worker thread."""
     operation_complete = pyqtSignal(dict)
     error_occurred = pyqtSignal(str, str)  # operation_name, error_message
 
@@ -151,13 +151,7 @@ class DatabaseManager(QObject):
         self.worker.start()
 
     def create_recording(self, recording_data, callback=None):
-        """
-        Create a new recording in the database.
-        
-        Args:
-            recording_data: Tuple of (filename, file_path, date_created, duration, raw_transcript, processed_text)
-            callback: Optional function to call when operation completes
-        """
+        """Create a recording. recording_data tuple, optional callback."""
         operation_id = f"create_recording_{id(callback) if callback else 'no_callback'}"
         self.worker.add_operation('create_recording', operation_id, recording_data)
         
@@ -186,12 +180,7 @@ class DatabaseManager(QObject):
             self.error_occurred.connect(error_handler)
 
     def get_all_recordings(self, callback):
-        """
-        Get all recordings from the database.
-        
-        Args:
-            callback: Function to call with the result
-        """
+        """Fetch all recordings, call callback with result."""
         if not callback or not callable(callback):
             logger.warning("get_all_recordings called without a valid callback function")
             return
