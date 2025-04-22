@@ -15,6 +15,9 @@ from pathlib import Path
 from glob import glob
 from PyInstaller.utils.hooks import collect_submodules, collect_data_files
 
+# Define specpath - path to the directory containing this spec file
+specpath = Path(__file__).resolve().parent
+
 # ---------------------------------------------------------------------------
 # 1  Hidden imports – Torch + optional packages
 # ---------------------------------------------------------------------------
@@ -67,13 +70,13 @@ for exe_name in ("ffmpeg.exe", "ffprobe.exe"):
 # ---------------------------------------------------------------------------
 # 4  Analysis – core PyInstaller phase
 # ---------------------------------------------------------------------------
-project_root = Path(specpath)
 a = Analysis(
     ["main.py"],
-    pathex=[str(project_root), str(project_root / "app")],
+    pathex=[str(specpath), str(specpath / "app")],
     binaries=BINARIES,
     datas=datas,
     hiddenimports=hidden_imports,
+    excludedimports=["torch.utils.tensorboard"],
     noarchive=False,
     cipher=None,
 )
