@@ -24,14 +24,22 @@ jobs:
           python-version: ${{ env.PYTHON_VERSION }}
       # ---------------------------------------------
       
-      - name: Cache pip dependencies
+      - name: Locate pip cache dir
+        id: pip-cache
+        run: echo "dir=$(python -m pip cache dir)" >> "$GITHUB_OUTPUT"
+
+      - name: Cache pip wheels
         uses: actions/cache@v3
         with:
-          path: ~/.cache/pip
-          key: ${{ runner.os }}-pip-${{ env.PYTHON_VERSION }}-${{ hashFiles('**/requirements.txt') }}
+          # resolved path, e.g. /Users/runner/Library/Caches/pip
+          path: ${{ steps.pip-cache.outputs.dir }}
+          # include Python version + hash of requirement sources
+          key: macos-pip-${{ env.PYTHON_VERSION }}-${{ hashFiles('requirements.txt', 'pyproject.toml') }}
           restore-keys: |
-            ${{ runner.os }}-pip-${{ env.PYTHON_VERSION }}-
-            ${{ runner.os }}-pip-
+            macos-pip-${{ env.PYTHON_VERSION }}-
+
+      - name: Debug cache content
+        run: du -sh ${{ steps.pip-cache.outputs.dir }} || true
 
       - name: Install system libraries
         run: |
