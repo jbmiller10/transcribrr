@@ -66,8 +66,12 @@ Name: "english"; MessagesFile: "compiler:Default.isl"
 Name: "desktopicon"; Description: "{cm:CreateDesktopIcon}"; GroupDescription: "{cm:AdditionalIcons}"; Flags: unchecked
 Name: "quicklaunchicon"; Description: "{cm:CreateQuickLaunchIcon}"; GroupDescription: "{cm:AdditionalIcons}"; Flags: unchecked; OnlyBelowVersion: 6.1; Check: not IsAdminInstallMode
 
+; ---- Files section ----
 [Files]
-Source: "..\dist\Transcribrr\*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs createallsubdirs
+Source: "..\dist\Transcribrr_{#Flavour}\*"; \
+       DestDir: "{app}"; \
+       Flags: ignoreversion recursesubdirs createallsubdirs
+
 
 [Icons]
 ; Start Menu shortcuts
