@@ -224,6 +224,17 @@ jobs:
           $env:PATH = "$env:PATH;$innoSetupPath"
           [Environment]::SetEnvironmentVariable("PATH", $env:PATH, "Machine")
 
+      - name: Extract App Version
+        id: version
+        shell: bash
+        run: |
+          # Use python to extract the version string from __init__.py
+          # This handles potential variations in spacing or quotes
+          VERSION=$(python -c "import re; f=open('app/__init__.py', 'r'); c=f.read(); f.close(); print(re.search(r'^__version__\s*=\s*[\'\"']([^\'\"']*)[\'\"']', c, re.M).group(1))")
+          echo "Detected version: $VERSION"
+          # Set the version as an environment variable for subsequent steps
+          echo "APP_VERSION=$VERSION" >> $GITHUB_ENV
+
       - name: Create Windows Installer
         shell: pwsh
         run: |
@@ -256,8 +267,13 @@ jobs:
           $icoFileSize = (Get-Item "icons\app\app_icon.ico").Length
           Write-Host "ICO file size: $icoFileSize bytes"
           
+          # Get the version from the environment variable set in the previous step
+          $appVersion = $env:APP_VERSION
+          Write-Host "Using App Version: $appVersion for Inno Setup compilation"
+          
           Write-Host "Creating Windows installer for $flavor build..."
-          & "C:\Program Files (x86)\Inno Setup 6\ISCC.exe" /DFlavour=$flavor "installer\transcribrr_setup.iss"
+          # Pass the extracted version using /DMyAppVersionValue
+          & "C:\Program Files (x86)\Inno Setup 6\ISCC.exe" /DFlavour=$flavor /DMyAppVersionValue=$appVersion "installer\transcribrr_setup.iss"
           
           # Check if installer was created successfully
           if (Test-Path "dist\Transcribrr-windows-$flavor-setup.exe") {
