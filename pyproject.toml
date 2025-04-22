@@ -9,7 +9,7 @@ bundle         = "com.transcribrr"
 version        = "1.0.0"
 author         = "John Miller"
 author_email   = "john@johnbmiller.com"
-license.file   = "LICENSE"                   
+license = { file = "LICENSE" }                
 
 requires      = [
     "PyQt6",
