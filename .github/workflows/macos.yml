@@ -1,26 +1,28 @@
+# .github/workflows/macos.yml   ← complete, validated
+
 name: macOS Briefcase build
 
 on:
   workflow_dispatch:
   push:
     tags:
-      - "v*.*.*"            # ← list form is clearer
+      - "v*.*.*"
 
-env:
-  PYTHON_VERSION: "3.9"     # ← move to top‑level env, no braces
+env:                     # top‑level env is simplest
+  PYTHON_VERSION: "3.9"
 
 jobs:
   macos:
-    runs-on: macos-14
+    runs-on: macos-14    # Apple‑silicon runner
 
     steps:
       - uses: actions/checkout@v4
 
-      # ---- the line that raised the error ----
+      # ---------- CORRECTLY INDENTED STEP ----------
       - uses: actions/setup-python@v5
         with:
           python-version: ${{ env.PYTHON_VERSION }}
-      # ----------------------------------------
+      # ---------------------------------------------
 
       - name: Install Briefcase + deps
         run: |
