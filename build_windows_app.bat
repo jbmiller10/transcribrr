@@ -243,11 +243,11 @@ if not exist "%OUTPUT_DIR%" echo ERROR: OUTPUT_DIR does not exist!
 	echo ^>^> "%%LOG_FILE%%" echo QT_PLUGIN_PATH: %%QT_PLUGIN_PATH%%
 
 	echo cd /d "%%SCRIPT_DIR%%"
-	echo if errorlevel 1 (
+	echo if errorlevel 1 ^(
     echo   echo ERROR: Failed to change directory to %%SCRIPT_DIR%% ^>^> "%%LOG_FILE%%"
     echo   pause
     echo   exit /b 1
-    echo )
+    echo ^)
     echo.
     echo echo Checking for Python at %%VENV_PYTHON%%... ^>^> "%%LOG_FILE%%"
     echo if exist "%%VENV_PYTHON%%" (goto :RunPython) else (goto :PythonNotFound)
