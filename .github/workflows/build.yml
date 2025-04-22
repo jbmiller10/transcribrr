@@ -78,6 +78,7 @@ jobs:
           set -o pipefail            # fail the step if PyInstaller exits non‑zero
           mkdir -p build
           pyinstaller transcribrr.spec --noconfirm --clean --log-level=DEBUG \
+            --qt-plugins=all \ 
             2>&1 | tee build/pyinstaller-${{ matrix.flavour }}.log
           
           mv dist/Transcribrr "dist/Transcribrr_${{ matrix.flavour }}"
