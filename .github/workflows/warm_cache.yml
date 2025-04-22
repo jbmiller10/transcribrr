@@ -112,7 +112,7 @@ jobs:
         uses: actions/cache/restore@v3
         with:
           path: ${{ steps.pip-dir.outputs.dir }}
-          key:  Macos-pip-${{ env.PYTHON_VERSION }}-cpu-${{ hashFiles('requirements.txt') }}
+          key:  macos-pip-${{ env.PYTHON_VERSION }}-${{ hashFiles('requirements.txt') }}
           restore-keys: |
             Macos-pip-${{ env.PYTHON_VERSION }}-cpu-
 
