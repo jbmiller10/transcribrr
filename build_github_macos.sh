@@ -74,7 +74,7 @@ cat > "${APP_DIR}/Contents/Info.plist" << EOF
 </plist>
 EOF
 
-# Create launcher script - MODIFIED TO INCLUDE FFMPEG PATH DIRECTLY
+# Create launcher script (Correct: Logs to ~/Library/Application Support)
 echo "Creating launcher script..."
 cat > "${APP_DIR}/Contents/MacOS/${APP_NAME}" << 'EOF'
 #!/bin/bash
@@ -110,7 +110,7 @@ PY="$DIR/../Frameworks/Python.framework/Versions/$PY_VER/bin/python3"
 
 # Echo diagnostic information to a log file in the user-writable directory
 echo "Starting application at $(date)" > "$APP_LOGS_DIR/launch.log"
-echo "RESOURCES_DIR: $RESOURCES_DIR" >> "$APP_LOGS_DIR/launch.log" 
+echo "RESOURCES_DIR: $RESOURCES_DIR" >> "$APP_LOGS_DIR/launch.log"
 echo "APP_SUPPORT_DIR: $APP_SUPPORT_DIR" >> "$APP_LOGS_DIR/launch.log"
 echo "PYTHONPATH: $PYTHONPATH" >> "$APP_LOGS_DIR/launch.log"
 echo "PATH: $PATH" >> "$APP_LOGS_DIR/launch.log"
@@ -131,31 +131,22 @@ export TRANSCRIBRR_USER_DATA_DIR="$APP_SUPPORT_DIR"
 
 # Launch the app with Python
 cd "$RESOURCES_DIR"  # Change to resources directory before launching
-exec "$PY" "$RESOURCES_DIR/main.py"
+exec "$PY" "$RESOURCES_DIR/main.py" >> "$APP_LOGS_DIR/launch.log" 2>&1 # Redirect Python stdout/stderr to log
 EOF
 
 # Make the launcher executable
 chmod +x "${APP_DIR}/Contents/MacOS/${APP_NAME}"
 
-# Copy resources 
+# Copy resources
 echo "Copying resources..."
-mkdir -p "${APP_DIR}/Contents/Resources/icons"
-mkdir -p "${APP_DIR}/Contents/Resources/icons/status"
-mkdir -p "${APP_DIR}/Contents/Resources/app"
-mkdir -p "${APP_DIR}/Contents/Resources/Recordings"
-mkdir -p "${APP_DIR}/Contents/Resources/database"
-mkdir -p "${APP_DIR}/Contents/Resources/logs"
-
-# Copy specific SVG files that the app is looking for
-cp -f icons/status/audio.svg "${APP_DIR}/Contents/Resources/icons/"
-cp -f icons/status/video.svg "${APP_DIR}/Contents/Resources/icons/"
-cp -f icons/status/file.svg "${APP_DIR}/Contents/Resources/icons/"
-
-# Now copy all icons with proper structure
-cp -r icons "${APP_DIR}/Contents/Resources/"
-# Ensure status icons are also copied to the expected location
-cp -f icons/status/* "${APP_DIR}/Contents/Resources/icons/status/"
-cp -r app "${APP_DIR}/Contents/Resources/"
+mkdir -p "${APP_DIR}/Contents/Resources/icons/status" # Ensure status dir exists first
+cp icons/status/audio.svg "${APP_DIR}/Contents/Resources/icons/status/"
+cp icons/status/video.svg "${APP_DIR}/Contents/Resources/icons/status/"
+cp icons/status/file.svg "${APP_DIR}/Contents/Resources/icons/status/"
+# Now copy all icons, potentially overwriting status icons is fine
+cp -R icons "${APP_DIR}/Contents/Resources/"
+# Copy app code, config, main script
+cp -R app "${APP_DIR}/Contents/Resources/"
 cp config.json "${APP_DIR}/Contents/Resources/"
 cp preset_prompts.json "${APP_DIR}/Contents/Resources/"
 cp main.py "${APP_DIR}/Contents/Resources/"
@@ -167,91 +158,71 @@ echo "Copying Python framework..."
 # Debug Python location
 echo "Python executable path: $(which python3)"
 echo "Python version: $(python3 --version)"
-echo "Python framework path check:"
-ls -la /Library/Frameworks/Python.framework/Versions/ 2>/dev/null || echo "No framework in /Library/Frameworks"
-ls -la "$(brew --prefix)/Frameworks/Python.framework/Versions/" 2>/dev/null || echo "No framework in brew prefix"
-ls -la "$HOME/Library/Frameworks/Python.framework/Versions/" 2>/dev/null || echo "No framework in user Library"
 
-# Look for Python framework in different locations
-if [ -d "/Library/Frameworks/Python.framework" ]; then
+# Explicitly check for python@3.9 from brew first (Fix #10)
+if brew list python@3.9 &> /dev/null; then
+    BREW_PY_PREFIX=$(brew --prefix python@3.9)
+    echo "Found python@3.9 via Homebrew at $BREW_PY_PREFIX"
+else
+    BREW_PY_PREFIX=""
+    echo "python@3.9 not found via Homebrew."
+fi
+
+# Look for Python framework in different locations (Fix #3 adapted)
+if [ -n "$BREW_PY_PREFIX" ] && [ -d "$BREW_PY_PREFIX/Frameworks/Python.framework" ]; then
+  FW_SRC="$BREW_PY_PREFIX/Frameworks/Python.framework"
+elif [ -d "/Library/Frameworks/Python.framework" ]; then
   FW_SRC="/Library/Frameworks/Python.framework"
-elif [ -d "$(brew --prefix)/Frameworks/Python.framework" ]; then
-  FW_SRC="$(brew --prefix)/Frameworks/Python.framework"
 elif [ -d "$HOME/Library/Frameworks/Python.framework" ]; then
   FW_SRC="$HOME/Library/Frameworks/Python.framework"
 else
-  echo "ERROR: Could not find Python.framework. Will attempt to use system Python."
-  # Create the framework directory structure
-  mkdir -p "${APP_DIR}/Contents/Frameworks/Python.framework/Versions/$PY_VER/bin"
-  # Create symlinks to system Python
-  ln -sf "$(which python3)" "${APP_DIR}/Contents/Frameworks/Python.framework/Versions/$PY_VER/bin/python3"
-  ln -sf "$(which pip3)" "${APP_DIR}/Contents/Frameworks/Python.framework/Versions/$PY_VER/bin/pip3"
-  FW_DST="${APP_DIR}/Contents/Frameworks/Python.framework"
-  # Skip the copy since we're using system Python
-  echo "Using system Python through symlinks"
+  # Corrected error handling (Fix #5)
+  echo "Fatal: Python.framework not found in expected locations (/Library, brew --prefix python@3.9, ~/Library) - aborting."
   exit 1
 fi
 
 echo "Found Python framework at: $FW_SRC"
 FW_DST="${APP_DIR}/Contents/Frameworks/Python.framework"
-cp -R "$FW_SRC" "$FW_DST" || echo "WARNING: Failed to copy framework. Will attempt to use Python from PATH."
+# Create parent directory for specific version first (Improvement #6)
+mkdir -p "${FW_DST}/Versions"
+# Copy only the specific Python version (Improvement #6) & removed || echo (Fix #4)
+cp -R "${FW_SRC}/Versions/${PY_VER}" "${FW_DST}/Versions/"
 
 # --- Add these steps to fix library loading (Comprehensive) ---
+# --- This block remains unchanged as it was deemed correct ---
 echo "Fixing Python framework library paths (Comprehensive)..."
-# Define paths based on existing script variables
-PYTHON_EXEC="${FW_DST}/Versions/$PY_VER/bin/python3" 
+PYTHON_EXEC="${FW_DST}/Versions/$PY_VER/bin/python3"
 PYTHON_LIB_FILE="${FW_DST}/Versions/$PY_VER/Python" # Path to the actual library *file*
 PYTHON_FRAMEWORK_BASE="${FW_DST}/Versions/$PY_VER" # Base dir for framework contents
-
-# 1. Check if the Python executable exists before proceeding
 if [ ! -f "$PYTHON_EXEC" ]; then
     echo "ERROR: Embedded Python executable not found at $PYTHON_EXEC. Cannot fix library paths."
 else
     echo "Processing executable: $PYTHON_EXEC"
     echo "Processing library file: $PYTHON_LIB_FILE"
-
-    # 2. Find the original absolute path the executable links against for the Python library
     ORIGINAL_PYTHON_LINK=$(otool -L "$PYTHON_EXEC" | grep 'Python\.framework' | awk '{print $1}' | head -n 1)
-
     if [ -z "$ORIGINAL_PYTHON_LINK" ]; then
         echo "WARNING: Could not determine original Python library link path in $PYTHON_EXEC."
     else
         echo "Original Python library link in executable: $ORIGINAL_PYTHON_LINK"
-
-        # --- Define New Link Paths ---
-        # For the executable linking TO the library (use @loader_path)
-        NEW_EXEC_LINK_TO_LIB="@loader_path/../Python" 
-        # For the library's own ID and for others linking TO it (use @rpath)
+        NEW_EXEC_LINK_TO_LIB="@loader_path/../Python"
         NEW_LIB_ID_AND_LINK="@rpath/Python.framework/Versions/$PY_VER/Python"
-
-        # 3. Fix the executable's reference to the Python library
         echo "Changing link in executable to: $NEW_EXEC_LINK_TO_LIB"
         install_name_tool -change "$ORIGINAL_PYTHON_LINK" "$NEW_EXEC_LINK_TO_LIB" "$PYTHON_EXEC"
-
-        # 4. Fix the Python library's own ID
         if [ -f "$PYTHON_LIB_FILE" ]; then
             echo "Updating library self-identification (id) to: $NEW_LIB_ID_AND_LINK"
             install_name_tool -id "$NEW_LIB_ID_AND_LINK" "$PYTHON_LIB_FILE"
         else
             echo "WARNING: Python library file not found at $PYTHON_LIB_FILE. Cannot update its ID."
         fi
-
-        # 5. Add RPATH to the executable so it can find @rpath links
-        #    @executable_path = Contents/MacOS/
-        #    ../../Frameworks = Contents/Frameworks/
         echo "Adding RPATH '@executable_path/../../Frameworks' to executable"
-        # Ensure we don't add duplicate RPATH entries (install_name_tool fails if duplicate)
         if ! otool -l "$PYTHON_EXEC" | grep -A2 LC_RPATH | grep -q "@executable_path/../../Frameworks"; then
             install_name_tool -add_rpath "@executable_path/../../Frameworks" "$PYTHON_EXEC"
         else
             echo "RPATH already present, skipping add_rpath."
         fi
-
-        # 6. Fix references in OTHER libraries within the framework
         echo "Searching for other dylibs in framework to fix..."
         find "${PYTHON_FRAMEWORK_BASE}" -name '*.dylib' -print0 | while IFS= read -r -d $'\0' dylib_file; do
             echo "Checking dylib: $dylib_file"
-            # Check if this dylib links against the original absolute path
             if otool -L "$dylib_file" | grep -q "$ORIGINAL_PYTHON_LINK"; then
                 echo "  Found link to $ORIGINAL_PYTHON_LINK. Changing to $NEW_LIB_ID_AND_LINK..."
                 install_name_tool -change "$ORIGINAL_PYTHON_LINK" "$NEW_LIB_ID_AND_LINK" "$dylib_file"
@@ -259,8 +230,6 @@ else
                 echo "  No link to original Python found."
             fi
         done
-
-        # 7. Verify the changes (Optional but good practice)
         echo "Verifying changes:"
         echo "--- Executable ($PYTHON_EXEC) Links ---"
         otool -L "$PYTHON_EXEC" | grep 'Python'
@@ -276,22 +245,10 @@ fi
 
 # Install dependencies using the embedded Python
 echo "Installing dependencies..."
-
-# Check if our embedded pip3 exists
-if [ -f "${APP_DIR}/Contents/Frameworks/Python.framework/Versions/$PY_VER/bin/pip3" ]; then
-  PIP_CMD="${APP_DIR}/Contents/Frameworks/Python.framework/Versions/$PY_VER/bin/pip3"
-  echo "Using embedded pip at: $PIP_CMD"
-else
-  # Fall back to system pip
-  echo "Embedded pip not found, falling back to system pip"
-  PIP_CMD="pip3"
-  
-  # Create the framework bin directory if it doesn't exist
-  mkdir -p "${APP_DIR}/Contents/Frameworks/Python.framework/Versions/$PY_VER/bin"
-  
-  # Create a symlink to the system Python and pip
-  ln -sf "$(which python3)" "${APP_DIR}/Contents/Frameworks/Python.framework/Versions/$PY_VER/bin/python3"
-  ln -sf "$(which pip3)" "${APP_DIR}/Contents/Frameworks/Python.framework/Versions/$PY_VER/bin/pip3"
+PIP_CMD="${FW_DST}/Versions/$PY_VER/bin/pip3"
+if [ ! -f "$PIP_CMD" ]; then
+    echo "ERROR: Embedded pip3 not found at $PIP_CMD after framework copy and fixing."
+    exit 1
 fi
 
 echo "Installing pip packages using: $PIP_CMD"
@@ -310,15 +267,9 @@ FFPROBE_PATH=$(which ffprobe)
 
 if [ -f "$FFMPEG_PATH" ] && [ -f "$FFPROBE_PATH" ]; then
     mkdir -p "${APP_DIR}/Contents/MacOS/bin"
-    
-    # Ensure bin directory has proper permissions
     chmod 755 "${APP_DIR}/Contents/MacOS/bin"
-    
-    # Copy the binaries (GitHub Actions should have sufficient permissions)
     cp "$FFMPEG_PATH" "${APP_DIR}/Contents/MacOS/bin/"
     cp "$FFPROBE_PATH" "${APP_DIR}/Contents/MacOS/bin/"
-    
-    # Make executables executable
     chmod 755 "${APP_DIR}/Contents/MacOS/bin/ffmpeg"
     chmod 755 "${APP_DIR}/Contents/MacOS/bin/ffprobe"
     echo "FFmpeg binaries copied successfully."
@@ -327,25 +278,42 @@ else
     echo "Your app may not work correctly without these binaries."
 fi
 
-# Copy Qt plugins
+# Copy Qt plugins (Pruned - Improvement #7)
 echo "Copying Qt plugins..."
-# Path to PyQt6 Qt plugins
-PY_SITE_PACKAGES="${APP_DIR}/Contents/Frameworks/Python.framework/Versions/$PY_VER/lib/python$PY_VER/site-packages"
-QT_PLUGIN_PATH="${PY_SITE_PACKAGES}/PyQt6/Qt6/plugins"
+PY_SITE_PACKAGES="${FW_DST}/Versions/$PY_VER/lib/python$PY_VER/site-packages"
+QT_PLUGIN_PATH_SRC="${PY_SITE_PACKAGES}/PyQt6/Qt6/plugins"
+QT_PLUGIN_PATH_DST="${APP_DIR}/Contents/PlugIns"
 
-if [ -d "$QT_PLUGIN_PATH" ]; then
-    # Create plugins directory
-    mkdir -p "${APP_DIR}/Contents/PlugIns"
-    
-    # Copy the entire plugins directory
-    echo "Copying Qt plugins from $QT_PLUGIN_PATH to ${APP_DIR}/Contents/PlugIns"
-    cp -R "$QT_PLUGIN_PATH"/* "${APP_DIR}/Contents/PlugIns/"
-    
+if [ -d "$QT_PLUGIN_PATH_SRC" ]; then
+    echo "Copying essential Qt plugins from $QT_PLUGIN_PATH_SRC to $QT_PLUGIN_PATH_DST"
+    mkdir -p "$QT_PLUGIN_PATH_DST"
+
+    # Platform plugin (Essential)
+    mkdir -p "${QT_PLUGIN_PATH_DST}/platforms"
+    cp "${QT_PLUGIN_PATH_SRC}/platforms/libqcocoa.dylib" "${QT_PLUGIN_PATH_DST}/platforms/" || echo "Warning: libqcocoa.dylib not found."
+
+    # Image formats (Copy common ones)
+    mkdir -p "${QT_PLUGIN_PATH_DST}/imageformats"
+    cp "${QT_PLUGIN_PATH_SRC}/imageformats/libqgif.dylib" "${QT_PLUGIN_PATH_DST}/imageformats/" || echo "Warning: libqgif.dylib not found."
+    cp "${QT_PLUGIN_PATH_SRC}/imageformats/libqico.dylib" "${QT_PLUGIN_PATH_DST}/imageformats/" || echo "Warning: libqico.dylib not found."
+    cp "${QT_PLUGIN_PATH_SRC}/imageformats/libqjpeg.dylib" "${QT_PLUGIN_PATH_DST}/imageformats/" || echo "Warning: libqjpeg.dylib not found."
+    cp "${QT_PLUGIN_PATH_SRC}/imageformats/libqmacheif.dylib" "${QT_PLUGIN_PATH_DST}/imageformats/" || echo "Warning: libqmacheif.dylib not found." # For HEIC
+    cp "${QT_PLUGIN_PATH_SRC}/imageformats/libqmacjp2.dylib" "${QT_PLUGIN_PATH_DST}/imageformats/" || echo "Warning: libqmacjp2.dylib not found." # For JP2
+    cp "${QT_PLUGIN_PATH_SRC}/imageformats/libqsvg.dylib" "${QT_PLUGIN_PATH_DST}/imageformats/" || echo "Warning: libqsvg.dylib not found."
+    cp "${QT_PLUGIN_PATH_SRC}/imageformats/libqtiff.dylib" "${QT_PLUGIN_PATH_DST}/imageformats/" || echo "Warning: libqtiff.dylib not found."
+    cp "${QT_PLUGIN_PATH_SRC}/imageformats/libqwebp.dylib" "${QT_PLUGIN_PATH_DST}/imageformats/" || echo "Warning: libqwebp.dylib not found."
+
+    # Print support (If needed)
+    if [ -d "${QT_PLUGIN_PATH_SRC}/printsupport" ]; then
+        mkdir -p "${QT_PLUGIN_PATH_DST}/printsupport"
+        cp "${QT_PLUGIN_PATH_SRC}/printsupport/libcocoaprintersupport.dylib" "${QT_PLUGIN_PATH_DST}/printsupport/" || echo "Warning: libcocoaprintersupport.dylib not found."
+    fi
+
     # Ensure correct permissions
-    chmod -R 755 "${APP_DIR}/Contents/PlugIns"
-    echo "Qt plugins copied successfully."
+    chmod -R 755 "$QT_PLUGIN_PATH_DST"
+    echo "Qt plugins copied."
 else
-    echo "Warning: Qt plugins directory not found at $QT_PLUGIN_PATH"
+    echo "Warning: Qt plugins source directory not found at $QT_PLUGIN_PATH_SRC"
     echo "The application may not display correctly."
 fi
 
