@@ -70,7 +70,6 @@ jobs:
           echo "Working dir: $(pwd)"
           ls -R bin || true
 
-          mv dist/Transcribrr "dist/Transcribrr_${{ matrix.flavour }}"
       - name: Freeze with PyInstaller
         shell: bash
         env:
@@ -122,10 +121,11 @@ jobs:
             dist/Transcribrr-windows-${{ matrix.flavour }}-setup.exe
             dist/Transcribrr_${{ matrix.flavour }}
             build/pyinstaller-${{ matrix.flavour }}.log
-            
+
       - name: Save wheel cache
         if: always()
         uses: actions/cache/save@v3
         with:
           path: ${{ steps.pip-dir.outputs.dir }}
-          key: ${{ steps.restore-macos.outputs.cache-primary-key }}
+          key: ${{ runner.os }}-pip-${{ env.PYTHON_VERSION }}-${{ matrix.flavour }}-${{ hashFiles('**/requirements.txt') }}
+
