@@ -1,333 +1,55 @@
-name: Build Transcribrr executables
-
-# -------------------------------------------------------------------
-# This workflow builds standalone application bundles for:
-#   • macOS (.app bundle)
-#   • Windows – two flavours
-#       – CPU‑only (default PyTorch build)
-#       – CUDA 11.8 build (uses --cuda switch in script)
-#
-# The repo already provides platform‑specific build scripts:
-#   • build_github_macos.sh
-#   • build_windows_app.bat
-#
-# The workflow simply invokes those scripts on the appropriate
-# GitHub Actions runners and uploads the resulting artefacts so they can
-# be downloaded from the "Actions" tab or attached to a release later.
-# -------------------------------------------------------------------
+name: Build & Package Transcribrr
 
 on:
   workflow_dispatch:
   push:
-    tags:
-      - 'v*.*.*'
-
-permissions:
-  contents: write   # required for release‑uploads on tag pushes
+    tags: ['v*.*.*']
 
 env:
   PYTHON_VERSION: '3.9'
 
 jobs:
-
-  # ────────────────────────────────────────────────────────────
-  # macOS bundle – universal app built via build_macos_app.sh
-  # ────────────────────────────────────────────────────────────
-  macos:
-    name: macOS Build
-    runs-on: macos-14  # Apple‑silicon runner, faster & supports arm64
-
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Set up Python ${{ env.PYTHON_VERSION }}
-        uses: actions/setup-python@v5
-        with:
-          python-version: ${{ env.PYTHON_VERSION }}
-          
-      - name: Verify Python Version
-        run: python -c "import sys; version = sys.version_info[:2]; expected = (3, 9); assert version == expected, f'Expected Python {expected}.x, but got {version}'"
-        shell: bash
-          
-      - name: Install system dependencies
-        run: |
-          brew update
-          brew install portaudio ffmpeg
-
-      - name: Ensure GitHub Actions build script is executable
-        run: chmod +x build_github_macos.sh
-
-      - name: Build Transcribrr macOS
-        run: ./build_github_macos.sh
-
-      - name: Compress .app bundle
-        run: |
-          cd dist
-          zip -r Transcribrr-macOS.zip Transcribrr.app
-
-      - name: Upload artifact (macOS)
-        uses: actions/upload-artifact@v4
-        with:
-          name: Transcribrr_macOS
-          path: dist/Transcribrr-macOS.zip
-
-  # ────────────────────────────────────────────────────────────
-  # Windows builds – matrix over [cpu, cuda]
-  # ────────────────────────────────────────────────────────────
-  windows:
-    name: Windows Build (${{ matrix.flavour }})
+  win:
     runs-on: windows-latest
     strategy:
-      matrix:
-        flavour: [cpu, cuda]
+      matrix: { flavour: [cpu, cuda] }
 
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
+    - uses: actions/checkout@v4
 
-      - name: Set up Python ${{ env.PYTHON_VERSION }}
-        uses: actions/setup-python@v5
-        with:
-          python-version: ${{ env.PYTHON_VERSION }}
+    - uses: actions/setup-python@v5
+      with: { python-version: ${{ env.PYTHON_VERSION }} }
 
-      - name: Verify Python Version
-        run: python -c "import sys; version = sys.version_info[:2]; expected = (3, 9); assert version == expected, f'Expected Python {expected}.x, but got {version}'"
-        shell: bash
+    - name: Install build deps
+      shell: bash
+      run: |
+        python -m pip install --upgrade pip wheel
+        if [[ "${{ matrix.flavour }}" == "cuda" ]]; then
+          python -m pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu118
+        else
+          python -m pip install torch torchvision torchaudio
+        fi
+        python -m pip install "pyinstaller==6.*" pyqt6 -r requirements.txt
 
-      - name: Install Python dependencies for icon creation
-        run: |
-          python -m pip install pillow
+    - name: Freeze with PyInstaller
+      shell: bash
+      run: |
+        pyinstaller transcribrr.spec --noconfirm --clean
+        mv dist/Transcribrr "dist/Transcribrr_${{ matrix.flavour }}"
 
-      - name: Install CUDA/VC++ runtimes for build script access
-        if: matrix.flavour == 'cuda'
-        shell: pwsh
-        run: |
-          Write-Host "Installing cuDNN and VC++ Redistributable..."
-          choco install cudnn --version=8.9.7 -y # Or latest compatible 8.x
-          choco install vcredist140 -y # Installs VC++ 2015-2022 Redist
-          # Add paths if needed (Choco usually handles this, but double-check)
-          # $env:PATH = "$env:PATH;C:\Program Files\NVIDIA GPU Computing Toolkit\CUDA\v11.8\bin" # Adjust path as needed
-          # [Environment]::SetEnvironmentVariable("PATH", $env:PATH, "Machine")
+    - name: Build installer with Inno Setup
+      shell: pwsh
+      run: |
+        $inno = "C:\Program Files (x86)\Inno Setup 6\ISCC.exe"
+        if (-not (Test-Path $inno)) {
+          choco install innosetup -y
+        }
+        & $inno /DFlavour=${{ matrix.flavour }} installer\transcribrr_setup.iss
 
-      - name: Create Inno Setup compatible icon
-        shell: pwsh
-        run: |
-          # Create a simple script that creates an Inno Setup compatible ICO file
-          # Inno Setup requires the first image in ICO to be large (128x256 or 256x256)
-          $iconScript = @"
-          from PIL import Image
-          import os
-
-          def create_inno_compatible_ico(output_path, sizes=[256, 128, 64, 48, 32, 24, 16]):
-              # Create a simple colored square icon with "T" in the middle
-              # Start with the largest size (crucial for Inno Setup)
-              icons = []
-              
-              for size in sizes:
-                  # Create a new RGBA image with transparent background
-                  img = Image.new('RGBA', (size, size), color=(0, 0, 0, 0))
-                  
-                  # Draw a filled blue circle
-                  from PIL import ImageDraw
-                  draw = ImageDraw.Draw(img)
-                  padding = size // 10
-                  draw.ellipse(
-                      [padding, padding, size - padding, size - padding],
-                      fill=(48, 87, 255, 255)  # Blue color
-                  )
-                  
-                  # Add text "T" in white
-                  from PIL import ImageFont
-                  try:
-                      # Try to use Arial font
-                      font_size = size // 2
-                      font = ImageFont.truetype("arial.ttf", font_size)
-                  except:
-                      # Fall back to default font
-                      font = ImageFont.load_default()
-                      
-                  # Position text in center
-                  text = "T"
-                  text_width = font_size * 0.6  # approximate
-                  text_height = font_size
-                  position = ((size - text_width) // 2, (size - text_height) // 2)
-                  draw.text(position, text, fill=(255, 255, 255, 255), font=font)
-                  
-                  icons.append(img)
-              
-              # Save as ICO with all sizes
-              # Make sure to make the first/largest one appear first in the file
-              icons[0].save(
-                  output_path,
-                  format='ICO',
-                  sizes=[(img.width, img.height) for img in icons],
-                  append_images=icons[1:]
-              )
-              print(f"Created Inno Setup compatible ICO at {output_path}")
-
-          # Output path
-          script_dir = os.path.dirname(os.path.abspath(__file__))
-          ico_path = os.path.join(script_dir, "icons", "app", "app_icon.ico")
-          os.makedirs(os.path.dirname(ico_path), exist_ok=True)
-          
-          # Create the icon
-          create_inno_compatible_ico(ico_path)
-          "@ 
-          
-          # Write to a temporary Python file
-          $iconScript | Out-File -FilePath "create_inno_icon.py" -Encoding utf8
-          
-          # Run the Python script
-          python create_inno_icon.py
-          
-          # Verify the ICO file was created 
-          if (Test-Path "icons\app\app_icon.ico") {
-              $fileInfo = Get-Item "icons\app\app_icon.ico"
-              Write-Host "ICO file created successfully: $($fileInfo.Length) bytes"
-              if ($fileInfo.Length -lt 100) {
-                  Write-Error "ICO file is too small and likely invalid"
-                  exit 1
-              }
-          } else {
-              Write-Error "Failed to create ICO file"
-              exit 1
-          }
-
-      - name: Build (flavour=${{ matrix.flavour }})
-        shell: cmd
-        run: |
-          :: Forward slashes to keep batch happy
-          IF "${{ matrix.flavour }}" == "cuda" (
-            .\build_windows_app.bat --cuda
-          ) ELSE (
-            .\build_windows_app.bat
-          )
-
-      - name: Install Inno Setup
-        shell: pwsh
-        run: |
-          # Download Inno Setup installer
-          $innoSetupUrl = "https://files.jrsoftware.org/is/6/innosetup-6.2.2.exe"
-          $innoSetupInstaller = "$env:TEMP\innosetup-installer.exe"
-          
-          Write-Host "Downloading Inno Setup..."
-          Invoke-WebRequest -Uri $innoSetupUrl -OutFile $innoSetupInstaller
-          
-          # Install Inno Setup silently
-          Write-Host "Installing Inno Setup..."
-          Start-Process -FilePath $innoSetupInstaller -ArgumentList "/VERYSILENT /SUPPRESSMSGBOXES /NORESTART /SP-" -Wait
-          
-          # Add Inno Setup to PATH
-          $innoSetupPath = "C:\Program Files (x86)\Inno Setup 6"
-          Write-Host "Adding Inno Setup to PATH: $innoSetupPath"
-          $env:PATH = "$env:PATH;$innoSetupPath"
-          [Environment]::SetEnvironmentVariable("PATH", $env:PATH, "Machine")
-
-      - name: Extract App Version
-        id: version
-        shell: bash
-        run: |
-          # Define the python command in a variable for clarity
-          # Using a slightly simplified regex assuming double quotes in __init__.py for better shell compatibility
-          PYTHON_COMMAND='import re; f=open("app/__init__.py", "r"); c=f.read(); f.close(); print(re.search(r"^__version__\s*=\s*\"([^\"]*)\"", c, re.M).group(1))'
-          
-          # Execute python directly and capture standard output
-          APP_VERSION_OUTPUT=$(python -c "$PYTHON_COMMAND")
-          
-          # Check the exit code of the python command and if output is non-empty
-          if [ $? -ne 0 ] || [ -z "$APP_VERSION_OUTPUT" ]; then
-            echo "::error::Failed to extract version using Python command."
-            exit 1
-          fi
-          
-          echo "Detected version: $APP_VERSION_OUTPUT"
-          # Set the version as an environment variable for subsequent steps using GITHUB_ENV
-          echo "APP_VERSION=$APP_VERSION_OUTPUT" >> $GITHUB_ENV
-
-      - name: Create Windows Installer
-        shell: pwsh
-        run: |
-          $flavor = "${{ matrix.flavour }}"
-          $outputPath = "dist\Transcribrr_$flavor"
-          
-          if (-Not (Test-Path $outputPath)) {
-            Write-Host "Error: Expected output directory $outputPath does not exist!"
-            Write-Host "Will try with uppercase directory name as fallback"
-            $outputPath = "dist\Transcribrr_" + $flavor.ToUpper()
-            
-            if (-Not (Test-Path $outputPath)) {
-              Write-Host "Error: Uppercase directory $outputPath also doesn't exist!"
-              exit 1
-            }
-          }
-          
-          # Ensure installer directory exists
-          if (-Not (Test-Path "installer")) {
-            Write-Host "Creating installer directory"
-            New-Item -ItemType Directory -Path "installer"
-          }
-          
-          # Verify the ico file exists before running the installer
-          if (-Not (Test-Path "icons\app\app_icon.ico")) {
-            Write-Host "Error: Icon file does not exist!"
-            exit 1
-          }
-          
-          $icoFileSize = (Get-Item "icons\app\app_icon.ico").Length
-          Write-Host "ICO file size: $icoFileSize bytes"
-          
-          # Get the version from the environment variable set in the previous step
-          $appVersion = $env:APP_VERSION
-          Write-Host "Using App Version: $appVersion for Inno Setup compilation"
-          
-          Write-Host "Creating Windows installer for $flavor build..."
-          # Pass the extracted version using /DMyAppVersionValue
-          & "C:\Program Files (x86)\Inno Setup 6\ISCC.exe" /DFlavour=$flavor /DMyAppVersionValue=$appVersion "installer\transcribrr_setup.iss"
-          
-          # Check if installer was created successfully
-          if (Test-Path "dist\Transcribrr-windows-$flavor-setup.exe") {
-            Write-Host "Installer created successfully."
-          } else {
-            Write-Host "Error: Installer creation failed."
-            exit 1
-          }
-          
-          # Also create zip archive for backward compatibility or those who prefer portable versions
-          Write-Host "Creating zip archive of application directory..."
-          Compress-Archive -Path $outputPath -DestinationPath "dist\Transcribrr-windows-$flavor.zip" -Force
-
-      - name: Upload installer artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: Transcribrr_windows_${{ matrix.flavour }}_installer
-          path: dist/Transcribrr-windows-${{ matrix.flavour }}-setup.exe
-          
-      - name: Upload portable app artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: Transcribrr_windows_${{ matrix.flavour }}_portable
-          path: dist/Transcribrr-windows-${{ matrix.flavour }}.zip
-
-  # ────────────────────────────────────────────────────────────
-  # Attach artefacts to GitHub Release when the workflow was
-  # triggered by a version tag push (vX.Y.Z).
-  # ────────────────────────────────────────────────────────────
-  release:
-    if: startsWith(github.ref, 'refs/tags/')
-    needs: [macos, windows]
-    runs-on: ubuntu-latest
-    steps:
-      - name: Download artefacts
-        uses: actions/download-artifact@v4
-
-      - name: Create GitHub Release
-        uses: softprops/action-gh-release@v2
-        with:
-          draft: false
-          files: |
-            Transcribrr_macOS/Transcribrr-macOS.zip
-            Transcribrr_windows_cpu_installer/Transcribrr-windows-cpu-setup.exe
-            Transcribrr_windows_cuda_installer/Transcribrr-windows-cuda-setup.exe
-            Transcribrr_windows_cpu_portable/Transcribrr-windows-cpu.zip
-            Transcribrr_windows_cuda_portable/Transcribrr-windows-cuda.zip
+    - name: Upload artefacts
+      uses: actions/upload-artifact@v4
+      with:
+        name: Transcribrr_windows_${{ matrix.flavour }}
+        path: |
+          dist/Transcribrr-windows-${{ matrix.flavour }}-setup.exe
+          dist/Transcribrr_${{ matrix.flavour }}
