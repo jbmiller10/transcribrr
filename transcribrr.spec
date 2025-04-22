@@ -44,9 +44,10 @@ datas += collect_data_files("lightning_fabric", includes=["version.info"])
 # 3  Binaries – bundled ffmpeg & ffprobe executables
 # ---------------------------------------------------------------------------
 BINARIES = []
-ffmpeg_dir = Path(__file__).parent / "third_party" / "ffmpeg" / "bin"
+# Look for ffmpeg in bin/ directory at root of project
+bin_dir = Path(__file__).parent / "bin"
 for exe_name in ("ffmpeg.exe", "ffprobe.exe"):
-    src = ffmpeg_dir / exe_name
+    src = bin_dir / exe_name
     if src.exists():
         BINARIES.append((str(src), "bin"))
 

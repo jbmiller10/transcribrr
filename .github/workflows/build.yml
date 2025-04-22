@@ -34,6 +34,19 @@ jobs:
             python -m pip install torch torchvision torchaudio
           fi
           python -m pip install "pyinstaller==6.*" pyqt6 -r requirements.txt
+          choco install ffmpeg -y
+
+      - name: Prepare FFmpeg binaries
+        shell: pwsh
+        run: |
+          # Create bin directory in project root for the spec file to find
+          New-Item -ItemType Directory -Force "bin"
+          # Find FFmpeg executables installed by Chocolatey
+          $ffmpegPath = (Get-Command ffmpeg.exe).Source
+          $ffprobePath = (Get-Command ffprobe.exe).Source
+          # Copy to the bin directory
+          Copy-Item $ffmpegPath "bin/ffmpeg.exe"
+          Copy-Item $ffprobePath "bin/ffprobe.exe"
 
       - name: Freeze with PyInstaller
         shell: bash
