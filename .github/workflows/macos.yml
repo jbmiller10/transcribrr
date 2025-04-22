@@ -1,21 +1,26 @@
-# .github/workflows/macos.yml
 name: macOS Briefcase build
 
 on:
   workflow_dispatch:
   push:
-    tags: ["v*.*.*"]
+    tags:
+      - "v*.*.*"            # ← list form is clearer
+
+env:
+  PYTHON_VERSION: "3.9"     # ← move to top‑level env, no braces
 
 jobs:
   macos:
-    runs-on: macos-14          # native Apple‑silicon runner
-    env: {PYTHON_VERSION: "3.9"}   # keep your runtime
+    runs-on: macos-14
 
     steps:
       - uses: actions/checkout@v4
 
+      # ---- the line that raised the error ----
       - uses: actions/setup-python@v5
-        with: {python-version: ${{ env.PYTHON_VERSION }}}
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+      # ----------------------------------------
 
       - name: Install Briefcase + deps
         run: |
