@@ -14,7 +14,7 @@ jobs:
     strategy:
       matrix:
         os: [windows-latest, macos-14]
-        flavour: [cpu, cuda]
+        flavour: [cpu]
 
     steps:
       - uses: actions/checkout@v4
