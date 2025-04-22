@@ -14,9 +14,10 @@ Other inclusions:
 from pathlib import Path
 from glob import glob
 from PyInstaller.utils.hooks import collect_submodules, collect_data_files
+from PyInstaller.utils.spec import specpath  # already injected; import for clarity
 
 # Define specpath - path to the directory containing this spec file
-specpath = Path(__file__).resolve().parent
+specpath = Path(specpath).resolve()
 
 # ---------------------------------------------------------------------------
 # 1  Hidden imports – Torch + optional packages
@@ -60,7 +61,6 @@ datas += collect_data_files("lightning_fabric", includes=["version.info"])
 # ---------------------------------------------------------------------------
 BINARIES = []
 # Look for ffmpeg in bin/ directory at root of project
-# Use PyInstaller's specpath variable instead of __file__ to avoid NameError
 bin_dir = Path(specpath) / "bin"
 for exe_name in ("ffmpeg.exe", "ffprobe.exe"):
     src = bin_dir / exe_name
