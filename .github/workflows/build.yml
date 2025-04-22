@@ -3,7 +3,8 @@ name: Build & Package Transcribrr
 on:
   workflow_dispatch:
   push:
-    tags: ['v*.*.*']
+    tags:
+      - 'v*.*.*'
 
 env:
   PYTHON_VERSION: '3.9'
@@ -12,44 +13,45 @@ jobs:
   win:
     runs-on: windows-latest
     strategy:
-      matrix: { flavour: [cpu, cuda] }
+      matrix:
+        flavour: [cpu, cuda]
 
     steps:
-    - uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
-    - uses: actions/setup-python@v5
-      with: { python-version: ${{ env.PYTHON_VERSION }} }
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
 
-    - name: Install build deps
-      shell: bash
-      run: |
-        python -m pip install --upgrade pip wheel
-        if [[ "${{ matrix.flavour }}" == "cuda" ]]; then
-          python -m pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu118
-        else
-          python -m pip install torch torchvision torchaudio
-        fi
-        python -m pip install "pyinstaller==6.*" pyqt6 -r requirements.txt
+      - name: Install build deps
+        shell: bash
+        run: |
+          python -m pip install --upgrade pip wheel
+          if [[ "${{ matrix.flavour }}" == "cuda" ]]; then
+            python -m pip install torch torchvision torchaudio \
+              --index-url https://download.pytorch.org/whl/cu118
+          else
+            python -m pip install torch torchvision torchaudio
+          fi
+          python -m pip install "pyinstaller==6.*" pyqt6 -r requirements.txt
 
-    - name: Freeze with PyInstaller
-      shell: bash
-      run: |
-        pyinstaller transcribrr.spec --noconfirm --clean
-        mv dist/Transcribrr "dist/Transcribrr_${{ matrix.flavour }}"
+      - name: Freeze with PyInstaller
+        shell: bash
+        run: |
+          pyinstaller transcribrr.spec --noconfirm --clean
+          mv dist/Transcribrr "dist/Transcribrr_${{ matrix.flavour }}"
 
-    - name: Build installer with Inno Setup
-      shell: pwsh
-      run: |
-        $inno = "C:\Program Files (x86)\Inno Setup 6\ISCC.exe"
-        if (-not (Test-Path $inno)) {
-          choco install innosetup -y
-        }
-        & $inno /DFlavour=${{ matrix.flavour }} installer\transcribrr_setup.iss
+      - name: Build installer with Inno Setup
+        shell: pwsh
+        run: |
+          $inno = "C:\Program Files (x86)\Inno Setup 6\ISCC.exe"
+          if (-not (Test-Path $inno)) { choco install innosetup -y }
+          & $inno /DFlavour=${{ matrix.flavour }} installer\transcribrr_setup.iss
 
-    - name: Upload artefacts
-      uses: actions/upload-artifact@v4
-      with:
-        name: Transcribrr_windows_${{ matrix.flavour }}
-        path: |
-          dist/Transcribrr-windows-${{ matrix.flavour }}-setup.exe
-          dist/Transcribrr_${{ matrix.flavour }}
+      - name: Upload artefacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: Transcribrr_windows_${{ matrix.flavour }}
+          path: |
+            dist/Transcribrr-windows-${{ matrix.flavour }}-setup.exe
+            dist/Transcribrr_${{ matrix.flavour }}
