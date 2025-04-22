@@ -158,7 +158,7 @@ echo Virtual environment created.
 echo.
 
 :: Define path to python within the venv (without quotes)
-set VENV_PYTHON=%OUTPUT_DIR%\venv\Scripts\%PYTHON_EXECUTABLE%
+set VENV_PYTHON=%OUTPUT_DIR%\venv\Scripts\python.exe
 
 :: Install dependencies in the virtual environment
 echo --- Installing Dependencies ---
