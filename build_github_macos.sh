@@ -95,10 +95,6 @@ export SSL_CERT_FILE="$RESOURCES_DIR/cacert.pem"
 # Set Qt plugins path to find platform plugins
 export QT_PLUGIN_PATH="@executable_path/../PlugIns"
 
-# Use embedded Python framework
-PY_VER=3.9
-PY="@executable_path/../Frameworks/Python.framework/Versions/$PY_VER/bin/python3"
-
 # Create a user-writable log directory in ~/Library/Application Support
 APP_SUPPORT_DIR="$HOME/Library/Application Support/Transcribrr"
 APP_LOGS_DIR="$APP_SUPPORT_DIR/logs"
@@ -108,6 +104,10 @@ mkdir -p "$APP_LOGS_DIR"
 mkdir -p "$APP_SUPPORT_DIR/Recordings"
 mkdir -p "$APP_SUPPORT_DIR/database"
 
+# Use embedded Python framework or system Python if not found
+PY_VER=3.9
+PY="$DIR/../Frameworks/Python.framework/Versions/$PY_VER/bin/python3"
+
 # Echo diagnostic information to a log file in the user-writable directory
 echo "Starting application at $(date)" > "$APP_LOGS_DIR/launch.log"
 echo "RESOURCES_DIR: $RESOURCES_DIR" >> "$APP_LOGS_DIR/launch.log" 
@@ -115,6 +115,13 @@ echo "APP_SUPPORT_DIR: $APP_SUPPORT_DIR" >> "$APP_LOGS_DIR/launch.log"
 echo "PYTHONPATH: $PYTHONPATH" >> "$APP_LOGS_DIR/launch.log"
 echo "PATH: $PATH" >> "$APP_LOGS_DIR/launch.log"
 echo "QT_PLUGIN_PATH: $QT_PLUGIN_PATH" >> "$APP_LOGS_DIR/launch.log"
+
+# Check if the embedded Python exists, fall back to system Python if needed
+if [ ! -f "$PY" ]; then
+  echo "Embedded Python not found, using system Python" >> "$APP_LOGS_DIR/launch.log"
+  PY=$(which python3)
+fi
+
 echo "Python executable: $PY" >> "$APP_LOGS_DIR/launch.log"
 echo "Python version: $($PY --version)" >> "$APP_LOGS_DIR/launch.log" 2>&1
 echo "ffmpeg location: $(which ffmpeg)" >> "$APP_LOGS_DIR/launch.log" 2>&1
@@ -156,15 +163,63 @@ cp main.py "${APP_DIR}/Contents/Resources/"
 # Copy Python framework
 PY_VER=3.9
 echo "Copying Python framework..."
-FW_SRC="$(brew --prefix)/Frameworks/Python.framework"
+
+# Debug Python location
+echo "Python executable path: $(which python3)"
+echo "Python version: $(python3 --version)"
+echo "Python framework path check:"
+ls -la /Library/Frameworks/Python.framework/Versions/ 2>/dev/null || echo "No framework in /Library/Frameworks"
+ls -la "$(brew --prefix)/Frameworks/Python.framework/Versions/" 2>/dev/null || echo "No framework in brew prefix"
+ls -la "$HOME/Library/Frameworks/Python.framework/Versions/" 2>/dev/null || echo "No framework in user Library"
+
+# Look for Python framework in different locations
+if [ -d "/Library/Frameworks/Python.framework" ]; then
+  FW_SRC="/Library/Frameworks/Python.framework"
+elif [ -d "$(brew --prefix)/Frameworks/Python.framework" ]; then
+  FW_SRC="$(brew --prefix)/Frameworks/Python.framework"
+elif [ -d "$HOME/Library/Frameworks/Python.framework" ]; then
+  FW_SRC="$HOME/Library/Frameworks/Python.framework"
+else
+  echo "ERROR: Could not find Python.framework. Will attempt to use system Python."
+  # Create the framework directory structure
+  mkdir -p "${APP_DIR}/Contents/Frameworks/Python.framework/Versions/$PY_VER/bin"
+  # Create symlinks to system Python
+  ln -sf "$(which python3)" "${APP_DIR}/Contents/Frameworks/Python.framework/Versions/$PY_VER/bin/python3"
+  ln -sf "$(which pip3)" "${APP_DIR}/Contents/Frameworks/Python.framework/Versions/$PY_VER/bin/pip3"
+  FW_DST="${APP_DIR}/Contents/Frameworks/Python.framework"
+  # Skip the copy since we're using system Python
+  echo "Using system Python through symlinks"
+  exit 1
+fi
+
+echo "Found Python framework at: $FW_SRC"
 FW_DST="${APP_DIR}/Contents/Frameworks/Python.framework"
-cp -R "$FW_SRC" "$FW_DST"
+cp -R "$FW_SRC" "$FW_DST" || echo "WARNING: Failed to copy framework. Will attempt to use Python from PATH."
 
 # Install dependencies using the embedded Python
 echo "Installing dependencies..."
-"${APP_DIR}/Contents/Frameworks/Python.framework/Versions/$PY_VER/bin/pip3" install --upgrade pip
-"${APP_DIR}/Contents/Frameworks/Python.framework/Versions/$PY_VER/bin/pip3" install PyQt6 PyQt6-Qt6 appdirs colorlog
-"${APP_DIR}/Contents/Frameworks/Python.framework/Versions/$PY_VER/bin/pip3" install -r requirements.txt
+
+# Check if our embedded pip3 exists
+if [ -f "${APP_DIR}/Contents/Frameworks/Python.framework/Versions/$PY_VER/bin/pip3" ]; then
+  PIP_CMD="${APP_DIR}/Contents/Frameworks/Python.framework/Versions/$PY_VER/bin/pip3"
+  echo "Using embedded pip at: $PIP_CMD"
+else
+  # Fall back to system pip
+  echo "Embedded pip not found, falling back to system pip"
+  PIP_CMD="pip3"
+  
+  # Create the framework bin directory if it doesn't exist
+  mkdir -p "${APP_DIR}/Contents/Frameworks/Python.framework/Versions/$PY_VER/bin"
+  
+  # Create a symlink to the system Python and pip
+  ln -sf "$(which python3)" "${APP_DIR}/Contents/Frameworks/Python.framework/Versions/$PY_VER/bin/python3"
+  ln -sf "$(which pip3)" "${APP_DIR}/Contents/Frameworks/Python.framework/Versions/$PY_VER/bin/pip3"
+fi
+
+echo "Installing pip packages using: $PIP_CMD"
+"$PIP_CMD" install --upgrade pip
+"$PIP_CMD" install PyQt6 PyQt6-Qt6 appdirs colorlog
+"$PIP_CMD" install -r requirements.txt
 
 # Download CA certificates
 echo "Downloading CA certificates..."
