@@ -22,6 +22,7 @@ requires      = [
 
 [tool.briefcase.app.transcribrr]
 formal_name  = "Transcribrr"
+module_name  = "app"
 description  = "Speech‑to‑text transcription tool"
 sources      = ["app", "main.py"]   # paths that contain your code
 icon         = "icons/app/app_icon.icns"
