@@ -2,155 +2,221 @@
 setlocal EnableDelayedExpansion
 
 :: Script to build a standalone Windows application with optional CUDA support
-:: Final attempt: Corrected launcher logging generation, path quoting, and log file permissions
 
 :: --- Configuration ---
-set "APP_NAME=Transcribrr"
-:: Default version; overwritten after Python introspection
-set "VERSION=1.0.0"
-echo Building %APP_NAME% version %VERSION% for Windows...
+set APP_NAME=Transcribrr
+:: Will be extracted later after Python checks
+set VERSION=?.?.?
+echo Building %APP_NAME% for Windows...
 
-:: -----------------------------------------------------------------
-:: Decide on BUILD_TYPE (cpu / cuda) **after** parsing arguments
-:: -----------------------------------------------------------------
-
-set "INSTALL_CUDA=0"
-
-:: Select python executable
+:: Default values
+set INSTALL_CUDA=0
 if defined GITHUB_ACTIONS (
-    set "PYTHON_EXECUTABLE=python"
+    set PYTHON_EXECUTABLE=python
 ) else (
-    set "PYTHON_EXECUTABLE=py -3.9"
+    set PYTHON_EXECUTABLE=py -3.9
 )
 
-:: ---------------- Argument parsing ----------------
+:: --- Argument Parsing ---
 :ArgLoop
-if "%~1"=="" goto ArgsDone
-if /I "%~1"=="--cuda" (
-    set "INSTALL_CUDA=1"
+if "%1"=="" goto ArgsDone
+if /I "%1"=="--cuda" (
+    set INSTALL_CUDA=1
     echo CUDA installation requested.
-) else if /I "%~1"=="--help" (
-    goto :Usage
+) else if /I "%1"=="--help" (
+    call :Usage
+    exit /b 0
 ) else (
-    echo Unknown argument: %~1
-    goto :Usage
+    echo Unknown argument: %1
+    call :Usage
+    exit /b 1
 )
 shift /1
 goto ArgLoop
 :ArgsDone
 
-:: ---------------- Build type / output dir ----------------
-if "%INSTALL_CUDA%"=="1" (
-    set "BUILD_TYPE=cuda"
+:: --- Determine Build Type and Output Directory ---
+if %INSTALL_CUDA% == 1 (
+    set BUILD_TYPE=cuda
 ) else (
-    set "BUILD_TYPE=cpu"
+    set BUILD_TYPE=cpu
 )
-set "OUTPUT_DIR=dist\%APP_NAME%_%BUILD_TYPE%"
+set OUTPUT_DIR=dist\%APP_NAME%_%BUILD_TYPE%
 
-:: ---------------- Python version check ----------------
-for /f "tokens=*" %%a in ('%PYTHON_EXECUTABLE% -c "import platform,sys;print(platform.python_version())"') do set "CURRENT_PY_VERSION=%%a"
-for /f "tokens=*" %%a in ('%PYTHON_EXECUTABLE% -c "import platform,sys;v=platform.python_version().split(\".\");print(v[0]+'.'+v[1])"') do set "MAJOR_MINOR=%%a"
-if "%MAJOR_MINOR%" NEQ "3.9" (
-    echo Error: Expected Python 3.9.x but found %CURRENT_PY_VERSION%
-    exit /b 1
+:: --- Verify Python Version ---
+echo --- Checking Python Version ---
+for /f "tokens=*" %%a in ('%PYTHON_EXECUTABLE% --version 2^>^&1') do set PYTHON_OUTPUT=%%a
+echo Found Python: %PYTHON_OUTPUT%
+
+for /f "tokens=*" %%a in ('%PYTHON_EXECUTABLE% -c "import platform; print(platform.python_version())"') do set CURRENT_PY_VERSION=%%a
+for /f "tokens=*" %%a in ('%PYTHON_EXECUTABLE% -c "import platform; v=platform.python_version().split(\".\"); print(v[0] + \".\" + v[1])"') do set MAJOR_MINOR=%%a
+if "!MAJOR_MINOR!" NEQ "3.9" (
+  echo Error: Expected Python 3.9.x for build, found !CURRENT_PY_VERSION!
+  exit /b 1
 )
+echo Python version 3.9 verified.
+echo.
 
-:: Extract version from app/__init__.py
-for /f "tokens=*" %%a in ('%PYTHON_EXECUTABLE% -c "import importlib.util,pathlib;spec=importlib.util.spec_from_file_location('meta',pathlib.Path('app/__init__.py'));m=importlib.util.module_from_spec(spec);spec.loader.exec_module(m);print(m.__version__)"') do set "VERSION=%%a"
+:: --- Extract Application Version ---
+for /f "tokens=*" %%a in ('%PYTHON_EXECUTABLE% -c "import importlib.util, pathlib; p = pathlib.Path(\"app/__init__.py\"); spec = importlib.util.spec_from_file_location(\"meta\", p); m = importlib.util.module_from_spec(spec); spec.loader.exec_module(m); print(m.__version__)"') do set VERSION=%%a
 echo Detected app version: %VERSION%
+echo.
 
-:: ---------------- Build banner ----------------
-echo Building %APP_NAME% %VERSION% [%BUILD_TYPE%]
-if "%INSTALL_CUDA%"=="1" echo *** CUDA build enabled ***
+:: --- Build Process Start ---
+echo Building %APP_NAME% version %VERSION% for Windows...
+if %INSTALL_CUDA% == 1 (
+    echo *** CUDA build enabled ***
+) else (
+    echo *** Standard CPU build ***
+)
 echo Build directory: %OUTPUT_DIR%
 echo.
 
-:: ---------------- Icon generation ----------------
-echo --- Checking icon files ---
+:: --- Icon Check ---
+echo --- Checking Icon Files ---
 if not exist "icons\app\app_icon.ico" (
     echo Creating ICO file from SVG...
     %PYTHON_EXECUTABLE% -m pip install cairosvg Pillow
+    %PYTHON_EXECUTABLE% create_ico.py
     if %ERRORLEVEL% NEQ 0 (
-        echo WARNING: Failed to install icon dependencies.
+        echo Warning: Failed to create ICO file. Continuing without app icon.
     ) else (
-        %PYTHON_EXECUTABLE% create_ico.py || echo WARNING: create_ico.py failed.
+        echo ICO file created successfully.
     )
 ) else (
     echo ICO file already exists.
 )
 echo.
 
-:: ---------------- Tool availability checks ----------------
-echo --- Checking Python ---
-%PYTHON_EXECUTABLE% --version >nul 2>&1 || (echo Python not found & exit /b 1)
-echo Python present.
-
+:: --- FFmpeg Check ---
 echo --- Checking FFmpeg ---
-where ffmpeg >nul 2>&1 && echo FFmpeg found. || echo WARNING: ffmpeg not in PATH.
-echo.
-
-:: ---------------- Directory setup ----------------
-echo --- Preparing build directories ---
-if exist "%OUTPUT_DIR%" (
-    echo Removing previous build: %OUTPUT_DIR%
-    rmdir /s /q "%OUTPUT_DIR%" || (echo ERROR: cannot clean build dir & exit /b 1)
-)
-for %%d in ("%OUTPUT_DIR%" "%OUTPUT_DIR%\icons" "%OUTPUT_DIR%\icons\status" "%OUTPUT_DIR%\app" "%OUTPUT_DIR%\Recordings" "%OUTPUT_DIR%\database" "%OUTPUT_DIR%\logs" "%OUTPUT_DIR%\bin") do mkdir "%%~d" >nul
-echo Directories ready.
-
-:: ---------------- Resource copy ----------------
-echo --- Copying resources ---
-xcopy /E /I /Q /Y "icons" "%OUTPUT_DIR%\icons\" >nul || (echo ERROR copying icons & exit /b 1)
-xcopy /E /I /Q /Y "icons\status" "%OUTPUT_DIR%\icons\status\" >nul
-xcopy /E /I /Q /Y "app" "%OUTPUT_DIR%\app\" >nul || (echo ERROR copying app & exit /b 1)
-if exist config.json  copy /Y config.json  "%OUTPUT_DIR%" >nul
-if exist preset_prompts.json copy /Y preset_prompts.json "%OUTPUT_DIR%" >nul
-copy /Y main.py "%OUTPUT_DIR%" >nul || (echo ERROR copying main.py & exit /b 1)
-echo Resources copied.
-
-:: ---------------- Virtualenv ----------------
-echo --- Creating venv ---
-%PYTHON_EXECUTABLE% -m venv "%OUTPUT_DIR%\venv" || (echo ERROR creating venv & exit /b 1)
-set "VENV_PY=%OUTPUT_DIR%\venv\Scripts\python.exe"
-echo venv ready.
-
-echo --- Installing dependencies ---
-"%VENV_PY%" -m pip install PyQt6 PyQt6-Qt6 appdirs colorlog --log pip_base.log || (echo ERROR base deps & exit /b 1)
-if "%INSTALL_CUDA%"=="1" (
-    "%VENV_PY%" -m pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu118 --log pip_torch_cuda.log || (echo ERROR torch cuda & exit /b 1)
+where ffmpeg >nul 2>&1
+if %ERRORLEVEL% NEQ 0 (
+    echo Warning: ffmpeg not found in PATH - attempting to continue.
 ) else (
-    "%VENV_PY%" -m pip install torch torchvision torchaudio --log pip_torch_cpu.log || (echo ERROR torch cpu & exit /b 1)
+    echo FFmpeg found.
 )
-if exist requirements.txt (
-    "%VENV_PY%" -m pip install -r requirements.txt --log pip_reqs.log || (echo ERROR requirements.txt & exit /b 1)
-)
-echo Dependency installation done.
-
-:: ---------------- CA certs ----------------
-echo --- Downloading CA certificates ---
-for /l %%R in (1,1,3) do (
-    powershell -Command "try{Invoke-WebRequest -Uri https://curl.se/ca/cacert.pem -OutFile '%OUTPUT_DIR%\cacert.pem';exit 0}catch{exit 1}" && goto :CACertOK
-    echo   Download attempt %%R failed. Retrying...
-    timeout /t 2 >nul
-)
-echo WARNING: Failed to download cacert.pem after 3 attempts.
-:CACertOK
 echo.
 
-:: ---------------- FFmpeg copy ----------------
-echo --- Copying FFmpeg binaries ---
-for /f "delims=" %%a in ('where ffmpeg 2^>nul') do set "FFMPEG_PATH=%%a" & goto :GotFFMPEG
-set "FFMPEG_PATH="
-:GotFFMPEG
-for /f "delims=" %%a in ('where ffprobe 2^>nul') do set "FFPROBE_PATH=%%a" & goto :GotFFPROBE
-set "FFPROBE_PATH="
-:GotFFPROBE
-if defined FFMPEG_PATH copy /Y "%FFMPEG_PATH%" "%OUTPUT_DIR%\bin\ffmpeg.exe" >nul
-if defined FFPROBE_PATH copy /Y "%FFPROBE_PATH%" "%OUTPUT_DIR%\bin\ffprobe.exe" >nul
-echo FFmpeg binaries handled.
+:: --- Create Directories ---
+echo --- Creating Directories ---
+if exist "%OUTPUT_DIR%" (
+    echo Removing existing build directory...
+    rmdir /s /q "%OUTPUT_DIR%"
+)
+mkdir "%OUTPUT_DIR%"
+mkdir "%OUTPUT_DIR%\icons"
+mkdir "%OUTPUT_DIR%\icons\status"
+mkdir "%OUTPUT_DIR%\app"
+mkdir "%OUTPUT_DIR%\Recordings"
+mkdir "%OUTPUT_DIR%\database"
+mkdir "%OUTPUT_DIR%\logs"
+mkdir "%OUTPUT_DIR%\bin"
+echo Directories created.
+echo.
 
-:: ---------------- Launcher script ----------------
-echo --- Creating launcher ---
+:: --- Copy Resources ---
+echo --- Copying Resources ---
+xcopy /E /I /Q /Y icons "%OUTPUT_DIR%\icons\" > nul
+xcopy /E /I /Q /Y icons\status\*.* "%OUTPUT_DIR%\icons\status\" > nul
+xcopy /E /I /Q /Y app "%OUTPUT_DIR%\app\" > nul
+if exist config.json copy /Y config.json "%OUTPUT_DIR%\" > nul
+if exist preset_prompts.json copy /Y preset_prompts.json "%OUTPUT_DIR%\" > nul
+copy /Y main.py "%OUTPUT_DIR%\" > nul
+echo Resources copied.
+echo.
+
+:: --- Create Virtual Environment ---
+echo --- Creating Virtual Environment ---
+%PYTHON_EXECUTABLE% -m venv --copies "%OUTPUT_DIR%\venv"
+if %ERRORLEVEL% NEQ 0 (
+    echo ERROR: Failed to create virtual environment.
+    exit /b 1
+)
+echo Virtual environment created.
+echo.
+
+:: --- Copy Core Python DLLs ---
+echo --- Copying Core Python DLLs ---
+for /f "tokens=*" %%a in ('where %PYTHON_EXECUTABLE%') do set BUILD_PYTHON_EXE=%%a
+for %%i in ("%BUILD_PYTHON_EXE%") do set BUILD_PYTHON_DIR=%%~dpi
+echo Build Python directory: %BUILD_PYTHON_DIR%
+set DLL1=python3.dll
+set DLL2=python39.dll
+if exist "%BUILD_PYTHON_DIR%%DLL1%" (
+    echo Copying %DLL1% to %OUTPUT_DIR%\
+    copy /Y "%BUILD_PYTHON_DIR%%DLL1%" "%OUTPUT_DIR%\" > nul
+) else (
+    echo Warning: %DLL1% not found in %BUILD_PYTHON_DIR%
+)
+if exist "%BUILD_PYTHON_DIR%%DLL2%" (
+    echo Copying %DLL2% to %OUTPUT_DIR%\
+    copy /Y "%BUILD_PYTHON_DIR%%DLL2%" "%OUTPUT_DIR%\" > nul
+) else (
+    echo Warning: %DLL2% not found in %BUILD_PYTHON_DIR%
+)
+echo Core Python DLLs copied (if found).
+echo.
+
+:: --- Install Dependencies ---
+set VENV_PYTHON=%OUTPUT_DIR%\venv\Scripts\python.exe
+echo --- Installing Dependencies ---
+echo   Installing base packages (PyQt6, appdirs, etc.)
+"%VENV_PYTHON%" -m pip install PyQt6 PyQt6-Qt6 appdirs colorlog --log pip_base.log
+if %ERRORLEVEL% NEQ 0 ( echo ERROR: Failed installing base packages. Check pip_base.log. & exit /b 1 )
+echo   Base packages installed successfully.
+
+if %INSTALL_CUDA% == 1 (
+    echo   Installing PyTorch with CUDA 11.8 support
+    "%VENV_PYTHON%" -m pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu118 --log pip_torch_cuda.log
+    if %ERRORLEVEL% NEQ 0 ( echo ERROR: Failed installing PyTorch CUDA. Check pip_torch_cuda.log. & exit /b 1 )
+    echo   PyTorch CUDA installed successfully.
+) else (
+    echo   Installing PyTorch (CPU version)
+    "%VENV_PYTHON%" -m pip install torch torchvision torchaudio --log pip_torch_cpu.log
+    if %ERRORLEVEL% NEQ 0 ( echo ERROR: Failed installing PyTorch CPU. Check pip_torch_cpu.log. & exit /b 1 )
+    echo   PyTorch CPU installed successfully.
+)
+
+echo   Installing dependencies from requirements.txt
+if exist requirements.txt (
+    "%VENV_PYTHON%" -m pip install -r requirements.txt --log pip_reqs.log
+    if %ERRORLEVEL% NEQ 0 ( echo ERROR: Failed installing from requirements.txt. Check pip_reqs.log. & exit /b 1 )
+    echo   Dependencies from requirements.txt installed successfully.
+) else (
+    echo     Warning: requirements.txt not found. Skipping.
+)
+echo --- Dependency Installation Complete ---
+echo.
+
+:: --- Download CA Certificates ---
+echo --- Downloading CA Certificates ---
+powershell -Command "try { Invoke-WebRequest -Uri https://curl.se/ca/cacert.pem -OutFile '%OUTPUT_DIR%\cacert.pem' } catch { Write-Error $_; exit 1 }"
+if %ERRORLEVEL% NEQ 0 ( echo ERROR downloading CA certificates & exit /b 1 )
+echo CA Certificates downloaded.
+echo.
+
+:: --- Copy FFmpeg Binaries ---
+echo --- Copying FFmpeg Binaries ---
+where ffmpeg >nul 2>&1
+if %ERRORLEVEL% EQU 0 (
+    where ffmpeg > temp_ffmpeg_path.txt
+    where ffprobe > temp_ffprobe_path.txt
+    set /p FFMPEG_PATH=<temp_ffmpeg_path.txt
+    set /p FFPROBE_PATH=<temp_ffprobe_path.txt
+    del temp_ffmpeg_path.txt
+    del temp_ffprobe_path.txt
+
+    copy /Y "%FFMPEG_PATH%" "%OUTPUT_DIR%\bin\ffmpeg.exe" > nul
+    copy /Y "%FFPROBE_PATH%" "%OUTPUT_DIR%\bin\ffprobe.exe" > nul
+    echo FFmpeg binaries copied successfully.
+) else (
+    echo Warning: Could not find ffmpeg or ffprobe executables.
+)
+echo.
+
+:: --- Create Launcher Script ---
+echo --- Creating Launcher Script ---
 (
     echo @echo off
     echo :: Launcher for %APP_NAME%
@@ -159,15 +225,15 @@ echo --- Creating launcher ---
     echo set "VENV_PYTHON=%%SCRIPT_DIR%%venv\Scripts\python.exe"
     echo set "PYTHONPATH=%%SCRIPT_DIR%%"
     echo set "SSL_CERT_FILE=%%SCRIPT_DIR%%cacert.pem"
-    echo set "PATH=%%SCRIPT_DIR%%bin\;%%PATH%%"
+    echo set "PATH=%%SCRIPT_DIR%%bin;%%PATH%%"
     echo set "QT_PLUGIN_PATH=%%SCRIPT_DIR%%PyQt6\Qt6\plugins"
     echo.
-    echo set "LOG_DIR=%%LOCALAPPDATA%%\Transcribrr\logs"
+    echo :: Log to LOCALAPPDATA
+    echo set "LOG_DIR=%%LOCALAPPDATA%%\%APP_NAME%\logs"
     echo if not exist "%%LOG_DIR%%" mkdir "%%LOG_DIR%%"
     echo set "LOG_FILE=%%LOG_DIR%%\launch.log"
     echo.
     echo :: Log startup info
-    REM ==== FIX: Re-added single 'echo' to logging commands below ====
     echo echo Starting application at %%date%% %%time%% ^> "%%LOG_FILE%%"
     echo echo SCRIPT_DIR: %%SCRIPT_DIR%% ^>^> "%%LOG_FILE%%"
     echo echo VENV_PYTHON: %%VENV_PYTHON%% ^>^> "%%LOG_FILE%%"
@@ -175,76 +241,136 @@ echo --- Creating launcher ---
     echo echo PATH: %%PATH%% ^>^> "%%LOG_FILE%%"
     echo echo QT_PLUGIN_PATH: %%QT_PLUGIN_PATH%% ^>^> "%%LOG_FILE%%"
     echo.
-    echo echo Running Python script using venv python... ^>^> "%%LOG_FILE%%"
-    REM ==== End echo fix ====
+    echo echo Changing directory to %%SCRIPT_DIR%%... ^>^> "%%LOG_FILE%%"
     echo cd /d "%%SCRIPT_DIR%%"
-    echo if exist "%%VENV_PYTHON%%" ^(
-    echo     "%%VENV_PYTHON%%" main.py
-    echo ^) else ^(
-    REM ==== FIX: Re-added single 'echo' to error logging command ====
-    echo     echo ERROR: venv Python not found at %%VENV_PYTHON%% ^>^> "%%LOG_FILE%%"
-    echo     pause
-    echo     exit /b 1
-    echo ^)
-    echo set "EXIT_CODE=%%ERRORLEVEL%%"
-    REM ==== FIX: Re-added single 'echo' to final status command ====
+    echo if %ERRORLEVEL% NEQ 0 (
+    echo   echo ERROR: Failed to change directory to %%SCRIPT_DIR%% ^>^> "%%LOG_FILE%%"
+    echo   pause
+    echo   exit /b 1
+    echo )
+    echo.
+    echo echo Checking for Python at %%VENV_PYTHON%%... ^>^> "%%LOG_FILE%%"
+    echo if exist "%%VENV_PYTHON%%" (goto :RunPython) else (goto :PythonNotFound)
+    echo.
+    echo :PythonNotFound
+    echo   echo ERROR: venv Python not found at %%VENV_PYTHON%% ^>^> "%%LOG_FILE%%"
+    echo   pause
+    echo   set "EXIT_CODE=1"
+    echo   goto :Finish
+    echo.
+    echo :RunPython
+    echo   echo Found Python. Executing main.py... ^>^> "%%LOG_FILE%%"
+    echo   "%%VENV_PYTHON%%" main.py
+    echo   set "EXIT_CODE=%%ERRORLEVEL%%"
+    echo   goto :Finish
+    echo.
+    echo :Finish
     echo echo Python script finished with exit code %%EXIT_CODE%% ^>^> "%%LOG_FILE%%"
+    echo.
     echo endlocal
     echo exit /b %%EXIT_CODE%%
 ) > "%OUTPUT_DIR%\%APP_NAME%.bat"
-echo Launcher created.
+echo Launcher script created.
+echo.
 
-:: ---------------- Shortcut wrapper ----------------
+:: --- Create Executable Wrapper ---
 echo --- Creating Executable Wrapper ---
 (
     echo @echo off
-    echo rem Wrapper to launch from shortcuts
-    REM Reverted to 'start' for standard GUI shortcut behavior
+    rem Wrapper to launch the main script from any shortcut location
+    rem Use %%~dp0 so that the path is evaluated at runtime, not during build.
     echo start "" /D "%%~dp0" "%%~dp0%APP_NAME%.bat"
 ) > "%OUTPUT_DIR%\Start%APP_NAME%.bat"
-echo Wrapper created.
-
-:: ---------------- CUDA / VC runtimes ----------------
-if "%INSTALL_CUDA%"=="0" goto :SkipCuda
-echo --- Copying CUDA / VC++ runtimes ---
-set "CUDNN_PATHS=\"C:\Program Files\NVIDIA GPU Computing Toolkit\CUDA\v11.8\bin\" \"C:\tools\cudnn\bin\" \"%CHOCOLATEYINSTALL%\lib\cudnn\tools\cuda\bin\""
-set "CUDNN_FOUND=0"
-for %%p in (%CUDNN_PATHS%) do if exist "%%~p\cudnn*.dll" (
-    for %%f in ("%%~p\cudnn*.dll") do copy /Y "%%~f" "%OUTPUT_DIR%\bin\" >nul & set "CUDNN_FOUND=1"
-)
-set "VCRUNTIME_PATH=C:\Windows\System32"
-for %%d in (msvcp140.dll vcruntime140.dll vcruntime140_1.dll msvcp140_1.dll msvcp140_2.dll concrt140.dll) do if exist "%VCRUNTIME_PATH%\%%d" copy /Y "%VCRUNTIME_PATH%\%%d" "%OUTPUT_DIR%\bin\" >nul
-if "%CUDNN_FOUND%"=="0" echo WARNING: cuDNN DLLs not found.
-:SkipCuda
-
-:: ---------------- Qt plugins ----------------
-set "QT_PLUGIN_PATH=%OUTPUT_DIR%\venv\Lib\site-packages\PyQt6\Qt6\plugins"
-if exist "%QT_PLUGIN_PATH%" (
-    if not exist "%OUTPUT_DIR%\PyQt6\Qt6\plugins" mkdir "%OUTPUT_DIR%\PyQt6\Qt6\plugins"
-    xcopy /E /I /Y "%QT_PLUGIN_PATH%" "%OUTPUT_DIR%\PyQt6\Qt6\plugins\" >nul || (echo ERROR copying Qt plugins & exit /b 1)
-) else (
-    echo WARNING: Qt plugin dir missing: %QT_PLUGIN_PATH%
-)
-
-:: ---------------- Finished ----------------
+echo Executable wrapper created.
 echo.
-echo Build completed successfully.  Output: %OUTPUT_DIR%
-if "%INSTALL_CUDA%"=="1" (
-    echo Build includes CUDA‑enabled PyTorch.
-) else (
-    echo CPU‑only build.
-)
 
-goto :End
+:: --- Copy CUDA/VC++ Runtime DLLs if CUDA build ---
+if %INSTALL_CUDA% == 0 goto SkipCudaDlls
+echo --- Copying CUDA/VC++ Runtime DLLs ---
+set CUDNN_PATHS=
+set CUDNN_PATHS=%CUDNN_PATHS% "C:\Program Files\NVIDIA GPU Computing Toolkit\CUDA\v11.8\bin"
+set CUDNN_PATHS=%CUDNN_PATHS% "C:\tools\cudnn\bin"
+set CUDNN_PATHS=%CUDNN_PATHS% "%CHOCOLATEYINSTALL%\lib\cudnn\tools\cuda\bin"
+set CUDNN_FOUND=0
+for %%p in (%CUDNN_PATHS%) do (
+    if exist "%%~p\cudnn*.dll" (
+        echo Found cuDNN DLLs in %%~p
+        for %%f in ("%%~p\cudnn*.dll") do (
+            echo   Copying %%~nxf to "%OUTPUT_DIR%\bin\"
+            copy /Y "%%~f" "%OUTPUT_DIR%\bin\" > nul
+            set CUDNN_FOUND=1
+        )
+    )
+)
+set VCRUNTIME_PATH=C:\Windows\System32
+echo Copying VC++ Runtime DLLs from %VCRUNTIME_PATH%
+if exist "%VCRUNTIME_PATH%\msvcp140.dll" copy /Y "%VCRUNTIME_PATH%\msvcp140.dll" "%OUTPUT_DIR%\bin\" > nul
+if exist "%VCRUNTIME_PATH%\vcruntime140.dll" copy /Y "%VCRUNTIME_PATH%\vcruntime140.dll" "%OUTPUT_DIR%\bin\" > nul
+if exist "%VCRUNTIME_PATH%\vcruntime140_1.dll" copy /Y "%VCRUNTIME_PATH%\vcruntime140_1.dll" "%OUTPUT_DIR%\bin\" > nul
+if exist "%VCRUNTIME_PATH%\msvcp140_1.dll" copy /Y "%VCRUNTIME_PATH%\msvcp140_1.dll" "%OUTPUT_DIR%\bin\" > nul
+if exist "%VCRUNTIME_PATH%\msvcp140_2.dll" copy /Y "%VCRUNTIME_PATH%\msvcp140_2.dll" "%OUTPUT_DIR%\bin\" > nul
+if exist "%VCRUNTIME_PATH%\concrt140.dll" copy /Y "%VCRUNTIME_PATH%\concrt140.dll" "%OUTPUT_DIR%\bin\" > nul
+echo Searching for CUDA DLLs referenced by PyTorch...
+set TORCH_DIR="%OUTPUT_DIR%\venv\Lib\site-packages\torch\lib"
+if exist %TORCH_DIR% (
+    dir /b "%TORCH_DIR%\*.dll" | findstr /i "cu" > cuda_dlls.txt
+    for /F "tokens=*" %%f in (cuda_dlls.txt) do (
+        echo   Found CUDA DLL: %%f
+    )
+    del cuda_dlls.txt
+)
+if %CUDNN_FOUND% == 0 (
+    echo WARNING: Failed to find and copy cuDNN DLLs. CUDA build might fail at runtime.
+    echo Searched paths:
+    for %%p in (%CUDNN_PATHS%) do echo   - %%~p
+) else (
+    echo CUDA/VC++ DLLs copied successfully to %OUTPUT_DIR%\bin\
+)
+echo.
+:SkipCudaDlls
+
+:: --- Copy Qt6 Plugins ---
+echo --- Copying Qt6 Plugins ---
+set QT_PLUGIN_PATH=%OUTPUT_DIR%\venv\Lib\site-packages\PyQt6\Qt6\plugins
+if exist "%QT_PLUGIN_PATH%" (
+    echo Qt6 plugins found at %QT_PLUGIN_PATH%
+    if not exist "%OUTPUT_DIR%\PyQt6\Qt6\plugins" mkdir "%OUTPUT_DIR%\PyQt6\Qt6\plugins"
+    echo Copying Qt6 plugins...
+    xcopy /E /I /Y "%QT_PLUGIN_PATH%" "%OUTPUT_DIR%\PyQt6\Qt6\plugins\" > nul
+    echo Qt6 plugins copied successfully.
+) else (
+    echo Warning: Qt6 plugins directory not found at %QT_PLUGIN_PATH%
+    echo The application may not display correctly.
+)
+echo.
+
+:: --- Verify venv contents ---
+echo --- Listing venv/Lib/site-packages ---
+dir "%OUTPUT_DIR%\venv\Lib\site-packages" /b
+echo --- Listing complete ---
+echo.
+
+:: --- Final Build Output Message ---
+echo.
+echo Build completed successfully! App is located at: %OUTPUT_DIR%
+if %INSTALL_CUDA% == 1 (
+    echo *** Build includes CUDA-enabled PyTorch ***
+) else (
+    echo *** Build uses CPU-based PyTorch ***
+)
+echo.
+goto End
 
 :Usage
 echo.
 echo Usage: %~nx0 [--cuda] [--help]
+echo Builds the %APP_NAME% application for Windows.
 echo.
-echo   --cuda    Build with CUDA 11.8 PyTorch wheels
-echo   --help    Show this help message
+echo Options:
+echo   --cuda    Install PyTorch with CUDA 11.8 support. Requires compatible NVIDIA GPU.
+echo   --help    Display this help message.
 echo.
-goto :End
+goto End
 
 :End
 endlocal
