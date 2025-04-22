@@ -19,9 +19,22 @@ bundle         = "com.transcribrr"
 version        = "1.0.0"
 author         = "John Miller"
 author_email   = "john@johnbmiller.com"
-license = { file = "LICENSE" }                
 
-requires      = ["-r requirements.txt"]
+# Briefcase already inherits the license declared under [project].
+# Having a second declaration here violates the Briefcase configuration
+# schema and causes an `AttributeError: can't set attribute` during
+# parsing. The `license` key is therefore removed.
+
+# Runtime requirements for the packaging target. These must be provided
+# as individual CLI‑tokens so that Briefcase passes them verbatim to
+# `pip install`. Using a single string that combines the flag and the
+# file path would be interpreted as the value for the `-r` option
+# instead of two separate arguments and triggers the same AttributeError
+# inside Briefcase's dataclass validation.
+requires = [
+    "-r",
+    "requirements.txt",
+]
 
 
 [tool.briefcase.app.transcribrr]
@@ -33,7 +46,12 @@ icon         = "icons/app/app_icon.icns"
 
 # ---- macOS‑specific options ----
 [tool.briefcase.app.transcribrr.macOS]
-requires   = ["-r requirements.txt"]
+# Inherit the same tokenised requirements list so that macOS builds
+# receive identical runtime dependencies.
+requires = [
+    "-r",
+    "requirements.txt",
+]
 resources  = [
     "icons",                       # complete icon tree
     "config.json",
