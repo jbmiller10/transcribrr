@@ -42,7 +42,10 @@ jobs:
           else
             python -m pip install torch torchvision torchaudio
           fi
-          python -m pip install "pyinstaller==6.*" pyqt6 pyqt6-qt6 -r requirements.txt
+          # Pin PyInstaller to an explicit patch series to avoid CI breakage when
+          # new minor versions introduce regressions.  6.13 is the latest patch
+          # line that we have verified to work with this project.
+          python -m pip install "pyinstaller==6.13.*" pyqt6 pyqt6-qt6 -r requirements.txt
           choco install ffmpeg -y
 
       - name: Derive version
@@ -63,8 +66,17 @@ jobs:
 
       - name: Freeze with PyInstaller
         shell: bash
+        env:
+          # Pass the flavour flag through so that transcribrr.spec can decide
+          # whether to include CUDA‑specific hidden‑imports.
+          TRANSCRIBRR_FLAVOUR: ${{ matrix.flavour }}
         run: |
-          pyinstaller transcribrr.spec --noconfirm --clean
+          # Capture verbose PyInstaller output for later inspection.  The log
+          # file is stored under build/ so it can be uploaded as an artefact.
+          mkdir -p build
+          pyinstaller transcribrr.spec --noconfirm --clean --log-level=DEBUG \
+            > build/pyinstaller-${{ matrix.flavour }}.log 2>&1
+
           mv dist/Transcribrr "dist/Transcribrr_${{ matrix.flavour }}"
           
       - name: Verify Qt plugins
@@ -98,3 +110,4 @@ jobs:
           path: |
             dist/Transcribrr-windows-${{ matrix.flavour }}-setup.exe
             dist/Transcribrr_${{ matrix.flavour }}
+            build/pyinstaller-${{ matrix.flavour }}.log
