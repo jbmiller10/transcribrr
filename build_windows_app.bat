@@ -266,7 +266,9 @@ echo.
 echo --- Creating Executable Wrapper ---
 (
     echo @echo off
-    echo start "" /D "%~dp0" "%~dp0%APP_NAME%.bat"
+    rem Wrapper to launch the main script from any shortcut location
+    rem Use %%~dp0 so that the path is evaluated at runtime, not during build.
+    echo start "" /D "%%~dp0" "%%~dp0%APP_NAME%.bat"
 ) > "%OUTPUT_DIR%\Start%APP_NAME%.bat"
 echo Executable wrapper created.
 echo.

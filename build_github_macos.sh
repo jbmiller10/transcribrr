@@ -196,37 +196,80 @@ echo "Found Python framework at: $FW_SRC"
 FW_DST="${APP_DIR}/Contents/Frameworks/Python.framework"
 cp -R "$FW_SRC" "$FW_DST" || echo "WARNING: Failed to copy framework. Will attempt to use Python from PATH."
 
-# --- Add these steps to fix library loading ---
-echo "Fixing Python framework library paths..."
+# --- Add these steps to fix library loading (Comprehensive) ---
+echo "Fixing Python framework library paths (Comprehensive)..."
 # Define paths based on existing script variables
 PYTHON_EXEC="${FW_DST}/Versions/$PY_VER/bin/python3" 
 PYTHON_LIB_FILE="${FW_DST}/Versions/$PY_VER/Python" # Path to the actual library *file*
+PYTHON_FRAMEWORK_BASE="${FW_DST}/Versions/$PY_VER" # Base dir for framework contents
 
 # 1. Check if the Python executable exists before proceeding
 if [ ! -f "$PYTHON_EXEC" ]; then
     echo "ERROR: Embedded Python executable not found at $PYTHON_EXEC. Cannot fix library paths."
 else
+    echo "Processing executable: $PYTHON_EXEC"
+    echo "Processing library file: $PYTHON_LIB_FILE"
+
     # 2. Find the original absolute path the executable links against for the Python library
-    #    Use otool -L, grep for the framework, extract the path (first field), get the first result.
     ORIGINAL_PYTHON_LINK=$(otool -L "$PYTHON_EXEC" | grep 'Python\.framework' | awk '{print $1}' | head -n 1)
 
     if [ -z "$ORIGINAL_PYTHON_LINK" ]; then
-        echo "WARNING: Could not determine original Python library link path in $PYTHON_EXEC. Skipping install_name_tool fix for executable."
+        echo "WARNING: Could not determine original Python library link path in $PYTHON_EXEC."
     else
         echo "Original Python library link in executable: $ORIGINAL_PYTHON_LINK"
 
-        # 3. Define the new relative path using @loader_path
-        #    @loader_path = directory of the executable (bin/)
-        #    ../Python = go up one level (to Versions/3.9/) and find the Python library file
-        NEW_PYTHON_LINK="@loader_path/../Python" 
-        echo "Changing library link in executable '$PYTHON_EXEC' from '$ORIGINAL_PYTHON_LINK' to '$NEW_PYTHON_LINK'"
+        # --- Define New Link Paths ---
+        # For the executable linking TO the library (use @loader_path)
+        NEW_EXEC_LINK_TO_LIB="@loader_path/../Python" 
+        # For the library's own ID and for others linking TO it (use @rpath)
+        NEW_LIB_ID_AND_LINK="@rpath/Python.framework/Versions/$PY_VER/Python"
 
-        # 4. Use install_name_tool to change the reference in the executable
-        install_name_tool -change "$ORIGINAL_PYTHON_LINK" "$NEW_PYTHON_LINK" "$PYTHON_EXEC"
+        # 3. Fix the executable's reference to the Python library
+        echo "Changing link in executable to: $NEW_EXEC_LINK_TO_LIB"
+        install_name_tool -change "$ORIGINAL_PYTHON_LINK" "$NEW_EXEC_LINK_TO_LIB" "$PYTHON_EXEC"
 
-        # 5. Verify the change (Optional but good practice)
-        echo "Verifying changes in executable:"
-        otool -L "$PYTHON_EXEC" | grep 'Python' 
+        # 4. Fix the Python library's own ID
+        if [ -f "$PYTHON_LIB_FILE" ]; then
+            echo "Updating library self-identification (id) to: $NEW_LIB_ID_AND_LINK"
+            install_name_tool -id "$NEW_LIB_ID_AND_LINK" "$PYTHON_LIB_FILE"
+        else
+            echo "WARNING: Python library file not found at $PYTHON_LIB_FILE. Cannot update its ID."
+        fi
+
+        # 5. Add RPATH to the executable so it can find @rpath links
+        #    @executable_path = Contents/MacOS/
+        #    ../../Frameworks = Contents/Frameworks/
+        echo "Adding RPATH '@executable_path/../../Frameworks' to executable"
+        # Ensure we don't add duplicate RPATH entries (install_name_tool fails if duplicate)
+        if ! otool -l "$PYTHON_EXEC" | grep -A2 LC_RPATH | grep -q "@executable_path/../../Frameworks"; then
+            install_name_tool -add_rpath "@executable_path/../../Frameworks" "$PYTHON_EXEC"
+        else
+            echo "RPATH already present, skipping add_rpath."
+        fi
+
+        # 6. Fix references in OTHER libraries within the framework
+        echo "Searching for other dylibs in framework to fix..."
+        find "${PYTHON_FRAMEWORK_BASE}" -name '*.dylib' -print0 | while IFS= read -r -d $'\0' dylib_file; do
+            echo "Checking dylib: $dylib_file"
+            # Check if this dylib links against the original absolute path
+            if otool -L "$dylib_file" | grep -q "$ORIGINAL_PYTHON_LINK"; then
+                echo "  Found link to $ORIGINAL_PYTHON_LINK. Changing to $NEW_LIB_ID_AND_LINK..."
+                install_name_tool -change "$ORIGINAL_PYTHON_LINK" "$NEW_LIB_ID_AND_LINK" "$dylib_file"
+            else
+                echo "  No link to original Python found."
+            fi
+        done
+
+        # 7. Verify the changes (Optional but good practice)
+        echo "Verifying changes:"
+        echo "--- Executable ($PYTHON_EXEC) Links ---"
+        otool -L "$PYTHON_EXEC" | grep 'Python'
+        echo "--- Executable ($PYTHON_EXEC) RPATHs ---"
+        otool -l "$PYTHON_EXEC" | grep -A2 LC_RPATH
+        if [ -f "$PYTHON_LIB_FILE" ]; then
+            echo "--- Library ($PYTHON_LIB_FILE) ID ---"
+            otool -L "$PYTHON_LIB_FILE" | head -n 2
+        fi
     fi
 fi
 # --- End of library path fixing steps ---
