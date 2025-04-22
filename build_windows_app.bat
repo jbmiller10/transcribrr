@@ -2,7 +2,7 @@
 setlocal EnableDelayedExpansion
 
 :: Script to build a standalone Windows application with optional CUDA support
-:: FIXED Launcher Script Echoing, Path Quoting, and Log File Permissions
+:: Final attempt: Corrected launcher logging generation, path quoting, and log file permissions
 
 :: --- Configuration ---
 set "APP_NAME=Transcribrr"
@@ -162,34 +162,33 @@ echo --- Creating launcher ---
     echo set "PATH=%%SCRIPT_DIR%%bin\;%%PATH%%"
     echo set "QT_PLUGIN_PATH=%%SCRIPT_DIR%%PyQt6\Qt6\plugins"
     echo.
-    REM ==== FIX: Use %LOCALAPPDATA% for logs ====
     echo set "LOG_DIR=%%LOCALAPPDATA%%\Transcribrr\logs"
     echo if not exist "%%LOG_DIR%%" mkdir "%%LOG_DIR%%"
     echo set "LOG_FILE=%%LOG_DIR%%\launch.log"
     echo.
     echo :: Log startup info
-    REM ==== FIX: Removed double 'echo' AND changed log path ====
-    echo Starting application at %%date%% %%time%% ^> "%%LOG_FILE%%"
-    echo SCRIPT_DIR: %%SCRIPT_DIR%% ^>^> "%%LOG_FILE%%"
-    echo VENV_PYTHON: %%VENV_PYTHON%% ^>^> "%%LOG_FILE%%"
-    echo PYTHONPATH: %%PYTHONPATH%% ^>^> "%%LOG_FILE%%"
-    echo PATH: %%PATH%% ^>^> "%%LOG_FILE%%"
-    echo QT_PLUGIN_PATH: %%QT_PLUGIN_PATH%% ^>^> "%%LOG_FILE%%"
+    REM ==== FIX: Re-added single 'echo' to logging commands below ====
+    echo echo Starting application at %%date%% %%time%% ^> "%%LOG_FILE%%"
+    echo echo SCRIPT_DIR: %%SCRIPT_DIR%% ^>^> "%%LOG_FILE%%"
+    echo echo VENV_PYTHON: %%VENV_PYTHON%% ^>^> "%%LOG_FILE%%"
+    echo echo PYTHONPATH: %%PYTHONPATH%% ^>^> "%%LOG_FILE%%"
+    echo echo PATH: %%PATH%% ^>^> "%%LOG_FILE%%"
+    echo echo QT_PLUGIN_PATH: %%QT_PLUGIN_PATH%% ^>^> "%%LOG_FILE%%"
     echo.
-    echo Running Python script using venv python... ^>^> "%%LOG_FILE%%"
-    REM ==== End fixes ====
+    echo echo Running Python script using venv python... ^>^> "%%LOG_FILE%%"
+    REM ==== End echo fix ====
     echo cd /d "%%SCRIPT_DIR%%"
     echo if exist "%%VENV_PYTHON%%" ^(
     echo     "%%VENV_PYTHON%%" main.py
     echo ^) else ^(
-    REM ==== FIX: Removed double 'echo' AND changed log path ====
-    echo     ERROR: venv Python not found at %%VENV_PYTHON%% ^>^> "%%LOG_FILE%%"
+    REM ==== FIX: Re-added single 'echo' to error logging command ====
+    echo     echo ERROR: venv Python not found at %%VENV_PYTHON%% ^>^> "%%LOG_FILE%%"
     echo     pause
     echo     exit /b 1
     echo ^)
     echo set "EXIT_CODE=%%ERRORLEVEL%%"
-    REM ==== FIX: Removed double 'echo' AND changed log path ====
-    echo Python script finished with exit code %%EXIT_CODE%% ^>^> "%%LOG_FILE%%"
+    REM ==== FIX: Re-added single 'echo' to final status command ====
+    echo echo Python script finished with exit code %%EXIT_CODE%% ^>^> "%%LOG_FILE%%"
     echo endlocal
     echo exit /b %%EXIT_CODE%%
 ) > "%OUTPUT_DIR%\%APP_NAME%.bat"
