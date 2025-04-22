@@ -24,6 +24,10 @@ jobs:
           python-version: ${{ env.PYTHON_VERSION }}
       # ---------------------------------------------
 
+      - name: Install system libraries
+        run: |
+          brew update
+          brew install portaudio   # ← provides portaudio.h and libportaudio.dylib
       - name: Install Briefcase + deps
         run: |
           python -m pip install --upgrade pip briefcase
