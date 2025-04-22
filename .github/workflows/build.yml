@@ -229,8 +229,8 @@ jobs:
         shell: bash
         run: |
           # Use python to extract the version string from __init__.py
-          # This handles potential variations in spacing or quotes
-          VERSION=$(python -c "import re; f=open('app/__init__.py', 'r'); c=f.read(); f.close(); print(re.search(r'^__version__\s*=\s*[\'\"']([^\'\"']*)[\'\"']', c, re.M).group(1))")
+          # Using single quotes around the python command to avoid shell parsing issues
+          VERSION=$(python -c 'import re; f=open("app/__init__.py", "r"); c=f.read(); f.close(); print(re.search(r"^__version__\s*=\s*[\'\"](.*?)[\'\"]", c, re.M).group(1))')
           echo "Detected version: $VERSION"
           # Set the version as an environment variable for subsequent steps
           echo "APP_VERSION=$VERSION" >> $GITHUB_ENV
