@@ -227,29 +227,23 @@ if not exist "%OUTPUT_DIR%" echo ERROR: OUTPUT_DIR does not exist!
     echo @echo off
     echo :: Launcher for %APP_NAME%
     echo setlocal
-    echo set "SCRIPT_DIR=%%~dp0"
-    echo set "VENV_PYTHON=%%SCRIPT_DIR%%venv\Scripts\python.exe"
-    echo set "PYTHONPATH=%%SCRIPT_DIR%%"
-    echo set "SSL_CERT_FILE=%%SCRIPT_DIR%%cacert.pem"
-    echo set "PATH=%%SCRIPT_DIR%%bin;%%PATH%%"
-    echo set "QT_PLUGIN_PATH=%%SCRIPT_DIR%%PyQt6\Qt6\plugins"
-    echo.
-    echo :: Log to LOCALAPPDATA
-    echo set "LOG_DIR=%%LOCALAPPDATA%%\%APP_NAME%\logs"
-    echo if not exist "%%LOG_DIR%%" mkdir "%%LOG_DIR%%"
-    echo set "LOG_FILE=%%LOG_DIR%%\launch.log"
-    echo.
-    echo :: Log startup info
-    echo echo Starting application at %%date%% %%time%% ^> "%%LOG_FILE%%"
-    echo echo SCRIPT_DIR: %%SCRIPT_DIR%% ^>^> "%%LOG_FILE%%"
-    echo echo VENV_PYTHON: %%VENV_PYTHON%% ^>^> "%%LOG_FILE%%"
-    echo echo PYTHONPATH: %%PYTHONPATH%% ^>^> "%%LOG_FILE%%"
-    echo echo PATH: %%PATH%% ^>^> "%%LOG_FILE%%"
-    echo echo QT_PLUGIN_PATH: %%QT_PLUGIN_PATH%% ^>^> "%%LOG_FILE%%"
-    echo.
-    echo echo Changing directory to %%SCRIPT_DIR%%... ^>^> "%%LOG_FILE%%"
-    echo cd /d "%%SCRIPT_DIR%%"
-    echo if %ERRORLEVEL% NEQ 0 (
+	echo set "SCRIPT_DIR=%%~dp0%%"
+	echo set "VENV_PYTHON=%%SCRIPT_DIR%%venv\Scripts\python.exe"
+	echo set "PYTHONPATH=%%SCRIPT_DIR%%"
+	echo set "SSL_CERT_FILE=%%SCRIPT_DIR%%cacert.pem"
+	echo set "PATH=%%SCRIPT_DIR%%bin;%%PATH%%"
+	echo set "QT_PLUGIN_PATH=%%SCRIPT_DIR%%PyQt6\Qt6\plugins"
+
+	echo :: Log startup info
+	echo ^>^> "%%LOG_FILE%%" echo Starting application at %%date%% %%time%%
+	echo ^>^> "%%LOG_FILE%%" echo SCRIPT_DIR: %%SCRIPT_DIR%%
+	echo ^>^> "%%LOG_FILE%%" echo VENV_PYTHON: %%VENV_PYTHON%%
+	echo ^>^> "%%LOG_FILE%%" echo PYTHONPATH: %%PYTHONPATH%%
+	echo ^>^> "%%LOG_FILE%%" echo PATH: %%PATH%%
+	echo ^>^> "%%LOG_FILE%%" echo QT_PLUGIN_PATH: %%QT_PLUGIN_PATH%%
+
+	echo cd /d "%%SCRIPT_DIR%%"
+	echo if errorlevel 1 (
     echo   echo ERROR: Failed to change directory to %%SCRIPT_DIR%% ^>^> "%%LOG_FILE%%"
     echo   pause
     echo   exit /b 1
