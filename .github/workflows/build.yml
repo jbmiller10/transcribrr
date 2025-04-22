@@ -69,22 +69,27 @@ jobs:
         run: |
           echo "Working dir: $(pwd)"
           ls -R bin || true
-          
+
+          mv dist/Transcribrr "dist/Transcribrr_${{ matrix.flavour }}"
       - name: Freeze with PyInstaller
         shell: bash
         env:
-          # Pass the flavour flag through so that transcribrr.spec can decide
-          # whether to include CUDA‑specific hidden‑imports.
           TRANSCRIBRR_FLAVOUR: ${{ matrix.flavour }}
         run: |
-          # Capture verbose PyInstaller output for later inspection.  The log
-          # file is stored under build/ so it can be uploaded as an artefact.
+          set -o pipefail            # fail the step if PyInstaller exits non‑zero
           mkdir -p build
           pyinstaller transcribrr.spec --noconfirm --clean --log-level=DEBUG \
-            > build/pyinstaller-${{ matrix.flavour }}.log 2>&1
-
-          mv dist/Transcribrr "dist/Transcribrr_${{ matrix.flavour }}"
+            2>&1 | tee build/pyinstaller-${{ matrix.flavour }}.log
           
+          mv dist/Transcribrr "dist/Transcribrr_${{ matrix.flavour }}"
+
+      - name: Upload PyInstaller log
+        if: always()                 # run even when earlier steps failed
+        uses: actions/upload-artifact@v4
+        with:
+          name: pyinstaller_log_${{ matrix.flavour }}
+          path: build/pyinstaller-${{ matrix.flavour }}.log
+
       - name: Verify Qt plugins
         shell: pwsh
         run: |
@@ -117,3 +122,10 @@ jobs:
             dist/Transcribrr-windows-${{ matrix.flavour }}-setup.exe
             dist/Transcribrr_${{ matrix.flavour }}
             build/pyinstaller-${{ matrix.flavour }}.log
+            
+      - name: Save wheel cache
+        if: always()
+        uses: actions/cache/save@v3
+        with:
+          path: ${{ steps.pip-dir.outputs.dir }}
+          key: ${{ steps.restore-macos.outputs.cache-primary-key }}
