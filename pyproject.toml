@@ -5,16 +5,22 @@ build-backend = "briefcase.build_system"
 
 # ---- project‑wide metadata ----
 [tool.briefcase]
-project_name = "Transcribrr"
-bundle       = "com.transcribrr"
-version      = "1.0.0"           # keep in sync with app/__init__.py
-requires     = [
+project_name  = "Transcribrr"
+bundle        = "com.transcribrr"
+version       = "0.9.0"
+
+author        = "Your Name"           # ← required
+author_email  = "you@example.com"     # ← required
+license       = "GPL-3.0-only"                 
+
+requires      = [
     "PyQt6",
-    "PyQt6‑Qt6",
+    "PyQt6-Qt6",
     "appdirs",
     "colorlog",
-    "certifi",                   # optional – see previous answer
+    "certifi",
 ]
+
 
 # ---- the single desktop application ----
 [tool.briefcase.app.transcribrr]
