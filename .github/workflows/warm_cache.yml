@@ -1,0 +1,53 @@
+name: Pre‑warm pip cache
+on:
+  workflow_dispatch:      # run manually
+  # schedule:
+  #   - cron: "0 3 * * 1"   # every Monday 03:00 UTC
+env:
+  PYTHON_VERSION: "3.9"
+
+jobs:
+  pip-cache:
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os:     [windows-latest, macos-14]
+        flavour: [cpu, cuda]       # keep same flavours as the build job
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with: {python-version: ${{ env.PYTHON_VERSION }}}
+
+      # ---------- Restore existing wheel cache ----------
+      - name: Restore pip wheel cache
+        id: pip-cache
+        uses: actions/cache/restore@v3
+        with:
+          path: |
+            ${{ runner.os == 'Windows' && '~\\AppData\\Local\\pip\\Cache' || '$HOME/.cache/pip' }}
+          key:  ${{ runner.os }}-pip-${{ env.PYTHON_VERSION }}-${{ matrix.flavour }}-${{ hashFiles('requirements-*.txt') }}
+          restore-keys: |
+            ${{ runner.os }}-pip-${{ env.PYTHON_VERSION }}-${{ matrix.flavour }}-
+
+      # ---------- Install dependencies only ----------
+      - name: Install runtime requirements
+        shell: bash
+        run: |
+          python -m pip install --upgrade pip wheel
+          if [[ "${{ matrix.flavour }}" == "cuda" ]]; then
+            python -m pip install -r requirements-core.txt -r requirements-ml.txt \
+              torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu118
+          else
+            python -m pip install -r requirements-core.txt
+          fi
+
+      # ---------- Save updated wheel cache even on failure ----------
+      - name: Save pip wheel cache
+        if: always()                       # run whether the install step failed or not
+        uses: actions/cache/save@v3
+        with:
+          path: |
+            ${{ runner.os == 'Windows' && '~\\AppData\\Local\\pip\\Cache' || '$HOME/.cache/pip' }}
+          key:  ${{ steps.pip-cache.outputs.cache-primary-key }}
