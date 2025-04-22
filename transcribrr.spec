@@ -38,6 +38,7 @@ for optional in ("config.json", "cacert.pem"):
         RESOURCE_PATTERNS.append(optional)
 
 datas = collect_data_files(".", includes=RESOURCE_PATTERNS)
+datas += collect_data_files("lightning_fabric", includes=["version.info"])
 
 # ---------------------------------------------------------------------------
 # 3  Binaries – bundled ffmpeg & ffprobe executables
