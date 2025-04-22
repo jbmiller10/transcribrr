@@ -228,12 +228,22 @@ jobs:
         id: version
         shell: bash
         run: |
-          # Use python to extract the version string from __init__.py
-          # Using single quotes around the python command to avoid shell parsing issues
-          VERSION=$(python -c 'import re; f=open("app/__init__.py", "r"); c=f.read(); f.close(); print(re.search(r"^__version__\s*=\s*[\'\"](.*?)[\'\"]", c, re.M).group(1))')
-          echo "Detected version: $VERSION"
-          # Set the version as an environment variable for subsequent steps
-          echo "APP_VERSION=$VERSION" >> $GITHUB_ENV
+          # Define the python command in a variable for clarity
+          # Using a slightly simplified regex assuming double quotes in __init__.py for better shell compatibility
+          PYTHON_COMMAND='import re; f=open("app/__init__.py", "r"); c=f.read(); f.close(); print(re.search(r"^__version__\s*=\s*\"([^\"]*)\"", c, re.M).group(1))'
+          
+          # Execute python directly and capture standard output
+          APP_VERSION_OUTPUT=$(python -c "$PYTHON_COMMAND")
+          
+          # Check the exit code of the python command and if output is non-empty
+          if [ $? -ne 0 ] || [ -z "$APP_VERSION_OUTPUT" ]; then
+            echo "::error::Failed to extract version using Python command."
+            exit 1
+          fi
+          
+          echo "Detected version: $APP_VERSION_OUTPUT"
+          # Set the version as an environment variable for subsequent steps using GITHUB_ENV
+          echo "APP_VERSION=$APP_VERSION_OUTPUT" >> $GITHUB_ENV
 
       - name: Create Windows Installer
         shell: pwsh
