@@ -45,7 +45,8 @@ datas += collect_data_files("lightning_fabric", includes=["version.info"])
 # ---------------------------------------------------------------------------
 BINARIES = []
 # Look for ffmpeg in bin/ directory at root of project
-bin_dir = Path(__file__).parent / "bin"
+# Use PyInstaller's specpath variable instead of __file__ to avoid NameError
+bin_dir = Path(specpath) / "bin"
 for exe_name in ("ffmpeg.exe", "ffprobe.exe"):
     src = bin_dir / exe_name
     if src.exists():
