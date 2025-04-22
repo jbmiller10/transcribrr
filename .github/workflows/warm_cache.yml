@@ -1,20 +1,21 @@
 name: Pre‑warm pip cache
 
 on:
-  workflow_dispatch:              # run manually
+  workflow_dispatch:
   # schedule:
-  #   - cron: "0 3 * * 1"         # every Monday 03:00 UTC
+  #   - cron: "0 3 * * 1"   # every Monday 03:00 UTC
 
 env:
   PYTHON_VERSION: "3.9"
 
+# ------------------------------------------------------------
+# Job 1 – Windows CPU
+# ------------------------------------------------------------
 jobs:
-  pip-cache:
-    runs-on: ${{ matrix.os }}
-    strategy:
-      matrix:
-        os: [windows-latest, macos-14]
-        flavour: [cpu]
+  warm-win-cpu:
+    runs-on: windows-latest
+    env:
+      TRANSCRIBRR_FLAVOUR: cpu
 
     steps:
       - uses: actions/checkout@v4
@@ -24,38 +25,105 @@ jobs:
         with:
           python-version: ${{ env.PYTHON_VERSION }}
 
-      # ---------- Restore existing wheel cache ----------
-      - name: Restore pip wheel cache
-        id: pip-cache
+      - name: Restore wheel cache
+        id: restore-win-cpu
         uses: actions/cache/restore@v3
         with:
-          path: >
-            ${{ runner.os == 'Windows'
-                && '~\\AppData\\Local\\pip\\Cache'
-                || '$HOME/.cache/pip' }}
-          key:  ${{ runner.os }}-pip-${{ env.PYTHON_VERSION }}-${{ matrix.flavour }}-${{ hashFiles('requirements.txt') }}
+          path: ~\AppData\Local\pip\Cache
+          key:  windows-pip-${{ env.PYTHON_VERSION }}-cpu-${{ hashFiles('requirements.txt') }}
           restore-keys: |
-            ${{ runner.os }}-pip-${{ env.PYTHON_VERSION }}-${{ matrix.flavour }}-
+            windows-pip-${{ env.PYTHON_VERSION }}-cpu-
 
-      # ---------- Install dependencies only ----------
-      - name: Install runtime requirements
+      - name: Install requirements
         shell: bash
         run: |
           python -m pip install --upgrade pip wheel
-          if [[ "${{ matrix.flavour }}" == "cuda" ]]; then
-            python -m pip install -r requirements.txt \
-              torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu118
-          else
-            python -m pip install -r requirements.txt
-          fi
+          python -m pip install -r requirements.txt
 
-      # ---------- Save updated wheel cache even on failure ----------
-      - name: Save pip wheel cache
-        if: always()                      # run regardless of previous step result
+      - name: Save wheel cache
+        if: always()
         uses: actions/cache/save@v3
         with:
-          path: >
-            ${{ runner.os == 'Windows'
-                && '~\\AppData\\Local\\pip\\Cache'
-                || '$HOME/.cache/pip' }}
-          key: ${{ steps.pip-cache.outputs.cache-primary-key }}
+          path: ~\AppData\Local\pip\Cache
+          key: ${{ steps.restore-win-cpu.outputs.cache-primary-key }}
+
+# ------------------------------------------------------------
+# Job 2 – Windows CUDA
+# ------------------------------------------------------------
+  warm-win-cuda:
+    runs-on: windows-latest
+    env:
+      TRANSCRIBRR_FLAVOUR: cuda
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+
+      - name: Restore wheel cache
+        id: restore-win-cuda
+        uses: actions/cache/restore@v3
+        with:
+          path: ~\AppData\Local\pip\Cache
+          key:  windows-pip-${{ env.PYTHON_VERSION }}-cuda-${{ hashFiles('requirements.txt') }}
+          restore-keys: |
+            windows-pip-${{ env.PYTHON_VERSION }}-cuda-
+
+      - name: Install requirements + CUDA wheels
+        shell: bash
+        run: |
+          python -m pip install --upgrade pip wheel
+          python -m pip install -r requirements.txt
+          python -m pip install torch torchvision torchaudio \
+            --index-url https://download.pytorch.org/whl/cu118
+
+      - name: Save wheel cache
+        if: always()
+        uses: actions/cache/save@v3
+        with:
+          path: ~\AppData\Local\pip\Cache
+          key: ${{ steps.restore-win-cuda.outputs.cache-primary-key }}
+
+# ------------------------------------------------------------
+# Job 3 – macOS CPU
+# ------------------------------------------------------------
+  warm-macos:
+    runs-on: macos-14
+    env:
+      TRANSCRIBRR_FLAVOUR: cpu
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+
+      - name: Locate pip cache dir
+        id: pip-dir
+        run: echo "dir=$(python -m pip cache dir)" >> "$GITHUB_OUTPUT"
+
+      - name: Restore wheel cache
+        id: restore-macos
+        uses: actions/cache/restore@v3
+        with:
+          path: ${{ steps.pip-dir.outputs.dir }}
+          key:  macos-pip-${{ env.PYTHON_VERSION }}-cpu-${{ hashFiles('requirements.txt') }}
+          restore-keys: |
+            macos-pip-${{ env.PYTHON_VERSION }}-cpu-
+
+      - name: Install requirements
+        run: |
+          python -m pip install --upgrade pip wheel
+          python -m pip install -r requirements.txt
+
+      - name: Save wheel cache
+        if: always()
+        uses: actions/cache/save@v3
+        with:
+          path: ${{ steps.pip-dir.outputs.dir }}
+          key: ${{ steps.restore-macos.outputs.cache-primary-key }}
