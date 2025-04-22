@@ -250,7 +250,8 @@ if not exist "%OUTPUT_DIR%" echo ERROR: OUTPUT_DIR does not exist!
     echo ^)
     echo.
     echo echo Checking for Python at %%VENV_PYTHON%%... ^>^> "%%LOG_FILE%%"
-    echo if exist "%%VENV_PYTHON%%" (goto :RunPython) else (goto :PythonNotFound)
+	echo if exist "%%VENV_PYTHON%%" ^( goto :RunPython ^) else ^( goto :PythonNotFound ^)
+
     echo.
     echo :PythonNotFound
     echo   echo ERROR: venv Python not found at %%VENV_PYTHON%% ^>^> "%%LOG_FILE%%"
