@@ -237,24 +237,24 @@ echo --- Creating Launcher Script ---
     echo if not exist "%%SCRIPT_DIR%%logs" mkdir "%%SCRIPT_DIR%%logs"
     echo.
     echo :: Log startup info
-    echo echo Starting application at %%date%% %%time%% ^> "%%SCRIPT_DIR%%logs\launch.log"
-    echo echo SCRIPT_DIR: %%SCRIPT_DIR%% ^>^> "%%SCRIPT_DIR%%logs\launch.log"
-    echo echo VENV_PYTHON: %%VENV_PYTHON%% ^>^> "%%SCRIPT_DIR%%logs\launch.log"
-    echo echo PYTHONPATH: %%PYTHONPATH%% ^>^> "%%SCRIPT_DIR%%logs\launch.log"
-    echo echo PATH: %%PATH%% ^>^> "%%SCRIPT_DIR%%logs\launch.log"
-    echo echo QT_PLUGIN_PATH: %%QT_PLUGIN_PATH%% ^>^> "%%SCRIPT_DIR%%logs\launch.log"
+    echo Starting application at %%date%% %%time%% ^> "%%SCRIPT_DIR%%logs\launch.log"
+    echo SCRIPT_DIR: %%SCRIPT_DIR%% ^>^> "%%SCRIPT_DIR%%logs\launch.log"
+    echo VENV_PYTHON: %%VENV_PYTHON%% ^>^> "%%SCRIPT_DIR%%logs\launch.log"
+    echo PYTHONPATH: %%PYTHONPATH%% ^>^> "%%SCRIPT_DIR%%logs\launch.log"
+    echo PATH: %%PATH%% ^>^> "%%SCRIPT_DIR%%logs\launch.log"
+    echo QT_PLUGIN_PATH: %%QT_PLUGIN_PATH%% ^>^> "%%SCRIPT_DIR%%logs\launch.log"
     echo.
-    echo echo Running Python script using venv python... ^>^> "%%SCRIPT_DIR%%logs\launch.log"
+    echo Running Python script using venv python... ^>^> "%%SCRIPT_DIR%%logs\launch.log"
     echo cd /d "%%SCRIPT_DIR%%"
     echo if exist "%%VENV_PYTHON%%" ^(
     echo   "%%VENV_PYTHON%%" main.py
     echo ^) else ^(
-    echo   echo ERROR: venv Python not found at %%VENV_PYTHON%% ^>^> "%%SCRIPT_DIR%%logs\launch.log"
+    echo   ERROR: venv Python not found at %%VENV_PYTHON%% ^>^> "%%SCRIPT_DIR%%logs\launch.log"
     echo   pause
     echo   exit /b 1
     echo ^)
     echo set EXIT_CODE=%%ERRORLEVEL%%
-    echo echo Python script finished with exit code %%EXIT_CODE%% ^>^> "%%SCRIPT_DIR%%logs\launch.log"
+    echo Python script finished with exit code %%EXIT_CODE%% ^>^> "%%SCRIPT_DIR%%logs\launch.log"
     echo.
     echo endlocal
     echo exit /b %%EXIT_CODE%%
