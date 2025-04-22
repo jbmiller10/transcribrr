@@ -217,6 +217,12 @@ echo.
 
 :: --- Create Launcher Script ---
 echo --- Creating Launcher Script ---
+
+echo DEBUG: Checking variables before launcher creation...
+echo DEBUG: OUTPUT_DIR is [%OUTPUT_DIR%]
+echo DEBUG: APP_NAME is [%APP_NAME%]
+if not exist "%OUTPUT_DIR%" echo ERROR: OUTPUT_DIR does not exist!
+
 (
     echo @echo off
     echo :: Launcher for %APP_NAME%
@@ -270,7 +276,13 @@ echo --- Creating Launcher Script ---
     echo endlocal
     echo exit /b %%EXIT_CODE%%
 ) > "%OUTPUT_DIR%\%APP_NAME%.bat"
-echo Launcher script created.
+
+if not exist "%OUTPUT_DIR%\%APP_NAME%.bat" (
+    echo ERROR: Failed to create %APP_NAME%.bat in %OUTPUT_DIR%
+    echo DEBUG: Last errorlevel was %ERRORLEVEL%
+) else (
+    echo Launcher script created successfully at %OUTPUT_DIR%\%APP_NAME%.bat
+)
 echo.
 
 :: --- Create Executable Wrapper ---
