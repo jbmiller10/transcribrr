@@ -196,6 +196,41 @@ echo "Found Python framework at: $FW_SRC"
 FW_DST="${APP_DIR}/Contents/Frameworks/Python.framework"
 cp -R "$FW_SRC" "$FW_DST" || echo "WARNING: Failed to copy framework. Will attempt to use Python from PATH."
 
+# --- Add these steps to fix library loading ---
+echo "Fixing Python framework library paths..."
+# Define paths based on existing script variables
+PYTHON_EXEC="${FW_DST}/Versions/$PY_VER/bin/python3" 
+PYTHON_LIB_FILE="${FW_DST}/Versions/$PY_VER/Python" # Path to the actual library *file*
+
+# 1. Check if the Python executable exists before proceeding
+if [ ! -f "$PYTHON_EXEC" ]; then
+    echo "ERROR: Embedded Python executable not found at $PYTHON_EXEC. Cannot fix library paths."
+else
+    # 2. Find the original absolute path the executable links against for the Python library
+    #    Use otool -L, grep for the framework, extract the path (first field), get the first result.
+    ORIGINAL_PYTHON_LINK=$(otool -L "$PYTHON_EXEC" | grep 'Python\.framework' | awk '{print $1}' | head -n 1)
+
+    if [ -z "$ORIGINAL_PYTHON_LINK" ]; then
+        echo "WARNING: Could not determine original Python library link path in $PYTHON_EXEC. Skipping install_name_tool fix for executable."
+    else
+        echo "Original Python library link in executable: $ORIGINAL_PYTHON_LINK"
+
+        # 3. Define the new relative path using @loader_path
+        #    @loader_path = directory of the executable (bin/)
+        #    ../Python = go up one level (to Versions/3.9/) and find the Python library file
+        NEW_PYTHON_LINK="@loader_path/../Python" 
+        echo "Changing library link in executable '$PYTHON_EXEC' from '$ORIGINAL_PYTHON_LINK' to '$NEW_PYTHON_LINK'"
+
+        # 4. Use install_name_tool to change the reference in the executable
+        install_name_tool -change "$ORIGINAL_PYTHON_LINK" "$NEW_PYTHON_LINK" "$PYTHON_EXEC"
+
+        # 5. Verify the change (Optional but good practice)
+        echo "Verifying changes in executable:"
+        otool -L "$PYTHON_EXEC" | grep 'Python' 
+    fi
+fi
+# --- End of library path fixing steps ---
+
 # Install dependencies using the embedded Python
 echo "Installing dependencies..."
 
