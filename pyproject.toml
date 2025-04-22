@@ -1,0 +1,33 @@
+# ---- mandatory PEP 518 section ----
+[build-system]
+requires      = ["briefcase>=0.3.22"]
+build-backend = "briefcase.build_system"
+
+# ---- project‑wide metadata ----
+[tool.briefcase]
+project_name = "Transcribrr"
+bundle       = "com.transcribrr"
+version      = "1.0.0"           # keep in sync with app/__init__.py
+requires     = [
+    "PyQt6",
+    "PyQt6‑Qt6",
+    "appdirs",
+    "colorlog",
+    "certifi",                   # optional – see previous answer
+]
+
+# ---- the single desktop application ----
+[tool.briefcase.app.transcribrr]
+formal_name  = "Transcribrr"
+description  = "Speech‑to‑text transcription tool"
+sources      = ["app", "main.py"]   # paths that contain your code
+icon         = "icons/app/app_icon.icns"
+
+# ---- macOS‑specific options ----
+[tool.briefcase.app.transcribrr.macOS]
+requires   = []                    # extra wheels if you ever need them
+resources  = [
+    "icons",                       # complete icon tree
+    "config.json",
+    "preset_prompts.json",
+]

@@ -1,0 +1,46 @@
+# .github/workflows/macos.yml   ← complete, validated
+
+name: macOS Briefcase build
+
+on:
+  workflow_dispatch:
+  push:
+    tags:
+      - "v*.*.*"
+
+env:                     # top‑level env is simplest
+  PYTHON_VERSION: "3.9"
+
+jobs:
+  macos:
+    runs-on: macos-14    # Apple‑silicon runner
+
+    steps:
+      - uses: actions/checkout@v4
+
+      # ---------- CORRECTLY INDENTED STEP ----------
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+      # ---------------------------------------------
+
+      - name: Install Briefcase + deps
+        run: |
+          python -m pip install --upgrade pip briefcase
+          python -m pip install -r requirements.txt
+
+      - name: Build .app
+        run: briefcase build macOS --arch arm64 --no-input --log
+
+      - name: Package (ad‑hoc signed)
+        run: briefcase package macOS --arch arm64 --adhoc-sign --no-input --log
+
+      - name: Zip artefact
+        run: |
+          ditto -c -k --sequesterRsrc --keepParent \
+                dist/Transcribrr.dmg Transcribrr-macOS-arm64.dmg
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: Transcribrr_macOS_arm64
+          path: Transcribrr-macOS-arm64.dmg

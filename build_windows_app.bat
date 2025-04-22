@@ -234,6 +234,12 @@ if not exist "%OUTPUT_DIR%" echo ERROR: OUTPUT_DIR does not exist!
 	echo set "PATH=%%SCRIPT_DIR%%bin;%%PATH%%"
 	echo set "QT_PLUGIN_PATH=%%SCRIPT_DIR%%PyQt6\Qt6\plugins"
 
+
+	:: ── Initialise logging ─────────────────────────────
+	echo set "LOG_DIR=%%LOCALAPPDATA%%\%APP_NAME%\logs"
+	echo if not exist "%%LOG_DIR%%" mkdir "%%LOG_DIR%%"
+	echo set "LOG_FILE=%%LOG_DIR%%\launch.log"
+
 	echo :: Log startup info
 	echo ^>^> "%%LOG_FILE%%" echo Starting application at %%date%% %%time%%
 	echo ^>^> "%%LOG_FILE%%" echo SCRIPT_DIR: %%SCRIPT_DIR%%
@@ -250,7 +256,8 @@ if not exist "%OUTPUT_DIR%" echo ERROR: OUTPUT_DIR does not exist!
     echo ^)
     echo.
     echo echo Checking for Python at %%VENV_PYTHON%%... ^>^> "%%LOG_FILE%%"
-    echo if exist "%%VENV_PYTHON%%" (goto :RunPython) else (goto :PythonNotFound)
+	echo if exist "%%VENV_PYTHON%%" ^( goto :RunPython ^) else ^( goto :PythonNotFound ^)
+
     echo.
     echo :PythonNotFound
     echo   echo ERROR: venv Python not found at %%VENV_PYTHON%% ^>^> "%%LOG_FILE%%"
