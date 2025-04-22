@@ -34,10 +34,10 @@ jobs:
           python -m pip install -r requirements.txt
 
       - name: Build .app
-        run: briefcase build macOS --arch arm64 --no-input --log
+        run: briefcase build macOS --no-input --log
 
       - name: Package (ad‑hoc signed)
-        run: briefcase package macOS --arch arm64 --adhoc-sign --no-input --log
+        run: briefcase package macOS --adhoc-sign --no-input --log
 
       - name: Zip artefact
         run: |
