@@ -126,6 +126,6 @@ jobs:
         if: always()
         uses: actions/cache/save@v3
         with:
-          path: ${{ steps.pip-dir.outputs.dir }}
+          path: ~\AppData\Local\pip\Cache
           key: ${{ runner.os }}-pip-${{ env.PYTHON_VERSION }}-${{ matrix.flavour }}-${{ hashFiles('**/requirements.txt') }}
 
