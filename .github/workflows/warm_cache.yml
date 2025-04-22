@@ -30,9 +30,9 @@ jobs:
         uses: actions/cache/restore@v3
         with:
           path: ~\AppData\Local\pip\Cache
-          key:  windows-pip-${{ env.PYTHON_VERSION }}-cpu-${{ hashFiles('requirements.txt') }}
+          key:  Windows-pip-${{ env.PYTHON_VERSION }}-cpu-${{ hashFiles('requirements.txt') }}
           restore-keys: |
-            windows-pip-${{ env.PYTHON_VERSION }}-cpu-
+            Windows-pip-${{ env.PYTHON_VERSION }}-cpu-
 
       - name: Install requirements
         shell: bash
@@ -68,9 +68,9 @@ jobs:
         uses: actions/cache/restore@v3
         with:
           path: ~\AppData\Local\pip\Cache
-          key:  windows-pip-${{ env.PYTHON_VERSION }}-cuda-${{ hashFiles('requirements.txt') }}
+          key:  Windows-pip-${{ env.PYTHON_VERSION }}-cuda-${{ hashFiles('requirements.txt') }}
           restore-keys: |
-            windows-pip-${{ env.PYTHON_VERSION }}-cuda-
+            Windows-pip-${{ env.PYTHON_VERSION }}-cuda-
 
       - name: Install requirements + CUDA wheels
         shell: bash
@@ -112,9 +112,9 @@ jobs:
         uses: actions/cache/restore@v3
         with:
           path: ${{ steps.pip-dir.outputs.dir }}
-          key:  macos-pip-${{ env.PYTHON_VERSION }}-cpu-${{ hashFiles('requirements.txt') }}
+          key:  Macos-pip-${{ env.PYTHON_VERSION }}-cpu-${{ hashFiles('requirements.txt') }}
           restore-keys: |
-            macos-pip-${{ env.PYTHON_VERSION }}-cpu-
+            Macos-pip-${{ env.PYTHON_VERSION }}-cpu-
 
       - name: Install requirements
         run: |
