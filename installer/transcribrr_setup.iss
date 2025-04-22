@@ -4,6 +4,10 @@
 #define MyAppExeName "Transcribrr.bat"
 #define MyAppStartName "StartTranscribrr.bat"
 
+; Define GUIDs for different flavors
+#define AppGuidCPU  "{E5F78A54-F82A-49C3-A591-76A32F947A99}"
+#define AppGuidCUDA "{32D5F3F3-9A1B-4DA7-BEF3-0E66D22F7842}"
+
 ; Preprocessor directives to handle different build flavors
 #ifndef Flavour
   #define Flavour "cpu"
@@ -13,16 +17,17 @@
   #define FlavorName "CPU"
   #define FlavorDescription " (CPU Version)"
   #define OutputDirName "cpu"
+  #define AppIdValue AppGuidCPU
 #elif Flavour == "cuda" 
   #define FlavorName "CUDA"
   #define FlavorDescription " (CUDA Version)"
   #define OutputDirName "cuda"
+  #define AppIdValue AppGuidCUDA
 #endif
 
-; Get version from command line parameter
+; Version is provided at compile time
 #ifndef MyAppVersionValue
-  #define MyAppVersionValue "1.0.0"  ; Default version if not provided
-  #pragma warning "MyAppVersionValue not defined, using default version"
+  #error "MyAppVersionValue must be defined via command line parameter"
 #endif
 
 #define MyAppVersion MyAppVersionValue
@@ -31,7 +36,7 @@
 ; NOTE: The value of AppId uniquely identifies this application.
 ; Do not use the same AppId value in installers for other applications.
 ; Every new version should use exactly the same AppId.
-AppId={{E5F78A54-F82A-49C3-A591-76A32F947A99}-{#Flavour}}
+AppId={#AppIdValue}
 AppName={#MyAppName} {#FlavorName}
 AppVersion={#MyAppVersion}
 AppPublisher={#MyAppPublisher}

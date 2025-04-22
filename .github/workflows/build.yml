@@ -42,8 +42,12 @@ jobs:
           else
             python -m pip install torch torchvision torchaudio
           fi
-          python -m pip install "pyinstaller==6.*" pyqt6 -r requirements.txt
+          python -m pip install "pyinstaller==6.*" pyqt6 pyqt6-qt6 -r requirements.txt
           choco install ffmpeg -y
+
+      - name: Derive version
+        id: ver
+        run: echo "VER=${GITHUB_REF##*/v}" >> "$GITHUB_OUTPUT"
 
       - name: Prepare FFmpeg binaries
         shell: pwsh
@@ -62,13 +66,30 @@ jobs:
         run: |
           pyinstaller transcribrr.spec --noconfirm --clean
           mv dist/Transcribrr "dist/Transcribrr_${{ matrix.flavour }}"
+          
+      - name: Verify Qt plugins
+        shell: pwsh
+        run: |
+          $qtPluginsDir = "dist/Transcribrr_${{ matrix.flavour }}/qt6_plugins"
+          $qwindowsDll = "$qtPluginsDir/platforms/qwindows.dll"
+          
+          if (Test-Path $qwindowsDll) {
+            echo "✓ Qt plugins successfully included: $qwindowsDll exists"
+          } else {
+            echo "❌ MISSING REQUIRED QT PLUGINS"
+            echo "The Qt6 plugins directory structure is:"
+            Get-ChildItem -Recurse $qtPluginsDir -ErrorAction SilentlyContinue | Select-Object FullName
+            exit 1
+          }
 
       - name: Build installer with Inno Setup
         shell: pwsh
         run: |
           $inno = "C:\Program Files (x86)\Inno Setup 6\ISCC.exe"
           if (-not (Test-Path $inno)) { choco install innosetup -y }
-          & $inno /DFlavour=${{ matrix.flavour }} installer\transcribrr_setup.iss
+          & $inno /DFlavour=${{ matrix.flavour }} `
+                 /DMyAppVersionValue=${{ steps.ver.outputs.VER }} `
+                 installer\transcribrr_setup.iss
 
       - name: Upload artefacts
         uses: actions/upload-artifact@v4
