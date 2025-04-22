@@ -64,6 +64,12 @@ jobs:
           Copy-Item $ffmpegPath "bin/ffmpeg.exe"
           Copy-Item $ffprobePath "bin/ffprobe.exe"
 
+      - name: Debug FFmpeg presence
+        shell: bash
+        run: |
+          echo "Working dir: $(pwd)"
+          ls -R bin || true
+          
       - name: Freeze with PyInstaller
         shell: bash
         env:
