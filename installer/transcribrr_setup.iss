@@ -23,14 +23,14 @@
 
 #if Flavour == "cpu"
   #define FlavorName "CPU"
-  #define FlavorDescription "" ; Keep description empty for default CPU version for cleaner naming
-  #define AppIdValue "{E5F78A54-F82A-49C3-A591-76A32F947A99}" ; Unique GUID for CPU version
+  #define FlavorDescription " (CPU Version)"
+  #define OutputDirName "cpu"
+  #define AppIdValue "{#AppGuidCPU}" // Substitute the VALUE of AppGuidCPU here
 #elif Flavour == "cuda"
   #define FlavorName "CUDA"
-  #define FlavorDescription " (CUDA Version)" ; Add description for CUDA version
-  #define AppIdValue "{32D5F3F3-9A1B-4DA7-BEF3-0E66D22F7842}" ; Unique GUID for CUDA version
-#else
-  #error "Invalid Flavour defined. Use 'cpu' or 'cuda'."
+  #define FlavorDescription " (CUDA Version)"
+  #define OutputDirName "cuda"
+  #define AppIdValue "{#AppGuidCUDA}" // Substitute the VALUE of AppGuidCUDA here
 #endif
 
 ; ---- [Setup] Section ----
