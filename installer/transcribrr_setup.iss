@@ -25,12 +25,12 @@
   #define FlavorName "CPU"
   #define FlavorDescription " (CPU Version)"
   #define OutputDirName "cpu"
-  #define AppIdValue "{#AppGuidCPU}" // Substitute the VALUE of AppGuidCPU here
+  #define AppIdValue "{E5F78A54-F82A-49C3-A591-76A32F947A99}"
 #elif Flavour == "cuda"
   #define FlavorName "CUDA"
   #define FlavorDescription " (CUDA Version)"
   #define OutputDirName "cuda"
-  #define AppIdValue "{#AppGuidCUDA}" // Substitute the VALUE of AppGuidCUDA here
+  #define AppIdValue "{32D5F3F3-9A1B-4DA7-BEF3-0E66D22F7842}"
 #endif
 
 ; ---- [Setup] Section ----
