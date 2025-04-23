@@ -3,7 +3,7 @@
 #define MyAppURL "https://github.com/johnmiller/transcribrr"
 #define MyAppExeName "Transcribrr.bat"
 #define MyAppStartName "StartTranscribrr.bat"
-#define MyAppVersion 1.0.0
+#define MyAppVersion "1.0.0"
 
 ; Define GUIDs for different flavors
 #define AppGuidCPU  "{E5F78A54-F82A-49C3-A591-76A32F947A99}"
