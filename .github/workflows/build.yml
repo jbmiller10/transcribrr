@@ -191,13 +191,18 @@ jobs:
           echo "Inno Setup build complete."
 
 
+      - name: List dist directory before upload
+        shell: pwsh
+        run: |
+          echo "Contents of dist directory:"
+          Get-ChildItem -Path .\dist -Recurse | Select-Object FullName, Length, LastWriteTime
+
       - name: Upload build artefacts
         uses: actions/upload-artifact@v4
         with:
-          # Include the version in the artifact name for clarity
+          # Artifact name still includes version and flavour
           name: Transcribrr_windows_${{ matrix.flavour }}_${{ steps.ver.outputs.VER }}
+          # Use wildcards in the path to be less sensitive to exact naming
           path: |
-            # Include the derived version in the setup file name
-            dist/Transcribrr-windows-${{ matrix.flavour }}-setup-${{ steps.ver.outputs.VER }}.exe # The installer
-            dist/Transcribrr_${{ matrix.flavour }} # The packaged application folder (this path should be correct)
-            # The log is uploaded separately
+            dist/Transcribrr-windows-${{ matrix.flavour }}-setup-*.exe # Match any version installer
+            dist/Transcribrr_${{ matrix.flavour }} # The packaged application folder
