@@ -13,20 +13,32 @@ Other inclusions:
 """
 from pathlib import Path
 from PyInstaller.utils.hooks import collect_submodules, collect_data_files
+from PyInstaller.utils.hooks.qt import collect_qt_plugins
 import inspect
 
 spec_dir = Path(inspect.getfile(inspect.currentframe())).resolve().parent
+
+# --- Qt plugins -------------------------------------------------------------
+qt_bins, qt_datas = collect_qt_plugins(
+    "PyQt6",
+    includes=["platforms", "imageformats", "tls", "printsupport", "styles", "mediaservice"]
+)
+BINARIES += qt_bins
+datas    += qt_datas
 
 # ---------------------------------------------------------------------------
 # 1  Hidden imports – Torch + optional packages
 # ---------------------------------------------------------------------------
 hidden_imports = collect_submodules("torch")
+
 for extra_pkg in ("torchvision", "torchaudio"):
     try:
         __import__(extra_pkg)
     except ImportError:
         continue
     hidden_imports += collect_submodules(extra_pkg)
+
+hidden_imports += collect_submodules("PyQt6.QtPrintSupport")
 
 # ---------------------------------------------------------------------------
 # 2  Data files – icons, presets, optional config / cacert

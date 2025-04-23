@@ -70,6 +70,15 @@ jobs:
           echo "Working dir: $(pwd)"
           ls -R bin || true
 
+      - name: Provide OpenSSL runtime for Qt
+        shell: pwsh
+        run: |
+          $openssl = "${env:ChocolateyInstall}\bin\openssl.exe"
+          if (-not (Test-Path $openssl)) { choco install openssl-light -y }
+          # Qt6 expects libssl-3.dll and libcrypto-3.dll next to the exe
+          Copy-Item "$env:ChocolateyInstall\lib\openssl*3*\bin\libcrypto-3-x64.dll" bin\libcrypto-3.dll
+          Copy-Item "$env:ChocolateyInstall\lib\openssl*3*\bin\libssl-3-x64.dll"    bin\libssl-3.dll
+        
       - name: Freeze with PyInstaller
         shell: bash
         env:
@@ -78,7 +87,6 @@ jobs:
           set -o pipefail            # fail the step if PyInstaller exits non‑zero
           mkdir -p build
           pyinstaller transcribrr.spec --noconfirm --clean --log-level=DEBUG \
-            --qt-plugins=all \ 
             2>&1 | tee build/pyinstaller-${{ matrix.flavour }}.log
           
           mv dist/Transcribrr "dist/Transcribrr_${{ matrix.flavour }}"
