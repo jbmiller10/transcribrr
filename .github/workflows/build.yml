@@ -163,7 +163,7 @@ jobs:
           path: build/pyinstaller-${{ matrix.flavour }}.log
 
 
-      - name: Build installer with Inno Setup
+- name: Build installer with Inno Setup
         shell: pwsh
         run: |
           echo "Building installer for version ${{ steps.ver.outputs.VER }}, flavour ${{ matrix.flavour }}..."
@@ -178,10 +178,10 @@ jobs:
              }
           }
           # Compile the installer script, passing flavour and version
-          # Use forward slashes for the script path for better compatibility
+          # Quote the script file path argument
           & $inno /DFlavour=${{ matrix.flavour }} `
                  /DMyAppVersionValue=${{ steps.ver.outputs.VER }} `
-                 installer/transcribrr_setup.iss
+                 "installer/transcribrr_setup.iss" # <--- ADDED QUOTES HERE
 
           # Check exit code of ISCC
           if ($LASTEXITCODE -ne 0) {
