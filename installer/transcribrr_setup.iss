@@ -37,9 +37,9 @@
 ; --- Define AppId CONDITIONALLY ---
 ; This ensures the correct GUID string is directly used based on the flavor
 #if Flavour == "cpu"
-AppId={E5F78A54-F82A-49C3-A591-76A32F947A99}
+AppId={{E5F78A54-F82A-49C3-A591-76A32F947A99}
 #elif Flavour == "cuda"
-AppId={32D5F3F3-9A1B-4DA7-BEF3-0E66D22F7842}
+AppId={{32D5F3F3-9A1B-4DA7-BEF3-0E66D22F7842}
 #endif
 
 ; --- Other Setup settings ---
