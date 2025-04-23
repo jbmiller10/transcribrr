@@ -21,25 +21,28 @@
   #define Flavour "cpu" ; Default to CPU if not specified
 #endif
 
-; Define Flavor-specific settings AND the final AppId string directly
+; Define Flavor-specific names FIRST
 #if Flavour == "cpu"
   #define FlavorName "CPU"
   #define FlavorDescription " (CPU Version)"
-  #define OutputDirName "cpu"
-  #define ActualAppId "{E5F78A54-F82A-49C3-A591-76A32F947A99}"
 #elif Flavour == "cuda"
   #define FlavorName "CUDA"
   #define FlavorDescription " (CUDA Version)"
-  #define OutputDirName "cuda"
-  #define ActualAppId "{32D5F3F3-9A1B-4DA7-BEF3-0E66D22F7842}"
 #else
   #error "Unsupported Flavour defined. Use 'cpu' or 'cuda'."
 #endif
 
 ; ---- [Setup] Section ----
 [Setup]
-; Use the directly defined ActualAppId based on the flavor
-AppId={#ActualAppId}
+; --- Define AppId CONDITIONALLY ---
+; This ensures the correct GUID string is directly used based on the flavor
+#if Flavour == "cpu"
+AppId={E5F78A54-F82A-49C3-A591-76A32F947A99}
+#elif Flavour == "cuda"
+AppId={32D5F3F3-9A1B-4DA7-BEF3-0E66D22F7842}
+#endif
+
+; --- Other Setup settings ---
 AppName={#MyAppName}{#FlavorDescription}
 AppVersion={#MyAppVersion}
 AppPublisher={#MyAppPublisher}
@@ -58,7 +61,6 @@ PrivilegesRequired=admin
 OutputDir=..\dist
 OutputBaseFilename=Transcribrr-windows-{#Flavour}-setup-{#MyAppVersion}
 SetupIconFile=..\icons\app\app_icon.ico
-; Use the ACTUAL EXE for the uninstall icon reference if possible, otherwise use the setup icon
 UninstallDisplayIcon={app}\{#MyAppActualExeName}
 UninstallDisplayName={#MyAppName}{#FlavorDescription}
 DisableWelcomePage=no
@@ -77,27 +79,17 @@ Name: "desktopicon"; Description: "{cm:CreateDesktopIcon}"; GroupDescription: "{
 
 ; ---- [Files] Section ----
 [Files]
-; Source path is relative to the .iss script location.
-; Copies everything from the corresponding dist/Transcribrr_<flavour> directory.
 Source: "..\dist\Transcribrr_{#Flavour}\*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs createallsubdirs
 
 ; ---- [Icons] Section ----
-; Use the correct MyAppActualExeName for shortcuts
 [Icons]
-; Start Menu shortcut
 Name: "{group}\{#MyAppName}{#FlavorDescription}"; Filename: "{app}\{#MyAppActualExeName}"; WorkingDir: "{app}"; IconFilename: "{app}\icons\app\app_icon.ico"
-; Start Menu > Uninstall shortcut
 Name: "{group}\{cm:UninstallProgram,{#MyAppName}{#FlavorDescription}}"; Filename: "{uninstallexe}"
-; Desktop shortcut (optional task)
 Name: "{autodesktop}\{#MyAppName}{#FlavorDescription}"; Filename: "{app}\{#MyAppActualExeName}"; WorkingDir: "{app}"; IconFilename: "{app}\icons\app\app_icon.ico"; Tasks: desktopicon
 
 ; ---- [Run] Section ----
-; Use the correct MyAppActualExeName for post-install launch
 [Run]
 Filename: "{app}\{#MyAppActualExeName}"; Description: "{cm:LaunchProgram,{#StringChange(MyAppName, '&', '&&')}}"; Flags: nowait postinstall skipifsilent
 
 ; ---- [UninstallDelete] Section ----
 ; REMOVED automatic deletion of user data - this is generally safer.
-; Users can manually delete %LOCALAPPDATA%\Transcribrr if desired.
-; [UninstallDelete]
-; Type: filesandordirs; Name: "{localappdata}\{#MyAppName}"
