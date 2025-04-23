@@ -124,35 +124,30 @@ jobs:
           ls .\bin # Verify files exist
 
 
-      # Removed: OpenSSL runtime handling is now done within transcribrr.spec
-      # Ensure your transcribrr.spec's BINARIES section includes the OpenSSL DLLs
-
-
-      - name: Save wheel cache (Optional but can help debug caching)
-        if: always() # Run even if previous steps fail
-        uses: actions/cache/save@v3
-        with:
-          path: ~\AppData\Local\pip\Cache
-          key: ${{ runner.os }}-pip-${{ env.PYTHON_VERSION }}-${{ matrix.flavour }}-${{ hashFiles('**/requirements.txt', '**/pyproject.toml') }}
-
-
-      - name: Freeze application with PyInstaller
+      - name: List PyInstaller Output Directory Contents (Flavour ${{ matrix.flavour }})
         shell: bash
-        env:
-          # Pass flavour to environment, although spec file doesn't currently use it
-          TRANSCRIBRR_FLAVOUR: ${{ matrix.flavour }}
         run: |
-          echo "Running PyInstaller..."
-          set -o pipefail            # Make sure errors in PyInstaller fail the step
-          mkdir -p build             # Ensure build directory exists for logs
-          # Run PyInstaller, tee output to log file, use DEBUG level for detail
-          pyinstaller transcribrr.spec --noconfirm --clean --log-level=DEBUG \
-            2>&1 | tee build/pyinstaller-${{ matrix.flavour }}.log
-
-          echo "Moving PyInstaller output..."
-          # Rename output directory to include flavour
-          mv dist/Transcribrr "dist/Transcribrr_${{ matrix.flavour }}"
-          echo "PyInstaller build complete for ${{ matrix.flavour }} flavour."
+          echo "Listing contents of dist/Transcribrr_${{ matrix.flavour }}:"
+          ls -R dist/Transcribrr_${{ matrix.flavour }}
+          echo "--- Checking specifically for icons directory ---"
+          ls -R dist/Transcribrr_${{ matrix.flavour }}/icons || echo "icons directory not found!"
+            - name: Freeze application with PyInstaller
+              shell: bash
+              env:
+                # Pass flavour to environment, although spec file doesn't currently use it
+                TRANSCRIBRR_FLAVOUR: ${{ matrix.flavour }}
+              run: |
+                echo "Running PyInstaller..."
+                set -o pipefail            # Make sure errors in PyInstaller fail the step
+                mkdir -p build             # Ensure build directory exists for logs
+                # Run PyInstaller, tee output to log file, use DEBUG level for detail
+                pyinstaller transcribrr.spec --noconfirm --clean --log-level=DEBUG \
+                  2>&1 | tee build/pyinstaller-${{ matrix.flavour }}.log
+      
+                echo "Moving PyInstaller output..."
+                # Rename output directory to include flavour
+                mv dist/Transcribrr "dist/Transcribrr_${{ matrix.flavour }}"
+                echo "PyInstaller build complete for ${{ matrix.flavour }} flavour."
 
 
       - name: Upload PyInstaller log
@@ -209,3 +204,10 @@ jobs:
           name: Transcribrr_windows_${{ matrix.flavour }}_appdir_${{ steps.ver.outputs.VER }}
           path: dist/Transcribrr_${{ matrix.flavour }}
           if-no-files-found: error
+          
+      - name: Save wheel cache (Optional but can help debug caching)
+        if: always() # Run even if previous steps fail
+        uses: actions/cache/save@v3
+        with:
+          path: ~\AppData\Local\pip\Cache
+          key: ${{ runner.os }}-pip-${{ env.PYTHON_VERSION }}-${{ matrix.flavour }}-${{ hashFiles('**/requirements.txt', '**/pyproject.toml') }}
