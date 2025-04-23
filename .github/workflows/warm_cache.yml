@@ -1,129 +1,169 @@
-name: Pre‑warm pip cache
+# .github/workflows/pre-warm-pip-cache.yml
+
+name: Pre-warm pip cache
 
 on:
   workflow_dispatch:
+  # Schedule to run periodically to keep cache fresh
   # schedule:
-  #   - cron: "0 3 * * 1"   # every Monday 03:00 UTC
+  #   - cron: "0 3 * * 1"   # every Monday 03:00 UTC
 
 env:
   PYTHON_VERSION: "3.9"
 
-# ------------------------------------------------------------
-# Job 1 – Windows CPU
-# ------------------------------------------------------------
 jobs:
+  # ------------------------------------------------------------
+  # Job 1 – Windows CPU
+  # ------------------------------------------------------------
   warm-win-cpu:
     runs-on: windows-latest
     env:
+      # Define flavour for cache key consistency if needed, although install logic is fixed
       TRANSCRIBRR_FLAVOUR: cpu
 
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout repository code
+        uses: actions/checkout@v4
 
-      - name: Set up Python
+      - name: Set up Python ${{ env.PYTHON_VERSION }}
         uses: actions/setup-python@v5
         with:
           python-version: ${{ env.PYTHON_VERSION }}
 
-      - name: Restore wheel cache
+      - name: Restore wheel cache (Windows CPU)
         id: restore-win-cpu
         uses: actions/cache/restore@v3
         with:
           path: ~\AppData\Local\pip\Cache
+          # --- Using ORIGINAL cache key structure ---
           key:  Windows-pip-${{ env.PYTHON_VERSION }}-cpu-${{ hashFiles('requirements.txt') }}
           restore-keys: |
             Windows-pip-${{ env.PYTHON_VERSION }}-cpu-
 
-      - name: Install requirements
+      - name: Install dependencies (Windows CPU)
+        # Includes PyInstaller and Qt runtime deps needed by build.yml
         shell: bash
         run: |
+          echo "Installing base tools..."
           python -m pip install --upgrade pip wheel
+          echo "Installing PyTorch (CPU)..."
+          python -m pip install torch torchvision torchaudio
+          echo "Installing runtime requirements..."
           python -m pip install -r requirements.txt
+          echo "Installing Windows build requirements (PyInstaller, PyQt6)..."
+          # Install tools directly here, mirroring build.yml
+          python -m pip install "pyinstaller==6.13.*" pyqt6 pyqt6-qt6
 
-      - name: Save wheel cache
+      - name: Save wheel cache (Windows CPU)
+        # Use the exact key from the restore step to save the cache
+        # Note: Key only reflects requirements.txt, not installed build tools
         if: always()
         uses: actions/cache/save@v3
         with:
           path: ~\AppData\Local\pip\Cache
-          key: ${{ steps.restore-win-cpu.outputs.cache-primary-key }}
+          key: ${{ steps.restore-win-cpu.outputs.cache-primary-key || format('Windows-pip-{0}-cpu-{1}', env.PYTHON_VERSION, hashFiles('requirements.txt')) }}
 
-# ------------------------------------------------------------
-# Job 2 – Windows CUDA
-# ------------------------------------------------------------
+  # ------------------------------------------------------------
+  # Job 2 – Windows CUDA
+  # ------------------------------------------------------------
   warm-win-cuda:
     runs-on: windows-latest
     env:
+      # Define flavour for cache key consistency
       TRANSCRIBRR_FLAVOUR: cuda
 
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout repository code
+        uses: actions/checkout@v4
 
-      - name: Set up Python
+      - name: Set up Python ${{ env.PYTHON_VERSION }}
         uses: actions/setup-python@v5
         with:
           python-version: ${{ env.PYTHON_VERSION }}
 
-      - name: Restore wheel cache
+      - name: Restore wheel cache (Windows CUDA)
         id: restore-win-cuda
         uses: actions/cache/restore@v3
         with:
           path: ~\AppData\Local\pip\Cache
+          # --- Using ORIGINAL cache key structure ---
           key:  Windows-pip-${{ env.PYTHON_VERSION }}-cuda-${{ hashFiles('requirements.txt') }}
           restore-keys: |
             Windows-pip-${{ env.PYTHON_VERSION }}-cuda-
 
-      - name: Install requirements + CUDA wheels
+      - name: Install dependencies (Windows CUDA)
+        # Includes PyInstaller and Qt runtime deps needed by build.yml
         shell: bash
         run: |
+          echo "Installing base tools..."
           python -m pip install --upgrade pip wheel
+          echo "Installing PyTorch (CUDA)..."
+          # Install CUDA torch first
+          python -m pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu118
+          echo "Installing runtime requirements..."
           python -m pip install -r requirements.txt
-          python -m pip install torch torchvision torchaudio \
-            --index-url https://download.pytorch.org/whl/cu118
+          echo "Installing Windows build requirements (PyInstaller, PyQt6)..."
+          # Install tools directly here, mirroring build.yml
+          python -m pip install "pyinstaller==6.13.*" pyqt6 pyqt6-qt6
 
-      - name: Save wheel cache
+      - name: Save wheel cache (Windows CUDA)
+        # Use the exact key from the restore step to save the cache
+        # Note: Key only reflects requirements.txt, not installed build tools
         if: always()
         uses: actions/cache/save@v3
         with:
           path: ~\AppData\Local\pip\Cache
-          key: ${{ steps.restore-win-cuda.outputs.cache-primary-key }}
+          key: ${{ steps.restore-win-cuda.outputs.cache-primary-key || format('Windows-pip-{0}-cuda-{1}', env.PYTHON_VERSION, hashFiles('requirements.txt')) }}
 
-# ------------------------------------------------------------
-# Job 3 – macOS CPU
-# ------------------------------------------------------------
+  # ------------------------------------------------------------
+  # Job 3 – macOS
+  # ------------------------------------------------------------
   warm-macos:
-    runs-on: macos-14
+    runs-on: macos-14 # Apple Silicon runner
+    # Define flavour for cache key consistency
     env:
       TRANSCRIBRR_FLAVOUR: cpu
 
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout repository code
+        uses: actions/checkout@v4
 
-      - name: Set up Python
+      - name: Set up Python ${{ env.PYTHON_VERSION }}
         uses: actions/setup-python@v5
         with:
           python-version: ${{ env.PYTHON_VERSION }}
 
-      - name: Locate pip cache dir
+      - name: Locate pip cache directory
         id: pip-dir
         run: echo "dir=$(python -m pip cache dir)" >> "$GITHUB_OUTPUT"
 
-      - name: Restore wheel cache
+      - name: Restore wheel cache (macOS)
         id: restore-macos
         uses: actions/cache/restore@v3
         with:
           path: ${{ steps.pip-dir.outputs.dir }}
+          # --- Using ORIGINAL cache key structure ---
+          # Using consistent casing 'macos' now
           key:  macos-pip-${{ env.PYTHON_VERSION }}-${{ hashFiles('requirements.txt') }}
           restore-keys: |
-            Macos-pip-${{ env.PYTHON_VERSION }}-cpu-
+            macos-pip-${{ env.PYTHON_VERSION }}- # Removed -cpu- suffix to match original key intent
 
-      - name: Install requirements
+      - name: Install dependencies (macOS)
+        # Includes Briefcase needed by macos.yml
         run: |
+          echo "Installing base tools..."
           python -m pip install --upgrade pip wheel
+          echo "Installing runtime requirements..."
           python -m pip install -r requirements.txt
+          echo "Installing macOS build requirements (Briefcase)..."
+          # Install briefcase directly here, mirroring macos.yml
+          python -m pip install briefcase
 
-      - name: Save wheel cache
+      - name: Save wheel cache (macOS)
+        # Use the exact key from the restore step to save the cache
+        # Note: Key only reflects requirements.txt, not installed build tools
         if: always()
         uses: actions/cache/save@v3
         with:
           path: ${{ steps.pip-dir.outputs.dir }}
-          key: ${{ steps.restore-macos.outputs.cache-primary-key }}
+          key: ${{ steps.restore-macos.outputs.cache-primary-key || format('macos-pip-{0}-{1}', env.PYTHON_VERSION, hashFiles('requirements.txt')) }}
