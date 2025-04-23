@@ -1,10 +1,17 @@
+# .github/workflows/build.yml
+
 name: Build & Package Transcribrr
 
 on:
   workflow_dispatch:
+    inputs:
+      version:
+        description: 'The application version (e.g., 1.0.0). Required for manual builds.'
+        required: true
+        type: string
   push:
     tags:
-      - 'v*.*.*'
+      - 'v*.*.*' # Trigger only on tags like v1.0.0, v1.2.3, etc.
 
 env:
   PYTHON_VERSION: '3.9'
@@ -50,19 +57,36 @@ jobs:
 
       - name: Derive version
         id: ver
-        run: echo "VER=${GITHUB_REF##*/v}" >> "$GITHUB_OUTPUT"
-
-      - name: Prepare FFmpeg binaries
-        shell: pwsh
+        shell: bash # Use bash for the if statement
         run: |
-          # Create bin directory in project root for the spec file to find
-          New-Item -ItemType Directory -Force "bin"
-          # Find FFmpeg executables installed by Chocolatey
-          $ffmpegPath = (Get-Command ffmpeg.exe).Source
-          $ffprobePath = (Get-Command ffprobe.exe).Source
-          # Copy to the bin directory
-          Copy-Item $ffmpegPath "bin/ffmpeg.exe"
-          Copy-Item $ffprobePath "bin/ffprobe.exe"
+          echo "Workflow triggered by: ${{ github.event_name }}"
+          echo "Git Ref: ${{ github.ref }}"
+
+          if [[ "${{ github.event_name }}" == "workflow_dispatch" ]]; then
+            # Use manual input version
+            MANUAL_VERSION="${{ github.event.inputs.version }}"
+            echo "Using manual input version: $MANUAL_VERSION"
+            if [[ -z "$MANUAL_VERSION" ]]; then
+              echo "::error::Manual version input ('version') cannot be empty for workflow_dispatch trigger."
+              exit 1
+            fi
+            echo "VER=$MANUAL_VERSION" >> "$GITHUB_OUTPUT"
+
+          elif [[ "${{ github.event_name }}" == "push" && "${{ startsWith(github.ref, 'refs/tags/v') }}" == "true" ]]; then
+            # Extract version from tag
+            VERSION_FROM_TAG="${GITHUB_REF##*/v}"
+            echo "Using tag version: $VERSION_FROM_TAG"
+            if [[ -z "$VERSION_FROM_TAG" ]]; then
+               echo "::error::Could not extract version from tag '${{ github.ref }}'!"
+               exit 1
+            fi
+            echo "VER=$VERSION_FROM_TAG" >> "$GITHUB_OUTPUT"
+
+          else
+            # Error if trigger is not recognized or tag format is wrong
+            echo "::error::Could not determine version. Trigger must be a tag push like 'vX.Y.Z' or a manual dispatch providing the 'version' input."
+            exit 1
+          fi
 
       - name: Debug FFmpeg presence
         shell: bash
@@ -112,7 +136,7 @@ jobs:
           $inno = "C:\Program Files (x86)\Inno Setup 6\ISCC.exe"
           if (-not (Test-Path $inno)) { choco install innosetup -y }
           & $inno /DFlavour=${{ matrix.flavour }} `
-                 /DMyAppVersionValue=${{ steps.ver.outputs.VER }} `
+                 /DMyAppVersionValue=${{ steps.ver.outputs.VER }} `  
                  installer\transcribrr_setup.iss
 
       - name: Upload artefacts
