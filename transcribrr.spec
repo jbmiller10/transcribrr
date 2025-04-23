@@ -12,63 +12,49 @@ Other inclusions:
   – hidden imports for **torchvision** and **torchaudio** if installed
 """
 from pathlib import Path
-from PyInstaller.utils.hooks import collect_submodules, collect_data_files
-from PyInstaller.utils.hooks.qt import collect_qt_plugins
+from PyInstaller.utils.hooks import collect_submodules, collect_data_files, collect_dynamic_libs
 import inspect
 
 spec_dir = Path(inspect.getfile(inspect.currentframe())).resolve().parent
 
-# --- Qt plugins -------------------------------------------------------------
-qt_bins, qt_datas = collect_qt_plugins(
-    "PyQt6",
-    includes=["platforms", "imageformats", "tls", "printsupport", "styles", "mediaservice"]
-)
-BINARIES += qt_bins
-datas    += qt_datas
-
-# ---------------------------------------------------------------------------
-# 1  Hidden imports – Torch + optional packages
-# ---------------------------------------------------------------------------
+# ── 1.  Hidden-imports ─────────────────────────────────────────────
 hidden_imports = collect_submodules("torch")
-
-for extra_pkg in ("torchvision", "torchaudio"):
+for extra in ("torchvision", "torchaudio"):
     try:
-        __import__(extra_pkg)
+        __import__(extra)
     except ImportError:
         continue
-    hidden_imports += collect_submodules(extra_pkg)
+    hidden_imports += collect_submodules(extra)
 
-hidden_imports += collect_submodules("PyQt6.QtPrintSupport")
-
-# ---------------------------------------------------------------------------
-# 2  Data files – icons, presets, optional config / cacert
-# ---------------------------------------------------------------------------
-RESOURCE_PATTERNS = [
-    "icons/**",
-    "preset_prompts.json",
+hidden_imports += [
+    "PyQt6.QtSvg",          # SVG icons
+    "PyQt6.QtNetwork",      # bearer
+    "PyQt6.QtPrintSupport", # printing
 ]
-# Optional runtime files – include only if present
-for optional in ("config.json", "cacert.pem"):
-    if Path(optional).exists():
-        RESOURCE_PATTERNS.append(optional)
+
+# ── 2.  Data files ─────────────────────────────────────────────────
+RESOURCE_PATTERNS = ["icons/**", "preset_prompts.json"]
+for opt in ("config.json", "cacert.pem"):
+    if Path(opt).exists():
+        RESOURCE_PATTERNS.append(opt)
 
 datas = collect_data_files(str(spec_dir), includes=RESOURCE_PATTERNS)
 datas += collect_data_files("lightning_fabric", includes=["version.info"])
 
-# ---------------------------------------------------------------------------
-# 3  Binaries – bundled ffmpeg & ffprobe executables
-# ---------------------------------------------------------------------------
+# ── 3.  Binaries (FFmpeg + Qt plug-ins) ────────────────────────────
 BINARIES = []
-# Look for ffmpeg in bin/ directory at root of project
-bin_dir = spec_dir / "bin"
-for exe_name in ("ffmpeg.exe", "ffprobe.exe"):
-    src = bin_dir / exe_name
-    if src.exists():
-        BINARIES.append((str(src), "bin"))
 
-# ---------------------------------------------------------------------------
-# 4  Analysis – core PyInstaller phase
-# ---------------------------------------------------------------------------
+# FFmpeg/ffprobe copied by workflow → bin/
+bin_dir = spec_dir / "bin"
+for exe in ("ffmpeg.exe", "ffprobe.exe"):
+    p = bin_dir / exe
+    if p.exists():
+        BINARIES.append((str(p), "bin"))
+
+# Collect ALL Qt plug-ins into qt6_plugins/
+BINARIES += collect_dynamic_libs("PyQt6", destdir="qt6_plugins")
+
+# ── 4.  Analysis / EXE / COLLECT unchanged ────────────────────────
 a = Analysis(
     ["main.py"],
     pathex=[str(spec_dir), str(spec_dir / "app")],
