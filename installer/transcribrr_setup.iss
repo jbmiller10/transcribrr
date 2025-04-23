@@ -3,6 +3,7 @@
 #define MyAppURL "https://github.com/johnmiller/transcribrr"
 #define MyAppExeName "Transcribrr.bat"
 #define MyAppStartName "StartTranscribrr.bat"
+#define MyAppVersion 1.0.0
 
 ; Define GUIDs for different flavors
 #define AppGuidCPU  "{E5F78A54-F82A-49C3-A591-76A32F947A99}"
@@ -77,20 +78,11 @@ Source: "..\dist\Transcribrr_{#Flavour}\*"; \
        DestDir: "{app}"; \
        Flags: ignoreversion recursesubdirs createallsubdirs
 
-
 [Icons]
-; Start Menu shortcuts
-Name: "{group}\{#MyAppName}"; Filename: "{app}\{#MyAppStartName}"; WorkingDir: "{app}"
+Name: "{group}\{#MyAppName}"; Filename: "{app}\{#MyAppActualExeName}"; WorkingDir: "{app}"
 Name: "{group}\{cm:UninstallProgram,{#MyAppName}}"; Filename: "{uninstallexe}"
-; Desktop icon
-Name: "{autodesktop}\{#MyAppName}"; Filename: "{app}\{#MyAppStartName}"; WorkingDir: "{app}"; Tasks: desktopicon
-; Quick Launch icon
-Name: "{userappdata}\Microsoft\Internet Explorer\Quick Launch\{#MyAppName}"; Filename: "{app}\{#MyAppStartName}"; WorkingDir: "{app}"; Tasks: quicklaunchicon
+Name: "{autodesktop}\{#MyAppName}"; Filename: "{app}\{#MyAppActualExeName}"; WorkingDir: "{app}"; Tasks: desktopicon
+Name: "{userappdata}\Microsoft\Internet Explorer\Quick Launch\{#MyAppName}"; Filename: "{app}\{#MyAppActualExeName}"; WorkingDir: "{app}"; Tasks: quicklaunchicon
 
 [Run]
-; Option to launch the application after installation
-Filename: "{app}\{#MyAppStartName}"; Description: "{cm:LaunchProgram,{#StringChange(MyAppName, '&', '&&')}}"; Flags: nowait postinstall skipifsilent
-
-[UninstallDelete]
-; Delete application data directory during uninstallation
-Type: filesandordirs; Name: "{localappdata}\{#MyAppName}"
+Filename: "{app}\{#MyAppActualExeName}"; Description: "{cm:LaunchProgram,{#StringChange(MyAppName, '&', '&&')}}"; Flags: nowait postinstall skipifsilent
