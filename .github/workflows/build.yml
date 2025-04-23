@@ -194,8 +194,10 @@ jobs:
       - name: Upload build artefacts
         uses: actions/upload-artifact@v4
         with:
+          # Include the version in the artifact name for clarity
           name: Transcribrr_windows_${{ matrix.flavour }}_${{ steps.ver.outputs.VER }}
           path: |
-            dist/Transcribrr-windows-${{ matrix.flavour }}-setup.exe # The installer
-            dist/Transcribrr_${{ matrix.flavour }} # The packaged application folder (optional, useful for testing without installing)
+            # Include the derived version in the setup file name
+            dist/Transcribrr-windows-${{ matrix.flavour }}-setup-${{ steps.ver.outputs.VER }}.exe # The installer
+            dist/Transcribrr_${{ matrix.flavour }} # The packaged application folder (this path should be correct)
             # The log is uploaded separately
