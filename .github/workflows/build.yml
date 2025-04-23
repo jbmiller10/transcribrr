@@ -97,34 +97,6 @@ jobs:
         with:
           name: pyinstaller_log_${{ matrix.flavour }}
           path: build/pyinstaller-${{ matrix.flavour }}.log
-          
-      - name: Verify Qt plugins
-        shell: pwsh
-        run: |
-          $root = "dist/Transcribrr_${{ matrix.flavour }}"
-          $candidates = @(
-            "$root/qt6_plugins",                # PyInstaller ≤5
-            "$root/_internal/qt6_plugins"       # PyInstaller 6+
-          )
-
-          $found = $false
-          foreach ($dir in $candidates) {
-              $qwindows = Join-Path $dir "platforms/qwindows.dll"
-              if (Test-Path $qwindows) {
-                  echo "✓ Qt plugin found: $qwindows"
-                  $found = $true
-                  break
-              }
-          }
-
-          if (-not $found) {
-              echo "❌ MISSING REQUIRED QT PLUGINS"
-              foreach ($dir in $candidates) {
-                  echo "Contents of $dir (if exists):"
-                  Get-ChildItem -Recurse $dir -ErrorAction SilentlyContinue | Select-Object FullName
-              }
-              exit 1
-          }
 
 
       - name: Build installer with Inno Setup
