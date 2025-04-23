@@ -190,19 +190,22 @@ jobs:
           }
           echo "Inno Setup build complete."
 
-
       - name: List dist directory before upload
         shell: pwsh
         run: |
           echo "Contents of dist directory:"
           Get-ChildItem -Path .\dist -Recurse | Select-Object FullName, Length, LastWriteTime
 
-      - name: Upload build artefacts
+      - name: Upload Installer Artefact 
         uses: actions/upload-artifact@v4
         with:
-          # Artifact name still includes version and flavour
-          name: Transcribrr_windows_${{ matrix.flavour }}_${{ steps.ver.outputs.VER }}
-          # Use wildcards in the path to be less sensitive to exact naming
-          path: |
-            dist/Transcribrr-windows-${{ matrix.flavour }}-setup-*.exe # Match any version installer
-            dist/Transcribrr_${{ matrix.flavour }} # The packaged application folder
+          name: Transcribrr_windows_${{ matrix.flavour }}_installer_${{ steps.ver.outputs.VER }}
+          path: dist/Transcribrr-windows-${{ matrix.flavour }}-setup-*.exe
+          if-no-files-found: error
+
+      - name: Upload Application Directory Artefact
+        uses: actions/upload-artifact@v4
+        with:
+          name: Transcribrr_windows_${{ matrix.flavour }}_appdir_${{ steps.ver.outputs.VER }}
+          path: dist/Transcribrr_${{ matrix.flavour }}
+          if-no-files-found: error
