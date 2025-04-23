@@ -1,6 +1,6 @@
 # .github/workflows/build.yml
 
-name: Build & Package Transcribrr
+name: Build & Package Transcribrr (Windows)
 
 on:
   workflow_dispatch:
@@ -21,132 +21,181 @@ jobs:
     runs-on: windows-latest
     strategy:
       matrix:
-        flavour: [cpu, cuda]
+        flavour: [cpu, cuda] # Build both CPU and CUDA versions
 
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout repository code
+        uses: actions/checkout@v4
 
-      - uses: actions/setup-python@v5
+      - name: Set up Python ${{ env.PYTHON_VERSION }}
+        uses: actions/setup-python@v5
         with:
           python-version: ${{ env.PYTHON_VERSION }}
-          
+
       - name: Cache pip dependencies
         uses: actions/cache@v3
         with:
           path: ~\AppData\Local\pip\Cache
-          key: ${{ runner.os }}-pip-${{ env.PYTHON_VERSION }}-${{ matrix.flavour }}-${{ hashFiles('**/requirements.txt') }}
+          # Key includes OS, Python version, flavour, and hashes of requirements files
+          key: ${{ runner.os }}-pip-${{ env.PYTHON_VERSION }}-${{ matrix.flavour }}-${{ hashFiles('**/requirements.txt', '**/pyproject.toml') }}
           restore-keys: |
-            ${{ runner.os }}-pip-${{ env.PYTHON_VERSION }}-${{ matrix.flavour }}
+            ${{ runner.os }}-pip-${{ env.PYTHON_VERSION }}-${{ matrix.flavour }}-
             ${{ runner.os }}-pip-
 
-      - name: Install build deps
+      - name: Install build dependencies
         shell: bash
         run: |
+          echo "Installing core build tools..."
           python -m pip install --upgrade pip wheel
+
+          echo "Installing PyTorch (flavour: ${{ matrix.flavour }})..."
           if [[ "${{ matrix.flavour }}" == "cuda" ]]; then
-            python -m pip install torch torchvision torchaudio \
-              --index-url https://download.pytorch.org/whl/cu118
+            # Install CUDA-enabled PyTorch
+            python -m pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu118
           else
+            # Install CPU-only PyTorch
             python -m pip install torch torchvision torchaudio
           fi
-          # Pin PyInstaller to an explicit patch series to avoid CI breakage when
-          # new minor versions introduce regressions.  6.13 is the latest patch
-          # line that we have verified to work with this project.
-          python -m pip install "pyinstaller==6.13.*" pyqt6 pyqt6-qt6 -r requirements.txt
-          choco install ffmpeg -y
 
-      - name: Derive version
+          echo "Installing PyInstaller, Qt, and requirements..."
+          # Pin PyInstaller to a known working version series for stability
+          python -m pip install "pyinstaller==6.13.*" pyqt6 pyqt6-qt6 -r requirements.txt
+
+          echo "Installing system dependencies (FFmpeg via Chocolatey)..."
+          choco install ffmpeg -y --no-progress # Add --no-progress for cleaner logs
+
+
+      - name: Derive application version
         id: ver
-        shell: bash # Use bash for the if statement
+        shell: bash
         run: |
-          echo "Workflow triggered by: ${{ github.event_name }}"
+          echo "Determining application version..."
+          echo "Triggered by: ${{ github.event_name }}"
           echo "Git Ref: ${{ github.ref }}"
 
+          APP_VERSION="" # Initialize variable
+
           if [[ "${{ github.event_name }}" == "workflow_dispatch" ]]; then
-            # Use manual input version
+            # Use version from manual input
             MANUAL_VERSION="${{ github.event.inputs.version }}"
             echo "Using manual input version: $MANUAL_VERSION"
             if [[ -z "$MANUAL_VERSION" ]]; then
               echo "::error::Manual version input ('version') cannot be empty for workflow_dispatch trigger."
               exit 1
             fi
-            echo "VER=$MANUAL_VERSION" >> "$GITHUB_OUTPUT"
+            APP_VERSION="$MANUAL_VERSION"
 
           elif [[ "${{ github.event_name }}" == "push" && "${{ startsWith(github.ref, 'refs/tags/v') }}" == "true" ]]; then
-            # Extract version from tag
+            # Extract version from Git tag (strip 'v' prefix)
             VERSION_FROM_TAG="${GITHUB_REF##*/v}"
             echo "Using tag version: $VERSION_FROM_TAG"
             if [[ -z "$VERSION_FROM_TAG" ]]; then
                echo "::error::Could not extract version from tag '${{ github.ref }}'!"
                exit 1
             fi
-            echo "VER=$VERSION_FROM_TAG" >> "$GITHUB_OUTPUT"
+            APP_VERSION="$VERSION_FROM_TAG"
 
           else
-            # Error if trigger is not recognized or tag format is wrong
+            # Handle cases where version cannot be determined
             echo "::error::Could not determine version. Trigger must be a tag push like 'vX.Y.Z' or a manual dispatch providing the 'version' input."
             exit 1
           fi
 
-      - name: Debug FFmpeg presence
-        shell: bash
-        run: |
-          echo "Working dir: $(pwd)"
-          ls -R bin || true
+          echo "Determined version: $APP_VERSION"
+          # Set output variable for later steps
+          echo "VER=$APP_VERSION" >> "$GITHUB_OUTPUT"
 
-      - name: Provide OpenSSL runtime for Qt
+
+      - name: Prepare FFmpeg binaries for PyInstaller
+        # This step is crucial because transcribrr.spec expects ffmpeg/ffprobe in './bin'
         shell: pwsh
         run: |
-          $openssl = "${env:ChocolateyInstall}\bin\openssl.exe"
-          if (-not (Test-Path $openssl)) { choco install openssl -y }
-          # Qt6 expects libssl-3.dll and libcrypto-3.dll next to the exe
-          Copy-Item "$env:ChocolateyInstall\lib\openssl*3*\bin\libcrypto-3-x64.dll" bin\libcrypto-3.dll
-          Copy-Item "$env:ChocolateyInstall\lib\openssl*3*\bin\libssl-3-x64.dll"    bin\libssl-3.dll
+          echo "Preparing FFmpeg binaries for PyInstaller spec..."
+          New-Item -ItemType Directory -Path ".\bin" -Force # Create bin dir at repo root
+          $ffmpegPath = (Get-Command ffmpeg.exe).Source
+          $ffprobePath = (Get-Command ffprobe.exe).Source
+          if ($null -eq $ffmpegPath -or $null -eq $ffprobePath) {
+            echo "::error::Could not find ffmpeg.exe or ffprobe.exe after choco install."
+            exit 1
+          }
+          Copy-Item $ffmpegPath ".\bin\ffmpeg.exe"
+          Copy-Item $ffprobePath ".\bin\ffprobe.exe"
+          echo "Copied FFmpeg/FFprobe to .\bin for PyInstaller spec"
+          ls .\bin # Verify files exist
 
-      - name: Save wheel cache
-        if: always()
+
+      # Removed: OpenSSL runtime handling is now done within transcribrr.spec
+      # Ensure your transcribrr.spec's BINARIES section includes the OpenSSL DLLs
+
+
+      - name: Save wheel cache (Optional but can help debug caching)
+        if: always() # Run even if previous steps fail
         uses: actions/cache/save@v3
         with:
           path: ~\AppData\Local\pip\Cache
-          key: ${{ runner.os }}-pip-${{ env.PYTHON_VERSION }}-${{ matrix.flavour }}-${{ hashFiles('**/requirements.txt') }}
-        
-      - name: Freeze with PyInstaller
+          key: ${{ runner.os }}-pip-${{ env.PYTHON_VERSION }}-${{ matrix.flavour }}-${{ hashFiles('**/requirements.txt', '**/pyproject.toml') }}
+
+
+      - name: Freeze application with PyInstaller
         shell: bash
         env:
+          # Pass flavour to environment, although spec file doesn't currently use it
           TRANSCRIBRR_FLAVOUR: ${{ matrix.flavour }}
         run: |
-          set -o pipefail            # fail the step if PyInstaller exits non‑zero
-          mkdir -p build
+          echo "Running PyInstaller..."
+          set -o pipefail            # Make sure errors in PyInstaller fail the step
+          mkdir -p build             # Ensure build directory exists for logs
+          # Run PyInstaller, tee output to log file, use DEBUG level for detail
           pyinstaller transcribrr.spec --noconfirm --clean --log-level=DEBUG \
             2>&1 | tee build/pyinstaller-${{ matrix.flavour }}.log
-          
+
+          echo "Moving PyInstaller output..."
+          # Rename output directory to include flavour
           mv dist/Transcribrr "dist/Transcribrr_${{ matrix.flavour }}"
+          echo "PyInstaller build complete for ${{ matrix.flavour }} flavour."
+
 
       - name: Upload PyInstaller log
-        if: always()                 # run even when earlier steps failed
+        if: always()                 # Upload log even if PyInstaller failed
         uses: actions/upload-artifact@v4
         with:
-          name: pyinstaller_log_${{ matrix.flavour }}
+          name: pyinstaller_log_${{ matrix.flavour }}_${{ steps.ver.outputs.VER }}
           path: build/pyinstaller-${{ matrix.flavour }}.log
 
 
       - name: Build installer with Inno Setup
         shell: pwsh
         run: |
+          echo "Building installer for version ${{ steps.ver.outputs.VER }}, flavour ${{ matrix.flavour }}..."
           $inno = "C:\Program Files (x86)\Inno Setup 6\ISCC.exe"
-          if (-not (Test-Path $inno)) { choco install innosetup -y }
+          if (-not (Test-Path $inno)) {
+            echo "Inno Setup not found, installing via Chocolatey..."
+            choco install innosetup -y --no-progress
+            # Verify installation
+             if (-not (Test-Path $inno)) {
+               echo "::error::Failed to install or find Inno Setup after installation attempt."
+               exit 1
+             }
+          }
+          # Compile the installer script, passing flavour and version
+          # Use forward slashes for the script path for better compatibility
           & $inno /DFlavour=${{ matrix.flavour }} `
-                 /DMyAppVersionValue=${{ steps.ver.outputs.VER }} `  
-                 installer\transcribrr_setup.iss
+                 /DMyAppVersionValue=${{ steps.ver.outputs.VER }} `
+                 installer/transcribrr_setup.iss
 
-      - name: Upload artefacts
+          # Check exit code of ISCC
+          if ($LASTEXITCODE -ne 0) {
+            echo "::error::Inno Setup Compiler failed with exit code $LASTEXITCODE"
+            exit $LASTEXITCODE
+          }
+          echo "Inno Setup build complete."
+
+
+      - name: Upload build artefacts
         uses: actions/upload-artifact@v4
         with:
-          name: Transcribrr_windows_${{ matrix.flavour }}
+          name: Transcribrr_windows_${{ matrix.flavour }}_${{ steps.ver.outputs.VER }}
           path: |
-            dist/Transcribrr-windows-${{ matrix.flavour }}-setup.exe
-            dist/Transcribrr_${{ matrix.flavour }}
-            build/pyinstaller-${{ matrix.flavour }}.log
-
-
-
+            dist/Transcribrr-windows-${{ matrix.flavour }}-setup.exe # The installer
+            dist/Transcribrr_${{ matrix.flavour }} # The packaged application folder (optional, useful for testing without installing)
+            # The log is uploaded separately
