@@ -18,9 +18,9 @@ author_email = "john@johnbmiller.com"
 requires     = ["-r", "requirements.txt"]
 
 [tool.briefcase.app.transcribrr]
-formal_name  = "Transcribrr"
+formal_name = "Transcribrr"
+sources = ["transcribrr", "app", "main.py"]
 description  = "Speech-to-text transcription tool"
-sources      = ["transcribrr"]
 permission.microphone = "Needed to record audio for transcription."
 
 [tool.briefcase.app.transcribrr.macOS]

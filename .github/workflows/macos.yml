@@ -48,7 +48,14 @@ jobs:
           [[ -n "$VER" ]] || { echo "::error::Version not determined"; exit 1; }
           echo "ver=$VER" >> "$GITHUB_OUTPUT"
           sed -i '' -E "s/^version = \".*\"/version = \"$VER\"/" pyproject.toml
-
+      - name: Inject transient transcribrr package
+        run: |
+          mkdir -p transcribrr
+          cat > transcribrr/__init__.py <<'PY'
+from importlib import import_module as _im
+main = _im("main").main
+__all__ = ["main"]
+PY
       - name: Create bundle
         run: briefcase create macOS --no-input
 
