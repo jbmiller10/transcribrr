@@ -1,5 +1,5 @@
 #!/usr/bin/env python
-"""Test script to validate uniqueness of recording items in UnifiedFolderListWidget."""
+"""Test script to validate uniqueness of recording items in UnifiedFolderTreeView."""
 
 import os
 import sys
@@ -14,67 +14,70 @@ from unittest.mock import patch, MagicMock, PropertyMock
 sys.path.append(os.path.abspath(os.path.dirname(os.path.dirname(__file__))))
 
 # Create mocks for PyQt6 dependencies
-class MockQTreeWidgetItem:
-    def __init__(self, parent=None):
-        self.parent_item = parent
+class MockQModelIndex:
+    def __init__(self, valid=True, row=0, column=0, parent=None):
+        self.valid = valid
+        self.row_value = row
+        self.column_value = column
+        self.parent_index = parent
+        
+    def isValid(self):
+        return self.valid
+        
+    def row(self):
+        return self.row_value
+        
+    def column(self):
+        return self.column_value
+        
+    def parent(self):
+        return self.parent_index or MockQModelIndex(valid=False)
+
+class MockQStandardItem:
+    def __init__(self):
         self.children = []
         self.data_dict = {}
-        self.expanded = False
         self.text_value = ""
-        self.size_hint = (100, 30)
+        self.row_count = 0
         
-        # Add as child to parent if provided
-        if parent is not None:
-            parent.children.append(self)
-    
-    def child(self, index):
-        if 0 <= index < len(self.children):
-            return self.children[index]
+    def index(self):
+        return MockQModelIndex()
+        
+    def child(self, row, column=0):
+        if 0 <= row < len(self.children):
+            return self.children[row]
         return None
-    
-    def childCount(self):
-        return len(self.children)
-    
-    def removeChild(self, child):
-        if child in self.children:
-            self.children.remove(child)
-    
-    def parent(self):
-        return self.parent_item
-    
-    def data(self, column, role):
-        return self.data_dict
-    
-    def setData(self, column, role, data):
-        self.data_dict = data
-    
-    def setText(self, column, text):
+        
+    def data(self, role):
+        return self.data_dict.get(role, None)
+        
+    def setData(self, role, value):
+        self.data_dict[role] = value
+        
+    def setText(self, text):
         self.text_value = text
-    
-    def text(self, column):
+        
+    def text(self):
         return self.text_value
-    
-    def setExpanded(self, expanded):
-        self.expanded = expanded
-    
-    def isExpanded(self):
-        return self.expanded
-    
-    def setSizeHint(self, column, size):
-        self.size_hint = size
-    
-    def sizeHint(self):
-        return self.size_hint
-    
+        
+    def rowCount(self):
+        return self.row_count
+        
+    def appendRow(self, items):
+        if not isinstance(items, list):
+            items = [items]
+        self.children.extend(items)
+        self.row_count += 1
+        
+    def setIcon(self, icon):
+        pass
+        
     def setFlags(self, flags):
         pass
-    
+        
     def flags(self):
         return 0
-    
-    def setIcon(self, column, icon):
-        pass
-    
+        
     def setForeground(self, column, color):
         pass
 
@@ -123,17 +126,17 @@ with patch.dict('sys.modules', {
 }):
     # Add attributes to mocks
     sys.modules['PyQt6.QtCore'].pyqtSignal = lambda *args: MockSignal()
-    sys.modules['PyQt6.QtWidgets'].QTreeWidget = MagicMock
-    sys.modules['PyQt6.QtWidgets'].QTreeWidgetItem = MockQTreeWidgetItem
+    sys.modules['PyQt6.QtWidgets'].QTreeView = MagicMock
+    sys.modules['PyQt6.QtGui'].QStandardItem = MockQStandardItem
     
     # Import the module we want to test
-    from app.RecentRecordingsWidget import UnifiedFolderListWidget
+    from app.UnifiedFolderTreeView import UnifiedFolderTreeView
 
 class TestRecordingItemUniqueness(unittest.TestCase):
-    """Test case for verifying uniqueness of recording items in UnifiedFolderListWidget."""
+    """Test case for verifying uniqueness of recording items in UnifiedFolderTreeView."""
     
     def setUp(self):
-        """Set up mock objects and UnifiedFolderListWidget instance."""
+        """Set up mock objects and UnifiedFolderTreeView instance."""
         # Mock FolderManager and DatabaseManager
         self.folder_manager = MagicMock()
         self.db_manager = MagicMock()
@@ -144,16 +147,33 @@ class TestRecordingItemUniqueness(unittest.TestCase):
         self.folder_manager.get_recordings_not_in_folders.side_effect = self._mock_recordings_not_in_folders
         
         # Create instance with patches
-        with patch('app.RecentRecordingsWidget.FolderManager') as mock_folder_manager, \
-             patch('app.RecentRecordingsWidget.DatabaseManager') as mock_db_manager, \
-             patch('app.RecentRecordingsWidget.QTreeWidget'), \
-             patch('app.RecentRecordingsWidget.QTreeWidgetItem', MockQTreeWidgetItem), \
-             patch('app.RecentRecordingsWidget.RecordingListItem', MockRecordingListItem):
+        with patch('app.UnifiedFolderTreeView.FolderManager') as mock_folder_manager, \
+             patch('app.UnifiedFolderTreeView.DatabaseManager') as mock_db_manager, \
+             patch('app.UnifiedFolderTreeView.QTreeView'), \
+             patch('app.RecordingFolderModel.RecordingFolderModel') as mock_model, \
+             patch('app.RecordingFolderModel.RecordingFilterProxyModel') as mock_proxy, \
+             patch('app.UnifiedFolderTreeView.RecordingListItem', MockRecordingListItem):
             
             mock_folder_manager.instance.return_value = self.folder_manager
             mock_db_manager.instance.return_value = self.db_manager
             
-            self.widget = UnifiedFolderListWidget(self.db_manager)
+            # Create mock model and proxy model
+            self.mock_model = MagicMock()
+            self.mock_proxy = MagicMock()
+            mock_model.return_value = self.mock_model
+            mock_proxy.return_value = self.mock_proxy
+            
+            # Setup model methods
+            self.mock_model.item_map = {}
+            self.mock_model.clear_model = MagicMock()
+            self.mock_model.add_folder_item = MagicMock(return_value=MockQStandardItem())
+            self.mock_model.add_recording_item = MagicMock(return_value=MockQStandardItem())
+            
+            # Setup proxy methods
+            self.mock_proxy.mapFromSource = MagicMock(return_value=MockQModelIndex())
+            self.mock_proxy.mapToSource = MagicMock(return_value=MockQModelIndex())
+            
+            self.widget = UnifiedFolderTreeView(self.db_manager)
             
             # Initialize test data
             self.generated_recordings = self._generate_mock_recordings(2000)
@@ -266,11 +286,8 @@ class TestRecordingItemUniqueness(unittest.TestCase):
     def test_no_duplicate_recordings(self):
         """Test that loading structure doesn't create duplicate recordings."""
         # Override methods with test versions
-        with patch.object(UnifiedFolderListWidget, 'clear'), \
-             patch.object(UnifiedFolderListWidget, 'itemAt'), \
-             patch.object(UnifiedFolderListWidget, 'setCurrentItem'), \
-             patch.object(UnifiedFolderListWidget, 'setItemWidget'), \
-             patch.object(UnifiedFolderListWidget, 'add_folder_to_tree', return_value=MockQTreeWidgetItem()):
+        with patch.object(UnifiedFolderTreeView, 'setIndexWidget'), \
+             patch.object(UnifiedFolderTreeView, 'setExpanded'):
             
             # Force synchronous execution of callbacks
             def execute_callback_immediately(folder_id, callback):
@@ -288,8 +305,8 @@ class TestRecordingItemUniqueness(unittest.TestCase):
             self.widget.load_structure()
             
             # Check that all recordings were processed
-            total_recordings = sum(len(recordings) for recordings in self.folder_recording_map.values())
-            print(f"Total recordings to load: {total_recordings}")
+            total_recordings = len(set([rec[0] for rec in self.generated_recordings]))
+            print(f"Total unique recordings to load: {total_recordings}")
             print(f"Recordings in map: {len(self.widget.recordings_map)}")
             print(f"Seen recording IDs: {len(self.widget.seen_recording_ids)}")
             

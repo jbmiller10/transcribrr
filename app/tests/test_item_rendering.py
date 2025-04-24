@@ -54,34 +54,16 @@ class TestItemRendering(unittest.TestCase):
         for p in self.patches:
             p.stop()
     
+    # Test removed as UnifiedFolderListWidget is obsolete, replaced by UnifiedFolderTreeView
+    # The _add_recording_item method is now part of the model/view architecture
+    # and text overlap is now handled by the RecordingItemDelegate in UnifiedFolderTreeView
     @patch('app.RecordingListItem.RecordingListItem')
     def test_treewidget_item_has_empty_text(self, mock_recording_item_class):
-        """Test that QTreeWidgetItems have empty text to avoid overlap."""
-        from app.RecentRecordingsWidget import UnifiedFolderListWidget
+        """Test that tree items have empty text to avoid overlap (using UnifiedFolderTreeView)."""
+        from app.UnifiedFolderTreeView import UnifiedFolderTreeView
         
-        # Create mock recording item
-        mock_recording_item = MagicMock()
-        mock_recording_item.sizeHint.return_value = (200, 70)
-        mock_recording_item_class.return_value = mock_recording_item
-        
-        # Create the widget
-        with patch('app.RecentRecordingsWidget.QTreeWidgetItem') as mock_tree_item_class:
-            # Create a mock QTreeWidgetItem
-            mock_tree_item = MagicMock()
-            mock_tree_item_class.return_value = mock_tree_item
-            
-            # Create widget and add a recording
-            widget = UnifiedFolderListWidget(self.db_manager)
-            
-            # Create a mock recording data
-            recording_data = [1, "Test Recording.mp3", "/path/to/recording.mp3", 
-                             "2023-01-01 12:00:00", "00:30", "", "", "", ""]
-            
-            # Add the recording
-            widget._add_recording_item(MagicMock(), recording_data)
-            
-            # Verify setText was called with empty string
-            mock_tree_item.setText.assert_called_with(0, "")
+        # Test is now handled by test_delegate_clears_text_in_paint
+        self.skipTest("UnifiedFolderListWidget has been removed; this functionality is now tested by test_delegate_clears_text_in_paint")
     
     @patch('app.RecordingFolderModel.QStandardItem')
     def test_model_item_has_empty_text(self, mock_standard_item_class):
