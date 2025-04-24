@@ -10,6 +10,7 @@ on:
 
 env:
   PYTHON_VERSION: "3.9"
+  MAC_PYTHON_VERSION: "3.12" 
 
 jobs:
   # ------------------------------------------------------------
@@ -115,23 +116,28 @@ jobs:
           path: ~\AppData\Local\pip\Cache
           key: ${{ steps.restore-win-cuda.outputs.cache-primary-key || format('Windows-pip-{0}-cuda-{1}', env.PYTHON_VERSION, hashFiles('requirements.txt')) }}
 
-  # ------------------------------------------------------------
-  # Job 3 – macOS
-  # ------------------------------------------------------------
+
+# -----------------------------------------------------------------
+# Job 3 – macOS (Apple-silicon)
+# -----------------------------------------------------------------
   warm-macos:
-    runs-on: macos-14 # Apple Silicon runner
-    # Define flavour for cache key consistency
+    runs-on: macos-14
     env:
       TRANSCRIBRR_FLAVOUR: cpu
 
     steps:
-      - name: Checkout repository code
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
-      - name: Set up Python ${{ env.PYTHON_VERSION }}
+      - name: Set up Python
         uses: actions/setup-python@v5
         with:
-          python-version: ${{ env.PYTHON_VERSION }}
+          python-version: ${{ env.MAC_PYTHON_VERSION }}
+          architecture: arm64
+
+      - name: Verify version
+        run: |
+          python -VV
+          which python
 
       - name: Locate pip cache directory
         id: pip-dir
@@ -142,28 +148,19 @@ jobs:
         uses: actions/cache/restore@v3
         with:
           path: ${{ steps.pip-dir.outputs.dir }}
-          # --- Using ORIGINAL cache key structure ---
-          # Using consistent casing 'macos' now
-          key:  macos-pip-${{ env.PYTHON_VERSION }}-${{ hashFiles('requirements.txt') }}
+          key: macos-pip-${{ env.MAC_PYTHON_VERSION }}-${{ hashFiles('requirements.txt') }}
           restore-keys: |
-            macos-pip-${{ env.PYTHON_VERSION }}- # Removed -cpu- suffix to match original key intent
+            macos-pip-${{ env.MAC_PYTHON_VERSION }}-
 
       - name: Install dependencies (macOS)
-        # Includes Briefcase needed by macos.yml
         run: |
-          echo "Installing base tools..."
           python -m pip install --upgrade pip wheel
-          echo "Installing runtime requirements..."
           python -m pip install -r requirements.txt
-          echo "Installing macOS build requirements (Briefcase)..."
-          # Install briefcase directly here, mirroring macos.yml
           python -m pip install briefcase
 
       - name: Save wheel cache (macOS)
-        # Use the exact key from the restore step to save the cache
-        # Note: Key only reflects requirements.txt, not installed build tools
         if: always()
         uses: actions/cache/save@v3
         with:
           path: ${{ steps.pip-dir.outputs.dir }}
-          key: ${{ steps.restore-macos.outputs.cache-primary-key || format('macos-pip-{0}-{1}', env.PYTHON_VERSION, hashFiles('requirements.txt')) }}
+          key: ${{ steps.restore-macos.outputs.cache-primary-key || format('macos-pip-{0}-{1}', env.MAC_PYTHON_VERSION, hashFiles('requirements.txt')) }}

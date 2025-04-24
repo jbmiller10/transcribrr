@@ -1,63 +1,77 @@
-# .github/workflows/macos.yml   ← complete, validated
-
-name: macOS Briefcase build
+name: "macOS Briefcase build"
 
 on:
   workflow_dispatch:
+    inputs:
+      version:
+        description: "Application version (e.g. 1.2.3)"
+        required: true
+        type: string
   push:
     tags:
-      - "v*.*.*"
+      - "v*.*.*"        # ← block list notation
 
-env:                     # top‑level env is simplest
-  PYTHON_VERSION: "3.9"
+env:
+  PYTHON_VERSION: "3.12"
 
 jobs:
   macos:
-    runs-on: macos-14    # Apple‑silicon runner
-
+    runs-on: macos-14
     steps:
       - uses: actions/checkout@v4
 
-      # ---------- CORRECTLY INDENTED STEP ----------
       - uses: actions/setup-python@v5
         with:
           python-version: ${{ env.PYTHON_VERSION }}
-      # ---------------------------------------------
-      
-      - name: Locate pip cache dir
-        id: pip-cache
-        run: echo "dir=$(python -m pip cache dir)" >> "$GITHUB_OUTPUT"
 
-      - name: Cache pip wheels
-        uses: actions/cache@v3
+      - uses: actions/cache@v3
         with:
-          # resolved path, e.g. /Users/runner/Library/Caches/pip
-          path: ${{ steps.pip-cache.outputs.dir }}
-          # include Python version + hash of requirement sources
-          key: macos-pip-${{ env.PYTHON_VERSION }}-${{ hashFiles('requirements.txt', 'pyproject.toml') }}
-          restore-keys: |
-            macos-pip-${{ env.PYTHON_VERSION }}-
+          path: ~/.cache/pip
+          key: macos-pip-${{ env.PYTHON_VERSION }}-${{ hashFiles('requirements.txt') }}
+          restore-keys: macos-pip-${{ env.PYTHON_VERSION }}-
 
-      - name: Debug cache content
-        run: du -sh ${{ steps.pip-cache.outputs.dir }} || true
+      - name: Install system libs
+        run: brew install --quiet portaudio ffmpeg
 
-      - name: Install system libraries
+      - name: Install Python deps
         run: |
-          brew update
-          brew install portaudio   # ← provides portaudio.h and libportaudio.dylib
-          brew install ffmpeg
-      - name: Install Briefcase + deps
-        run: |
-          python -m pip install --upgrade pip briefcase
+          python -m pip install --upgrade pip packaging
+          python -m pip install briefcase
           python -m pip install -r requirements.txt
 
-      - name: Build .app
-        run: briefcase build macOS --no-input --log
+      - name: Resolve version
+        id: ver
+        run: |
+          if [[ "${{ github.event_name }}" == "workflow_dispatch" ]]; then
+            VER="${{ github.event.inputs.version }}"
+          else
+            VER="${GITHUB_REF##*/v}"
+          fi
+          [[ -n "$VER" ]] || { echo "::error::Version not determined"; exit 1; }
+          echo "ver=$VER" >> "$GITHUB_OUTPUT"
+          sed -i '' -E "s/^version = \".*\"/version = \"$VER\"/" pyproject.toml
 
-      - name: Package (ad‑hoc signed)
-        run: briefcase package macOS --adhoc-sign --no-input --log
+      - name: Inject transient transcribrr package
+        run: |
+          mkdir -p transcribrr
+          cat > transcribrr/__init__.py <<'PY'
+          from importlib import import_module as _im
+          main = _im("main").main
+          __all__ = ["main"]
+          PY
+
+
+      - name: Create bundle
+        run: briefcase create macOS --no-input
+
+      - name: Build app
+        run: briefcase build macOS --no-input --update-requirements
+
+      - name: Package (ad-hoc signed DMG)
+        run: briefcase package macOS --adhoc-sign --no-input
 
       - uses: actions/upload-artifact@v4
         with:
-          name: Transcribrr_macOS_arm64
-          path: dist/macOS/arm64/Transcribrr-*.dmg
+          name: Transcribrr-macOS-${{ steps.ver.outputs.ver }}-${{ runner.arch }}
+          path: dist/Transcribrr-${{ steps.ver.outputs.ver }}.dmg   # ← correct location
+          if-no-files-found: error

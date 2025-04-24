@@ -1,59 +1,73 @@
-# ---- mandatory PEP 518 section ----
+###############################################################################
+# PEP 518 – build backend                                                      #
+###############################################################################
 [build-system]
 requires      = ["briefcase>=0.3.22"]
 build-backend = "briefcase.build_system"
 
-# ---- PEP 621 project metadata ----
+
+###############################################################################
+# PEP 621 – core project metadata                                             #
+###############################################################################
 [project]
-name = "Transcribrr"
-version = "1.0.0"
-description = "Speech-to-text transcription tool"
-authors = [
-    {name = "John Miller", email = "john@johnbmiller.com"}
-]
-license = {file = "LICENSE"}
+name            = "transcribrr"                # distribution name (all-lowercase)
+version         = "1.0.0"                      # single source of truth
+description     = "Speech-to-text transcription tool"
+authors         = [{ name = "John Miller", email = "john@johnbmiller.com" }]
+license         = { file = "LICENSE" }
+requires-python = ">=3.12"
 
+
+###############################################################################
+# Briefcase – global settings                                                  #
+###############################################################################
 [tool.briefcase]
-project_name   = "Transcribrr"
-bundle         = "com.transcribrr"
-version        = "1.0.0"
-author         = "John Miller"
-author_email   = "john@johnbmiller.com"
+project_name = "Transcribrr"                   # human-readable
+bundle       = "com.transcribrr"               # reverse-DNS identifier
+author       = "John Miller"
+author_email = "john@johnbmiller.com"
 
-# Briefcase already inherits the license declared under [project].
-# Having a second declaration here violates the Briefcase configuration
-# schema and causes an `AttributeError: can't set attribute` during
-# parsing. The `license` key is therefore removed.
-
-# Runtime requirements for the packaging target. These must be provided
-# as individual CLI‑tokens so that Briefcase passes them verbatim to
-# `pip install`. Using a single string that combines the flag and the
-# file path would be interpreted as the value for the `-r` option
-# instead of two separate arguments and triggers the same AttributeError
-# inside Briefcase's dataclass validation.
+# Runtime dependencies installed into the bundle
 requires = [
-    "-r",
-    "requirements.txt",
+    "-r", "requirements.txt",
 ]
 
 
+###############################################################################
+# Briefcase – app definition (cross-platform keys)                             #
+###############################################################################
 [tool.briefcase.app.transcribrr]
 formal_name  = "Transcribrr"
-module_name  = "app"
-description  = "Speech‑to‑text transcription tool"
-sources      = ["app", "main.py"]   # paths that contain your code
-icon         = "icons/app/app_icon.icns"
+description  = "Speech-to-text transcription tool"
 
-# ---- macOS‑specific options ----
+# Source code that must be copied into the bundle
+sources = [
+    "transcribrr",          # wrapper package created in CI
+    "app",                  # your application package
+    "main.py",              # original entry script
+]
+
+# Cross-platform permission (Briefcase converts to plist + entitlement)
+permission.microphone = true
+
+
+###############################################################################
+# macOS-specific configuration                                                 #
+###############################################################################
+# No keys required here unless you have macOS-only *requires* or build hooks.
 [tool.briefcase.app.transcribrr.macOS]
-# Inherit the same tokenised requirements list so that macOS builds
-# receive identical runtime dependencies.
-requires = [
-    "-r",
-    "requirements.txt",
-]
-resources  = [
-    "icons",                       # complete icon tree
-    "config.json",
-    "preset_prompts.json",
-]
+
+
+###############################################################################
+# macOS.app bundle-level options                                               #
+###############################################################################
+[tool.briefcase.app.transcribrr.macOS.app]
+# Visual and data assets
+icon        = "icons/app/app_icon.icns"
+resources   = ["icons", "preset_prompts.json"]
+
+# Apple-silicon-only build (skips x86-64 slice)
+universal_build = false
+
+# Optional explicit privacy string (overrides Briefcase default)
+info."NSMicrophoneUsageDescription" = "Transcribrr records audio so it can transcribe your speech."
