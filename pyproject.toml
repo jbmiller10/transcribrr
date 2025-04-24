@@ -1,37 +1,28 @@
-# ---- PEP 518 --------------------------------------------------
 [build-system]
 requires      = ["briefcase>=0.3.22"]
 build-backend = "briefcase.build_system"
 
-# ---- PEP 621 project metadata ---------------------------------
 [project]
-name            = "transcribrr"           # lower-case, PEP-compatible
-version         = "1.0.0"                 # single source of truth
+name            = "transcribrr"
+version         = "1.0.0"
 description     = "Speech-to-text transcription tool"
 authors         = [{ name = "John Miller", email = "john@johnbmiller.com" }]
 license         = { file = "LICENSE" }
-requires-python = ">=3.9,<3.12"
+requires-python = ">=3.9, <3.10"
 
-# ---- Briefcase global settings --------------------------------
 [tool.briefcase]
 project_name = "Transcribrr"
-bundle        = "com.transcribrr"
-author        = "John Miller"
-author_email  = "john@johnbmiller.com"
+bundle       = "com.transcribrr"
+author       = "John Miller"
+author_email = "john@johnbmiller.com"
+requires     = ["-r", "requirements.txt"]
 
-# Pinned run-time dependencies (delegated to pip)
-requires = [
-    "-r", "requirements.txt",
-]
-
-# ---- App definition -------------------------------------------
 [tool.briefcase.app.transcribrr]
 formal_name  = "Transcribrr"
 description  = "Speech-to-text transcription tool"
-sources      = ["transcribrr"]            # ← package must exist and expose main()
+sources      = ["transcribrr"]
 permission.microphone = "Needed to record audio for transcription."
 
-# ---- macOS-specific tweaks ------------------------------------
 [tool.briefcase.app.transcribrr.macOS]
 icon              = "icons/app/app_icon.icns"
 resources         = ["icons", "preset_prompts.json"]
