@@ -10,7 +10,7 @@ on:
     tags: ['v*.*.*']
 
 env:
-  PYTHON_VERSION: '3.9'          # matches requires-python
+  PYTHON_VERSION: '3.12'          # matches requires-python
 
 jobs:
   macos:

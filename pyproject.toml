@@ -8,7 +8,7 @@ version         = "1.0.0"
 description     = "Speech-to-text transcription tool"
 authors         = [{ name = "John Miller", email = "john@johnbmiller.com" }]
 license         = { file = "LICENSE" }
-requires-python = ">=3.9, <3.10"
+requires-python = ">=3.12"
 
 [tool.briefcase]
 project_name = "Transcribrr"
