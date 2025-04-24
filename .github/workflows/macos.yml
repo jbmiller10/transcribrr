@@ -55,10 +55,11 @@ jobs:
         run: |
           mkdir -p transcribrr
           cat > transcribrr/__init__.py <<'PY'
-from importlib import import_module as _im
-main = _im("main").main
-__all__ = ["main"]
-PY
+          from importlib import import_module as _im
+          main = _im("main").main
+          __all__ = ["main"]
+          PY
+
 
       - name: Create bundle
         run: briefcase create macOS --no-input
