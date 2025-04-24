@@ -1,36 +1,27 @@
 # ---- mandatory PEP 518 section ----
 [build-system]
-requires      = ["briefcase>=0.3.22"]
+requires      = ["briefcase>=0.3.22"] # Consider updating briefcase if needed
 build-backend = "briefcase.build_system"
 
 # ---- PEP 621 project metadata ----
 [project]
 name = "Transcribrr"
-version = "1.0.0"
+version = "1.0.0" # <<< MAKE SURE THIS MATCHES THE INTENDED VERSION FOR THE BUILD/RELEASE
 description = "Speech-to-text transcription tool"
 authors = [
     {name = "John Miller", email = "john@johnbmiller.com"}
 ]
-license = {file = "LICENSE"}
+license = {file = "LICENSE"} # Assuming you have a LICENSE file at the root
 
 [tool.briefcase]
 project_name   = "Transcribrr"
-bundle         = "com.transcribrr"
-version        = "1.0.0"
+bundle         = "com.transcribrr" # Reverse domain name notation for your app bundle ID
+version        = "1.0.0" # <<< MAKE SURE THIS MATCHES [project] version
 author         = "John Miller"
 author_email   = "john@johnbmiller.com"
 
-# Briefcase already inherits the license declared under [project].
-# Having a second declaration here violates the Briefcase configuration
-# schema and causes an `AttributeError: can't set attribute` during
-# parsing. The `license` key is therefore removed.
-
-# Runtime requirements for the packaging target. These must be provided
-# as individual CLI‑tokens so that Briefcase passes them verbatim to
-# `pip install`. Using a single string that combines the flag and the
-# file path would be interpreted as the value for the `-r` option
-# instead of two separate arguments and triggers the same AttributeError
-# inside Briefcase's dataclass validation.
+# Base requirements for the project (used by default for all platforms unless overridden)
+# These are passed directly to pip install
 requires = [
     "-r",
     "requirements.txt",
@@ -39,21 +30,63 @@ requires = [
 
 [tool.briefcase.app.transcribrr]
 formal_name  = "Transcribrr"
-module_name  = "app"
+# Point to your main script module (main.py -> "main")
+# Briefcase will look for main:main() or similar entry points
+module_name  = "main"
 description  = "Speech‑to‑text transcription tool"
-sources      = ["app", "main.py"]   # paths that contain your code
-icon         = "icons/app/app_icon.icns"
+# Paths containing your source code relative to pyproject.toml
+sources      = ["app", "main.py"]
+# Icon for platforms like Linux/Windows (Briefcase might use this if platform-specific isn't set)
+# icon = "icons/app/app_icon" # Base name without extension
 
 # ---- macOS‑specific options ----
 [tool.briefcase.app.transcribrr.macOS]
-# Inherit the same tokenised requirements list so that macOS builds
-# receive identical runtime dependencies.
+# Inherit requirements from the base section
 requires = [
     "-r",
     "requirements.txt",
 ]
-resources  = [
-    "icons",                       # complete icon tree
-    "config.json",
+# App icon specifically for macOS (.icns format)
+icon = "icons/app/app_icon.icns"
+
+# Resources to bundle inside YourApp.app/Contents/Resources/
+# These should match the 'datas' from your PyInstaller spec needs
+resources = [
+    "icons", # Bundle the entire icons directory tree
     "preset_prompts.json",
+    # "config.json", # Typically user-specific, generated in user data dir.
+                      # Your main.py copies defaults, so bundling isn't strictly necessary here.
+                      # If you NEED a default bundled config, uncomment this.
+    # "cacert.pem", # Bundle if you add it and need it for network requests
 ]
+
+# Build a Universal binary (Intel + Apple Silicon) - Recommended
+universal = true
+
+# Entitlements file for more complex permissions (e.g., microphone access)
+# If needed, create macos/entitlements.plist and uncomment the line below
+# entitlements_file = "macos/entitlements.plist"
+
+# Build script for custom actions (like copying ffmpeg)
+# This references the briefcase.macOS.post_build file implicitly by convention
+# build_requires = [] # Add build-specific deps here if any (e.g., if post_build needed special libs)
+
+
+# ---- Windows‑specific options ----
+[tool.briefcase.app.transcribrr.windows]
+requires = [
+    "-r",
+    "requirements.txt",
+]
+# Icon for Windows (.ico format)
+icon = "icons/app/app_icon.ico"
+# Resources specific to Windows, if any
+# resources = []
+
+# Add splash screen resources if Briefcase supports them directly for the platform
+# splash = "icons/app/splash" # Base name, Briefcase finds .png/.svg etc.
+
+
+# ---- Other platform sections (Linux, iOS, Android) can be added similarly ----
+# [tool.briefcase.app.transcribrr.linux]
+# ...
