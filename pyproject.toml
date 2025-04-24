@@ -26,5 +26,4 @@ permission.microphone = "Needed to record audio for transcription."
 [tool.briefcase.app.transcribrr.macOS]
 icon              = "icons/app/app_icon.icns"
 resources         = ["icons", "preset_prompts.json"]
-universal = false
 entitlements_file = "macos/entitlements.plist"
