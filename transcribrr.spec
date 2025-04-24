@@ -128,8 +128,8 @@ BINARIES += collect_dynamic_libs("PyQt6", destdir="qt6_plugins")
 
 # ── 4.  Analysis / EXE / COLLECT unchanged ────────────────────────
 a = Analysis(
-    ["main.py"],
-    pathex=[str(spec_dir), str(spec_dir / "app")],
+    ["main.py"], 
+    pathex=[str(spec_dir)], 
     binaries=BINARIES,
     datas=datas, # Use the updated datas list here
     hiddenimports=hidden_imports,
