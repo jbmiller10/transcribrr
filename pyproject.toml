@@ -1,29 +1,73 @@
+###############################################################################
+# PEP 518 – build backend                                                      #
+###############################################################################
 [build-system]
 requires      = ["briefcase>=0.3.22"]
 build-backend = "briefcase.build_system"
 
+
+###############################################################################
+# PEP 621 – core project metadata                                             #
+###############################################################################
 [project]
-name            = "transcribrr"
-version         = "1.0.0"
+name            = "transcribrr"                # distribution name (all-lowercase)
+version         = "1.0.0"                      # single source of truth
 description     = "Speech-to-text transcription tool"
 authors         = [{ name = "John Miller", email = "john@johnbmiller.com" }]
 license         = { file = "LICENSE" }
 requires-python = ">=3.12"
 
+
+###############################################################################
+# Briefcase – global settings                                                  #
+###############################################################################
 [tool.briefcase]
-project_name = "Transcribrr"
-bundle       = "com.transcribrr"
+project_name = "Transcribrr"                   # human-readable
+bundle       = "com.transcribrr"               # reverse-DNS identifier
 author       = "John Miller"
 author_email = "john@johnbmiller.com"
-requires     = ["-r", "requirements.txt"]
 
+# Runtime dependencies installed into the bundle
+requires = [
+    "-r", "requirements.txt",
+]
+
+
+###############################################################################
+# Briefcase – app definition (cross-platform keys)                             #
+###############################################################################
 [tool.briefcase.app.transcribrr]
-formal_name = "Transcribrr"
-sources = ["transcribrr", "app", "main.py"]
+formal_name  = "Transcribrr"
 description  = "Speech-to-text transcription tool"
-permission.microphone = "Needed to record audio for transcription."
 
+# Source code that must be copied into the bundle
+sources = [
+    "transcribrr",          # wrapper package created in CI
+    "app",                  # your application package
+    "main.py",              # original entry script
+]
+
+# Cross-platform permission (Briefcase converts to plist + entitlement)
+permission.microphone = true
+
+
+###############################################################################
+# macOS-specific configuration                                                 #
+###############################################################################
+# No keys required here unless you have macOS-only *requires* or build hooks.
 [tool.briefcase.app.transcribrr.macOS]
-icon              = "icons/app/app_icon.icns"
-resources         = ["icons", "preset_prompts.json"]
-entitlements_file = "macos/entitlements.plist"
+
+
+###############################################################################
+# macOS.app bundle-level options                                               #
+###############################################################################
+[tool.briefcase.app.transcribrr.macOS.app]
+# Visual and data assets
+icon        = "icons/app/app_icon.icns"
+resources   = ["icons", "preset_prompts.json"]
+
+# Apple-silicon-only build (skips x86-64 slice)
+universal_build = false
+
+# Optional explicit privacy string (overrides Briefcase default)
+info."NSMicrophoneUsageDescription" = "Transcribrr records audio so it can transcribe your speech."
