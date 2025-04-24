@@ -6,7 +6,7 @@ build-backend = "briefcase.build_system"
 # ---- PEP 621 project metadata ----
 [project]
 name = "Transcribrr"
-version = "1.0.0" # <<< MAKE SURE THIS MATCHES THE INTENDED VERSION FOR THE BUILD/RELEASE
+version = "0.1.0" 
 description = "Speech-to-text transcription tool"
 authors = [
     {name = "John Miller", email = "john@johnbmiller.com"}
@@ -41,11 +41,7 @@ sources      = ["app", "main.py"]
 
 # ---- macOS‑specific options ----
 [tool.briefcase.app.transcribrr.macOS]
-# Inherit requirements from the base section
-requires = [
-    "-r",
-    "requirements.txt",
-]
+# REMOVED the redundant 'requires' section here. It will be inherited.
 # App icon specifically for macOS (.icns format)
 icon = "icons/app/app_icon.icns"
 
@@ -70,23 +66,3 @@ universal = true
 # Build script for custom actions (like copying ffmpeg)
 # This references the briefcase.macOS.post_build file implicitly by convention
 # build_requires = [] # Add build-specific deps here if any (e.g., if post_build needed special libs)
-
-
-# ---- Windows‑specific options ----
-[tool.briefcase.app.transcribrr.windows]
-requires = [
-    "-r",
-    "requirements.txt",
-]
-# Icon for Windows (.ico format)
-icon = "icons/app/app_icon.ico"
-# Resources specific to Windows, if any
-# resources = []
-
-# Add splash screen resources if Briefcase supports them directly for the platform
-# splash = "icons/app/splash" # Base name, Briefcase finds .png/.svg etc.
-
-
-# ---- Other platform sections (Linux, iOS, Android) can be added similarly ----
-# [tool.briefcase.app.transcribrr.linux]
-# ...
