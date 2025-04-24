@@ -120,24 +120,24 @@ jobs:
 # -----------------------------------------------------------------
 # Job 3 – macOS (Apple-silicon)
 # -----------------------------------------------------------------
-warm-macos:
-  runs-on: macos-14             # arm64 runner ships 3.11 & 3.12 only
-  env:
-    TRANSCRIBRR_FLAVOUR: cpu
+  warm-macos:
+    runs-on: macos-14
+    env:
+      TRANSCRIBRR_FLAVOUR: cpu
 
-  steps:
-    - uses: actions/checkout@v4
+    steps:
+      - uses: actions/checkout@v4
 
-    - name: Set up Python
-      uses: actions/setup-python@v5
-      with:
-        python-version: ${{ env.MAC_PYTHON_VERSION }}   # 3.12
-        architecture: arm64                         
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.MAC_PYTHON_VERSION }}
+          architecture: arm64
 
-    - name: Verify version
-      run: |
-        python -VV
-        which python               # should resolve to /opt/hostedtoolcache/.../3.12.*
+      - name: Verify version
+        run: |
+          python -VV
+          which python
 
       - name: Locate pip cache directory
         id: pip-dir
@@ -148,26 +148,17 @@ warm-macos:
         uses: actions/cache/restore@v3
         with:
           path: ${{ steps.pip-dir.outputs.dir }}
-          # --- Using ORIGINAL cache key structure ---
-          # Using consistent casing 'macos' now
-          key:  macos-pip-${{ env.MAC_PYTHON_VERSION }}-${{ hashFiles('requirements.txt') }}
+          key: macos-pip-${{ env.MAC_PYTHON_VERSION }}-${{ hashFiles('requirements.txt') }}
           restore-keys: |
-            macos-pip-${{ env.MAC_PYTHON_VERSION }}- # Removed -cpu- suffix to match original key intent
+            macos-pip-${{ env.MAC_PYTHON_VERSION }}-
 
       - name: Install dependencies (macOS)
-        # Includes Briefcase needed by macos.yml
         run: |
-          echo "Installing base tools..."
           python -m pip install --upgrade pip wheel
-          echo "Installing runtime requirements..."
           python -m pip install -r requirements.txt
-          echo "Installing macOS build requirements (Briefcase)..."
-          # Install briefcase directly here, mirroring macos.yml
           python -m pip install briefcase
 
       - name: Save wheel cache (macOS)
-        # Use the exact key from the restore step to save the cache
-        # Note: Key only reflects requirements.txt, not installed build tools
         if: always()
         uses: actions/cache/save@v3
         with:
