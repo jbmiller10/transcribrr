@@ -16,53 +16,60 @@ logging.basicConfig(level=logging.DEBUG)
 logger = logging.getLogger('test_duplicates')
 
 # Mock PyQt6 dependencies
-class MockQTreeWidgetItem:
-    def __init__(self, parent=None):
-        self.parent_item = parent
+class MockQModelIndex:
+    def __init__(self, valid=True, row=0, column=0, parent=None):
+        self.valid = valid
+        self.row_value = row
+        self.column_value = column
+        self.parent_index = parent
+        
+    def isValid(self):
+        return self.valid
+        
+    def row(self):
+        return self.row_value
+        
+    def column(self):
+        return self.column_value
+        
+    def parent(self):
+        return self.parent_index or MockQModelIndex(valid=False)
+        
+class MockQStandardItem:
+    def __init__(self):
         self.children = []
         self.data_dict = {}
-        self.expanded = False
         self.text_value = ""
+        self.row_count = 0
         
-        # Add as child to parent if provided
-        if parent is not None:
-            parent.children.append(self)
-    
-    def child(self, index):
-        if 0 <= index < len(self.children):
-            return self.children[index]
+    def index(self):
+        return MockQModelIndex()
+        
+    def child(self, row, column=0):
+        if 0 <= row < len(self.children):
+            return self.children[row]
         return None
-    
-    def childCount(self):
-        return len(self.children)
-    
-    def removeChild(self, child):
-        if child in self.children:
-            self.children.remove(child)
-    
-    def parent(self):
-        return self.parent_item
-    
-    def data(self, column, role):
-        return self.data_dict
-    
-    def setData(self, column, role, data):
-        self.data_dict = data
-    
-    def setText(self, column, text):
+        
+    def data(self, role):
+        return self.data_dict.get(role, None)
+        
+    def setData(self, role, value):
+        self.data_dict[role] = value
+        
+    def setText(self, text):
         self.text_value = text
-    
-    def text(self, column):
+        
+    def text(self):
         return self.text_value
-    
-    def setExpanded(self, expanded):
-        self.expanded = expanded
-    
-    def isExpanded(self):
-        return self.expanded
-    
-    def treeWidget(self):
-        return self.tree_widget
+        
+    def rowCount(self):
+        return self.row_count
+        
+    def appendRow(self, items):
+        if not isinstance(items, list):
+            items = [items]
+        self.children.extend(items)
+        self.row_count += 1
 
 class MockRecordingListItem:
     def __init__(self, rec_id, filename, file_path, date_created, duration="", 
@@ -103,14 +110,14 @@ with patch.dict('sys.modules', {
     # Add attributes to mocks
     sys.modules['PyQt6.QtCore'].pyqtSignal = lambda *args: MockSignal()
     sys.modules['PyQt6.QtCore'].Qt.ItemDataRole.UserRole = 1
-    sys.modules['PyQt6.QtWidgets'].QTreeWidget = MagicMock
-    sys.modules['PyQt6.QtWidgets'].QTreeWidgetItem = MockQTreeWidgetItem
+    sys.modules['PyQt6.QtWidgets'].QTreeView = MagicMock
+    sys.modules['PyQt6.QtGui'].QStandardItem = MockQStandardItem
     
     # Import the module to test
-    from app.RecentRecordingsWidget import UnifiedFolderListWidget
+    from app.UnifiedFolderTreeView import UnifiedFolderTreeView
 
 class TestRecordingDuplicates(unittest.TestCase):
-    """Test case for verifying no duplicate recordings in UnifiedFolderListWidget."""
+    """Test case for verifying no duplicate recordings in UnifiedFolderTreeView."""
     
     def setUp(self):
         """Set up mock objects and test environment."""
@@ -127,16 +134,33 @@ class TestRecordingDuplicates(unittest.TestCase):
         self.folder_manager.get_recordings_not_in_folders = self._mock_get_unassigned_recordings
         
         # Create instance with mocks
-        with patch('app.RecentRecordingsWidget.FolderManager') as mock_folder_manager, \
-             patch('app.RecentRecordingsWidget.DatabaseManager') as mock_db_manager, \
-             patch('app.RecentRecordingsWidget.QTreeWidget'), \
-             patch('app.RecentRecordingsWidget.QTreeWidgetItem', MockQTreeWidgetItem), \
-             patch('app.RecentRecordingsWidget.RecordingListItem', MockRecordingListItem):
+        with patch('app.UnifiedFolderTreeView.FolderManager') as mock_folder_manager, \
+             patch('app.UnifiedFolderTreeView.DatabaseManager') as mock_db_manager, \
+             patch('app.UnifiedFolderTreeView.QTreeView'), \
+             patch('app.RecordingFolderModel.RecordingFolderModel') as mock_model, \
+             patch('app.RecordingFolderModel.RecordingFilterProxyModel') as mock_proxy, \
+             patch('app.UnifiedFolderTreeView.RecordingListItem', MockRecordingListItem):
             
             mock_folder_manager.instance.return_value = self.folder_manager
             mock_db_manager.instance.return_value = self.db_manager
             
-            self.widget = UnifiedFolderListWidget(self.db_manager)
+            # Create mock model and proxy model
+            self.mock_model = MagicMock()
+            self.mock_proxy = MagicMock()
+            mock_model.return_value = self.mock_model
+            mock_proxy.return_value = self.mock_proxy
+            
+            # Setup model methods
+            self.mock_model.item_map = {}
+            self.mock_model.clear_model = MagicMock()
+            self.mock_model.add_folder_item = MagicMock(return_value=MockQStandardItem())
+            self.mock_model.add_recording_item = MagicMock(return_value=MockQStandardItem())
+            
+            # Setup proxy methods
+            self.mock_proxy.mapFromSource = MagicMock(return_value=MockQModelIndex())
+            self.mock_proxy.mapToSource = MagicMock(return_value=MockQModelIndex())
+            
+            self.widget = UnifiedFolderTreeView(self.db_manager)
             
             # Initialize test data - recordings are mocked with overlap between folders
             self.recordings = self._generate_mock_recordings()
@@ -213,22 +237,33 @@ class TestRecordingDuplicates(unittest.TestCase):
     def test_no_duplicates_after_refresh(self):
         """Test that refresh_all_folders() doesn't create duplicate recordings."""
         # Setup the widget with direct access to mock database
-        with patch('app.RecentRecordingsWidget.FolderManager') as mock_folder_manager, \
-             patch('app.RecentRecordingsWidget.DatabaseManager') as mock_db_manager, \
-             patch('app.RecentRecordingsWidget.QTreeWidget'), \
-             patch('app.RecentRecordingsWidget.QTreeWidgetItem', MockQTreeWidgetItem), \
-             patch('app.RecentRecordingsWidget.RecordingListItem', MockRecordingListItem), \
-             patch.object(UnifiedFolderListWidget, 'clear'), \
-             patch.object(UnifiedFolderListWidget, 'itemAt'), \
-             patch.object(UnifiedFolderListWidget, 'setCurrentItem'), \
-             patch.object(UnifiedFolderListWidget, 'itemWidget', return_value=None), \
-             patch.object(UnifiedFolderListWidget, 'removeItemWidget'), \
-             patch.object(UnifiedFolderListWidget, 'setItemWidget'), \
-             patch.object(UnifiedFolderListWidget, 'add_folder_to_tree',
-                         return_value=MockQTreeWidgetItem()):
+        with patch('app.UnifiedFolderTreeView.FolderManager') as mock_folder_manager, \
+             patch('app.UnifiedFolderTreeView.DatabaseManager') as mock_db_manager, \
+             patch('app.UnifiedFolderTreeView.QTreeView'), \
+             patch('app.RecordingFolderModel.RecordingFolderModel') as mock_model, \
+             patch('app.RecordingFolderModel.RecordingFilterProxyModel') as mock_proxy, \
+             patch('app.UnifiedFolderTreeView.RecordingListItem', MockRecordingListItem), \
+             patch.object(UnifiedFolderTreeView, 'setIndexWidget'), \
+             patch.object(UnifiedFolderTreeView, 'setExpanded'):
             
             mock_folder_manager.instance.return_value = self.folder_manager
             mock_db_manager.instance.return_value = self.db_manager
+            
+            # Create mock model and proxy model
+            self.mock_model = MagicMock()
+            self.mock_proxy = MagicMock()
+            mock_model.return_value = self.mock_model
+            mock_proxy.return_value = self.mock_proxy
+            
+            # Setup model methods
+            self.mock_model.item_map = {}
+            self.mock_model.clear_model = MagicMock()
+            self.mock_model.add_folder_item = MagicMock(return_value=MockQStandardItem())
+            self.mock_model.add_recording_item = MagicMock(return_value=MockQStandardItem())
+            
+            # Setup proxy methods
+            self.mock_proxy.mapFromSource = MagicMock(return_value=MockQModelIndex())
+            self.mock_proxy.mapToSource = MagicMock(return_value=MockQModelIndex())
             
             # First load
             self.widget.load_structure()
@@ -262,60 +297,57 @@ class TestRecordingDuplicates(unittest.TestCase):
                 self.assertEqual(len(self.widget.seen_recording_ids), total_recordings,
                                f"seen_recording_ids count should remain consistent after refresh {i+1}")
     
-    def test_clear_folder_recordings(self):
-        """Test that _clear_folder_recordings properly cleans up widgets and tracking maps."""
+    def test_maps_are_in_sync(self):
+        """Test that the tracking maps (recordings_map and seen_recording_ids) stay in sync."""
         # Setup the widget with direct access to mock database
-        with patch('app.RecentRecordingsWidget.FolderManager') as mock_folder_manager, \
-             patch('app.RecentRecordingsWidget.DatabaseManager') as mock_db_manager, \
-             patch('app.RecentRecordingsWidget.QTreeWidget'), \
-             patch('app.RecentRecordingsWidget.QTreeWidgetItem', MockQTreeWidgetItem), \
-             patch('app.RecentRecordingsWidget.RecordingListItem', MockRecordingListItem), \
-             patch.object(UnifiedFolderListWidget, 'clear'), \
-             patch.object(UnifiedFolderListWidget, 'itemAt'), \
-             patch.object(UnifiedFolderListWidget, 'setCurrentItem'), \
-             patch.object(UnifiedFolderListWidget, 'itemWidget', return_value=MockRecordingListItem(1, "", "", "")), \
-             patch.object(UnifiedFolderListWidget, 'removeItemWidget'), \
-             patch.object(UnifiedFolderListWidget, 'setItemWidget'), \
-             patch.object(UnifiedFolderListWidget, 'add_folder_to_tree',
-                         return_value=MockQTreeWidgetItem()):
+        with patch('app.UnifiedFolderTreeView.FolderManager') as mock_folder_manager, \
+             patch('app.UnifiedFolderTreeView.DatabaseManager') as mock_db_manager, \
+             patch('app.UnifiedFolderTreeView.QTreeView'), \
+             patch('app.RecordingFolderModel.RecordingFolderModel') as mock_model, \
+             patch('app.RecordingFolderModel.RecordingFilterProxyModel') as mock_proxy, \
+             patch('app.UnifiedFolderTreeView.RecordingListItem', MockRecordingListItem), \
+             patch.object(UnifiedFolderTreeView, 'setIndexWidget'), \
+             patch.object(UnifiedFolderTreeView, 'setExpanded'):
             
             mock_folder_manager.instance.return_value = self.folder_manager
             mock_db_manager.instance.return_value = self.db_manager
             
+            # Create mock model and proxy model
+            self.mock_model = MagicMock()
+            self.mock_proxy = MagicMock()
+            mock_model.return_value = self.mock_model
+            mock_proxy.return_value = self.mock_proxy
+            
+            # Setup model methods
+            self.mock_model.item_map = {}
+            self.mock_model.clear_model = MagicMock()
+            self.mock_model.add_folder_item = MagicMock(return_value=MockQStandardItem())
+            self.mock_model.add_recording_item = MagicMock(return_value=MockQStandardItem())
+            
+            # Setup proxy methods
+            self.mock_proxy.mapFromSource = MagicMock(return_value=MockQModelIndex())
+            self.mock_proxy.mapToSource = MagicMock(return_value=MockQModelIndex())
+            
             # First load to populate data
             self.widget.load_structure()
             
-            # Get a folder item
-            folder_item = MockQTreeWidgetItem()
-            folder_item.tree_widget = self.widget
-            folder_item.data_dict = {"type": "folder", "id": 1}
-            
-            # Create child recording items
+            # Add recordings to the tracking maps for testing
             for i in range(1, 6):
-                child = MockQTreeWidgetItem(folder_item)
-                child.tree_widget = self.widget
-                child.data_dict = {"type": "recording", "id": i}
-                
-                # Add to tracking maps
                 self.widget.recordings_map[i] = MockRecordingListItem(i, f"rec_{i}.mp3", "", "")
-                self.widget.item_map[("recording", i)] = child
                 self.widget.seen_recording_ids.add(i)
             
             # Verify setup
-            self.assertEqual(folder_item.childCount(), 5)
             self.assertEqual(len(self.widget.recordings_map), 20)  # All recordings
+            self.assertEqual(len(self.widget.seen_recording_ids), 20)  # All recordings
             
-            # Call _clear_folder_recordings
-            self.widget._clear_folder_recordings(folder_item)
+            # Clear the recordings_map and verify seen_recording_ids is also cleared during load_structure
+            self.widget.load_structure()
             
-            # Verify children were removed
-            self.assertEqual(folder_item.childCount(), 0)
-            
-            # Verify tracking maps were updated
-            for i in range(1, 6):
-                self.assertNotIn(i, self.widget.recordings_map)
-                self.assertNotIn(("recording", i), self.widget.item_map)
-                self.assertNotIn(i, self.widget.seen_recording_ids)
+            # Verify tracking maps were cleared
+            self.assertEqual(len(self.widget.recordings_map), 20)  # Refreshed to 20 recordings
+            self.assertEqual(len(self.widget.seen_recording_ids), 20)  # Refreshed to 20 recordings
+            self.assertEqual(set(self.widget.recordings_map.keys()), self.widget.seen_recording_ids, 
+                           "recordings_map and seen_recording_ids should contain the same recording IDs")
 
 if __name__ == '__main__':
     unittest.main()
