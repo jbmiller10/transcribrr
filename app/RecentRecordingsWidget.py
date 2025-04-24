@@ -344,7 +344,7 @@ class RecentRecordingsWidget(ResponsiveWidget):
     def handle_recording_rename(self, recording_id: int, new_name_no_ext: str):
          """
          Handle the rename request from a RecordingListItem.
-         Synchronizes both database and filesystem changes.
+         Synchronizes both database and filesystem changes in an atomic manner.
          """
          logger.info(f"Handling rename for ID {recording_id} to '{new_name_no_ext}'")
 
@@ -376,33 +376,9 @@ class RecentRecordingsWidget(ResponsiveWidget):
               widget.name_editable.setText(widget.filename_no_ext)
               return
 
-         # --- Database Update with Filesystem Sync ---
-         def on_rename_complete():
-             try:
-                 # Attempt to rename the physical file
-                 os.rename(old_file_path, new_file_path)
-                 logger.info(f"Successfully renamed file on disk from {old_file_path} to {new_file_path}")
-                 
-                 # Update the database with the new file path
-                 self.db_manager.update_recording(
-                     recording_id,
-                     lambda: on_filesystem_sync_complete(),
-                     file_path=new_file_path
-                 )
-             except OSError as e:
-                 logger.error(f"Failed to rename file on disk: {e}")
-                 show_error_message(self, "Rename Failed", f"Could not rename file on disk: {str(e)}")
-                 # Revert the database change
-                 self.db_manager.update_recording(
-                     recording_id,
-                     lambda: logger.info(f"Reverted database filename back to original"),
-                     filename=os.path.basename(old_file_path)
-                 )
-                 # Revert UI change
-                 widget.name_editable.setText(widget.filename_no_ext)
-
-         def on_filesystem_sync_complete():
-             logger.info(f"Successfully completed rename operation for recording {recording_id}")
+         # --- Atomic Rename Implementation ---
+         def on_db_update_success():
+             logger.info(f"Successfully updated database for recording {recording_id}")
              # Update the widget's internal state and UI
              widget.update_data({
                  'filename': new_name_no_ext,  # base name for UI
@@ -411,31 +387,50 @@ class RecentRecordingsWidget(ResponsiveWidget):
              self.show_status_message(f"Renamed to '{new_name_no_ext}'")
 
          def on_rename_error(op_name, error_msg):
-             logger.error(f"Failed to rename recording {recording_id} in DB: {error_msg}")
+             logger.error(f"Failed to rename recording {recording_id}: {error_msg}")
              show_error_message(self, "Rename Failed", f"Could not rename recording: {error_msg}")
-             # Revert UI change if necessary
+             # Revert UI change
              widget.name_editable.setText(widget.filename_no_ext)
 
-         # Create a unique connection ID for this specific rename operation
-         connection_id = f"rename_{recording_id}_{new_name_no_ext}"
-         
-         # Disconnect any existing error handler for rename operations
          try:
-             for signal in self.db_manager.error_occurred.receivers:
-                 if hasattr(signal, '__self__') and signal.__self__.__name__.startswith('on_rename_error'):
-                     self.db_manager.error_occurred.disconnect(signal)
-         except (TypeError, AttributeError):
-             pass
+             # First attempt the filesystem rename - if this fails, no DB update needed
+             os.rename(old_file_path, new_file_path)
+             logger.info(f"Successfully renamed file on disk from {old_file_path} to {new_file_path}")
              
-         # Connect the new error handler
-         self.db_manager.error_occurred.connect(on_rename_error)
-
-         # Start the transaction - first update the filename in DB
-         self.db_manager.update_recording(
-             recording_id,
-             on_rename_complete,
-             filename=new_full_filename
-         )
+             try:
+                 # Now update the database with both new filename and file path
+                 self.db_manager.update_recording(
+                     recording_id,
+                     on_db_update_success,
+                     filename=new_full_filename,
+                     file_path=new_file_path
+                 )
+                 
+                 # Connect error handler for DB-related errors
+                 self.db_manager.error_occurred.connect(on_rename_error)
+                 
+             except Exception as db_error:
+                 # If DB update fails, roll back the filesystem rename
+                 logger.error(f"Database update failed, rolling back filesystem rename: {db_error}")
+                 try:
+                     os.rename(new_file_path, old_file_path)
+                     logger.info(f"Successfully rolled back file rename from {new_file_path} to {old_file_path}")
+                 except OSError as rollback_error:
+                     # Critical situation - DB update failed AND filesystem rollback failed
+                     logger.critical(f"CRITICAL: Failed to roll back rename after DB error. DB and filesystem out of sync: {rollback_error}")
+                     show_error_message(self, "Critical Rename Error", 
+                         "Database update failed and could not roll back filesystem change. Please restart the application.")
+                 
+                 # Show error and revert UI
+                 show_error_message(self, "Rename Failed", f"Database error: {str(db_error)}")
+                 widget.name_editable.setText(widget.filename_no_ext)
+                 
+         except OSError as fs_error:
+             # Filesystem rename failed - no need to update DB
+             logger.error(f"Failed to rename file on disk: {fs_error}")
+             show_error_message(self, "Rename Failed", f"Could not rename file on disk: {str(fs_error)}")
+             # Revert UI change
+             widget.name_editable.setText(widget.filename_no_ext)
 
 
     def filter_recordings(self):
