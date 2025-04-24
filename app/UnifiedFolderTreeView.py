@@ -96,6 +96,7 @@ class UnifiedFolderTreeView(QTreeView):
         self.setDragDropMode(QAbstractItemView.DragDropMode.InternalMove)
         self.setContextMenuPolicy(Qt.ContextMenuPolicy.CustomContextMenu)
         self.customContextMenuRequested.connect(self.show_context_menu)
+        self.setUniformRowHeights(False)  # Ensure rows can have different heights for custom widgets
         
         # Set custom item delegate to handle recording items
         self.item_delegate = RecordingItemDelegate(self)
@@ -310,6 +311,11 @@ class UnifiedFolderTreeView(QTreeView):
                     added_count += 1
                     logger.debug(f"Added unassigned recording ID {rec_id}: {rec[1]}")
                 
+                # Force layout update to accommodate widgets
+                # Schedule a delayed update to allow geometries to settle
+                QTimer.singleShot(0, self.updateGeometries)
+                QTimer.singleShot(0, self.viewport().update)
+                
                 logger.info(f"Added {added_count} unassigned recordings, skipped {skipped_count}")
             
             # Use folder manager to get unassigned recordings
@@ -382,6 +388,11 @@ class UnifiedFolderTreeView(QTreeView):
                     
                     added_count += 1
                     logger.debug(f"Added recording ID {rec_id} to folder {folder_id}: {rec[1]}")
+                
+                # Force layout update to accommodate widgets
+                # Schedule a delayed update to allow geometries to settle
+                QTimer.singleShot(0, self.updateGeometries)
+                QTimer.singleShot(0, self.viewport().update)
                 
                 logger.info(f"Added {added_count} recordings to folder {folder_id}, skipped {skipped_count}")
             
@@ -619,6 +630,9 @@ class UnifiedFolderTreeView(QTreeView):
         
         if item and item.data(RecordingFolderModel.ITEM_TYPE_ROLE) == "folder":
             item.setIcon(self.folder_open_icon)
+            # Resize rows based on newly visible children
+            self.resizeColumnToContents(0)
+            self.updateGeometries()  # Might also be needed here
             
     def on_item_collapsed(self, index):
         """Handle item collapse."""
@@ -810,5 +824,8 @@ class UnifiedFolderTreeView(QTreeView):
         
         # Set the RecordingListItem widget for this index
         self.setIndexWidget(proxy_index, recording_item)
+        
+        # Ensure the view adjusts row height for the new widget
+        self.resizeColumnToContents(0)
         
         logger.info(f"Added recording ID {rec_id} to model")
