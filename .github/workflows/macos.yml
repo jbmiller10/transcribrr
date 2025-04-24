@@ -1,16 +1,18 @@
-name: macOS Briefcase build
+name: "macOS Briefcase build"
+
 on:
   workflow_dispatch:
     inputs:
       version:
-        description: 'Application version (e.g. 1.2.3)'
+        description: "Application version (e.g. 1.2.3)"
         required: true
         type: string
   push:
-    tags: ['v*.*.*']
+    tags:
+      - "v*.*.*"        # ← block list notation
 
 env:
-  PYTHON_VERSION: '3.12'          # matches requires-python
+  PYTHON_VERSION: "3.12"
 
 jobs:
   macos:
@@ -48,6 +50,7 @@ jobs:
           [[ -n "$VER" ]] || { echo "::error::Version not determined"; exit 1; }
           echo "ver=$VER" >> "$GITHUB_OUTPUT"
           sed -i '' -E "s/^version = \".*\"/version = \"$VER\"/" pyproject.toml
+
       - name: Inject transient transcribrr package
         run: |
           mkdir -p transcribrr
@@ -56,6 +59,7 @@ from importlib import import_module as _im
 main = _im("main").main
 __all__ = ["main"]
 PY
+
       - name: Create bundle
         run: briefcase create macOS --no-input
 
