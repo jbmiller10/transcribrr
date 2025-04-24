@@ -44,7 +44,6 @@ description  = "Speech-to-text transcription tool"
 sources = [
     "transcribrr",          # wrapper package created in CI
     "app",                  # your application package
-    "main.py",              # original entry script
 ]
 
 # Cross-platform permission (Briefcase converts to plist + entitlement)
