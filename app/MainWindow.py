@@ -105,98 +105,43 @@ class MainWindow(QMainWindow):
         # Not needed - styling is now handled by the ThemeManager
         pass
 
-    def on_new_file(self, file_path_or_paths):
-        """Handle new file(s).
+    def on_new_file(self, file_path):
+        """Handle new file.
 
 Args:
-    file_path_or_paths: path or list of paths
+    file_path: path to the audio file
         """
         try:
-            # Check if we have a list of files (chunks) or a single file
-            if isinstance(file_path_or_paths, list):
-                # For chunked files, add all chunks to the database
-                file_paths = file_path_or_paths
+            filename = os.path.basename(file_path)
+            date_created = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+            
+            # Calculate the duration of the recording
+            duration = calculate_duration(file_path)
+            
+            # Store the original source path (same as file_path for local files)
+            original_source = file_path
+            
+            # Create a new recording in the database using the DatabaseManager
+            # Include original_source_identifier as the last parameter
+            recording_data = (filename, file_path, date_created, duration, "", "", original_source)
+            
+            # Define callback function to add the recording to UI when database operation completes
+            def on_recording_created(recording_id):
+                self.recent_recordings_widget.add_recording_to_list(
+                    recording_id, filename, file_path, date_created, duration, "", ""
+                )
                 
-                # If there's only one chunk, treat it as a normal file
-                if len(file_paths) == 1:
-                    self.on_new_file(file_paths[0])
-                    return
-                    
-                # Handle multiple chunks
-                date_created = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+                # Select the newly added recording automatically
+                widget = self.recent_recordings_widget.unified_view.recordings_map.get(recording_id)
+                if widget:
+                    for i in range(self.recent_recordings_widget.unified_view.topLevelItemCount()):
+                        parent_item = self.recent_recordings_widget.unified_view.topLevelItem(i)
+                        self._find_and_select_recording_item(parent_item, recording_id)
                 
-                # Process each chunk
-                for i, file_path in enumerate(file_paths):
-                    filename = os.path.basename(file_path)
-                    # Calculate the duration for each chunk using our utility function
-                    duration = calculate_duration(file_path)
-                    
-                    # Create a recording in the database for each chunk
-                    recording_data = (
-                        f"{filename} (Chunk {i+1}/{len(file_paths)})", 
-                        file_path, 
-                        date_created, 
-                        duration, 
-                        "", 
-                        ""
-                    )
-                    
-                    # Define a closure to capture the current chunk's info for the callback
-                    # Capture the current values of the loop variables inside a
-                    # factory in order to avoid the classic late‑binding issue
-                    # where all callbacks would reference the *last* values of
-                    # the loop once it finishes.
-                    def make_callback(fname: str, fpath: str, dur: float, created: str):
-                        def _on_recording_created(recording_id):
-                            self.recent_recordings_widget.add_recording_to_list(
-                                recording_id,
-                                fname,
-                                fpath,
-                                created,
-                                dur,
-                                "",
-                                "",
-                            )
-                        return _on_recording_created
-                    
-                    # Add the chunk to the database with its specific callback
-                    self.db_manager.create_recording(
-                        recording_data,
-                        make_callback(filename, file_path, duration, date_created),
-                    )
+                self.update_status_bar(f"Added new recording: {filename}")
                 
-                # Show a status message about the chunked files
-                self.update_status_bar(f"Added {len(file_paths)} audio chunks")
-                
-            else:
-                # Handle a single file (non-chunked)
-                file_path = file_path_or_paths
-                filename = os.path.basename(file_path)
-                date_created = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-                
-                # Calculate the duration of the recording using our utility function
-                duration = calculate_duration(file_path)
-                
-                # Create a new recording in the database using the DatabaseManager
-                recording_data = (filename, file_path, date_created, duration, "", "")
-                
-                # Define callback function to add the recording to UI when database operation completes
-                def on_recording_created(recording_id):
-                    self.recent_recordings_widget.add_recording_to_list(
-                        recording_id, filename, file_path, date_created, duration, "", ""
-                    )
-                    
-                    # Select the newly added recording automatically
-                    widget = self.recent_recordings_widget.unified_view.recordings_map.get(recording_id)
-                    if widget:
-                        for i in range(self.recent_recordings_widget.unified_view.topLevelItemCount()):
-                            parent_item = self.recent_recordings_widget.unified_view.topLevelItem(i)
-                            self._find_and_select_recording_item(parent_item, recording_id)
-                    
-                    self.update_status_bar(f"Added new recording: {filename}")
-                    
-                # Execute the database operation in a background thread
-                self.db_manager.create_recording(recording_data, on_recording_created)
+            # Execute the database operation in a background thread
+            self.db_manager.create_recording(recording_data, on_recording_created)
                 
         except Exception as e:
             logger.error(f"Error processing new file: {e}", exc_info=True)

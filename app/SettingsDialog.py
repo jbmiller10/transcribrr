@@ -262,18 +262,9 @@ class SettingsDialog(QDialog):
         self.hw_accel_layout.addWidget(self.hw_accel_checkbox)
         self.hw_accel_layout.addStretch()
         
-        # Chunking options
-        chunk_layout = QHBoxLayout()
-        self.chunk_enabled_checkbox = QCheckBox('Enable Audio Chunking')
-        self.chunk_enabled_checkbox.setToolTip("Split long files for processing")
-        self.chunk_duration_label = QLabel('Chunk Size (min):')
-        self.chunk_duration_spinbox = QSpinBox(self)
-        self.chunk_duration_spinbox.setRange(1, 60)
-        chunk_layout.addWidget(self.chunk_enabled_checkbox)
-        chunk_layout.addWidget(self.chunk_duration_label)
-        chunk_layout.addWidget(self.chunk_duration_spinbox)
-        chunking_info = QLabel("Splitting audio allows processing very long files.")
-        chunking_info.setStyleSheet("color: gray; font-size: 10pt;")
+        # Removed chunking options
+        # Hardware acceleration info
+        chunking_info = QLabel("")
         hw_accel_info = QLabel("Hardware acceleration improves speed. On Apple Silicon, speaker detection will be disabled with MPS.")
         hw_accel_info.setStyleSheet("color: gray; font-size: 10pt;")
         
@@ -282,8 +273,6 @@ class SettingsDialog(QDialog):
         options_layout.addWidget(self.speaker_detection_checkbox)
         options_layout.addLayout(self.hw_accel_layout)
         options_layout.addWidget(hw_accel_info)
-        options_layout.addLayout(chunk_layout)
-        options_layout.addWidget(chunking_info)
         transcription_layout.addWidget(options_group)
         transcription_layout.addStretch()
 
@@ -509,8 +498,6 @@ class SettingsDialog(QDialog):
             self.language_dropdown.setCurrentIndex(index if index != -1 else 0)
 
             self.speaker_detection_checkbox.setChecked(config.get('speaker_detection_enabled', False))
-            self.chunk_enabled_checkbox.setChecked(config.get('chunk_enabled', True))
-            self.chunk_duration_spinbox.setValue(config.get('chunk_duration', 10))
             
             # Hardware acceleration
             self.hw_accel_checkbox.setChecked(config.get('hardware_acceleration_enabled', True))
@@ -602,8 +589,6 @@ class SettingsDialog(QDialog):
             'speaker_detection_enabled': self.speaker_detection_checkbox.isChecked(),
             'transcription_language': self.language_dropdown.currentText(),
             'theme': self.theme_dropdown.currentText().lower(),
-            'chunk_enabled': self.chunk_enabled_checkbox.isChecked(),
-            'chunk_duration': self.chunk_duration_spinbox.value(),
             'hardware_acceleration_enabled': self.hw_accel_checkbox.isChecked()
         }
 
@@ -652,8 +637,6 @@ class SettingsDialog(QDialog):
             self.transcription_method_dropdown.setCurrentText(DEFAULT_CONFIG['transcription_method'].capitalize())
             self.language_dropdown.setCurrentText(DEFAULT_CONFIG['transcription_language'].capitalize())
             self.speaker_detection_checkbox.setChecked(DEFAULT_CONFIG['speaker_detection_enabled'])
-            self.chunk_enabled_checkbox.setChecked(DEFAULT_CONFIG['chunk_enabled'])
-            self.chunk_duration_spinbox.setValue(DEFAULT_CONFIG['chunk_duration'])
             self.hw_accel_checkbox.setChecked(DEFAULT_CONFIG['hardware_acceleration_enabled'])
             self.gpt_model_dropdown.setCurrentText(DEFAULT_CONFIG['gpt_model'])
             self.max_tokens_spinbox.setValue(DEFAULT_CONFIG['max_tokens'])

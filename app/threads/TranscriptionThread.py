@@ -20,7 +20,7 @@ class TranscriptionThread(QThread):
     error = pyqtSignal(str)
 
     def __init__(self,
-                file_path: Union[str, List[str]],
+                file_path: str,
                 transcription_quality: str,
                 speaker_detection_enabled: bool,
                 hf_auth_key: Optional[str],
@@ -28,12 +28,9 @@ class TranscriptionThread(QThread):
                 transcription_method: str = 'local',
                 openai_api_key: Optional[str] = None,
                 hardware_acceleration_enabled: bool = True,
-                # files_are_chunks: bool = False, # Determined internally now
                 *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.file_path = file_path
-        # Determine if input is chunks
-        self.files_are_chunks = isinstance(file_path, list)
 
         # Store parameters explicitly
         self.transcription_quality = transcription_quality
@@ -43,27 +40,25 @@ class TranscriptionThread(QThread):
         self.openai_api_key = openai_api_key
         self.language = language
         self.hardware_acceleration_enabled = hardware_acceleration_enabled
+        
+        # API file size limit in MB
+        self.api_file_size_limit = 25  # OpenAI's limit
 
         # Cancellation flag
         self._is_canceled = False
         self._lock = Lock() # For thread-safe access to the flag
 
-        # Initialize the transcription service (consider if it needs to be thread-local)
-        # For now, assume ModelManager handles thread safety or models are used sequentially
+        # Initialize the transcription service
         self.transcription_service = TranscriptionService()
+        
+        # Temporary files that may be created during processing
+        self.temp_files = []
 
-        # Initial validation (moved here from run)
+        # Initial validation
         try:
-            if self.files_are_chunks:
-                if not self.file_path: raise ValueError("Received empty list of chunks.")
-                for path in self.file_path:
-                    self._validate_file(path)
-            else:
-                self._validate_file(self.file_path)
+            self._validate_file(self.file_path)
         except (FileNotFoundError, ValueError) as e:
              # Emit error immediately if validation fails in constructor
-             # Use QTimer to emit from the main thread's event loop if needed,
-             # but emitting directly might be okay for constructor errors before start()
              self.error.emit(str(e))
              self._is_canceled = True # Prevent run() from executing
 
@@ -103,12 +98,8 @@ class TranscriptionThread(QThread):
         transcript = ""
 
         try:
-            if self.files_are_chunks:
-                self.update_progress.emit(f'Processing {len(self.file_path)} audio chunks...')
-                transcript = self.process_chunked_files(start_time)
-            else:
-                self.update_progress.emit('Transcription started...')
-                transcript = self.process_single_file(self.file_path, start_time)
+            self.update_progress.emit('Transcription started...')
+            transcript = self.process_single_file(self.file_path, start_time)
 
             if self.is_canceled():
                 self.update_progress.emit('Transcription cancelled.')
@@ -139,42 +130,121 @@ class TranscriptionThread(QThread):
                 logger.error(f"Error during transcription resource cleanup: {cleanup_error}", exc_info=True)
             logger.info("Transcription thread finished execution.")
 
-    def process_chunked_files(self, start_time: float) -> str:
-        chunk_results = [""] * len(self.file_path) # Pre-allocate for order
-        total_chunks = len(self.file_path)
-        self.update_progress.emit(f'Starting transcription of {total_chunks} chunks...')
-
-        # --- Sequential processing for API or simplified local ---
-        # Consider if parallel local processing is truly needed/stable.
-        # Let's stick to sequential for now for stability.
-        # If parallelism is desired, ThreadPoolExecutor is okay for I/O bound (API),
-        # but ProcessPoolExecutor might be needed for CPU/GPU bound local tasks
-        # to bypass GIL, adding complexity.
-
-        for i, chunk_path in enumerate(self.file_path):
-            if self.is_canceled():
-                logger.info(f"Chunk processing cancelled at chunk {i+1}/{total_chunks}")
-                return "[Transcription Cancelled]"
-
-            self.update_progress.emit(f'Processing chunk {i+1}/{total_chunks}...')
+    def _create_temporary_chunks(self, file_path: str) -> List[str]:
+        """Create temporary chunks for API-based transcription of large files."""
+        from pydub import AudioSegment
+        import tempfile
+        
+        self.update_progress.emit("File exceeds API size limit. Creating temporary chunks...")
+        
+        # Load the audio file
+        try:
+            audio = AudioSegment.from_file(file_path)
+            duration_ms = len(audio)
+            
+            # Calculate appropriate chunk size based on file size
+            file_size_mb = os.path.getsize(file_path) / (1024 * 1024)
+            num_chunks = max(2, int(file_size_mb / self.api_file_size_limit) + 1)
+            chunk_duration_ms = duration_ms // num_chunks
+            
+            logger.info(f"Creating {num_chunks} temporary chunks for API transcription")
+            self.update_progress.emit(f"Creating {num_chunks} temporary chunks for API transcription...")
+            
+            # Create temporary files for the chunks
+            temp_files = []
+            
+            for i in range(num_chunks):
+                if self.is_canceled():
+                    # Clean up any temporary files already created
+                    self._cleanup_temp_files()
+                    return []
+                
+                start_ms = i * chunk_duration_ms
+                end_ms = min((i + 1) * chunk_duration_ms, duration_ms)
+                
+                # Create a chunk
+                chunk = audio[start_ms:end_ms]
+                
+                # Create a temporary file
+                fd, temp_path = tempfile.mkstemp(suffix='.wav', prefix=f'temp_chunk_{i+1}_')
+                os.close(fd)  # Close file descriptor, we'll use the path
+                
+                # Export chunk to the temporary file
+                self.update_progress.emit(f"Exporting temporary chunk {i+1}/{num_chunks}...")
+                chunk.export(temp_path, format="wav")
+                
+                # Track the temporary file
+                temp_files.append(temp_path)
+                self.temp_files.append(temp_path)
+            
+            self.update_progress.emit(f"Created {len(temp_files)} temporary chunks.")
+            return temp_files
+            
+        except Exception as e:
+            logger.error(f"Error creating temporary chunks: {e}", exc_info=True)
+            self.error.emit(f"Failed to create temporary chunks: {e}")
+            # Clean up any temporary files that were created
+            self._cleanup_temp_files()
+            return []
+    
+    def _cleanup_temp_files(self):
+        """Delete any temporary files created during processing."""
+        for temp_file in self.temp_files:
             try:
-                # Use the main process_single_file method
-                chunk_transcript = self.process_single_file(chunk_path, time.time(), f"Chunk {i+1}")
-                chunk_results[i] = chunk_transcript
+                if os.path.exists(temp_file):
+                    os.remove(temp_file)
+                    logger.debug(f"Removed temporary file: {temp_file}")
             except Exception as e:
-                logger.error(f"Error processing chunk {i+1} ({chunk_path}): {e}", exc_info=True)
-                chunk_results[i] = f"[Error in Chunk {i+1}]"
-                # Optionally emit an error signal here too, or just continue
-                self.error.emit(f"Error processing chunk {i+1}: {e}")
-
-
-        if self.is_canceled():
-            return "[Transcription Cancelled]"
-
-        # Combine results with clear separators
-        combined_transcript = "\n\n--- End Chunk ---\n\n".join(filter(None, chunk_results)) # Filter out potential None results
-        self.update_progress.emit('All chunks processed. Combined results.')
-        return combined_transcript
+                logger.warning(f"Failed to remove temporary file {temp_file}: {e}")
+        
+        # Clear the list after cleanup
+        self.temp_files = []
+        
+    def _process_temporary_chunks(self, temp_files: List[str], start_time: float) -> str:
+        """Process temporary chunks for API transcription and combine results."""
+        if not temp_files:
+            return "[No chunks to process]"
+            
+        chunk_results = []
+        total_chunks = len(temp_files)
+        
+        try:
+            for i, chunk_path in enumerate(temp_files):
+                if self.is_canceled():
+                    logger.info(f"Temporary chunk processing cancelled at chunk {i+1}/{total_chunks}")
+                    return "[Transcription Cancelled]"
+                    
+                self.update_progress.emit(f"Transcribing temporary chunk {i+1}/{total_chunks}...")
+                
+                # Process this chunk with API method
+                result = self.transcription_service._transcribe_with_api(
+                    file_path=chunk_path,
+                    language=self.language,
+                    api_key=self.openai_api_key
+                )
+                
+                # Get the transcription text
+                if 'text' in result:
+                    chunk_results.append(result['text'])
+                else:
+                    chunk_results.append(f"[Error in Chunk {i+1}]")
+                
+                # Update progress percentage
+                progress_pct = int((i + 1) / total_chunks * 100)
+                self.update_progress.emit(f"Progress: {progress_pct}% ({i+1}/{total_chunks} chunks processed)")
+            
+            # Combine results
+            combined_transcript = " ".join(chunk_results)
+            self.update_progress.emit("Combining temporary chunk transcriptions...")
+            
+            return combined_transcript
+            
+        except Exception as e:
+            logger.error(f"Error processing temporary chunks: {e}", exc_info=True)
+            return "[Error processing chunks]"
+        finally:
+            # Always clean up the temporary files
+            self._cleanup_temp_files()
 
     def process_single_file(self,
                            file_path: str,
@@ -182,54 +252,82 @@ class TranscriptionThread(QThread):
                            chunk_label: str = "") -> str:
         if self.is_canceled(): return "[Cancelled]"
 
-        task_label = f"{os.path.basename(file_path)}{' (' + chunk_label + ')' if chunk_label else ''}"
+        task_label = f"{os.path.basename(file_path)}"
         logger.info(f"Starting processing for: {task_label}")
         self.update_progress.emit(f'Processing: {task_label}...')
 
-        # Check device for local method
+        # Check if using API method and if file exceeds API size limit
         method = self.transcription_method.lower()
-        if method == 'local':
-
+        if method == 'api':
+            file_size_mb = os.path.getsize(file_path) / (1024 * 1024)
+            if file_size_mb > self.api_file_size_limit:
+                self.update_progress.emit(f'File size ({file_size_mb:.1f}MB) exceeds API limit ({self.api_file_size_limit}MB)')
+                
+                # Disable speaker detection for chunked API processing
+                original_speaker_detection = self.speaker_detection_enabled
+                if original_speaker_detection:
+                    self.update_progress.emit('Speaker detection is disabled for chunked API processing')
+                
+                # Create temporary chunks for processing
+                temp_chunks = self._create_temporary_chunks(file_path)
+                if not temp_chunks:
+                    return "[Failed to create temporary chunks for API processing]"
+                
+                # Process the temporary chunks
+                result = self._process_temporary_chunks(temp_chunks, time.time())
+                
+                end_time = time.time()
+                runtime = end_time - start_time
+                logger.info(f"Finished temporary chunk processing in {runtime:.2f}s")
+                self.update_progress.emit(f"Finished API transcription with temporary chunks in {runtime:.2f}s")
+                
+                return result
+            else:
+                self.update_progress.emit(f'Using OpenAI API for transcription')
+        elif method == 'local':
             device = ModelManager.instance().device
             self.update_progress.emit(f'Using device: {device}')
             if device == 'cuda':
-                 try:
-                     gpu_mem = torch.cuda.get_device_properties(0).total_memory / (1024**3)
-                     self.update_progress.emit(f'GPU Memory: {gpu_mem:.2f}GB')
-                 except Exception: pass # Ignore if props fail
-        else:
-            self.update_progress.emit(f'Using OpenAI API for transcription')
+                try:
+                    gpu_mem = torch.cuda.get_device_properties(0).total_memory / (1024**3)
+                    self.update_progress.emit(f'GPU Memory: {gpu_mem:.2f}GB')
+                except Exception:
+                    pass # Ignore if props fail
 
-
-        # --- Call Transcription Service ---
-        # Add a check before the potentially long call
+        # Check before the potentially long call
         if self.is_canceled(): return "[Cancelled]"
 
-        result = self.transcription_service.transcribe_file(
-            file_path=file_path,
-            model_id=self.transcription_quality,
-            language=self.language,
-            method=self.transcription_method,
-            openai_api_key=self.openai_api_key,
-            hf_auth_key=self.hf_auth_key if self.speaker_detection_enabled else None,
-            speaker_detection=self.speaker_detection_enabled and not self.files_are_chunks, # Disable speaker detect for individual chunks
-            hardware_acceleration_enabled=self.hardware_acceleration_enabled
-        )
+        try:
+            # Process file with normal transcription
+            result = self.transcription_service.transcribe_file(
+                file_path=file_path,
+                model_id=self.transcription_quality,
+                language=self.language,
+                method=self.transcription_method,
+                openai_api_key=self.openai_api_key,
+                hf_auth_key=self.hf_auth_key if self.speaker_detection_enabled else None,
+                speaker_detection=self.speaker_detection_enabled,
+                hardware_acceleration_enabled=self.hardware_acceleration_enabled
+            )
 
-        # --- Process Result ---
-        if self.is_canceled(): return "[Cancelled]"
+            # Process Result
+            if self.is_canceled(): return "[Cancelled]"
 
-        end_time = time.time()
-        runtime = end_time - start_time
-        logger.info(f"Finished processing {task_label} in {runtime:.2f}s")
+            end_time = time.time()
+            runtime = end_time - start_time
+            logger.info(f"Finished processing {task_label} in {runtime:.2f}s")
 
-        # Return formatted text if speaker detection was successful, otherwise plain text
-        if self.speaker_detection_enabled and 'formatted_text' in result:
-            self.update_progress.emit(f"Finished {task_label} with speakers in {runtime:.2f}s")
-            return result['formatted_text']
-        elif 'text' in result:
-            self.update_progress.emit(f"Finished {task_label} in {runtime:.2f}s")
-            return result['text']
-        else:
-            logger.warning(f"Transcription for {task_label} returned no text.")
-            return "[No transcription generated]"
+            # Return formatted text if speaker detection was successful, otherwise plain text
+            if self.speaker_detection_enabled and 'formatted_text' in result:
+                self.update_progress.emit(f"Finished {task_label} with speakers in {runtime:.2f}s")
+                return result['formatted_text']
+            elif 'text' in result:
+                self.update_progress.emit(f"Finished {task_label} in {runtime:.2f}s")
+                return result['text']
+            else:
+                logger.warning(f"Transcription for {task_label} returned no text.")
+                return "[No transcription generated]"
+        except Exception as e:
+            logger.error(f"Error processing file {file_path}: {e}", exc_info=True)
+            self.error.emit(f"Error processing file: {e}")
+            return f"[Error: {str(e)}]"

@@ -77,7 +77,8 @@ def create_recordings_table(conn: sqlite3.Connection) -> None:
         {FIELD_RAW_TRANSCRIPT} TEXT,
         {FIELD_PROCESSED_TEXT} TEXT,
         {FIELD_RAW_TRANSCRIPT_FORMATTED} BLOB,
-        {FIELD_PROCESSED_TEXT_FORMATTED} BLOB
+        {FIELD_PROCESSED_TEXT_FORMATTED} BLOB,
+        original_source_identifier TEXT -- Added to store original file path or YouTube URL
     );
     """
     # Add Index for faster lookups by path
@@ -157,24 +158,25 @@ def get_recording_by_id(conn: sqlite3.Connection, recording_id: int) -> Optional
 
 def create_recording(conn: sqlite3.Connection, recording_data: Tuple) -> int:
     """Insert new recording."""
-    # Expects (filename, file_path, date_created, duration, raw_transcript, processed_text)
+    # Expects (filename, file_path, date_created, duration, raw_transcript, processed_text, original_source_identifier)
     # Ensure date_created is in correct format 'YYYY-MM-DD HH:MM:SS'
     if len(recording_data) < 4:
          raise ValueError("Recording data must contain at least filename, file_path, date_created, duration")
 
     # Pad with defaults if transcript/processed text are missing
     data_to_insert = list(recording_data)
-    while len(data_to_insert) < 6:
-        data_to_insert.append(None) # Use None for missing transcript/processed
+    while len(data_to_insert) < 7:  # Updated to account for original_source_identifier
+        data_to_insert.append(None) # Use None for missing fields
 
     sql = f"""INSERT INTO {TABLE_RECORDINGS}(
         {FIELD_FILENAME}, {FIELD_FILE_PATH}, {FIELD_DATE_CREATED},
-        {FIELD_DURATION}, {FIELD_RAW_TRANSCRIPT}, {FIELD_PROCESSED_TEXT}
-    ) VALUES(?,?,?,?,?,?)"""
+        {FIELD_DURATION}, {FIELD_RAW_TRANSCRIPT}, {FIELD_PROCESSED_TEXT},
+        original_source_identifier
+    ) VALUES(?,?,?,?,?,?,?)"""
 
     try:
         cursor = conn.cursor()
-        cursor.execute(sql, tuple(data_to_insert[:6])) # Insert first 6 elements
+        cursor.execute(sql, tuple(data_to_insert[:7])) # Insert first 7 elements
         conn.commit()
         new_id = cursor.lastrowid
         logger.info(f"Created recording '{data_to_insert[0]}' with ID {new_id}")

@@ -23,7 +23,7 @@ logger = logging.getLogger('transcribrr')
 
 class ControlPanelWidget(QWidget):
     # Renamed signal for clarity
-    file_ready_for_processing = pyqtSignal(object) # Can emit str or list[str]
+    file_ready_for_processing = pyqtSignal(str) # Now only emits a single file path
     # Removed record_clicked signal as VoiceRecorderWidget handles its own logic
     status_update = pyqtSignal(str) # Use a more generic progress signal name
 
@@ -369,14 +369,10 @@ class ControlPanelWidget(QWidget):
                      # No explicit cancel in original, add if needed
                      self.transcoding_thread.wait(1000)
 
-                # Get chunk settings from config
-                chunk_enabled = self.config_manager.get('chunk_enabled', True)
-                chunk_duration = self.config_manager.get('chunk_duration', 10)
+                # Chunking removed from this version
 
                 self.transcoding_thread = TranscodingThread(
-                    file_path=filepath,
-                    chunk_enabled=chunk_enabled,
-                    chunk_duration=chunk_duration
+                    file_path=filepath
                 )
                 self.transcoding_thread.update_progress.connect(self.on_transcoding_progress)
                 self.transcoding_thread.completed.connect(self.on_transcoding_complete)
@@ -447,7 +443,7 @@ class ControlPanelWidget(QWidget):
                 message
             )
 
-    def on_transcoding_complete(self, file_paths):
+    def on_transcoding_complete(self, file_path):
         """Handle transcoding completion."""
         try:
             # Finish progress dialog
@@ -457,26 +453,14 @@ class ControlPanelWidget(QWidget):
                 
             # Re-enable UI elements
             self.feedback_manager.set_ui_busy(False)
-                
-            # Always treat as list since TranscodingThread now always emits lists
-            if not isinstance(file_paths, list):
-                file_paths = [file_paths]
-                
-            num_files = len(file_paths)
-            if num_files > 1:
-                # Multiple chunks produced
-                logger.info(f"Transcoding completed. {num_files} chunks created.")
-                
-                # Show status and emit file ready
-                self.feedback_manager.show_status(f"Ready: {num_files} audio chunks")
-            else:
-                # Single file produced
-                logger.info(f"Transcoding completed. File saved to: {file_paths[0]}")
-                
-                # Show status and emit file ready
-                self.feedback_manager.show_status(f"Ready: {os.path.basename(file_paths[0])}")
-                
-            self.file_ready_for_processing.emit(file_paths)
+            
+            # Single file produced
+            logger.info(f"Transcoding completed. File saved to: {file_path}")
+            
+            # Show status and emit file ready
+            self.feedback_manager.show_status(f"Ready: {os.path.basename(file_path)}")
+            
+            self.file_ready_for_processing.emit(file_path)
         except Exception as e:
             logger.error(f"Error in transcoding completion handler: {e}")
             self.on_error(f"Failed to complete transcoding: {e}")
