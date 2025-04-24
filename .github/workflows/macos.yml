@@ -27,7 +27,7 @@ jobs:
       - uses: actions/cache@v3
         with:
           path: ~/.cache/pip
-          key: macos-pip-${{ env.PYTHON_VERSION }}-${{ hashFiles('pyproject.toml', 'requirements.txt') }}
+          key: macos-pip-${{ env.PYTHON_VERSION }}-${{ hashFiles('requirements.txt') }}
           restore-keys: macos-pip-${{ env.PYTHON_VERSION }}-
 
       - name: Install system libs
