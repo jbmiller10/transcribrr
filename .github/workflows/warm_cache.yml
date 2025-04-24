@@ -10,7 +10,6 @@ on:
 
 env:
   PYTHON_VERSION: "3.9"
-env:
   MAC_PYTHON_VERSION: "3.12" 
 
 jobs:
