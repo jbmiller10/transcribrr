@@ -1,5 +1,5 @@
 import logging
-from datetime import datetime
+from datetime import datetime, timedelta
 from PyQt6.QtCore import Qt, QModelIndex, QSortFilterProxyModel
 from PyQt6.QtGui import QStandardItemModel, QStandardItem, QIcon, QColor
 from PyQt6.QtWidgets import QTreeView
@@ -229,7 +229,7 @@ class RecordingFilterProxyModel(QSortFilterProxyModel):
                     elif self.filter_criteria == "This Week":
                         # Get start of current week (Monday)
                         start_of_week = now.replace(hour=0, minute=0, second=0, microsecond=0)
-                        start_of_week = start_of_week - datetime.timedelta(days=now.weekday())
+                        start_of_week = start_of_week - timedelta(days=now.weekday())
                         if date_created < start_of_week:
                             return False
                 
