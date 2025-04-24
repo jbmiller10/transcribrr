@@ -1,130 +1,72 @@
-# .github/workflows/macos.yml
-
 name: macOS Briefcase build
 
 on:
-  workflow_dispatch: # Allow manual triggering
+  workflow_dispatch:
     inputs:
       version:
-        description: 'The application version (e.g., 1.0.0). Required for manual builds.'
+        description: 'Application version (e.g. 1.2.3)'
         required: true
         type: string
   push:
-    tags:
-      - 'v*.*.*' # Trigger only on version tags like v1.0.0, v1.2.3, etc.
+    tags: [ 'v*.*.*' ]
 
 env:
-  PYTHON_VERSION: "3.9" # Match your specified version in .python-version
+  PYTHON_VERSION: '3.10'   # Torch CPU wheels require ≥3.10 on Apple Silicon
 
 jobs:
   macos:
-    runs-on: macos-14 # Use a recent macOS runner (includes Apple Silicon support)
+    runs-on: macos-14
 
     steps:
-      - name: Checkout repository code
+      - name: Check out repo
         uses: actions/checkout@v4
 
-      - name: Set up Python ${{ env.PYTHON_VERSION }}
+      - name: Set up Python
         uses: actions/setup-python@v5
         with:
           python-version: ${{ env.PYTHON_VERSION }}
 
-      - name: Locate pip cache directory
-        id: pip-cache
-        run: echo "dir=$(python -m pip cache dir)" >> "$GITHUB_OUTPUT"
-
-      - name: Cache pip wheels
+      - name: Cache pip
         uses: actions/cache@v3
         with:
-          path: ${{ steps.pip-cache.outputs.dir }}
-          # Key includes OS, Python version, and hashes of requirements/config files
-          key: macos-pip-${{ env.PYTHON_VERSION }}-${{ hashFiles('**/requirements.txt', '**/pyproject.toml') }}
-          restore-keys: |
-            macos-pip-${{ env.PYTHON_VERSION }}-
+          path: ~/.cache/pip
+          key: macos-pip-${{ env.PYTHON_VERSION }}-${{ hashFiles('pyproject.toml', 'requirements.txt') }}
+          restore-keys: macos-pip-${{ env.PYTHON_VERSION }}-
 
-      - name: Install system libraries (PortAudio & FFmpeg)
-        run: |
-          echo "Updating Homebrew..."
-          brew update
-          echo "Installing PortAudio and FFmpeg..."
-          # Install necessary libraries for PyAudio and FFmpeg handling
-          brew install portaudio ffmpeg
-          echo "Verifying installations..."
-          # Verify installation paths (optional but good practice)
-          which portaudio || echo "WARNING: PortAudio might not be linked correctly or found in PATH"
-          which ffmpeg || echo "WARNING: FFmpeg might not be linked correctly or found in PATH"
-          which ffprobe || echo "WARNING: FFprobe might not be linked correctly or found in PATH"
+      - name: Install system libraries
+        run: brew install --quiet portaudio ffmpeg
 
-      - name: Install Python dependencies (Briefcase & App Requirements)
+      - name: Install Python deps
         run: |
-          echo "Upgrading pip..."
           python -m pip install --upgrade pip
-          echo "Installing Briefcase..."
           python -m pip install briefcase
-          echo "Installing application requirements..."
-          # Install dependencies from requirements.txt
           python -m pip install -r requirements.txt
-          # Explicitly install torch if needed for macOS, otherwise assume requirements.txt handles it
-          # Example: If requirements.txt doesn't specify CPU-only torch for macOS:
-          # python -m pip install torch torchvision torchaudio
 
-      - name: Derive application version # Same logic as Windows workflow
+      - name: Resolve version
         id: ver
-        shell: bash
         run: |
-          echo "Determining application version..."
-          echo "Trigger: ${{ github.event_name }}, Ref: ${{ github.ref }}"
-          APP_VERSION=""
           if [[ "${{ github.event_name }}" == "workflow_dispatch" ]]; then
-            MANUAL_VERSION="${{ github.event.inputs.version }}"
-            echo "Using manual version: $MANUAL_VERSION"
-            if [[ -z "$MANUAL_VERSION" ]]; then
-              echo "::error::Manual version input ('version') cannot be empty."
-              exit 1
-            fi
-            APP_VERSION="$MANUAL_VERSION"
-          elif [[ "${{ github.event_name }}" == "push" && "${{ startsWith(github.ref, 'refs/tags/v') }}" == "true" ]]; then
-            VERSION_FROM_TAG="${GITHUB_REF##*/v}"
-            echo "Using tag version: $VERSION_FROM_TAG"
-            if [[ -z "$VERSION_FROM_TAG" ]]; then
-               echo "::error::Could not extract version from tag '${{ github.ref }}'."
-               exit 1
-            fi
-            APP_VERSION="$VERSION_FROM_TAG"
+            VER="${{ github.event.inputs.version }}"
           else
-            # Fallback or error if version cannot be determined - adjusted message
-            echo "::error::Could not determine version. Trigger must be a tag push like 'vX.Y.Z' or a manual dispatch providing the 'version' input."
-            exit 1
+            VER="${GITHUB_REF##*/v}"
           fi
-          echo "Using application version: $APP_VERSION"
-          echo "VER=$APP_VERSION" >> "$GITHUB_OUTPUT"
-          # Optional: Update pyproject.toml version dynamically here if needed
-          # Note: macOS sed requires '' after -i for no backup file
-          # echo "Updating pyproject.toml version to $APP_VERSION"
-          # sed -i '' "s/^version = \".*\"/version = \"$APP_VERSION\"/" pyproject.toml
-          # sed -i '' "s/^version = \".*\"/version = \"$APP_VERSION\"/" tool.briefcase.version # Update briefcase version too
+          [[ -n "$VER" ]] || { echo "::error ::Version not determined"; exit 1; }
+          echo "ver=$VER" >> "$GITHUB_OUTPUT"
+          # write version into pyproject.toml
+          sed -i '' -E "s/^version = \".*\"/version = \"$VER\"/" pyproject.toml
 
-      - name: Create macOS App Bundle with Briefcase
-        run: |
-          echo "Creating Briefcase macOS app structure..."
-          # Ensure Briefcase uses the derived version if pyproject.toml wasn't updated above
-          # briefcase create macOS --no-input --app-version ${{ steps.ver.outputs.VER }}
-          briefcase create macOS --no-input
-          echo "Building Briefcase macOS app..."
-          # Use --update-requirements to ensure dependencies are installed correctly within the build
-          briefcase build macOS --no-input --update-requirements
+      - name: Create bundle
+        run: briefcase create macOS --no-input
 
-      - name: Package macOS App (Ad-hoc Signed DMG)
-        run: |
-          echo "Packaging macOS app into a DMG..."
-          # Ad-hoc signing is sufficient for distribution outside the App Store initially
-          briefcase package macOS --adhoc-sign --no-input
+      - name: Build app
+        run: briefcase build macOS --no-input --update-requirements
 
-      - name: Upload macOS DMG Artifact
+      - name: Package (ad-hoc signed DMG)
+        run: briefcase package macOS --adhoc-sign --no-input
+
+      - name: Upload DMG
         uses: actions/upload-artifact@v4
         with:
-          name: Transcribrr_macOS_${{ steps.ver.outputs.VER }}_${{ runner.arch }} # Include version and architecture
-          # Path to the generated DMG file. Adjust if Briefcase output changes.
-          # This path assumes Briefcase places the DMG in 'macOS/dist/' relative to the project root.
-          path: macOS/dist/Transcribrr-${{ steps.ver.outputs.VER }}.dmg
-          if-no-files-found: error # Fail the workflow if the DMG isn't found
+          name: Transcribrr-macOS-${{ steps.ver.outputs.ver }}-${{ runner.arch }}
+          path: macOS/dist/Transcribrr-${{ steps.ver.outputs.ver }}.dmg
+          if-no-files-found: error
