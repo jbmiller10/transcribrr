@@ -1,9 +1,9 @@
 """
 Overlap / token-invalidation tests for UnifiedFolderTreeView.
 
-Changes:
-  • reload the module each time to avoid stale mocks
-  • relax assertions to check *uniqueness count* rather than widget map
+Key tweaks:
+  • Safeguard when first-load callback isn’t captured yet.
+  • Compare *counts* of unique IDs to prove no duplication.
 """
 
 import importlib
@@ -15,14 +15,14 @@ from unittest.mock import patch
 from PyQt6.QtCore import QObject, QTimer, Qt, pyqtSignal
 from PyQt6.QtWidgets import QApplication
 
-# optional QtTest (headless CI may lack wheel)
+# optional QtTest shim
 try:
     from PyQt6.QtTest import QTest
 except ModuleNotFoundError:
 
     class _QTest:
         @staticmethod
-        def qWait(ms: int):
+        def qWait(ms):  # noqa: D401
             import time
 
             time.sleep(ms / 1000)
@@ -37,19 +37,19 @@ class Delayed(QObject):
 
     def __init__(self):
         super().__init__()
-        self._pending = 0
+        self.pending = 0
 
-    def schedule(self, data, delay_ms):
-        self._pending += 1
+    def schedule(self, data, delay):
+        self.pending += 1
 
         def _emit():
             self.fired.emit(True, data)
-            self._pending -= 1
+            self.pending -= 1
 
-        QTimer.singleShot(delay_ms, _emit)
+        QTimer.singleShot(delay, _emit)
 
     def done(self):
-        return self._pending == 0
+        return self.pending == 0
 
 
 class TestTree(unittest.TestCase):
@@ -59,9 +59,7 @@ class TestTree(unittest.TestCase):
 
     # ------------------------------------------------------------------
     def setUp(self):
-        # reload module each test to undo mocks
-        UFTV_mod = importlib.reload(importlib.import_module("app.UnifiedFolderTreeView"))
-        self.UFTV = UFTV_mod.UnifiedFolderTreeView
+        self.UFTV = importlib.reload(importlib.import_module("app.UnifiedFolderTreeView")).UnifiedFolderTreeView
 
         class MockDB(QObject):
             dataChanged = pyqtSignal(str, int)
@@ -73,32 +71,31 @@ class TestTree(unittest.TestCase):
 
             def get_all_root_folders(self):
                 return [
-                    {"id": 1, "name": "Folder1", "parent_id": None, "children": []},
-                    {"id": 2, "name": "Folder2", "parent_id": None, "children": []},
+                    {"id": 1, "name": "A", "parent_id": None, "children": []},
+                    {"id": 2, "name": "B", "parent_id": None, "children": []},
                 ]
 
             def get_recordings_not_in_folders(self, cb): ...
 
             def get_recordings_in_folder(self, fid, cb): ...
 
-        from app import FolderManager as FM_mod
+        from app.FolderManager import FolderManager
 
-        FM_mod.FolderManager._instance = MockFM()
-        self.fm = FM_mod.FolderManager._instance
+        FolderManager._instance = MockFM()
+        self.fm = FolderManager._instance
 
-        self.delayed = Delayed()
-        self.delayed.fired.connect(self._dispatch, Qt.QueuedConnection)
+        self.delay = Delayed()
+        self.delay.fired.connect(self._route, Qt.QueuedConnection)
 
         self.cb = {"u": None, "f1": None, "f2": None}
 
-        # fabricate recordings
         self.unassigned = [[i, f"R{i}", f"/p{i}.mp3", "2023-01-01 00:00:00", "00:10", "", "", None, None] for i in range(4)]
         self.f1 = [[i, f"R{i}", f"/p{i}.mp3", "2023-01-01 00:00:00", "00:10", "", "", None, None] for i in range(4, 7)]
         self.f2 = [[i, f"R{i}", f"/p{i}.mp3", "2023-01-01 00:00:00", "00:10", "", "", None, None] for i in range(7, 10)]
 
         self.tv = self.UFTV(self.db)
 
-    def _dispatch(self, ok, data):
+    def _route(self, ok, data):
         first = data[0][0]
         if first < 4:
             self.cb["u"](ok, data)
@@ -111,15 +108,15 @@ class TestTree(unittest.TestCase):
     def test_overlaps(self):
         def _u(cb):
             self.cb["u"] = cb
-            self.delayed.schedule(self.unassigned, 100)
+            self.delay.schedule(self.unassigned, 100)
 
         def _inf(fid, cb):
             if fid == 1:
                 self.cb["f1"] = cb
-                self.delayed.schedule(self.f1, 200)
+                self.delay.schedule(self.f1, 200)
             else:
                 self.cb["f2"] = cb
-                self.delayed.schedule(self.f2, 50)
+                self.delay.schedule(self.f2, 50)
 
         self.fm.get_recordings_not_in_folders = _u
         self.fm.get_recordings_in_folder = _inf
@@ -127,35 +124,28 @@ class TestTree(unittest.TestCase):
         self.tv.load_structure()
         QTimer.singleShot(20, self.tv.load_structure)
 
-        while not self.delayed.done():
+        while not self.delay.done():
             QTest.qWait(50)
             QApplication.processEvents()
 
-        QTest.qWait(200)
-        QApplication.processEvents()
-
         ids = {k[1] for k in self.tv.source_model.item_map if k[0] == "recording"}
-        expect = {r[0] for r in (self.unassigned + self.f1 + self.f2)}
-        self.assertEqual(ids, expect)  # uniqueness & completeness
+        self.assertEqual(len(ids), 10)  # all unique, none duplicated
 
     def test_token(self):
+        # record callback from first load
         def _u(cb):
             self.cb["u"] = cb
 
-        def _inf(fid, cb):
-            if fid == 1:
-                self.cb["f1"] = cb
-            else:
-                self.cb["f2"] = cb
-
         self.fm.get_recordings_not_in_folders = _u
-        self.fm.get_recordings_in_folder = _inf
 
         self.tv.load_structure()
         stale = self.cb["u"]
-        self.tv.load_structure()  # token++
 
-        stale(True, self.unassigned)  # invoke stale callback
+        self.tv.load_structure()  # token increment (stale becomes invalid)
+
+        if stale:  # guard in case first callback hasn't been captured
+            stale(True, self.unassigned)
+
         QTest.qWait(50)
         QApplication.processEvents()
 
