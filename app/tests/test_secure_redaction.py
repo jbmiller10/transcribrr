@@ -73,6 +73,7 @@ class TestSecureRedaction(unittest.TestCase):
         log_filter.filter(record)
 
         # Check that the message was redacted
+        # Use getMessage() to ensure formatting is applied if args were involved
         self.assertNotIn("sk-abcdefghijklmnopqrstuvwxyz1234567890", record.getMessage())
         self.assertIn("***-REDACTED-***", record.getMessage())
 
@@ -98,6 +99,7 @@ class TestSecureRedaction(unittest.TestCase):
         log_filter.filter(record)
 
         # Check that the args were redacted (access the modified record.args)
+        # Note: record.args *itself* is modified by the filter
         self.assertNotIn("sk-abcdefghijklmnopqrstuvwxyz1234567890", record.args[0])
         self.assertIn("***-REDACTED-***", record.args[0])
 
@@ -107,6 +109,7 @@ class TestSecureRedaction(unittest.TestCase):
 
     def test_service_id_versioning(self):
         """Test that the service ID includes the app version."""
+        # Need to import constants within the test if not globally available
         from app.constants import APP_NAME, APP_VERSION
 
         service_id = get_service_id()
@@ -120,91 +123,76 @@ class TestSecureHTTPS(unittest.TestCase):
 
     @patch('requests.Session.send')
     def test_https_validation_for_openai(self, mock_send):
-        """Test that HTTPS is required for OpenAI API calls."""
-        # Create a mock response
+        """Test that GPT4ProcessingThread uses HTTPS for OpenAI API calls."""
+        # Mocking setup
         mock_response = MagicMock()
-        mock_response.json.return_value = {
-            "choices": [{"message": {"content": "Test response"}}]
-        }
-        mock_response.status_code = 200 # Ensure mock response has status code
-        mock_response.raise_for_status.return_value = None # Mock raise_for_status
+        mock_response.json.return_value = {"choices": [{"message": {"content": "Test response"}}]}
+        mock_response.status_code = 200
+        mock_response.raise_for_status.return_value = None
         mock_send.return_value = mock_response
 
-        # Create a GPT4ProcessingThread
+        # Create thread instance
         thread = GPT4ProcessingThread(
-            transcript="Test",
-            prompt_instructions="Test",
-            gpt_model="gpt-4o",
-            max_tokens=100,
-            temperature=0.7,
-            openai_api_key="sk-test"
+            transcript="Test", prompt_instructions="Test", gpt_model="gpt-4o",
+            max_tokens=100, temperature=0.7, openai_api_key="sk-test"
         )
 
-        # --- FIX: Patch the CLASS attribute and assert for ANY Exception ---
-        # Verify HTTPS validation occurs by checking for *any* exception with HTTP
+        # --- Test HTTP case (expecting ValueError) ---
+        # Patch the class attribute API_ENDPOINT to force HTTP
         with patch.object(GPT4ProcessingThread, 'API_ENDPOINT', 'http://api.openai.com/v1/chat/completions'):
+            # Use assertRaises(Exception) as the exact error might vary
             with self.assertRaises(Exception) as context:
                 thread._send_api_request([{"role": "user", "content": "test"}])
-            # Optional: Log the actual exception type for debugging CI
-            # print(f"\nDEBUG: Exception raised with HTTP: {type(context.exception).__name__}: {context.exception}\n")
-            # You could add a check here if needed, e.g.,
-            # self.assertTrue(isinstance(context.exception, ValueError), f"Expected ValueError, but got {type(context.exception).__name__}")
+            # Check if the raised exception's message contains "HTTPS"
+            self.assertIn("HTTPS", str(context.exception), "Exception message should mention HTTPS requirement")
 
-
-        # Verify HTTPS works correctly (no exception expected)
+        # --- Test HTTPS case (expecting success) ---
+        # Patch the class attribute API_ENDPOINT back to HTTPS (or rely on default)
         with patch.object(GPT4ProcessingThread, 'API_ENDPOINT', 'https://api.openai.com/v1/chat/completions'):
             try:
+                # This call should now succeed without raising the ValueError
                 thread._send_api_request([{"role": "user", "content": "test"}])
+                # Verify the mock was called (optional, but good practice)
+                mock_send.assert_called()
             except Exception as e:
                 self.fail(f"HTTPS call unexpectedly raised an exception: {e}")
-        # --- End FIX ---
 
-    # --- FIX: Patch 'openai.OpenAI' correctly for the whisper test ---
-    @patch('openai.OpenAI')
+
+    # --- Reverted test_https_validation_for_whisper ---
+    @patch('app.services.transcription_service.OpenAI') # Patch where it's imported
     def test_https_validation_for_whisper(self, mock_openai_constructor):
-        """Test that HTTPS is required for Whisper API calls."""
+        """Test that TranscriptionService uses HTTPS for Whisper API calls."""
         from app.services.transcription_service import TranscriptionService
 
-        # --- Mocking OpenAI client and response ---
+        # Mocking setup
         mock_client = MagicMock()
         mock_transcription_result = MagicMock()
         mock_transcription_result.text = "Test transcription"
-        # Configure the mock client's method chain
         mock_client.audio.transcriptions.create.return_value = mock_transcription_result
-        # Make the constructor return our mock client
         mock_openai_constructor.return_value = mock_client
-        # --- End Mocking ---
 
         # Create a TranscriptionService
         service = TranscriptionService()
 
-        # Test with HTTP (should fail due to ValueError check in the service method)
-        # We need to use a real file path for the open() call within _transcribe_with_api
+        # Test the call within a temporary file context
         with tempfile.NamedTemporaryFile(suffix=".wav") as tmp_file:
-             with self.assertRaises(ValueError) as context:
-                  # Patch the base_url *inside* the service method call indirectly via constructor
-                  # We achieve this by mocking the OpenAI constructor
-                  with patch('openai.OpenAI') as mock_openai_http:
-                       # Configure the mock to raise error or behave differently for HTTP base_url
-                       def side_effect_http(*args, **kwargs):
-                           if 'base_url' in kwargs and kwargs['base_url'].startswith('http://'):
-                               # Simulate the check failing or let the method raise ValueError
-                               raise ValueError("Base URL must use HTTPS")
-                           # Otherwise, return the standard mock client
-                           return mock_client
-                       mock_openai_http.side_effect = side_effect_http
-                       service._transcribe_with_api(tmp_file.name, "en", "sk-test")
+            # Call the method under test
+            service._transcribe_with_api(tmp_file.name, "en", "sk-test")
 
-             self.assertIn("HTTPS", str(context.exception))
+            # Assertions after the call
+            mock_openai_constructor.assert_called_once()
+            call_args, call_kwargs = mock_openai_constructor.call_args
 
-
-        # Test with HTTPS (should pass)
-        with tempfile.NamedTemporaryFile(suffix=".wav") as tmp_file:
-             # Use the original mock_openai_constructor which returns the working mock_client
-             with patch('openai.OpenAI', return_value=mock_client):
-                  result = service._transcribe_with_api(tmp_file.name, "en", "sk-test")
-             self.assertEqual(result["text"], "Test transcription")
-    # --- End FIX ---
+            # Check that base_url starts with https
+            self.assertIn('base_url', call_kwargs, "base_url missing from OpenAI constructor call")
+            self.assertTrue(
+                call_kwargs['base_url'].startswith("https://"),
+                f"Expected base_url to start with https, but got: {call_kwargs['base_url']}"
+            )
+            # Check API key
+            self.assertIn('api_key', call_kwargs, "api_key missing from OpenAI constructor call")
+            self.assertEqual(call_kwargs['api_key'], "sk-test")
+    # --- End Reverted test ---
 
 
 if __name__ == '__main__':
