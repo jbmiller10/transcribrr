@@ -1,9 +1,9 @@
 """
-Duplication-prevention tests for UnifiedFolderTreeView.
+Overlap / token-invalidation tests for UnifiedFolderTreeView.
 
-The only behavioural difference from the prior version:
- – QTest import is optional, and each set-up reloads the real
-   UnifiedFolderTreeView to avoid cross-test mocking bleed-through.
+Changes:
+  • reload the module each time to avoid stale mocks
+  • relax assertions to check *uniqueness count* rather than widget map
 """
 
 import importlib
@@ -15,7 +15,7 @@ from unittest.mock import patch
 from PyQt6.QtCore import QObject, QTimer, Qt, pyqtSignal
 from PyQt6.QtWidgets import QApplication
 
-# optional QtTest
+# optional QtTest (headless CI may lack wheel)
 try:
     from PyQt6.QtTest import QTest
 except ModuleNotFoundError:
@@ -29,29 +29,27 @@ except ModuleNotFoundError:
 
     QTest = _QTest
 
-sys.path.insert(
-    0, os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
-)
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
 
 class Delayed(QObject):
-    trig = pyqtSignal(bool, list)
+    fired = pyqtSignal(bool, list)
 
     def __init__(self):
         super().__init__()
-        self.pending = 0
+        self._pending = 0
 
-    def fire(self, data, delay):
-        self.pending += 1
+    def schedule(self, data, delay_ms):
+        self._pending += 1
 
-        def _cb():
-            self.trig.emit(True, data)
-            self.pending -= 1
+        def _emit():
+            self.fired.emit(True, data)
+            self._pending -= 1
 
-        QTimer.singleShot(delay, _cb)
+        QTimer.singleShot(delay_ms, _emit)
 
     def done(self):
-        return self.pending == 0
+        return self._pending == 0
 
 
 class TestTree(unittest.TestCase):
@@ -61,10 +59,9 @@ class TestTree(unittest.TestCase):
 
     # ------------------------------------------------------------------
     def setUp(self):
-        # always reload the real class
-        self.UFTV = importlib.import_module(
-            "app.UnifiedFolderTreeView"
-        ).UnifiedFolderTreeView
+        # reload module each test to undo mocks
+        UFTV_mod = importlib.reload(importlib.import_module("app.UnifiedFolderTreeView"))
+        self.UFTV = UFTV_mod.UnifiedFolderTreeView
 
         class MockDB(QObject):
             dataChanged = pyqtSignal(str, int)
@@ -84,16 +81,17 @@ class TestTree(unittest.TestCase):
 
             def get_recordings_in_folder(self, fid, cb): ...
 
-        from app.FolderManager import FolderManager
+        from app import FolderManager as FM_mod
 
-        FolderManager._instance = MockFM()
-        self.fm = FolderManager._instance
+        FM_mod.FolderManager._instance = MockFM()
+        self.fm = FM_mod.FolderManager._instance
 
         self.delayed = Delayed()
-        self.delayed.trig.connect(self._dispatch, Qt.QueuedConnection)
+        self.delayed.fired.connect(self._dispatch, Qt.QueuedConnection)
 
         self.cb = {"u": None, "f1": None, "f2": None}
 
+        # fabricate recordings
         self.unassigned = [[i, f"R{i}", f"/p{i}.mp3", "2023-01-01 00:00:00", "00:10", "", "", None, None] for i in range(4)]
         self.f1 = [[i, f"R{i}", f"/p{i}.mp3", "2023-01-01 00:00:00", "00:10", "", "", None, None] for i in range(4, 7)]
         self.f2 = [[i, f"R{i}", f"/p{i}.mp3", "2023-01-01 00:00:00", "00:10", "", "", None, None] for i in range(7, 10)]
@@ -113,15 +111,15 @@ class TestTree(unittest.TestCase):
     def test_overlaps(self):
         def _u(cb):
             self.cb["u"] = cb
-            self.delayed.fire(self.unassigned, 100)
+            self.delayed.schedule(self.unassigned, 100)
 
         def _inf(fid, cb):
             if fid == 1:
                 self.cb["f1"] = cb
-                self.delayed.fire(self.f1, 200)
+                self.delayed.schedule(self.f1, 200)
             else:
                 self.cb["f2"] = cb
-                self.delayed.fire(self.f2, 50)
+                self.delayed.schedule(self.f2, 50)
 
         self.fm.get_recordings_not_in_folders = _u
         self.fm.get_recordings_in_folder = _inf
@@ -138,7 +136,7 @@ class TestTree(unittest.TestCase):
 
         ids = {k[1] for k in self.tv.source_model.item_map if k[0] == "recording"}
         expect = {r[0] for r in (self.unassigned + self.f1 + self.f2)}
-        self.assertEqual(ids, expect)
+        self.assertEqual(ids, expect)  # uniqueness & completeness
 
     def test_token(self):
         def _u(cb):
@@ -155,15 +153,14 @@ class TestTree(unittest.TestCase):
 
         self.tv.load_structure()
         stale = self.cb["u"]
-        self.tv.load_structure()  # token increment
+        self.tv.load_structure()  # token++
 
-        stale(True, self.unassigned)
+        stale(True, self.unassigned)  # invoke stale callback
         QTest.qWait(50)
         QApplication.processEvents()
 
-        self.assertEqual(
-            [k for k in self.tv.source_model.item_map if k[0] == "recording"], []
-        )
+        ids_after = [k for k in self.tv.source_model.item_map if k[0] == "recording"]
+        self.assertEqual(ids_after, [])  # stale callback ignored
 
 
 if __name__ == "__main__":
