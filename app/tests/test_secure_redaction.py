@@ -1,5 +1,5 @@
 """
-Redaction utilities + HTTPS-guard unit-tests.
+Redaction utilities + HTTPS-guard tests.
 """
 
 import logging
@@ -23,23 +23,17 @@ class TestSecureRedaction(unittest.TestCase):
         self.assertIn("***-REDACTED-***", redact("hf_abcdefghijklmnopqrstuvwxyz123456"))
 
     def test_redact_multiple(self):
-        raw = (
-            "sk-abcdefghijklmnopqrstuvwxyz123456 "
-            "hf_abcdefghijklmnopqrstuvwxyz123456"
-        )
+        raw = "sk-abcdefghijklmnopqrstuvwxyz123456 hf_abcdefghijklmnopqrstuvwxyz123456"
         self.assertEqual(redact(raw).count("***-REDACTED-***"), 2)
 
     def test_log_filter(self):
         f = SensitiveLogFilter()
-        rec = logging.LogRecord(
-            "x", logging.INFO, "t.py", 1, "sk-abcdefghijklmnopqrstuvwxyz123456", (), None
-        )
-        f.filter(rec)
-        self.assertIn("***-REDACTED-***", rec.msg)
+        r = logging.LogRecord("x", logging.INFO, "t.py", 1, "sk-abcdefghijklmnopqrstuvwxyz", (), None)
+        f.filter(r)
+        self.assertIn("***-REDACTED-***", r.msg)
 
     def test_service_id(self):
         from app.constants import APP_NAME, APP_VERSION
-
         self.assertEqual(get_service_id(), f"{APP_NAME.lower()}-v{APP_VERSION}")
 
 
@@ -47,46 +41,47 @@ class TestSecureRedaction(unittest.TestCase):
 class TestSecureHTTPS(unittest.TestCase):
     @patch("requests.Session.send")
     def test_openai_https_guard(self, mock_send):
-        from app.threads import GPT4ProcessingThread as mod
+        from app.threads.GPT4ProcessingThread import GPT4ProcessingThread
 
-        # fake API success json
+        # fake HTTP success body so the HTTPS check is the only gate
         resp = MagicMock()
         resp.json.return_value = {"choices": [{"message": {"content": "ok"}}]}
         mock_send.return_value = resp
 
-        worker = mod.GPT4ProcessingThread("T", "P", "gpt-4o", 32, 0.7, "sk")
+        worker = GPT4ProcessingThread("T", "P", "gpt-4o", 32, 0.7, "sk")
 
-        # HTTP → must raise  (patch the **class** attribute that the code reads)
-        with patch.object(mod.GPT4ProcessingThread, "API_ENDPOINT", "http://api.openai.com/v1"):
+        # ----- HTTP should raise -----
+        original = GPT4ProcessingThread.API_ENDPOINT
+        try:
+            GPT4ProcessingThread.API_ENDPOINT = "http://api.openai.com/v1"
             with self.assertRaises(ValueError):
                 worker._send_api_request([{"role": "user", "content": "x"}])
+        finally:
+            GPT4ProcessingThread.API_ENDPOINT = original  # restore
 
-        # HTTPS → should not raise
-        with patch.object(mod.GPT4ProcessingThread, "API_ENDPOINT", "https://api.openai.com/v1"):
-            worker._send_api_request([{"role": "user", "content": "x"}])
+        # ----- HTTPS should succeed -----
+        worker._send_api_request([{"role": "user", "content": "x"}])
 
     @patch("app.services.transcription_service.OpenAI")
     def test_whisper_https_guard(self, mock_openai):
         from app.services.transcription_service import TranscriptionService
 
-        # tmp dummy wav file
+        # tiny dummy wav
         tmp = tempfile.NamedTemporaryFile(delete=False, suffix=".wav")
         tmp.write(b"\0\0")
         tmp.close()
 
         cli = MagicMock()
         mock_openai.return_value = cli
-        mock_rsp = MagicMock()
-        mock_rsp.text = "demo"
-        cli.audio.transcriptions.create.return_value = mock_rsp
+        rsp = MagicMock()
+        rsp.text = "demo"
+        cli.audio.transcriptions.create.return_value = rsp
 
         svc = TranscriptionService()
 
-        # HTTP → must raise
         with self.assertRaises(ValueError):
             svc._transcribe_with_api(tmp.name, "en", "sk", base_url="http://api.openai.com/v1")
 
-        # HTTPS → succeeds
         out = svc._transcribe_with_api(tmp.name, "en", "sk", base_url="https://api.openai.com/v1")
         self.assertEqual(out["text"], "demo")
 
