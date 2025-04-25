@@ -55,6 +55,7 @@ class DatabaseWorker(QThread):
                         if op_type == 'execute_query':
                             query = op_args[0]
                             params = op_args[1] if len(op_args) > 1 else []
+                            return_last_row_id = op_kwargs.get('return_last_row_id', False)
                             
                             # Check if this is a modifying query
                             query_lower = query.lower().strip()
@@ -78,7 +79,14 @@ class DatabaseWorker(QThread):
                                 with self.conn:  # This automatically handles commit/rollback
                                     cursor = self.conn.cursor()
                                     cursor.execute(query, params)
-                                    result = cursor.fetchall()
+                                    
+                                    # If we need to return the last inserted ID directly
+                                    if return_last_row_id and query_lower.startswith('insert'):
+                                        result = cursor.lastrowid
+                                        # Return the last insert ID directly
+                                    else:
+                                        result = cursor.fetchall()
+                                        # Return the query results
                             else:
                                 cursor = self.conn.cursor()
                                 cursor.execute(query, params)
@@ -115,6 +123,7 @@ class DatabaseWorker(QThread):
                         elif op_type == 'search_recordings':
                             result = search_recordings(self.conn, op_args[0])
                                 
+                        # Operation complete, emit signal
                         self.operation_complete.emit({
                             'id': op_id,
                             'type': op_type,
@@ -157,6 +166,7 @@ class DatabaseWorker(QThread):
 
     def add_operation(self, operation_type, operation_id=None, *args, **kwargs):
         """Enqueue operation."""
+        
         self.operations_queue.put({
             'type': operation_type,
             'id': operation_id,
@@ -344,7 +354,7 @@ class DatabaseManager(QObject):
             self.operation_complete.connect(handler, Qt.ConnectionType.UniqueConnection)
             self.error_occurred.connect(error_handler, Qt.ConnectionType.UniqueConnection)
 
-    def execute_query(self, query, params=None, callback=None):
+    def execute_query(self, query, params=None, callback=None, return_last_row_id=False, operation_id=None):
         """
         Execute a custom SQL query.
         
@@ -352,9 +362,14 @@ class DatabaseManager(QObject):
             query: SQL query to execute
             params: Parameters for the query
             callback: Optional function to call with the result
+            return_last_row_id: If True, returns last_insert_rowid() directly after INSERT
+            operation_id: Optional custom operation ID to use for callback binding
         """
-        operation_id = f"query_{id(query)}_{id(callback) if callback else 'no_callback'}"
-        self.worker.add_operation('execute_query', operation_id, query, params or [])
+        if operation_id is None:
+            operation_id = f"query_{id(query)}_{id(callback) if callback else 'no_callback'}"
+        
+        # Use the operation_id for callback binding
+        self.worker.add_operation('execute_query', operation_id, query, params or [], return_last_row_id=return_last_row_id)
         
         if callback and callable(callback):
             def handler(result):

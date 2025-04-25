@@ -198,8 +198,8 @@ class RecordingFilterProxyModel(QSortFilterProxyModel):
             # First, check text match
             if self.filter_text:
                 # Get full text (filename + transcript) for searching
-                full_text = source_item.data(RecordingFolderModel.FULL_TRANSCRIPT_ROLE)
-                if not self.filter_text in full_text.lower():
+                full_text = (source_item.data(RecordingFolderModel.FULL_TRANSCRIPT_ROLE) or "").lower()
+                if not self.filter_text in full_text:
                     return False  # Text doesn't match
                     
             # Then check criteria match
