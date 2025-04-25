@@ -90,6 +90,7 @@ class FolderManager:
         
         created_at = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
         
+        # Modified to use the database connection's lastrowid property
         query = '''
             INSERT INTO folders (name, parent_id, created_at)
             VALUES (?, ?, ?)
@@ -97,9 +98,11 @@ class FolderManager:
         params = (name, parent_id, created_at)
         
         def on_folder_created(result):
-            if result and len(result) > 0:
-                folder_id = result[0][0] if isinstance(result[0], tuple) else result[0]
-                
+            # Get the folder_id from the result.
+            # Result now contains the last insert ID directly
+            folder_id = result
+            
+            if folder_id is not None and folder_id > 0:
                 # Add new folder to memory
                 new_folder = {
                     'id': folder_id,
@@ -131,13 +134,12 @@ class FolderManager:
                     callback(False, "Database error: Failed to get new folder ID")
                 return False
         
-        insert_query = query
-        insert_params = params
-        get_id_query = "SELECT last_insert_rowid()"
-        def after_insert(result):
-            self.db_manager.execute_query(get_id_query, callback=on_folder_created)
+        # Generate a unique ID for this query to ensure proper callback binding
+        operation_id = f"create_folder_{id(name)}_{id(on_folder_created)}"
         
-        self.db_manager.execute_query(insert_query, insert_params, callback=after_insert)
+        # Execute query with 'return_last_row_id=True' to get the ID in the same transaction
+        self.db_manager.execute_query(query, params, callback=on_folder_created, 
+                                     return_last_row_id=True, operation_id=operation_id)
         return True
     
     def rename_folder(self, folder_id, new_name, callback=None):
