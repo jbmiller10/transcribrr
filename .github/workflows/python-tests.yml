@@ -31,7 +31,7 @@ jobs:
           python -m pip install --upgrade pip
           python -m pip install pytest
           python -m pip install pytest-qt
-          python -m pip install PyQt6 PyQt6-QTest
+          python -m pip install PyQt6 PyQt6-tools
           python -m pip install PyQt6-sip
           if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
       - name: Run tests
