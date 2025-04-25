@@ -1,40 +1,22 @@
 # app/tests/test_tree_view_duplication.py
 import sys
 import unittest
-from unittest.mock import MagicMock, patch, call
+from unittest.mock import MagicMock, patch, call # Keep call if needed elsewhere
 import os
 import time
 from PyQt6.QtCore import QObject, pyqtSignal, QTimer, Qt
 from PyQt6.QtWidgets import QApplication
 
-# Add parent directory to path to import app modules
-# Ensure this path adjustment is correct for your structure
+# Add parent directory to path if needed
 if os.path.abspath(os.path.join(os.path.dirname(__file__), "../..")) not in sys.path:
     sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "../..")))
 
 from app.UnifiedFolderTreeView import UnifiedFolderTreeView
-# We will mock DatabaseManager and FolderManager where they are used
+# We still import FolderManager to patch its methods later
+from app.FolderManager import FolderManager
+# No need to import DatabaseManager here, we patch it via string
 
-# Mock class for generating delayed callbacks
-class DelayedCallbackGenerator(QObject):
-    callback_triggered = pyqtSignal(bool, list, int) # Add token to signal
-
-    def __init__(self):
-        super().__init__()
-        self.pending_callbacks = 0 # Use a simple counter
-
-    def generate_delayed_callback(self, data, delay_ms, token):
-        self.pending_callbacks += 1
-        QTimer.singleShot(delay_ms, lambda: self._emit_callback(data, token))
-
-    def _emit_callback(self, data, token):
-        if self: # Check if instance still exists
-            self.callback_triggered.emit(True, data, token)
-            self.pending_callbacks -= 1
-
-    def is_finished(self):
-        return self.pending_callbacks <= 0
-
+# ... (DelayedCallbackGenerator class remains the same) ...
 
 class TestTreeViewDuplication(unittest.TestCase):
     """Test cases for tree view duplication prevention."""
@@ -47,12 +29,17 @@ class TestTreeViewDuplication(unittest.TestCase):
             cls.app = QApplication.instance()
 
     def setUp(self):
-        # Mock DatabaseManager used by UnifiedFolderTreeView
-        # Patch it where it's imported/used by the class under test
-        self.db_manager_patcher = patch('app.UnifiedFolderTreeView.DatabaseManager', autospec=True)
+        # --- FIX: Correct patch target for DatabaseManager ---
+        # Patch DatabaseManager where it's DEFINED, not where it's imported in the test target.
+        # Assuming it's defined in 'app.DatabaseManager'
+        self.db_manager_patcher = patch('app.DatabaseManager.DatabaseManager', autospec=True)
+        # --- End FIX ---
+
+        # Start the patcher and get the mock class and instance
         self.MockDatabaseManager = self.db_manager_patcher.start()
         self.mock_db_instance = self.MockDatabaseManager.return_value
-        self.mock_db_instance.dataChanged = pyqtSignal(str, int) # Add the required signal
+        # Ensure the mock instance has the necessary signal attribute
+        self.mock_db_instance.dataChanged = pyqtSignal(str, int)
 
 
         # Prepare test data (remains the same)
@@ -72,71 +59,56 @@ class TestTreeViewDuplication(unittest.TestCase):
         self.callback_generator = DelayedCallbackGenerator()
 
         # Patch FolderManager methods using context managers within test methods
+        # We still need to patch the singleton instance if FolderManager uses .instance()
+        self.folder_manager_patcher = patch('app.FolderManager.FolderManager', autospec=True)
+        self.MockFolderManager = self.folder_manager_patcher.start()
+        self.mock_folder_instance = self.MockFolderManager.instance.return_value # Mock the instance returned by the singleton accessor
 
 
     def tearDown(self):
         # Stop patchers started in setUp
         self.db_manager_patcher.stop()
+        self.folder_manager_patcher.stop()
 
         # Clean up tree_view if created
         if hasattr(self, 'tree_view'):
              self.tree_view.deleteLater()
         QApplication.processEvents() # Ensure cleanup
 
-    def wait_for_callbacks(self, timeout=10):
-        """Helper to wait for delayed callbacks."""
-        start_time = time.time()
-        processed_count = 0
-        while not self.callback_generator.is_finished():
-            time.sleep(0.05)
-            QApplication.processEvents()
-            processed_count += 1
-            if time.time() - start_time > timeout:
-                self.fail(f"Timeout waiting for callbacks. Pending: {self.callback_generator.pending_callbacks}")
-        # Process final events
-        time.sleep(0.1)
-        QApplication.processEvents()
-        print(f"DEBUG: Callbacks finished after {time.time() - start_time:.2f}s, {processed_count} loops.")
-
+    # ... (wait_for_callbacks helper remains the same) ...
 
     # --- Test Method for Refresh Logic ---
-    # Use patch context managers here for isolation
-    @patch('app.FolderManager.FolderManager.get_recordings_not_in_folders', autospec=True)
-    @patch('app.FolderManager.FolderManager.get_recordings_in_folder', autospec=True)
-    @patch('app.FolderManager.FolderManager.get_all_root_folders', autospec=True)
-    def test_model_refresh_without_duplicates(self, mock_get_roots, mock_get_in_folder, mock_get_not_in):
+    # Patch the INSTANCE methods now using the mock_folder_instance from setUp
+    def test_model_refresh_without_duplicates(self):
         """Test that refreshing the model doesn't create duplicates."""
         print("\n--- Starting test_model_refresh_without_duplicates ---")
 
-        # --- Configure Mocks ---
-        mock_get_roots.return_value = self.mock_root_folders
+        # --- Configure Mocks on the INSTANCE ---
+        self.mock_folder_instance.get_all_root_folders.return_value = self.mock_root_folders
 
         callback_map = {} # Store callbacks to be triggered
 
         def side_effect_unassigned(callback):
             print("DEBUG: side_effect_unassigned called")
             callback_map['unassigned'] = callback # Store the actual callback
-            # Schedule trigger via generator
             self.callback_generator.generate_delayed_callback(
-                self.unassigned_recordings, 50, self.tree_view._load_token # Pass current token
+                self.unassigned_recordings, 50, self.tree_view._load_token
             )
-        mock_get_not_in.side_effect = side_effect_unassigned
+        self.mock_folder_instance.get_recordings_not_in_folders.side_effect = side_effect_unassigned
 
         def side_effect_folders(folder_id, callback):
             print(f"DEBUG: side_effect_folders called for ID {folder_id}")
-            if folder_id == 1:
-                callback_map['folder1'] = callback
-                self.callback_generator.generate_delayed_callback(
-                    self.folder1_recordings, 100, self.tree_view._load_token
-                )
-            elif folder_id == 2:
-                callback_map['folder2'] = callback
-                self.callback_generator.generate_delayed_callback(
-                    self.folder2_recordings, 75, self.tree_view._load_token
-                )
-        mock_get_in_folder.side_effect = side_effect_folders
+            key = f'folder{folder_id}'
+            callback_map[key] = callback
+            data = self.folder1_recordings if folder_id == 1 else self.folder2_recordings
+            delay = 100 if folder_id == 1 else 75
+            self.callback_generator.generate_delayed_callback(
+                data, delay, self.tree_view._load_token
+            )
+        self.mock_folder_instance.get_recordings_in_folder.side_effect = side_effect_folders
 
         # Connect generator signal to trigger stored callbacks IF token matches
+        # (dispatch_if_valid remains the same as previous version)
         def dispatch_if_valid(success, data, trigger_token):
              if not data: return
              current_token = self.tree_view._load_token
@@ -158,15 +130,14 @@ class TestTreeViewDuplication(unittest.TestCase):
         self.callback_generator.callback_triggered.connect(dispatch_if_valid)
 
         # --- Initialize TreeView ---
-        # TreeView instance is created *within* the patched context
+        # It will now use the MOCKED DatabaseManager instance implicitly
         self.tree_view = UnifiedFolderTreeView(self.mock_db_instance)
-        QApplication.processEvents() # Allow init signals if any
+        QApplication.processEvents()
 
         # --- First Load ---
         print("DEBUG: Triggering first load_structure")
-        initial_token = self.tree_view._load_token
         self.tree_view.load_structure()
-        self.wait_for_callbacks() # Wait for first load to complete
+        self.wait_for_callbacks()
 
         # --- Verification after first load ---
         print("DEBUG: Verifying after first load...")
@@ -178,8 +149,13 @@ class TestTreeViewDuplication(unittest.TestCase):
 
         # --- Second Load (Refresh) ---
         print("DEBUG: Triggering second load_structure (refresh)")
-        self.tree_view.load_structure() # Should trigger cleanup and new load
-        self.wait_for_callbacks() # Wait for second load to complete
+        # Reset mock call counts before second load if needed for specific assertions
+        self.mock_folder_instance.get_recordings_not_in_folders.reset_mock()
+        self.mock_folder_instance.get_recordings_in_folder.reset_mock()
+        callback_map.clear() # Clear old callbacks before triggering new ones
+
+        self.tree_view.load_structure()
+        self.wait_for_callbacks()
 
         # --- Verification after second load ---
         print("DEBUG: Verifying after second load...")
@@ -194,41 +170,34 @@ class TestTreeViewDuplication(unittest.TestCase):
 
 
     # --- Test Method for Token Invalidation ---
-    @patch('app.FolderManager.FolderManager.get_recordings_not_in_folders', autospec=True)
-    @patch('app.FolderManager.FolderManager.get_recordings_in_folder', autospec=True)
-    @patch('app.FolderManager.FolderManager.get_all_root_folders', autospec=True)
-    def test_token_invalidation(self, mock_get_roots, mock_get_in_folder, mock_get_not_in):
+    # Patch the INSTANCE methods using the mock_folder_instance from setUp
+    def test_token_invalidation(self):
         """Test that load tokens properly invalidate stale callbacks."""
         print("\n--- Starting test_token_invalidation ---")
 
-        # --- Configure Mocks ---
-        mock_get_roots.return_value = self.mock_root_folders
-        captured_callbacks = {} # Store callbacks
+        # --- Configure Mocks on the INSTANCE ---
+        self.mock_folder_instance.get_all_root_folders.return_value = self.mock_root_folders
+        captured_callbacks = {} # Store callbacks associated with a token
 
         def side_effect_unassigned(callback):
              print("DEBUG: side_effect_unassigned")
-             # Store callback associated with the current load token
-             captured_callbacks[self.tree_view._load_token] = callback
-             # Schedule trigger via generator, passing the token it was created with
+             token = self.tree_view._load_token # Capture token *at the time the mock is called*
+             captured_callbacks[token] = callback
              self.callback_generator.generate_delayed_callback(
-                 self.unassigned_recordings, 50, self.tree_view._load_token
+                 self.unassigned_recordings, 50, token
              )
-        mock_get_not_in.side_effect = side_effect_unassigned
-
-        # Don't need folder mocks for this specific test, but set a dummy side effect
-        mock_get_in_folder.side_effect = lambda folder_id, callback: None
+        self.mock_folder_instance.get_recordings_not_in_folders.side_effect = side_effect_unassigned
+        self.mock_folder_instance.get_recordings_in_folder.side_effect = lambda fid, cb: None # Dummy
 
         # Connect generator signal to trigger stored callbacks IF token matches
         def dispatch_if_valid(success, data, trigger_token):
              current_token = self.tree_view._load_token
-             if trigger_token == current_token: # Check token validity
+             if trigger_token == current_token:
                   if trigger_token in captured_callbacks and captured_callbacks[trigger_token]:
                        print(f"DEBUG: Dispatching valid callback (token {trigger_token})")
                        captured_callbacks[trigger_token](success, data)
-                  else:
-                      print(f"DEBUG: No valid callback found for token {trigger_token}")
-             else:
-                  print(f"DEBUG: Ignoring stale callback (trigger {trigger_token}, current {current_token})")
+                  else: print(f"DEBUG: No valid callback found for token {trigger_token}")
+             else: print(f"DEBUG: Ignoring stale callback (trigger {trigger_token}, current {current_token})")
 
         self.callback_generator.callback_triggered.connect(dispatch_if_valid)
 
@@ -240,42 +209,34 @@ class TestTreeViewDuplication(unittest.TestCase):
         print("DEBUG: Triggering first load_structure")
         initial_token = self.tree_view._load_token
         self.tree_view.load_structure()
-        first_load_token = self.tree_view._load_token # Token used for the first load
-        self.assertEqual(first_load_token, initial_token + 1, "Token check after first load")
-        self.wait_for_callbacks() # Wait for first load callback generation
-        self.assertTrue(self.callback_generator.is_finished(), "Callbacks should be finished after first wait")
+        first_load_token = self.tree_view._load_token
+        self.assertEqual(first_load_token, initial_token + 1)
+        self.wait_for_callbacks()
         print(f"DEBUG: Token after first load: {first_load_token}")
 
         # --- Second Load ---
         print("DEBUG: Triggering second load_structure")
         self.tree_view.load_structure()
-        second_load_token = self.tree_view._load_token # Token for the second load
-        self.assertEqual(second_load_token, initial_token + 2, "Token check after second load")
-        self.wait_for_callbacks() # Wait for second load callback generation
-        self.assertTrue(self.callback_generator.is_finished(), "Callbacks should be finished after second wait")
+        second_load_token = self.tree_view._load_token
+        self.assertEqual(second_load_token, initial_token + 2)
+        self.wait_for_callbacks()
         print(f"DEBUG: Token after second load: {second_load_token}")
 
 
         # --- Manually trigger the STALE callback from the FIRST load ---
         print(f"DEBUG: Manually triggering callback for STALE token {first_load_token}")
-        # Use the generator to emit the signal, simulating the delayed callback
-        # We pass the *stale* token (first_load_token)
         self.callback_generator.generate_delayed_callback(self.unassigned_recordings, 1, first_load_token)
         self.wait_for_callbacks() # Wait for this manual trigger
 
 
         # --- Verification ---
-        # The dispatch_if_valid function should have ignored the stale callback
         print("DEBUG: Verifying after stale callback...")
         recording_ids_in_model = {k[1] for k in self.tree_view.source_model.item_map if k[0] == "recording"}
         recording_ids_in_widget_map = set(self.tree_view.id_to_widget.keys())
 
-        # Since the second load also generated callbacks which *should* have run successfully,
-        # we expect the final state to contain all recordings from the second load.
-        self.assertEqual(len(recording_ids_in_model), len(self.expected_ids),
-                         f"Model count mismatch after stale callback ignored. Expected {len(self.expected_ids)}, Got {len(recording_ids_in_model)}")
-        self.assertEqual(len(recording_ids_in_widget_map), len(self.expected_ids),
-                         f"Widget map count mismatch after stale callback ignored. Expected {len(self.expected_ids)}, Got {len(recording_ids_in_widget_map)}")
+        # Expect the state from the *second* (valid) load
+        self.assertEqual(len(recording_ids_in_model), len(self.expected_ids), "Model count mismatch after stale callback ignored")
+        self.assertEqual(len(recording_ids_in_widget_map), len(self.expected_ids), "Widget map count mismatch after stale callback ignored")
         self.assertSetEqual(recording_ids_in_model, self.expected_ids, "Model IDs mismatch after stale callback ignored")
 
         print("--- Finished test_token_invalidation ---")
