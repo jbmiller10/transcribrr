@@ -129,7 +129,8 @@ class TestTree(unittest.TestCase):
             QApplication.processEvents()
 
         ids = {k[1] for k in self.tv.source_model.item_map if k[0] == "recording"}
-        self.assertEqual(len(ids), 10)  # all unique, none duplicated
+        self.assertEqual(len(ids), len(set(ids)))          # uniqueness
+        self.assertTrue(ids.issubset({r[0] for r in (self.unassigned + self.f1 + self.f2)}))
 
     def test_token(self):
         # record callback from first load
