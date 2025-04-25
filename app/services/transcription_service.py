@@ -397,7 +397,12 @@ class TranscriptionService:
             raise ValueError("OpenAI API transcription requires an API key")
             
         try:
-            client = OpenAI(api_key=api_key)
+            # Verify HTTPS is being used
+            base_url = "https://api.openai.com/v1"
+            if not base_url.startswith("https://"):
+                raise ValueError("API URL must use HTTPS for security")
+                
+            client = OpenAI(api_key=api_key, base_url=base_url)
             with open(file_path, 'rb') as audio_file:
                 language_code = language_to_iso(language)
                 logger.info(f"Sending file to OpenAI Whisper API (language: {language_code})")

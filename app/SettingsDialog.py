@@ -76,9 +76,14 @@ class OpenAIModelFetcherThread(QThread):
                 self.models_fetched.emit(gpt_models)
 
         except Exception as e:
-            logger.error(f"Error fetching OpenAI models: {e}")
+            from app.secure import redact
+            logger.error(f"Error fetching OpenAI models: {redact(str(e))}")
             if not self._stop_requested:
-                self.fetch_error.emit(f"Error fetching models: {e}")
+                # Use generic error message to avoid exposing API key in UI
+                if "authentication" in str(e).lower() or "invalid" in str(e).lower():
+                    self.fetch_error.emit("Authentication error: Please check your API key")
+                else:
+                    self.fetch_error.emit(f"Error fetching models: {redact(str(e))}")
 
     def stop(self):
         self.request_stop()
@@ -101,7 +106,9 @@ class SettingsDialog(QDialog):
         self.prompt_manager = PromptManager.instance()
         self.theme_manager = ThemeManager.instance()
 
-        self.service_id = "transcription_application" # Keep using keyring for secrets
+        # Use secure module for versioned keyring service ID
+        from app.secure import get_service_id
+        self.service_id = get_service_id()
         self.model_fetcher = None
         self.available_openai_models = []
 
@@ -149,6 +156,9 @@ class SettingsDialog(QDialog):
         self.openai_api_key_label.setToolTip("Required for GPT processing and OpenAI Whisper API transcription")
         self.openai_api_key_edit = QLineEdit(self)
         self.openai_api_key_edit.setEchoMode(QLineEdit.EchoMode.Password)
+        # Disable copy/paste and drag-and-drop for security
+        self.openai_api_key_edit.setContextMenuPolicy(Qt.ContextMenuPolicy.NoContextMenu)
+        self.openai_api_key_edit.setDragEnabled(False)
         openai_info = QLabel("Required for GPT processing and OpenAI Whisper API transcription")
         openai_info.setStyleSheet("color: gray; font-size: 10pt;")
         openai_layout.addWidget(self.openai_api_key_label)
@@ -163,6 +173,9 @@ class SettingsDialog(QDialog):
         self.hf_api_key_label.setToolTip("Required for speaker detection (diarization)")
         self.hf_api_key_edit = QLineEdit(self)
         self.hf_api_key_edit.setEchoMode(QLineEdit.EchoMode.Password)
+        # Disable copy/paste and drag-and-drop for security
+        self.hf_api_key_edit.setContextMenuPolicy(Qt.ContextMenuPolicy.NoContextMenu)
+        self.hf_api_key_edit.setDragEnabled(False)
         hf_info = QLabel("Required for speaker detection (diarization)")
         hf_info.setStyleSheet("color: gray; font-size: 10pt;")
         hf_layout.addWidget(self.hf_api_key_label)
@@ -436,7 +449,8 @@ class SettingsDialog(QDialog):
         self.theme_preview.setText(preview_html)
 
     def fetch_openai_models(self):
-        api_key = keyring.get_password(self.service_id, "OPENAI_API_KEY")
+        from app.secure import get_api_key
+        api_key = get_api_key("OPENAI_API_KEY")
         if not api_key:
             self.model_status_label.setText("API key not found. Add key in API Keys tab.")
             self.model_status_label.setStyleSheet("color: red;")
@@ -536,9 +550,10 @@ class SettingsDialog(QDialog):
             self.theme_dropdown.setCurrentIndex(index if index != -1 else 0)
             self.update_theme_preview()
 
-            # Load API keys from keyring
-            hf_key = keyring.get_password(self.service_id, "HF_AUTH_TOKEN") or ''
-            openai_key = keyring.get_password(self.service_id, "OPENAI_API_KEY") or ''
+            # Load API keys from keyring using secure API
+            from app.secure import get_api_key
+            hf_key = get_api_key("HF_AUTH_TOKEN") or ''
+            openai_key = get_api_key("OPENAI_API_KEY") or ''
             self.hf_api_key_edit.setText(hf_key)
             self.openai_api_key_edit.setText(openai_key)
 
@@ -557,19 +572,24 @@ class SettingsDialog(QDialog):
         openai_api_key = self.openai_api_key_edit.text().strip()
 
         try:
-            if hf_api_key:
-                keyring.set_password(self.service_id, "HF_AUTH_TOKEN", hf_api_key)
-            elif keyring.get_password(self.service_id, "HF_AUTH_TOKEN"): # Delete if empty now
-                keyring.delete_password(self.service_id, "HF_AUTH_TOKEN")
-
-            if openai_api_key:
-                keyring.set_password(self.service_id, "OPENAI_API_KEY", openai_api_key)
-            elif keyring.get_password(self.service_id, "OPENAI_API_KEY"): # Delete if empty now
-                keyring.delete_password(self.service_id, "OPENAI_API_KEY")
+            # Use secure API for storing keys
+            from app.secure import set_api_key
+            
+            # Save HuggingFace token
+            hf_success = set_api_key("HF_AUTH_TOKEN", hf_api_key)
+            
+            # Save OpenAI API key
+            openai_success = set_api_key("OPENAI_API_KEY", openai_api_key)
+            
+            if not (hf_success and openai_success):
+                from app.ui_utils import safe_error
+                safe_error(self, "Keyring Error", "Could not save API keys securely. Check system keyring access.")
         except Exception as e:
-             logger.error(f"Error saving API keys to keyring: {e}")
-             show_error_message(self, "Keyring Error", f"Could not save API keys securely: {e}")
-             # Decide if we should proceed or stop here? For now, proceed with config save.
+            from app.secure import redact
+            from app.ui_utils import safe_error
+            logger.error(f"Error saving API keys to keyring: {redact(str(e))}")
+            safe_error(self, "Keyring Error", f"Could not save API keys securely: {e}")
+            # Decide if we should proceed or stop here? For now, proceed with config save.
 
         # --- Save General Settings via ConfigManager ---
 
@@ -607,13 +627,15 @@ class SettingsDialog(QDialog):
     def accept(self):
         # Validation before saving
         if self.transcription_method_dropdown.currentText() == 'API' and not self.openai_api_key_edit.text().strip():
-            show_error_message(self, "Missing API Key", "OpenAI API Key is required for API transcription method.")
+            from app.ui_utils import safe_error
+            safe_error(self, "Missing API Key", "OpenAI API Key is required for API transcription method.")
             self.tab_widget.setCurrentIndex(0)
             self.openai_api_key_edit.setFocus()
             return
 
         if self.speaker_detection_checkbox.isChecked() and not self.hf_api_key_edit.text().strip():
-            show_error_message(self, "Missing API Key", "HuggingFace Access Token is required for speaker detection.")
+            from app.ui_utils import safe_error
+            safe_error(self, "Missing API Key", "HuggingFace Access Token is required for speaker detection.")
             self.tab_widget.setCurrentIndex(0)
             self.hf_api_key_edit.setFocus()
             return

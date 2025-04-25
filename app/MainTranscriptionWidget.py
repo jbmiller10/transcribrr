@@ -470,9 +470,10 @@ class MainTranscriptionWidget(ResponsiveWidget):
         except Exception:
             logger.warning("Could not check hardware compatibility")
 
-        # Get API keys from keyring
-        openai_api_key = keyring.get_password("transcription_application", "OPENAI_API_KEY")
-        hf_auth_key = keyring.get_password("transcription_application", "HF_AUTH_TOKEN")
+        # Get API keys using secure module
+        from app.secure import get_api_key
+        openai_api_key = get_api_key("OPENAI_API_KEY")
+        hf_auth_key = get_api_key("HF_AUTH_TOKEN")
 
         # Validation checks
         file_path = self.current_recording_data['file_path']
@@ -491,11 +492,13 @@ class MainTranscriptionWidget(ResponsiveWidget):
         #     return
 
         if transcription_method == 'api' and not openai_api_key:
-             show_error_message(self, "API Key Missing", ERROR_API_KEY_MISSING.replace("GPT processing", "API transcription"))
+             from app.ui_utils import safe_error
+             safe_error(self, "API Key Missing", ERROR_API_KEY_MISSING.replace("GPT processing", "API transcription"))
              return
 
         if speaker_detection_enabled and not hf_auth_key:
-             show_error_message(self, "HF Token Missing", "HuggingFace Token needed for speaker detection (API Keys tab).")
+             from app.ui_utils import safe_error
+             safe_error(self, "HF Token Missing", "HuggingFace Token needed for speaker detection (API Keys tab).")
              self.config_manager.set('speaker_detection_enabled', False) # Disable it in config
              self.current_recording_data['speaker_detection_enabled'] = False # Update local state if needed
              # Optionally re-enable the checkbox in settings UI here if needed
@@ -754,10 +757,12 @@ class MainTranscriptionWidget(ResponsiveWidget):
              show_error_message(self, 'No Prompt', 'Please select or enter a prompt.')
              return
 
-        # Get API key
-        openai_api_key = keyring.get_password("transcription_application", "OPENAI_API_KEY")
+        # Get API key using secure module
+        from app.secure import get_api_key
+        openai_api_key = get_api_key("OPENAI_API_KEY")
         if not openai_api_key:
-            show_error_message(self, "API Key Missing", ERROR_API_KEY_MISSING)
+            from app.ui_utils import safe_error
+            safe_error(self, "API Key Missing", ERROR_API_KEY_MISSING)
             return
 
         # Get GPT parameters (already loaded into self.gpt_temperature/max_tokens)
@@ -949,9 +954,11 @@ class MainTranscriptionWidget(ResponsiveWidget):
             show_error_message(self, 'Empty Text', 'There is no text to format.')
             return
 
-        openai_api_key = keyring.get_password("transcription_application", "OPENAI_API_KEY")
+        from app.secure import get_api_key
+        openai_api_key = get_api_key("OPENAI_API_KEY")
         if not openai_api_key:
-            show_error_message(self, "API Key Missing", ERROR_API_KEY_MISSING)
+            from app.ui_utils import safe_error
+            safe_error(self, "API Key Missing", ERROR_API_KEY_MISSING)
             return
 
         # Use a simpler prompt for formatting
@@ -1129,9 +1136,11 @@ class MainTranscriptionWidget(ResponsiveWidget):
              show_error_message(self, "Missing Data", "Previous processed text is missing. Please process first.")
              return
 
-        openai_api_key = keyring.get_password("transcription_application", "OPENAI_API_KEY")
+        from app.secure import get_api_key
+        openai_api_key = get_api_key("OPENAI_API_KEY")
         if not openai_api_key:
-            show_error_message(self, "API Key Missing", ERROR_API_KEY_MISSING)
+            from app.ui_utils import safe_error
+            safe_error(self, "API Key Missing", ERROR_API_KEY_MISSING)
             return
 
         # --- Prepare messages for conversational refinement ---

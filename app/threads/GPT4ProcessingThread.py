@@ -17,7 +17,7 @@ class GPT4ProcessingThread(QThread):
     # Constants
     MAX_RETRY_ATTEMPTS = 3
     RETRY_DELAY = 2  # seconds
-    API_ENDPOINT = 'https://api.openai.com/v1/chat/completions'
+    API_ENDPOINT = 'https://api.openai.com/v1/chat/completions'  # Always use HTTPS
     TIMEOUT = 120  # seconds (Increased timeout for potentially long responses)
 
     def __init__(self,
@@ -174,6 +174,11 @@ class GPT4ProcessingThread(QThread):
 
             try:
                 self.update_progress.emit(f'Sending request to OpenAI ({self.gpt_model})... Attempt {retry_count + 1}')
+                
+                # Verify HTTPS is being used
+                if not self.API_ENDPOINT.startswith("https://"):
+                    raise ValueError("API URL must use HTTPS for security")
+                    
                 data = {'messages': messages, 'model': self.gpt_model,
                         'max_tokens': self.max_tokens, 'temperature': self.temperature}
                 headers = {'Authorization': f'Bearer {self.openai_api_key}',

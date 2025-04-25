@@ -133,6 +133,15 @@ def show_error_message(parent: Optional[QWidget], title: str, message: str):
     """Show a standardized error message dialog."""
     logger.error(f"{title}: {message}") # Log the error
     show_message_box(parent, QMessageBox.Icon.Critical, title, message)
+    
+def safe_error(parent: Optional[QWidget], title: str, message: str):
+    """Show a standardized error message dialog with sensitive information redacted."""
+    from app.secure import redact
+    # Redact sensitive information from message
+    safe_message = redact(message)
+    # Log and show the redacted message
+    logger.error(f"{title}: {safe_message}")
+    show_message_box(parent, QMessageBox.Icon.Critical, title, safe_message)
 
 
 def show_info_message(parent: Optional[QWidget], title: str, message: str):

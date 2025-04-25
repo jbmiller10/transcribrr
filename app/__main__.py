@@ -42,6 +42,13 @@ if not logging.getLogger().handlers:
         ],
     )
 
+# Apply sensitive data redaction filter to the root logger
+from app.secure import SensitiveLogFilter
+root_logger = logging.getLogger()
+root_logger.addFilter(SensitiveLogFilter())
+logger = logging.getLogger(APP_NAME)
+logger.info(f"Secure logging filter initialized")
+
 # Now get the application‑level logger
 logger = logging.getLogger(APP_NAME)
 logger.info(f"Application starting. User data directory: {USER_DATA_DIR}")
@@ -483,6 +490,12 @@ def run_application():
         from .constants import USER_DATA_DIR, RESOURCE_DIR
         logger.info(f"User data directory: {USER_DATA_DIR}")
         logger.info(f"Resource directory: {RESOURCE_DIR}")
+        
+        # Migrate API keys from old format to new format
+        from app.secure import migrate_api_keys
+        migration_results = migrate_api_keys()
+        if migration_results["openai"] or migration_results["hf"]:
+            logger.info("Successfully migrated API keys to new secure format")
         
         # Copy default configuration files on first run
         copy_initial_data_files()
