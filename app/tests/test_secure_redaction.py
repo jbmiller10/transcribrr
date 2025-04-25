@@ -43,20 +43,23 @@ class TestSecureHTTPS(unittest.TestCase):
     def test_openai_https_guard(self, mock_send):
         from app.threads.GPT4ProcessingThread import GPT4ProcessingThread
 
-        # stub successful JSON body so only the HTTPS check matters
+        # stub network response so only HTTPS validation matters
         fake = MagicMock()
         fake.json.return_value = {"choices": [{"message": {"content": "ok"}}]}
         mock_send.return_value = fake
 
         worker = GPT4ProcessingThread("T", "P", "gpt-4o", 32, 0.7, "sk")
 
-        # set the *instance* attribute – no dependence on the class attr
-        worker.API_ENDPOINT = "http://api.openai.com/v1"
-        with self.assertRaises(ValueError):
-            worker._send_api_request([{"role": "user", "content": "x"}])
+        # ----- HTTP should raise -----
+        original = GPT4ProcessingThread.API_ENDPOINT
+        GPT4ProcessingThread.API_ENDPOINT = "http://api.openai.com/v1"
+        try:
+            with self.assertRaises(ValueError):
+                worker._send_api_request([{"role": "user", "content": "x"}])
+        finally:
+            GPT4ProcessingThread.API_ENDPOINT = original  # always restore
 
-        # HTTPS should pass
-        worker.API_ENDPOINT = "https://api.openai.com/v1"
+        # ----- HTTPS should succeed -----
         worker._send_api_request([{"role": "user", "content": "x"}])
 
     @patch("app.services.transcription_service.OpenAI")
