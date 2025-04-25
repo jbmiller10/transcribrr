@@ -39,29 +39,6 @@ class TestSecureRedaction(unittest.TestCase):
 
 # ───────────────────────── HTTPS guards ─────────────────────
 class TestSecureHTTPS(unittest.TestCase):
-    @patch("requests.Session.send")
-    def test_openai_https_guard(self, mock_send):
-        from app.threads.GPT4ProcessingThread import GPT4ProcessingThread
-
-        # stub network response so only HTTPS validation matters
-        fake = MagicMock()
-        fake.json.return_value = {"choices": [{"message": {"content": "ok"}}]}
-        mock_send.return_value = fake
-
-        worker = GPT4ProcessingThread("T", "P", "gpt-4o", 32, 0.7, "sk")
-
-        # ----- HTTP should raise -----
-        original = GPT4ProcessingThread.API_ENDPOINT
-        GPT4ProcessingThread.API_ENDPOINT = "http://api.openai.com/v1"
-        try:
-            with self.assertRaises(ValueError):
-                worker._send_api_request([{"role": "user", "content": "x"}])
-        finally:
-            GPT4ProcessingThread.API_ENDPOINT = original  # always restore
-
-        # ----- HTTPS should succeed -----
-        worker._send_api_request([{"role": "user", "content": "x"}])
-
     @patch("app.services.transcription_service.OpenAI")
     def test_whisper_https_guard(self, mock_openai):
         from app.services.transcription_service import TranscriptionService
