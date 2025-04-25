@@ -29,9 +29,11 @@ jobs:
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
-          python -m pip install pytest
-          python -m pip install pytest-qt
-          python -m pip install PyQt6 PyQt6-sip
+          # Pin PyQt6 and PyQt6-sip to versions observed in CI logs
+          echo "Installing pinned PyQt6 versions..."
+          python -m pip install PyQt6==6.9.0 PyQt6-sip==13.10.0
+          echo "Installing remaining requirements..."
+          # Install the rest AFTER pinning PyQt versions
           if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
       - name: Run tests
         run: |
