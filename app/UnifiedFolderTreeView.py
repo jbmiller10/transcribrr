@@ -61,8 +61,7 @@ class UnifiedFolderTreeView(QTreeView):
         self.current_folder_id = -1
         self._load_token = 0  # Monotonically increasing token to track valid callbacks
         self._is_loading = False  # Flag to prevent signals during load
-        self.recordings_map = {}  # Store RecordingListItem widgets by ID (for compatibility)
-        self.seen_recording_ids = set()  # Track seen recording IDs to prevent duplicates
+        self.id_to_widget = {}  # Maps recording ID to widget AFTER widget is attached to view
         
         # Connect to the dataChanged signal for unified refresh
         logger.info("Connecting to DatabaseManager.dataChanged signal for tree updates")
@@ -138,12 +137,14 @@ class UnifiedFolderTreeView(QTreeView):
         current_token = self._load_token  # Store current token for callbacks
         logger.debug(f"Using load token: {current_token}")
         
+        # Clean up existing widgets to prevent memory leaks
+        self._cleanup_widgets()
+        
         # Clear existing data
         self.source_model.clear_model()
-        logger.debug(f"Cleared source model, entries before: {len(self.recordings_map)}")
-        self.recordings_map.clear()
-        self.seen_recording_ids.clear()  # Clear set of seen recording IDs
-        logger.debug("Cleared recordings map and seen_recording_ids")
+        logger.debug(f"Cleared source model, entries before: {len(self.id_to_widget)}")
+        self.id_to_widget.clear()
+        logger.debug("Cleared id_to_widget mapping")
         
         # Initialize expanded_folders if not provided
         if expanded_folder_ids is None:
@@ -207,10 +208,33 @@ class UnifiedFolderTreeView(QTreeView):
         
         # Check model content after loading
         logger.info(f"Tree structure loaded with {self.source_model.rowCount()} top-level items")
-        logger.info(f"Recordings map contains {len(self.recordings_map)} recordings")
+        logger.info(f"Widget map contains {len(self.id_to_widget)} recording widgets")
         
         self._is_loading = False
         logger.info("Tree structure loading completed")
+        
+    def _cleanup_widgets(self):
+        """Clean up widget references to prevent memory leaks."""
+        logger.debug(f"Cleaning up {len(self.id_to_widget)} recording widgets")
+        # Remove all indexed widgets from the view
+        for rec_id, widget in self.id_to_widget.items():
+            try:
+                # Get the model item for this recording
+                item = self.source_model.get_item_by_id(rec_id, "recording")
+                if item:
+                    # Get the index and remove the widget
+                    source_index = item.index()
+                    proxy_index = self.proxy_model.mapFromSource(source_index)
+                    self.setIndexWidget(proxy_index, None)
+                    
+                # Delete the widget to free memory
+                if widget and hasattr(widget, 'deleteLater'):
+                    widget.deleteLater()
+            except Exception as e:
+                logger.warning(f"Error cleaning up widget for recording {rec_id}: {e}")
+                
+        # Clear the map
+        self.id_to_widget.clear()
         
     def _load_nested_folders(self, parent_item, parent_folder, expanded_folder_ids):
         """Recursively load nested folders."""
@@ -246,18 +270,32 @@ class UnifiedFolderTreeView(QTreeView):
         if folder_id == -1:
             # Unorganized recordings (not in any folder)
             def _add_unassigned_recordings(success, recordings):
-                logger.info(f"Callback _add_unassigned_recordings called, success={success}, received {len(recordings) if recordings else 0} recordings")
+                # Helper to disconnect this callback when done or if stale
+                def _disconnect_callback():
+                    try:
+                        # Find reference to this operation in the FolderManager's callback
+                        self.folder_manager.operation_complete.disconnect(_add_unassigned_recordings)
+                        logger.debug("Disconnected unassigned recordings callback")
+                    except (TypeError, RuntimeError, AttributeError) as e:
+                        # Ignore errors if already disconnected
+                        logger.debug(f"Could not disconnect callback: {e}")
+                
+                logger.info(f"Callback for unassigned recordings, success={success}, received {len(recordings) if recordings else 0} recordings")
                 
                 if not success:
                     logger.error("Failed to load unassigned recordings")
+                    _disconnect_callback()
                     return
                     
+                # Check if this callback is stale (and disconnect if it is)
                 if current_token != self._load_token:
-                    logger.warning(f"Skipping stale loading operation (token {current_token} vs current {self._load_token})")
+                    logger.warning(f"Skipping stale callback (token {current_token} vs current {self._load_token})")
+                    _disconnect_callback()
                     return
                 
                 if not recordings:
                     logger.info("No unassigned recordings found")
+                    _disconnect_callback()
                     return
                 
                 logger.info(f"Processing {len(recordings)} unassigned recordings")
@@ -274,17 +312,20 @@ class UnifiedFolderTreeView(QTreeView):
                 skipped_count = 0
                 for rec in sorted_recs:
                     rec_id = rec[0]
-                    # Skip if already added - check both maps for comprehensive deduplication
-                    key = ("recording", rec_id)
-                    if key in self.source_model.item_map or rec_id in self.recordings_map or rec_id in self.seen_recording_ids:
-                        logger.debug(f"Skipping recording ID {rec_id}, already tracked in one of the maps")
+                    # Check if already exists in the model (single source of truth)
+                    if self.source_model.get_item_by_id(rec_id, "recording"):
+                        logger.debug(f"Skipping recording ID {rec_id}, already exists in model")
                         skipped_count += 1
                         continue
                     
-                    # Mark as seen for deduplication
-                    self.seen_recording_ids.add(rec_id)
+                    # First add to the model
+                    recording_model_item = self.source_model.add_recording_item(rec, folder_item)
                     
-                    # Create RecordingListItem for compatibility - fix parameter order
+                    # Create the index for the model item
+                    source_index = recording_model_item.index()
+                    proxy_index = self.proxy_model.mapFromSource(source_index)
+                    
+                    # Create RecordingListItem for the UI
                     recording_item = RecordingListItem(
                         rec_id, rec[1], rec[2], rec[3], 
                         rec[4], # duration
@@ -294,19 +335,14 @@ class UnifiedFolderTreeView(QTreeView):
                         rec[8], # processed_text_formatted
                         parent=self
                     )
-                    # Store db_manager as a property - fix QWidget constructor issue
+                    # Store db_manager as a property
                     recording_item.db_manager = self.db_manager
-                    self.recordings_map[rec_id] = recording_item
-                    
-                    # Add to the model
-                    recording_model_item = self.source_model.add_recording_item(rec, folder_item)
-                    
-                    # Create the index for the model item
-                    source_index = recording_model_item.index()
-                    proxy_index = self.proxy_model.mapFromSource(source_index)
                     
                     # Set the RecordingListItem widget for this index
                     self.setIndexWidget(proxy_index, recording_item)
+                    
+                    # Only add to widget map AFTER successful attachment
+                    self.id_to_widget[rec_id] = recording_item
                     
                     added_count += 1
                     logger.debug(f"Added unassigned recording ID {rec_id}: {rec[1]}")
@@ -317,6 +353,7 @@ class UnifiedFolderTreeView(QTreeView):
                 QTimer.singleShot(0, self.viewport().update)
                 
                 logger.info(f"Added {added_count} unassigned recordings, skipped {skipped_count}")
+                _disconnect_callback()
             
             # Use folder manager to get unassigned recordings
             logger.info("Requesting unassigned recordings from folder manager")
@@ -324,18 +361,32 @@ class UnifiedFolderTreeView(QTreeView):
         else:
             # Regular folder
             def _add_folder_recordings(success, recordings):
-                logger.info(f"Callback _add_folder_recordings for folder {folder_id} called, success={success}, received {len(recordings) if recordings else 0} recordings")
+                # Helper to disconnect this callback when done or if stale
+                def _disconnect_callback():
+                    try:
+                        # Find reference to this operation in the FolderManager's callback
+                        self.folder_manager.operation_complete.disconnect(_add_folder_recordings)
+                        logger.debug(f"Disconnected callback for folder {folder_id}")
+                    except (TypeError, RuntimeError, AttributeError) as e:
+                        # Ignore errors if already disconnected
+                        logger.debug(f"Could not disconnect callback: {e}")
+                
+                logger.info(f"Callback for folder {folder_id}, success={success}, received {len(recordings) if recordings else 0} recordings")
                 
                 if not success:
                     logger.error(f"Failed to load recordings for folder {folder_id}")
+                    _disconnect_callback()
                     return
                     
+                # Check if this callback is stale (and disconnect if it is)
                 if current_token != self._load_token:
-                    logger.warning(f"Skipping stale loading operation for folder {folder_id} (token {current_token} vs current {self._load_token})")
+                    logger.warning(f"Skipping stale callback for folder {folder_id} (token {current_token} vs current {self._load_token})")
+                    _disconnect_callback()
                     return
                 
                 if not recordings:
                     logger.info(f"No recordings found in folder {folder_id}")
+                    _disconnect_callback()
                     return
                 
                 logger.info(f"Processing {len(recordings)} recordings for folder {folder_id}")
@@ -352,17 +403,20 @@ class UnifiedFolderTreeView(QTreeView):
                 skipped_count = 0
                 for rec in sorted_recs:
                     rec_id = rec[0]
-                    # Skip if already added - check both maps for comprehensive deduplication
-                    key = ("recording", rec_id)
-                    if key in self.source_model.item_map or rec_id in self.recordings_map or rec_id in self.seen_recording_ids:
-                        logger.debug(f"Skipping recording ID {rec_id} in folder {folder_id}, already tracked in one of the maps")
+                    # Check if already exists in the model (single source of truth)
+                    if self.source_model.get_item_by_id(rec_id, "recording"):
+                        logger.debug(f"Skipping recording ID {rec_id} in folder {folder_id}, already exists in model")
                         skipped_count += 1
                         continue
                     
-                    # Mark as seen for deduplication
-                    self.seen_recording_ids.add(rec_id)
+                    # First add to the model
+                    recording_model_item = self.source_model.add_recording_item(rec, folder_item)
                     
-                    # Create RecordingListItem for compatibility - fix parameter order
+                    # Create the index for the model item
+                    source_index = recording_model_item.index()
+                    proxy_index = self.proxy_model.mapFromSource(source_index)
+                    
+                    # Create RecordingListItem for the UI
                     recording_item = RecordingListItem(
                         rec_id, rec[1], rec[2], rec[3], 
                         rec[4], # duration
@@ -372,19 +426,14 @@ class UnifiedFolderTreeView(QTreeView):
                         rec[8], # processed_text_formatted
                         parent=self
                     )
-                    # Store db_manager as a property - fix QWidget constructor issue
+                    # Store db_manager as a property
                     recording_item.db_manager = self.db_manager
-                    self.recordings_map[rec_id] = recording_item
-                    
-                    # Add to the model
-                    recording_model_item = self.source_model.add_recording_item(rec, folder_item)
-                    
-                    # Create the index for the model item
-                    source_index = recording_model_item.index()
-                    proxy_index = self.proxy_model.mapFromSource(source_index)
                     
                     # Set the RecordingListItem widget for this index
                     self.setIndexWidget(proxy_index, recording_item)
+                    
+                    # Only add to widget map AFTER successful attachment
+                    self.id_to_widget[rec_id] = recording_item
                     
                     added_count += 1
                     logger.debug(f"Added recording ID {rec_id} to folder {folder_id}: {rec[1]}")
@@ -395,6 +444,7 @@ class UnifiedFolderTreeView(QTreeView):
                 QTimer.singleShot(0, self.viewport().update)
                 
                 logger.info(f"Added {added_count} recordings to folder {folder_id}, skipped {skipped_count}")
+                _disconnect_callback()
             
             # Get recordings for this folder
             logger.info(f"Requesting recordings for folder {folder_id} from folder manager")
@@ -614,8 +664,8 @@ class UnifiedFolderTreeView(QTreeView):
             self.current_folder_id = item_id
             self.folderSelected.emit(item_id, item.text())
         elif item_type == "recording":
-            if item_id in self.recordings_map:
-                recording_item = self.recordings_map[item_id]
+            if item_id in self.id_to_widget:
+                recording_item = self.id_to_widget[item_id]
                 self.recordingSelected.emit(recording_item)
                 
     def on_item_double_clicked(self, index):
@@ -792,16 +842,19 @@ class UnifiedFolderTreeView(QTreeView):
         logger.info(f"Adding recording {recording_data[1]} to model")
         
         rec_id = recording_data[0]
-        # Skip if already added - check both maps and set for comprehensive deduplication
-        key = ("recording", rec_id)
-        if key in self.source_model.item_map or rec_id in self.recordings_map or rec_id in self.seen_recording_ids:
-            logger.debug(f"Skipping duplicate recording ID {rec_id}, already tracked in one of the maps")
-            return
+        # Check the model (single source of truth) for existing item
+        if self.source_model.get_item_by_id(rec_id, "recording"):
+            logger.debug(f"Skipping duplicate recording ID {rec_id}, already exists in model")
+            return None
             
-        # Mark as seen for deduplication
-        self.seen_recording_ids.add(rec_id)
-            
-        # Create RecordingListItem for compatibility
+        # First add to the model
+        recording_model_item = self.source_model.add_recording_item(recording_data, parent_item)
+        
+        # Create the index for the model item
+        source_index = recording_model_item.index()
+        proxy_index = self.proxy_model.mapFromSource(source_index)
+        
+        # Create RecordingListItem for the UI
         recording_item = RecordingListItem(
             rec_id, recording_data[1], recording_data[2], recording_data[3], 
             recording_data[4], # duration
@@ -813,19 +866,15 @@ class UnifiedFolderTreeView(QTreeView):
         )
         # Store db_manager as a property
         recording_item.db_manager = self.db_manager
-        self.recordings_map[rec_id] = recording_item
-        
-        # Add to the model
-        recording_model_item = self.source_model.add_recording_item(recording_data, parent_item)
-        
-        # Create the index for the model item
-        source_index = recording_model_item.index()
-        proxy_index = self.proxy_model.mapFromSource(source_index)
         
         # Set the RecordingListItem widget for this index
         self.setIndexWidget(proxy_index, recording_item)
+        
+        # Add to widget map only after successful attachment
+        self.id_to_widget[rec_id] = recording_item
         
         # Ensure the view adjusts row height for the new widget
         self.resizeColumnToContents(0)
         
         logger.info(f"Added recording ID {rec_id} to model")
+        return recording_model_item
