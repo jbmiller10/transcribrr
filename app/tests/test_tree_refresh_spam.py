@@ -39,7 +39,7 @@ class RefreshSpamTester(QMainWindow):
         
         # Get actual DB and folder manager instances
         self.db_manager = DatabaseManager()
-        self.folder_manager = FolderManager.instance()
+        self.folder_manager = FolderManager.instance(db_manager=self.db_manager)
         
         # Create tree view
         self.tree_view = UnifiedFolderTreeView(self.db_manager)

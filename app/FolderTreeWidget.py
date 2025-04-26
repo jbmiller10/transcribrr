@@ -111,7 +111,15 @@ class FolderTreeWidget(QWidget):
         # Get FolderManager instance safely
         from app.FolderManager import FolderManager
         try:
-            folder_manager = FolderManager.instance()
+            # Try to get instance, or initialize with db_manager if available
+            if hasattr(self, 'db_manager') and self.db_manager is not None:
+                folder_manager = FolderManager.instance(db_manager=self.db_manager)
+            else:
+                # Try to initialize with db_manager if available
+                if hasattr(self, 'db_manager') and self.db_manager is not None:
+                    folder_manager = FolderManager.instance(db_manager=self.db_manager)
+                else:
+                    folder_manager = FolderManager.instance()
             root_folders = folder_manager.get_all_root_folders()
         except RuntimeError as e:
             logger.error(f"Error accessing FolderManager: {e}")
@@ -179,7 +187,15 @@ class FolderTreeWidget(QWidget):
         try:
             from app.FolderManager import FolderManager
             try:
-                folder_manager = FolderManager.instance()
+                # Try to initialize with db_manager if available
+                if hasattr(self, 'db_manager') and self.db_manager is not None:
+                    folder_manager = FolderManager.instance(db_manager=self.db_manager)
+                else:
+                    # Try to initialize with db_manager if available
+                if hasattr(self, 'db_manager') and self.db_manager is not None:
+                    folder_manager = FolderManager.instance(db_manager=self.db_manager)
+                else:
+                    folder_manager = FolderManager.instance()
                 recordings = folder_manager.get_recordings_in_folder(folder_id)
                 return len(recordings) if recordings else 0
             except RuntimeError as e:
@@ -306,7 +322,11 @@ class FolderTreeWidget(QWidget):
             # Get FolderManager instance safely
             from app.FolderManager import FolderManager
             try:
-                folder_manager = FolderManager.instance()
+                # Try to initialize with db_manager if available
+                if hasattr(self, 'db_manager') and self.db_manager is not None:
+                    folder_manager = FolderManager.instance(db_manager=self.db_manager)
+                else:
+                    folder_manager = FolderManager.instance()
             except RuntimeError as e:
                 logger.error(f"Error accessing FolderManager: {e}")
                 QMessageBox.warning(self, "Error", "Cannot create folder: Database manager not initialized")
@@ -333,7 +353,11 @@ class FolderTreeWidget(QWidget):
             # Get FolderManager instance safely
             from app.FolderManager import FolderManager
             try:
-                folder_manager = FolderManager.instance()
+                # Try to initialize with db_manager if available
+                if hasattr(self, 'db_manager') and self.db_manager is not None:
+                    folder_manager = FolderManager.instance(db_manager=self.db_manager)
+                else:
+                    folder_manager = FolderManager.instance()
             except RuntimeError as e:
                 logger.error(f"Error accessing FolderManager: {e}")
                 QMessageBox.warning(self, "Error", "Cannot create folder: Database manager not initialized")
@@ -361,7 +385,11 @@ class FolderTreeWidget(QWidget):
             # Get FolderManager instance safely
             from app.FolderManager import FolderManager
             try:
-                folder_manager = FolderManager.instance()
+                # Try to initialize with db_manager if available
+                if hasattr(self, 'db_manager') and self.db_manager is not None:
+                    folder_manager = FolderManager.instance(db_manager=self.db_manager)
+                else:
+                    folder_manager = FolderManager.instance()
             except RuntimeError as e:
                 logger.error(f"Error accessing FolderManager: {e}")
                 QMessageBox.warning(self, "Error", "Cannot rename folder: Database manager not initialized")
@@ -395,7 +423,11 @@ class FolderTreeWidget(QWidget):
             # Get FolderManager instance safely
             from app.FolderManager import FolderManager
             try:
-                folder_manager = FolderManager.instance()
+                # Try to initialize with db_manager if available
+                if hasattr(self, 'db_manager') and self.db_manager is not None:
+                    folder_manager = FolderManager.instance(db_manager=self.db_manager)
+                else:
+                    folder_manager = FolderManager.instance()
             except RuntimeError as e:
                 logger.error(f"Error accessing FolderManager: {e}")
                 QMessageBox.warning(self, "Error", "Cannot delete folder: Database manager not initialized")

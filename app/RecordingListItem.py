@@ -272,7 +272,11 @@ class RecordingListItem(QWidget):
             # Get FolderManager instance safely
             from app.FolderManager import FolderManager
             try:
-                folder_manager = FolderManager.instance()
+                # If we have access to db_manager, use it to ensure proper initialization
+                if hasattr(self, 'db_manager') and self.db_manager is not None:
+                    folder_manager = FolderManager.instance(db_manager=self.db_manager)
+                else:
+                    folder_manager = FolderManager.instance()
                 folder_manager.get_folders_for_recording(self.id, on_folders_received)
             except RuntimeError as e:
                 logger.error(f"Error accessing FolderManager: {e}")
@@ -348,7 +352,11 @@ class RecordingListItem(QWidget):
         # Get FolderManager instance safely
         from app.FolderManager import FolderManager
         try:
-            folder_manager = FolderManager.instance()
+            # Try to initialize with db_manager if available
+            if hasattr(self, 'db_manager') and self.db_manager is not None:
+                folder_manager = FolderManager.instance(db_manager=self.db_manager)
+            else:
+                folder_manager = FolderManager.instance()
         except RuntimeError as e:
             logger.error(f"Error accessing FolderManager: {e}")
             # Return early if we can't get the proper instance

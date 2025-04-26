@@ -37,16 +37,18 @@ class MainWindow(QMainWindow):
             QMessageBox.critical(self, "Initialization Error", f"Failed to initialize Database Manager: {e}")
             sys.exit(1)
 
-        # 2. Attach DatabaseManager to FolderManager IMMEDIATELY
+        # 2. Initialize FolderManager and attach DB Manager in one call
         try:
-            # Use the singleton pattern correctly
-            folder_manager_instance = FolderManager.instance()
-            folder_manager_instance.attach_db_manager(self.db_manager)
-            logger.info("DatabaseManager attached to FolderManager singleton.")
+            # This single call now handles singleton creation AND attachment
+            FolderManager.instance(db_manager=self.db_manager)
+            logger.info("FolderManager initialized and DatabaseManager attached.")
+        except RuntimeError as e:
+            logger.critical(f"CRITICAL ERROR initializing FolderManager: {e}", exc_info=True)
+            QMessageBox.critical(self, "Initialization Error", f"Failed to initialize Folder Manager: {e}")
+            sys.exit(1)
         except Exception as e:
-            logger.critical(f"CRITICAL ERROR attaching DB Manager to Folder Manager: {e}", exc_info=True)
-            # Handle critical initialization error
-            QMessageBox.critical(self, "Initialization Error", f"Failed to link Folder Manager to Database: {e}")
+            logger.critical(f"CRITICAL ERROR during FolderManager initialization: {e}", exc_info=True)
+            QMessageBox.critical(self, "Initialization Error", f"Unexpected error during Folder Manager setup: {e}")
             sys.exit(1)
             
         # 3. Now initialize the UI

@@ -36,7 +36,7 @@ def main():
     
     # Get the instance
     logger.info("Getting FolderManager instance")
-    fm_instance = FolderManager.instance()
+    fm_instance = FolderManager.instance(db_manager=db_manager)
     
     # Check threads and QThread status
     logger.info(f"Thread count after initialization: {len(threading.enumerate())}")

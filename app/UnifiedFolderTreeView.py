@@ -61,13 +61,14 @@ class UnifiedFolderTreeView(QTreeView):
         # Get the properly initialized FolderManager instance with shared DatabaseManager
         from app.FolderManager import FolderManager
         try:
-            self.folder_manager = FolderManager.instance()
-        except RuntimeError:
-            # Create a dedicated logger message showing the error
-            logger.error("FolderManager instance() called before database manager was attached.")
-            # Still get the instance, but don't try to use it until MainWindow has attached the db_manager
-            # This handles initialization ordering issues
-            self.folder_manager = FolderManager._instance
+            # Pass the database manager to ensure proper initialization
+            self.folder_manager = FolderManager.instance(db_manager=self.db_manager)
+        except RuntimeError as e:
+            # Log the error and handle the case when FolderManager is not yet initialized
+            logger.error(f"FolderManager initialization error: {e}")
+            # Since we've passed the db_manager, this should only happen if there's a more serious issue
+            # Use a dummy reference until the manager is properly initialized by MainWindow
+            self.folder_manager = None
         
         self.current_folder_id = -1
         self._load_token = 0  # Monotonically increasing token to track valid callbacks
