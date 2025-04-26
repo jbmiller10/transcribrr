@@ -108,12 +108,20 @@ class FolderTreeWidget(QWidget):
             while root_item.childCount() > 0:
                 root_item.removeChild(root_item.child(0))
         
-        folder_manager = FolderManager.instance()
-        root_folders = folder_manager.get_all_root_folders()
+        # Get FolderManager instance safely
+        from app.FolderManager import FolderManager
+        try:
+            folder_manager = FolderManager.instance()
+            root_folders = folder_manager.get_all_root_folders()
+        except RuntimeError as e:
+            logger.error(f"Error accessing FolderManager: {e}")
+            root_folders = []
         
         try:
             import sqlite3
-            conn = sqlite3.connect(folder_manager.db_path)
+            from app.constants import get_database_path
+            db_path = get_database_path()
+            conn = sqlite3.connect(db_path)
             cursor = conn.cursor()
             cursor.execute("""
                 SELECT COUNT(*) FROM recordings
@@ -169,9 +177,14 @@ class FolderTreeWidget(QWidget):
     def get_folder_recording_count(self, folder_id):
         """Return recording count in folder."""
         try:
-            folder_manager = FolderManager.instance()
-            recordings = folder_manager.get_recordings_in_folder(folder_id)
-            return len(recordings)
+            from app.FolderManager import FolderManager
+            try:
+                folder_manager = FolderManager.instance()
+                recordings = folder_manager.get_recordings_in_folder(folder_id)
+                return len(recordings) if recordings else 0
+            except RuntimeError as e:
+                logger.error(f"Error accessing FolderManager: {e}")
+                return 0
         except Exception as e:
             logger.error(f"Error getting recording count for folder {folder_id}: {e}")
             return 0
@@ -290,8 +303,15 @@ class FolderTreeWidget(QWidget):
         )
         
         if ok and folder_name:
-            folder_manager = FolderManager.instance()
-            
+            # Get FolderManager instance safely
+            from app.FolderManager import FolderManager
+            try:
+                folder_manager = FolderManager.instance()
+            except RuntimeError as e:
+                logger.error(f"Error accessing FolderManager: {e}")
+                QMessageBox.warning(self, "Error", "Cannot create folder: Database manager not initialized")
+                return
+                
             # Define callback for when folder creation completes
             def on_folder_created(success, result):
                 if success:
@@ -310,8 +330,15 @@ class FolderTreeWidget(QWidget):
         )
         
         if ok and folder_name:
-            folder_manager = FolderManager.instance()
-            
+            # Get FolderManager instance safely
+            from app.FolderManager import FolderManager
+            try:
+                folder_manager = FolderManager.instance()
+            except RuntimeError as e:
+                logger.error(f"Error accessing FolderManager: {e}")
+                QMessageBox.warning(self, "Error", "Cannot create folder: Database manager not initialized")
+                return
+                
             # Define callback for when folder creation completes
             def on_folder_created(success, result):
                 if success:
@@ -331,8 +358,15 @@ class FolderTreeWidget(QWidget):
         )
         
         if ok and new_name and new_name != current_name:
-            folder_manager = FolderManager.instance()
-            
+            # Get FolderManager instance safely
+            from app.FolderManager import FolderManager
+            try:
+                folder_manager = FolderManager.instance()
+            except RuntimeError as e:
+                logger.error(f"Error accessing FolderManager: {e}")
+                QMessageBox.warning(self, "Error", "Cannot rename folder: Database manager not initialized")
+                return
+                
             # Define callback for when folder rename completes
             def on_folder_renamed(success, result):
                 if success:
@@ -358,8 +392,15 @@ class FolderTreeWidget(QWidget):
         )
         
         if response == QMessageBox.StandardButton.Yes:
-            folder_manager = FolderManager.instance()
-            
+            # Get FolderManager instance safely
+            from app.FolderManager import FolderManager
+            try:
+                folder_manager = FolderManager.instance()
+            except RuntimeError as e:
+                logger.error(f"Error accessing FolderManager: {e}")
+                QMessageBox.warning(self, "Error", "Cannot delete folder: Database manager not initialized")
+                return
+                
             # Define callback for when folder deletion completes
             def on_folder_deleted(success, result):
                 if success:

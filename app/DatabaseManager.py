@@ -8,7 +8,8 @@ from app.constants import get_database_path
 from app.db_utils import (
     ensure_database_exists, get_connection, create_recordings_table,
     get_all_recordings, get_recording_by_id, create_recording, 
-    update_recording, delete_recording, search_recordings
+    update_recording, delete_recording, search_recordings,
+    DuplicatePathError  # Import our custom exception
 )
 
 logger = logging.getLogger('transcribrr')
@@ -135,6 +136,13 @@ class DatabaseWorker(QThread):
                             logger.info("Database data modified, emitting dataChanged signal")
                             self.dataChanged.emit()
                         
+                    except DuplicatePathError as e:
+                        # Special handling for duplicate path errors
+                        logger.error(f"Duplicate path error in {op_type}: {e}", exc_info=True)
+                        # Emit error but DO NOT set data_modified to prevent phantom refresh
+                        self.error_occurred.emit(op_type, str(e))
+                        # Explicitly set data_modified to False to be safe
+                        data_modified = False
                     except Exception as e:
                         logger.error(f"Database operation error in {op_type}: {e}", exc_info=True)
                         self.error_occurred.emit(op_type, str(e))
@@ -204,7 +212,11 @@ class DatabaseManager(QObject):
         self.worker.error_occurred.connect(self.error_occurred)
         # Connect worker's dataChanged signal to our custom handler
         self.worker.dataChanged.connect(self._on_data_changed)
+        
+        # Start the worker thread
+        logger.info("Starting DatabaseWorker thread")
         self.worker.start()
+        logger.info(f"DatabaseWorker thread started: {self.worker.isRunning()}")
         
     def _on_data_changed(self):
         """Handle data change from worker and emit our signal with parameters."""

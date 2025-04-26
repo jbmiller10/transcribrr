@@ -12,20 +12,40 @@ class FolderManager:
     
     _instance = None
     
+    _db_manager_attached = False
+    
     @classmethod
     def instance(cls):
         """Return singleton instance."""
         if cls._instance is None:
             cls._instance = FolderManager()
+        
+        # Ensure the database manager is attached before use
+        if not cls._instance._db_manager_attached:
+            raise RuntimeError("FolderManager requires DatabaseManager to be attached first. Call attach_db_manager before using instance.")
+            
         return cls._instance
     
     def __init__(self):
         """Init folder manager."""
         self.folders = []
-        self.db_manager = DatabaseManager()
+        self.db_manager = None  # Will be set by attach_db_manager
         
         # Use the configured database path
         self.db_path = get_database_path()
+    
+    def attach_db_manager(self, db_manager: DatabaseManager):
+        """
+        Attach a DatabaseManager instance to the FolderManager.
+        Must be called before using the FolderManager.
+        
+        Args:
+            db_manager: The DatabaseManager instance to use
+        """
+        self.db_manager = db_manager
+        self.__class__._db_manager_attached = True
+        
+        # Initialize and load data now that we have a db_manager
         self.init_database()
         self.load_folders()
     

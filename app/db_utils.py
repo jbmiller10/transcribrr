@@ -7,6 +7,14 @@ import json
 from typing import List, Dict, Any, Optional, Tuple, Callable, Union
 import datetime
 
+# Custom exceptions for better error handling
+class DuplicatePathError(Exception):
+    """Exception raised when attempting to insert a recording with a duplicate path."""
+    def __init__(self, path, message="Recording with this path already exists"):
+        self.path = path
+        self.message = f"{message}: '{path}'"
+        super().__init__(self.message)
+
 from app.constants import (
     TABLE_RECORDINGS, FIELD_ID, FIELD_FILENAME, FIELD_FILE_PATH,
     FIELD_DATE_CREATED, FIELD_DURATION, FIELD_RAW_TRANSCRIPT, FIELD_PROCESSED_TEXT,
@@ -184,8 +192,9 @@ def create_recording(conn: sqlite3.Connection, recording_data: Tuple) -> int:
         return new_id
     except sqlite3.IntegrityError as e:
         # Handle potential UNIQUE constraint violation on file_path
-        logger.error(f"Error creating recording (possible duplicate path '{data_to_insert[1]}'): {e}", exc_info=True)
-        raise ValueError(f"Recording with path '{data_to_insert[1]}' might already exist.") from e
+        logger.error(f"Error creating recording (duplicate path '{data_to_insert[1]}'): {e}", exc_info=True)
+        # Raise custom exception with the path that caused the error
+        raise DuplicatePathError(data_to_insert[1]) from e
     except sqlite3.Error as e:
         logger.error(f"Error creating recording: {e}", exc_info=True)
         raise
