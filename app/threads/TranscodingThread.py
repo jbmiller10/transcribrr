@@ -1,7 +1,7 @@
 from PyQt6.QtCore import QThread, pyqtSignal
 from pydub import AudioSegment
 import os
-from app.constants import RECORDINGS_DIR
+from app.constants import get_recordings_dir
 from moviepy.editor import VideoFileClip
 import traceback
 import math
@@ -21,8 +21,8 @@ class TranscodingThread(QThread):
         super().__init__(*args, **kwargs)
         self.file_path = file_path
         self.target_format = target_format
-        # Use the configured user recordings directory
-        self.recordings_dir = RECORDINGS_DIR
+        # Configure user recordings directory
+        self.recordings_dir = get_recordings_dir()
         
         # Cancellation support
         self._is_canceled = False
@@ -59,8 +59,7 @@ class TranscodingThread(QThread):
                 raise ValueError("Unsupported file type for transcoding.")
         except Exception as e:
             if not self.is_canceled():
-                error_message = f'Error: {e}'
-                self.handle_error(error_message)
+                self.handle_error(e)
             else:
                 self.update_progress.emit('Transcoding cancelled.')
         finally:
@@ -93,13 +92,20 @@ class TranscodingThread(QThread):
         self.update_progress.emit('Extracting audio from video...')
         audio_path = self.generate_unique_target_path(target_dir, 'mp3', audio_only=True)
         
-        with VideoFileClip(video_path) as video:
-            video.audio.write_audiofile(audio_path)
-            
+        try:
+            with VideoFileClip(video_path) as video:
+                if video.audio is None:
+                    raise ValueError("The selected video file contains no audio track.")
+                video.audio.write_audiofile(audio_path, logger=None)
+        except Exception as e:
+            if isinstance(e, ValueError):
+                raise
+            raise RuntimeError(f"Failed to extract audio: {e}") from e
+
         # Optionally remove the original video file
         if os.path.exists(audio_path):
             os.remove(video_path)
-            
+
         self.update_progress.emit('Audio extraction completed successfully.')
         self.completed.emit(audio_path)
 
@@ -121,6 +127,6 @@ class TranscodingThread(QThread):
         audio.export(target_path, format=self.target_format)
 
     
-    def handle_error(self, error_message):
-        traceback.print_exc()
-        self.error.emit(error_message)
+    def handle_error(self, error_object):
+        logger.error("Error in TranscodingThread", exc_info=True)
+        self.error.emit(str(error_object))

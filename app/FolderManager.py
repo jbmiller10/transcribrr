@@ -2,8 +2,10 @@ import os
 import json
 import logging
 import datetime
+import threading
+from typing import Optional
 from app.DatabaseManager import DatabaseManager
-from app.constants import DATABASE_PATH
+from app.constants import get_database_path
 
 logger = logging.getLogger('transcribrr')
 
@@ -11,20 +13,73 @@ class FolderManager:
     """Manage folder structure."""
     
     _instance = None
+    _db_manager_attached = False
+    _lock = threading.Lock()
     
     @classmethod
-    def instance(cls):
-        """Return singleton instance."""
-        if cls._instance is None:
-            cls._instance = FolderManager()
+    def instance(cls, *, db_manager: "Optional[DatabaseManager]" = None) -> "FolderManager":
+        """
+        Return singleton instance of FolderManager.
+        
+        This method centralizes singleton creation and initial dependency attachment.
+        
+        Args:
+            db_manager: Optional DatabaseManager instance. Required on first call or
+                        if not previously attached. If already attached, providing a
+                        different db_manager will log a warning but keep the original.
+        
+        Returns:
+            The singleton FolderManager instance
+            
+        Raises:
+            RuntimeError: If db_manager is not provided on first call or not previously attached
+        """
+        with cls._lock:
+            if cls._instance is None:
+                cls._instance = FolderManager()
+                if db_manager is not None:
+                    cls._instance.attach_db_manager(db_manager)
+            
+            if not cls._db_manager_attached:
+                if db_manager is not None:
+                    cls._instance.attach_db_manager(db_manager)
+                else:
+                    raise RuntimeError("FolderManager requires DatabaseManager to be attached. Call FolderManager.instance(db_manager=...) on first use.")
+            elif db_manager is not None and cls._instance.db_manager is not db_manager:
+                logger.warning("Different DatabaseManager instance provided to FolderManager.instance() after initialization. Using original instance.")
+                
         return cls._instance
     
     def __init__(self):
         """Init folder manager."""
+        if FolderManager._instance is not None:
+            raise RuntimeError("FolderManager is a singleton. Use FolderManager.instance() instead of direct instantiation.")
+            
         self.folders = []
-        self.db_manager = DatabaseManager()
+        self.db_manager = None  # Will be set by attach_db_manager
         
-        self.db_path = DATABASE_PATH
+        # Use the configured database path
+        self.db_path = get_database_path()
+    
+    def attach_db_manager(self, db_manager: DatabaseManager):
+        """
+        Attach a DatabaseManager instance to the FolderManager.
+        Must be called before using the FolderManager.
+        
+        Args:
+            db_manager: The DatabaseManager instance to use
+        """
+        if self.db_manager is not None:
+            if self.db_manager is db_manager:
+                logger.debug("Same DatabaseManager instance already attached to FolderManager.")
+                return
+            else:
+                logger.warning("Replacing existing DatabaseManager instance in FolderManager.")
+                
+        self.db_manager = db_manager
+        self.__class__._db_manager_attached = True
+        
+        # Initialize and load data now that we have a db_manager
         self.init_database()
         self.load_folders()
     

@@ -8,7 +8,7 @@ import shutil
 import logging
 from app.path_utils import resource_path
 
-from app.constants import RECORDINGS_DIR
+from app.constants import get_recordings_dir
 
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 
@@ -36,8 +36,8 @@ class FileDropWidget(QWidget):
         self.setMinimumHeight(150)
         self.initUI()
         
-        # Use constant from app.constants instead of private attribute
-        os.makedirs(RECORDINGS_DIR, exist_ok=True)
+        # Ensure recordings directory exists
+        os.makedirs(get_recordings_dir(), exist_ok=True)
 
     def initUI(self):
         self.layout = QVBoxLayout(self)
@@ -207,7 +207,7 @@ class FileDropWidget(QWidget):
                     return
 
             base_name = os.path.basename(file_path)
-            new_path = os.path.join(RECORDINGS_DIR, base_name)
+            new_path = os.path.join(get_recordings_dir(), base_name)
 
             # Check if file with same name already exists
             if os.path.exists(new_path):
@@ -227,7 +227,7 @@ class FileDropWidget(QWidget):
                     name, ext = os.path.splitext(base_name)
                     while os.path.exists(new_path):
                         new_base_name = f"{name}_{counter}{ext}"
-                        new_path = os.path.join(RECORDINGS_DIR, new_base_name)
+                        new_path = os.path.join(get_recordings_dir(), new_base_name)
                         counter += 1
                     base_name = os.path.basename(new_path)
 
@@ -330,7 +330,7 @@ class FileDropWidget(QWidget):
         access self.recordings_dir, ensuring it always points to the
         centralized RECORDINGS_DIR constant.
         """
-        return RECORDINGS_DIR
+        return get_recordings_dir()
         
     @staticmethod
     def check_recordings_dir_consistency():
@@ -343,7 +343,7 @@ class FileDropWidget(QWidget):
         Returns:
             bool: True if consistent, False otherwise.
         """
-        from app.constants import RECORDINGS_DIR as CONST_DIR
+        from app.constants import get_recordings_dir as CONST_DIR
         # No need to instantiate a widget, we can directly compare the values
         # since recordings_dir is now a property that just returns RECORDINGS_DIR
-        return FileDropWidget.recordings_dir.fget(None) == CONST_DIR
+        return FileDropWidget.recordings_dir.fget(None) == CONST_DIR()

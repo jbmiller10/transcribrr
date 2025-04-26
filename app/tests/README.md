@@ -67,3 +67,24 @@ The tests follow these general patterns:
 6. **Handle asynchronous operations** - Tests for asynchronous code properly wait for operations to complete.
 
 7. **Focus on internal logic** - Tests focus on the internal logic of components rather than their interaction with the UI.
+
+## Manual Tests
+
+The `manual/` directory contains test scripts that need to be run manually to verify UI interactions, database operations, and error handling. These tests include visual feedback and require user interaction.
+
+To run a manual test:
+```
+python -m app.tests.manual.test_name
+```
+
+For example:
+```
+python -m app.tests.manual.test_duplicate_file
+```
+
+### Available Manual Tests:
+
+- **test_db_injection.py** - Tests the injection of a single DatabaseManager instance into FolderManager, verifying thread safety.
+- **test_batch_inserts.py** - Tests handling of rapid batch inserts and queuing of dataChanged events during tree refreshes.
+- **test_duplicate_file.py** - Tests surfacing database errors to the UI, particularly for duplicate file paths.
+- **test_duplicate_guard.py** - Tests preventing phantom refreshes when duplicate file paths are attempted.

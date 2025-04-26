@@ -3,7 +3,7 @@
 import os
 from typing import Dict, List, Set
 from enum import Enum, auto
-from .path_utils import resource_path, get_user_data_path
+from .path_utils import resource_path
 
 APP_NAME = "Transcribrr"
 APP_VERSION = "1.0.0"
@@ -11,17 +11,55 @@ APP_AUTHOR = "John Miller"
 
 # Use the consolidated resource_path function
 RESOURCE_DIR = resource_path()  # Read-only bundled resources
-USER_DATA_DIR = get_user_data_path()  # Read-write user data
+# USER_DATA_DIR is determined at runtime via get_user_data_dir()
 
 ICONS_DIR = os.path.join(RESOURCE_DIR, "icons")
 
-RECORDINGS_DIR = os.path.join(USER_DATA_DIR, "Recordings")
-DATABASE_DIR = os.path.join(USER_DATA_DIR, "database")
-DATABASE_PATH = os.path.join(DATABASE_DIR, "database.sqlite")
-CONFIG_PATH = os.path.join(USER_DATA_DIR, "config.json")
-PROMPTS_PATH = os.path.join(USER_DATA_DIR, "preset_prompts.json")
-LOG_DIR = os.path.join(USER_DATA_DIR, "logs")
-LOG_FILE = os.path.join(LOG_DIR, "transcribrr.log")
+# Path constants are now provided via runtime functions
+
+# --- Path Retrieval Functions ---
+
+_USER_DATA_DIR_CACHE = None
+
+def get_user_data_dir() -> str:
+    """Gets the user-specific data directory, caching the result."""
+    global _USER_DATA_DIR_CACHE
+    if _USER_DATA_DIR_CACHE is None:
+        import sys
+        import os
+
+        APP_NAME_CONST = "Transcribrr"
+        APP_AUTHOR_CONST = "John Miller"
+
+        if "TRANSCRIBRR_USER_DATA_DIR" in os.environ:
+            _USER_DATA_DIR_CACHE = os.environ["TRANSCRIBRR_USER_DATA_DIR"]
+        elif hasattr(sys, '_MEIPASS') or getattr(sys, 'frozen', False):
+            import appdirs
+            _USER_DATA_DIR_CACHE = appdirs.user_data_dir(APP_NAME_CONST, APP_AUTHOR_CONST)
+        else:
+            _USER_DATA_DIR_CACHE = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+    return _USER_DATA_DIR_CACHE
+
+def get_recordings_dir() -> str:
+    return os.path.join(get_user_data_dir(), "Recordings")
+
+def get_database_dir() -> str:
+    return os.path.join(get_user_data_dir(), "database")
+
+def get_database_path() -> str:
+    return os.path.join(get_database_dir(), "database.sqlite")
+
+def get_config_path() -> str:
+    return os.path.join(get_user_data_dir(), "config.json")
+
+def get_prompts_path() -> str:
+    return os.path.join(get_user_data_dir(), "preset_prompts.json")
+
+def get_log_dir() -> str:
+    return os.path.join(get_user_data_dir(), "logs")
+
+def get_log_file() -> str:
+    return os.path.join(get_log_dir(), "transcribrr.log")
 
 # Directories are now created explicitly during app startup in __main__.py
 # os.makedirs(RECORDINGS_DIR, exist_ok=True)

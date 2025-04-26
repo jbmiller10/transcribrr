@@ -269,8 +269,19 @@ class RecordingListItem(QWidget):
                     if hasattr(self, 'folder_label'):
                         self.update_folder_label()
             
-            # Call the async method with our callback
-            FolderManager.instance().get_folders_for_recording(self.id, on_folders_received)
+            # Get FolderManager instance safely
+            from app.FolderManager import FolderManager
+            try:
+                # If we have access to db_manager, use it to ensure proper initialization
+                if hasattr(self, 'db_manager') and self.db_manager is not None:
+                    folder_manager = FolderManager.instance(db_manager=self.db_manager)
+                else:
+                    folder_manager = FolderManager.instance()
+                folder_manager.get_folders_for_recording(self.id, on_folders_received)
+            except RuntimeError as e:
+                logger.error(f"Error accessing FolderManager: {e}")
+                # If we can't get the instance yet, our folder list will be empty
+                # This will be corrected on UI refresh once the proper instance is available
         except Exception as e:
             logger.error(f"Error loading folders for recording {self.id}: {e}")
             self.folders = []
@@ -338,8 +349,18 @@ class RecordingListItem(QWidget):
             logger.warning(f"Cannot load folders for recording {self.id} - no database manager")
             return
             
-        # Get the folder manager
-        folder_manager = FolderManager.instance()
+        # Get FolderManager instance safely
+        from app.FolderManager import FolderManager
+        try:
+            # Try to initialize with db_manager if available
+            if hasattr(self, 'db_manager') and self.db_manager is not None:
+                folder_manager = FolderManager.instance(db_manager=self.db_manager)
+            else:
+                folder_manager = FolderManager.instance()
+        except RuntimeError as e:
+            logger.error(f"Error accessing FolderManager: {e}")
+            # Return early if we can't get the proper instance
+            return
         
         def on_folders_loaded(success, result):
             if not success:

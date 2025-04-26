@@ -1,15 +1,18 @@
 import datetime
+import os
+import sys
+import logging
 from PyQt6.QtCore import Qt
 from PyQt6.QtWidgets import (
     QVBoxLayout, QApplication, QWidget, QHBoxLayout,
-    QSizePolicy, QMainWindow, QSplitter, QStatusBar
+    QSizePolicy, QMainWindow, QSplitter, QStatusBar,
+    QMessageBox
 )
-import os
-import logging
 
 from app.MainTranscriptionWidget import MainTranscriptionWidget
 from app.ControlPanelWidget import ControlPanelWidget
 from app.DatabaseManager import DatabaseManager
+from app.FolderManager import FolderManager
 from app.RecentRecordingsWidget import RecentRecordingsWidget
 from app.path_utils import resource_path
 from app.file_utils import calculate_duration
@@ -23,7 +26,39 @@ logger = logging.getLogger('transcribrr')
 class MainWindow(QMainWindow):
     def __init__(self):
         super().__init__()
-        self.init_ui()
+        
+        # 1. Create DatabaseManager FIRST
+        try:
+            self.db_manager = DatabaseManager(self)
+            logger.info("DatabaseManager created successfully.")
+        except Exception as e:
+            logger.critical(f"CRITICAL ERROR creating DatabaseManager: {e}", exc_info=True)
+            # Handle critical initialization error
+            QMessageBox.critical(self, "Initialization Error", f"Failed to initialize Database Manager: {e}")
+            sys.exit(1)
+
+        # 2. Initialize FolderManager and attach DB Manager in one call
+        try:
+            # This single call now handles singleton creation AND attachment
+            FolderManager.instance(db_manager=self.db_manager)
+            logger.info("FolderManager initialized and DatabaseManager attached.")
+        except RuntimeError as e:
+            logger.critical(f"CRITICAL ERROR initializing FolderManager: {e}", exc_info=True)
+            QMessageBox.critical(self, "Initialization Error", f"Failed to initialize Folder Manager: {e}")
+            sys.exit(1)
+        except Exception as e:
+            logger.critical(f"CRITICAL ERROR during FolderManager initialization: {e}", exc_info=True)
+            QMessageBox.critical(self, "Initialization Error", f"Unexpected error during Folder Manager setup: {e}")
+            sys.exit(1)
+            
+        # 3. Now initialize the UI
+        try:
+            self.init_ui()
+            logger.info("MainWindow UI initialized successfully.")
+        except Exception as e:
+            logger.critical(f"CRITICAL ERROR during MainWindow UI initialization: {e}", exc_info=True)
+            QMessageBox.critical(self, "Initialization Error", f"Failed during UI setup: {e}")
+            sys.exit(1)
 
 
     def init_ui(self):
@@ -39,8 +74,9 @@ class MainWindow(QMainWindow):
             (screen_size.height() - window_height) // 2
         )
 
-        self.db_manager = DatabaseManager(self)
-
+        # Database manager is initialized in __init__ method
+        # and already attached to FolderManager
+        
         self.control_panel = ControlPanelWidget(self)
         self.recent_recordings_widget = RecentRecordingsWidget(db_manager=self.db_manager)
         self.main_transcription_widget = MainTranscriptionWidget(db_manager=self.db_manager)
@@ -140,8 +176,40 @@ Args:
                 
                 self.update_status_bar(f"Added new recording: {filename}")
                 
+            # Connect to error_occurred signal to catch database errors
+            def on_db_error(operation_name, error_message):
+                if operation_name == "create_recording":
+                    # Format a user-friendly error message
+                    error_text = f"DB error while adding '{filename}': {error_message}"
+                    logger.error(f"Database error: {error_text}")
+                    self.update_status_bar(error_text)
+                    
+                    # Disconnect after first delivery to avoid memory leaks
+                    try:
+                        self.db_manager.error_occurred.disconnect(on_db_error)
+                    except TypeError:
+                        # Already disconnected
+                        pass
+            
+            # Connect with UniqueConnection to avoid duplicates
+            from PyQt6.QtCore import Qt
+            self.db_manager.error_occurred.connect(on_db_error, Qt.ConnectionType.UniqueConnection)
+            
             # Execute the database operation in a background thread
             self.db_manager.create_recording(recording_data, on_recording_created)
+            
+            # Set a timeout to disconnect the error handler if no error occurs
+            from PyQt6.QtCore import QTimer
+            def disconnect_error_handler():
+                try:
+                    self.db_manager.error_occurred.disconnect(on_db_error)
+                    logger.debug(f"Disconnected error handler for {filename}")
+                except TypeError:
+                    # Already disconnected
+                    pass
+            
+            # Disconnect after 5 seconds if no error occurred
+            QTimer.singleShot(5000, disconnect_error_handler)
                 
         except Exception as e:
             logger.error(f"Error processing new file: {e}", exc_info=True)

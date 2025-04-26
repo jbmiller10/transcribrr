@@ -1,5 +1,6 @@
 import sys
 import os
+import shutil
 import pyaudio
 from pydub import AudioSegment
 import wave
@@ -20,7 +21,7 @@ from app.path_utils import resource_path
 from app.path_utils import resource_path
 from app.utils import format_time_duration
 from app.ThreadManager import ThreadManager
-from app.constants import RECORDINGS_DIR
+from app.constants import get_recordings_dir
 
 # Logging configuration should be done in main.py, not here
 # logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
@@ -186,40 +187,64 @@ class RecordingThread(QThread):
             timestamp = datetime.datetime.now().strftime("%Y%m%d-%H%M%S")
             filename = os.path.join(recordings_dir, f"Recording-{timestamp}.mp3")
 
-        # Write to a temporary WAV file first
-        temp_wav = tempfile.NamedTemporaryFile(suffix='.wav', delete=False).name
+        temp_wav_path = None
+        temp_mp3_path = None
+
+        final_path = filename
 
         try:
-            # Save as WAV
-            wf = wave.open(temp_wav, 'wb')
+            # 1. Save raw audio to temp WAV file
+            with tempfile.NamedTemporaryFile(suffix='.wav', delete=False) as tmp_wav:
+                temp_wav_path = tmp_wav.name
+            logger.debug(f"Created temporary WAV path: {temp_wav_path}")
+
+            wf = wave.open(temp_wav_path, 'wb')
             wf.setnchannels(self.channels)
             wf.setsampwidth(self.audio.get_sample_size(self.format))
             wf.setframerate(self.rate)
-            wf.writeframes(b''.join(self.frames))
+            wf.writeframes(b"".join(self.frames))
             wf.close()
+            logger.debug(f"Saved raw audio to temporary WAV: {temp_wav_path}")
 
-            # Convert to MP3
-            audio = AudioSegment.from_wav(temp_wav)
-            audio.export(filename, format="mp3", bitrate="192k")
+            # 2. Convert WAV to temp MP3 file
+            with tempfile.NamedTemporaryFile(suffix='.mp3', delete=False) as tmp_mp3:
+                temp_mp3_path = tmp_mp3.name
+            logger.debug(f"Created temporary MP3 path: {temp_mp3_path}")
 
-            # Clean up temporary file
-            os.remove(temp_wav)
+            logger.debug(f"Converting {temp_wav_path} to {temp_mp3_path}")
+            audio_segment = AudioSegment.from_wav(temp_wav_path)
+            audio_segment.export(temp_mp3_path, format="mp3", bitrate="192k")
+            logger.debug("Conversion to temporary MP3 successful.")
+
+            # 3. Move MP3 to final destination
+            logger.debug(f"Moving {temp_mp3_path} to {final_path}")
+            shutil.move(temp_mp3_path, final_path)
+            temp_mp3_path = None
 
             self.frames.clear()
-            return filename
+            logger.info(f"Recording successfully saved to: {final_path}")
+            return final_path
 
         except Exception as e:
             self.error.emit(f"Error saving recording: {e}")
-            logging.error(f"Error saving recording: {e}", exc_info=True)
-
-            # Clean up
-            if os.path.exists(temp_wav):
-                try:
-                    os.remove(temp_wav)
-                except:
-                    pass
-
+            logger.error(f"Error saving recording: {e}", exc_info=True)
             return None
+
+        finally:
+            # Cleanup temp WAV
+            if temp_wav_path and os.path.exists(temp_wav_path):
+                try:
+                    os.remove(temp_wav_path)
+                    logger.debug(f"Cleaned up temp WAV: {temp_wav_path}")
+                except Exception as cleanup_err:
+                    logger.warning(f"Failed to clean up temp WAV {temp_wav_path}: {cleanup_err}")
+            # Cleanup temp MP3 if not moved
+            if temp_mp3_path and os.path.exists(temp_mp3_path):
+                try:
+                    os.remove(temp_mp3_path)
+                    logger.debug(f"Cleaned up temp MP3: {temp_mp3_path}")
+                except Exception as cleanup_err:
+                    logger.warning(f"Failed to clean up temp MP3 {temp_mp3_path}: {cleanup_err}")
 
 
 class VoiceRecorderWidget(QWidget):
@@ -427,12 +452,12 @@ class VoiceRecorderWidget(QWidget):
 
             # Ask user for filename
             # Ensure recordings directory exists
-            os.makedirs(RECORDINGS_DIR, exist_ok=True)
+            os.makedirs(get_recordings_dir(), exist_ok=True)
             timestamp = datetime.datetime.now().strftime("%Y%m%d-%H%M%S")
             default_name = f"Recording-{timestamp}.mp3"
 
             file_path, _ = QFileDialog.getSaveFileName(
-                self, "Save Recording", os.path.join(RECORDINGS_DIR, default_name),
+                self, "Save Recording", os.path.join(get_recordings_dir(), default_name),
                 "MP3 Files (*.mp3);;All Files (*)"
             )
 

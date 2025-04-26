@@ -57,10 +57,24 @@ class UnifiedFolderTreeView(QTreeView):
     def __init__(self, db_manager, parent=None):
         super().__init__(parent)
         self.db_manager = db_manager
-        self.folder_manager = FolderManager.instance()
+        
+        # Get the properly initialized FolderManager instance with shared DatabaseManager
+        from app.FolderManager import FolderManager
+        try:
+            # Pass the database manager to ensure proper initialization
+            self.folder_manager = FolderManager.instance(db_manager=self.db_manager)
+        except RuntimeError as e:
+            # Log the error and handle the case when FolderManager is not yet initialized
+            logger.error(f"FolderManager initialization error: {e}")
+            # Since we've passed the db_manager, this should only happen if there's a more serious issue
+            # Use a dummy reference until the manager is properly initialized by MainWindow
+            self.folder_manager = None
+        
         self.current_folder_id = -1
         self._load_token = 0  # Monotonically increasing token to track valid callbacks
         self._is_loading = False  # Flag to prevent signals during load
+        self._pending_refresh = False  # Flag to track queued refreshes
+        self._pending_refresh_params = None  # Store the parameters for the pending refresh
         self.id_to_widget = {}  # Maps recording ID to widget AFTER widget is attached to view
         
         # Connect to the dataChanged signal for unified refresh
@@ -210,8 +224,16 @@ class UnifiedFolderTreeView(QTreeView):
         logger.info(f"Tree structure loaded with {self.source_model.rowCount()} top-level items")
         logger.info(f"Widget map contains {len(self.id_to_widget)} recording widgets")
         
+        # Reset the loading flag
         self._is_loading = False
         logger.info("Tree structure loading completed")
+        
+        # Process any pending refreshes that came in during loading
+        if self._pending_refresh:
+            logger.info("Processing pending refresh after load completed")
+            # Use a small delay to ensure the UI is responsive after loading
+            from PyQt6.QtCore import QTimer
+            QTimer.singleShot(50, lambda: self._process_pending_refresh())
         
     def _cleanup_widgets(self):
         """Clean up widget references to prevent memory leaks."""
@@ -590,7 +612,20 @@ class UnifiedFolderTreeView(QTreeView):
     def handle_data_changed(self, entity_type=None, entity_id=None):
         """Handle data change notifications."""
         if self._is_loading:
-            logger.warning("Ignoring data change notification while loading")
+            logger.warning("Data change notification received while loading, queuing refresh...")
+            
+            # Queue the refresh with a timer if one isn't already pending
+            if not self._pending_refresh:
+                self._pending_refresh = True
+                self._pending_refresh_params = (entity_type, entity_id)
+                
+                # Schedule a delayed refresh
+                from PyQt6.QtCore import QTimer
+                QTimer.singleShot(200, lambda: self._process_pending_refresh())
+                logger.info(f"Queued refresh for {entity_type} {entity_id} in 200ms")
+            else:
+                logger.info(f"Refresh already pending, will include changes for {entity_type} {entity_id}")
+            
             return
             
         logger.info(f"Handle data changed: {entity_type} {entity_id}")
@@ -617,6 +652,30 @@ class UnifiedFolderTreeView(QTreeView):
         # Reload structure
         logger.info(f"Triggering structure reload due to data change")
         self.load_structure(current_id, current_type, expanded_folder_ids)
+    
+    def _process_pending_refresh(self):
+        """Process a pending refresh that was queued during loading."""
+        if self._pending_refresh:
+            logger.info("Processing pending refresh")
+            
+            # Reset the flag first to avoid recursion issues
+            self._pending_refresh = False
+            
+            # If we're still loading, queue another refresh
+            if self._is_loading:
+                logger.warning("Still loading when pending refresh triggered, re-queuing...")
+                from PyQt6.QtCore import QTimer
+                QTimer.singleShot(200, lambda: self._process_pending_refresh())
+                self._pending_refresh = True
+                return
+            
+            # Extract parameters from the last queued refresh
+            entity_type, entity_id = self._pending_refresh_params
+            self._pending_refresh_params = None
+            
+            # Now trigger the actual refresh
+            logger.info(f"Executing queued refresh for {entity_type} {entity_id}")
+            self.handle_data_changed(entity_type, entity_id)
         
     def get_expanded_folder_ids(self):
         """Get IDs of all expanded folders."""
