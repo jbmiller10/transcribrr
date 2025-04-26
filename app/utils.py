@@ -241,8 +241,8 @@ def check_system_requirements():
         "issues": []
     }
 
-    if sys.version_info < (3, 10):
-        results["issues"].append("Python 3.10+ is recommended for optimal performance and compatibility.")
+    if sys.version_info < (3, 11):
+        results["issues"].append("Python 3.11+ is recommended for optimal performance and compatibility.")
 
     if results["cuda_available"]:
         try:

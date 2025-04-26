@@ -51,7 +51,7 @@ If you want to run it from source:
 
 **Prerequisites:**
 
-*   Python 3.12+
+*   Python >3.11,<3.12
 *   [FFmpeg](https://ffmpeg.org/download.html) (needs to be in your system's PATH)
 *   (Optional) NVIDIA GPU + [CUDA Toolkit](https://developer.nvidia.com/cuda-toolkit) (matching PyTorch's requirements, usually 11.8 or 12.1) for GPU acceleration.
 
