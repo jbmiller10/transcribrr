@@ -7,6 +7,7 @@ from PyQt6.QtWidgets import (
 import os
 import sys
 import logging
+from moviepy.editor import VideoFileClip
 # Use managers and ui_utils
 from app.path_utils import resource_path
 from app.utils import validate_url, resource_path, ConfigManager
@@ -346,7 +347,15 @@ class ControlPanelWidget(QWidget):
         _, ext = os.path.splitext(filepath)
         if ext.lower() not in ['.mp3', '.wav']: # Define supported directly usable formats
             logger.info(f"Transcoding needed for {filepath}")
-            
+            # Quick UI-level check for mute video to provide instant feedback
+            try:
+                with VideoFileClip(filepath) as test_clip:
+                    if test_clip.audio is None:
+                        self.on_error("The selected video file contains no audio track.")
+                        return
+            except Exception as e:
+                self.on_error(f"Error analyzing video file: {e}")
+                return
             # Setup feedback for transcoding
             ui_elements = self.get_transcoding_ui_elements()
             self.feedback_manager.set_ui_busy(True, ui_elements)
