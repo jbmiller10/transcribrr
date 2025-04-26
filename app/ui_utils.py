@@ -222,9 +222,27 @@ class FeedbackManager:
             logger.debug("FeedbackManager created new SpinnerManager")
             
         self.progress_dialogs = {}  # Store references to active progress dialogs
-        self.ui_state = {} # Track UI elements disabled state
-        self.operation_count = 0 # Count of active operations
+        self.ui_state = {}  # Track UI elements disabled state
+        # Track active operation IDs for robust UI enable/disable
+        self.active_operations = set()
         
+    def start_operation(self, operation_id: str):
+        """Start tracking an operation and disable UI elements if this is the first."""
+        first = len(self.active_operations) == 0
+        self.active_operations.add(operation_id)
+        if first:
+            # Disable any tracked UI elements
+            self.set_ui_busy(True)
+
+    def finish_operation(self, operation_id: str):
+        """Finish tracking an operation and re-enable UI elements if none remain."""
+        self.active_operations.discard(operation_id)
+        if not self.active_operations:
+            # Restore UI elements to their original state
+            for element, state in list(self.ui_state.items()):
+                element.setEnabled(state)
+            self.ui_state.clear()
+
     def start_spinner(self, spinner_name: str) -> bool:
         """Start a spinner for indeterminate operations.
         
@@ -238,8 +256,14 @@ class FeedbackManager:
         if spinner_name not in self.spinner_manager.spinners:
             logger.error(f"Spinner '{spinner_name}' not found")
             return False
-            
-        return self.spinner_manager.toggle_spinner(spinner_name)
+
+        # Toggle spinner and track operation
+        is_active = self.spinner_manager.toggle_spinner(spinner_name)
+        if is_active:
+            self.start_operation(spinner_name)
+        else:
+            self.finish_operation(spinner_name)
+        return is_active
         
     def stop_spinner(self, spinner_name: str) -> bool:
         """Stop a specific spinner.
@@ -260,8 +284,10 @@ class FeedbackManager:
             # Already stopped, no action needed
             return True
             
-        # Stop the spinner and return False (not active anymore)
+        # Stop the spinner
         self.spinner_manager.set_spinner_state(spinner_name, False)
+        # Track finish of operation
+        self.finish_operation(spinner_name)
         return True
         
     def start_progress(self, operation_id: str, title: str, message: str, 
@@ -297,8 +323,8 @@ class FeedbackManager:
         self.progress_dialogs[operation_id] = progress
         progress.show()
         
-        # Increment operation count
-        self.operation_count += 1
+        # Track start of operation
+        self.start_operation(operation_id)
         
         return progress
         
@@ -321,6 +347,8 @@ class FeedbackManager:
             if auto_close:
                 # Use a timer to auto-close after showing completion
                 QTimer.singleShot(delay, lambda: self.close_progress(operation_id))
+        # Track finish of operation
+        self.finish_operation(operation_id)
             
     def close_progress(self, operation_id: str):
         """Close and remove a progress dialog."""
@@ -329,13 +357,8 @@ class FeedbackManager:
                 self.progress_dialogs[operation_id].close()
             except: pass
             self.progress_dialogs.pop(operation_id)
-            
-            # Decrement operation count
-            self.operation_count -= 1
-            
-            # Re-enable UI if no more operations
-            if self.operation_count <= 0:
-                self.set_ui_busy(False)
+            # Track finish of operation
+            self.finish_operation(operation_id)
                 
     def set_ui_busy(self, busy: bool, ui_elements: list = None):
         """Enable/disable UI elements during long operations.
@@ -344,30 +367,15 @@ class FeedbackManager:
             busy: Whether UI should be in busy state
             ui_elements: Specific UI elements to disable, or None for tracked elements
         """
+        # Only handle disabling UI elements; re-enablement is managed by finish_operation
+        if not busy:
+            return
         elements = ui_elements or list(self.ui_state.keys())
-        
-        if busy:
-            # Save the current enabled state for each element once and disable it.
-            for element in elements:
-                if element not in self.ui_state:
-                    self.ui_state[element] = element.isEnabled()
-                element.setEnabled(False)
-
-            # Treat every call that sets the UI to busy as a new logical operation
-            # so we can safely match it with a later call that releases the UI.
-            self.operation_count += 1
-        else:
-            # A previously‑started busy operation finished – decrease the counter.
-            if self.operation_count > 0:
-                self.operation_count -= 1
-
-            # Restore the UI only when the very last outstanding operation finishes.
-            if self.operation_count == 0:
-                for element in elements:
-                    if element in self.ui_state:
-                        element.setEnabled(self.ui_state[element])
-                        # Once restored we can forget its saved state.
-                        self.ui_state.pop(element, None)
+        # Save and disable each specified UI element
+        for element in elements:
+            if element not in self.ui_state:
+                self.ui_state[element] = element.isEnabled()
+            element.setEnabled(False)
                 
     def show_status(self, message: str, timeout: int = 3000):
         """Show a status message."""
@@ -382,6 +390,9 @@ class FeedbackManager:
         for operation_id in list(self.progress_dialogs.keys()):
             self.close_progress(operation_id)
             
-        # Reset operation count and re-enable UI
-        self.operation_count = 0
-        self.set_ui_busy(False)
+        # Clear all tracked operations and restore UI
+        self.active_operations.clear()
+        # Restore UI elements to their original state
+        for element, state in list(self.ui_state.items()):
+            element.setEnabled(state)
+        self.ui_state.clear()

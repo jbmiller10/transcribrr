@@ -621,7 +621,10 @@ class MainTranscriptionWidget(ResponsiveWidget):
             )
 
     def on_transcription_completed(self, transcript):
-        if not self.current_recording_data: return # Recording deselected during process
+        if not self.current_recording_data:
+            return  # Recording deselected during process
+        # Ensure spinner is stopped (redundant cleanup)
+        self.feedback_manager.stop_spinner('transcribe')
 
         recording_id = self.current_recording_data['id']
         formatted_field = 'raw_transcript_formatted'
@@ -701,9 +704,8 @@ class MainTranscriptionWidget(ResponsiveWidget):
             )
             self.feedback_manager.close_progress(self.transcription_progress_id)
         
-        # Immediately re-enable UI elements
+        # Stop spinner; UI re-enable will occur when all operations finish
         self.feedback_manager.stop_spinner('transcribe')
-        self.feedback_manager.set_ui_busy(False)
             
         # no need to call finished manually, it will be called
 
@@ -731,8 +733,6 @@ class MainTranscriptionWidget(ResponsiveWidget):
             # Clean up the progress dialog ID
             delattr(self, 'transcription_progress_id')
         
-        # Re-enable UI elements
-        self.feedback_manager.set_ui_busy(False)
         
         # Clean up thread reference
         self.transcription_thread = None
@@ -857,7 +857,10 @@ class MainTranscriptionWidget(ResponsiveWidget):
             )
 
     def on_gpt4_processing_completed(self, processed_text):
-        if not self.current_recording_data: return
+        if not self.current_recording_data:
+            return  # No recording selected
+        # Ensure spinner is stopped (redundant cleanup)
+        self.feedback_manager.stop_spinner('gpt_process')
 
         recording_id = self.current_recording_data['id']
         formatted_field = 'processed_text_formatted'
@@ -922,9 +925,8 @@ class MainTranscriptionWidget(ResponsiveWidget):
             self.transcript_text.toggle_spinner('gpt')
             self.transcript_text.toggle_spinner('transcription')
         
-        # Immediately re-enable UI elements
+        # Stop spinner; UI re-enable will occur when all operations finish
         self.feedback_manager.stop_spinner('gpt_process')
-        self.feedback_manager.set_ui_busy(False)
         
         # Finished signal will handle cleanup
 
@@ -940,8 +942,6 @@ class MainTranscriptionWidget(ResponsiveWidget):
             self.feedback_manager.close_progress(self.gpt_progress_id)
             delattr(self, 'gpt_progress_id')
             
-        # Re-enable UI
-        self.feedback_manager.set_ui_busy(False)
         
         # Clean up thread reference
         self.gpt4_processing_thread = None
@@ -1039,9 +1039,8 @@ class MainTranscriptionWidget(ResponsiveWidget):
         if hasattr(self, 'smart_format_progress_id'):
             self.feedback_manager.close_progress(self.smart_format_progress_id)
             
-        # Immediately re-enable UI elements
+        # Stop spinner; UI re-enable will occur when all operations finish
         self.feedback_manager.stop_spinner('smart_format')
-        self.feedback_manager.set_ui_busy(False)
             
     def on_smart_format_finished(self):
         """Called when smart formatting thread finishes."""
@@ -1055,8 +1054,6 @@ class MainTranscriptionWidget(ResponsiveWidget):
             self.feedback_manager.close_progress(self.smart_format_progress_id)
             delattr(self, 'smart_format_progress_id')
             
-        # Re-enable UI
-        self.feedback_manager.set_ui_busy(False)
         
         # Clean up thread reference
         self.gpt4_smart_format_thread = None
@@ -1066,11 +1063,14 @@ class MainTranscriptionWidget(ResponsiveWidget):
 
 
     def on_smart_format_completed(self, formatted_html):
-        if not self.current_recording_data: return # Check if recording is still selected
+        if not self.current_recording_data:
+            return  # Check if recording is still selected
 
-        # Reset smart format button state - now handled by the toggle_spinner method in TextEditor
+        # Reset smart format button state and stop spinner
         if hasattr(self.transcript_text, 'toggle_spinner'):
             self.transcript_text.toggle_spinner('smart_format')
+        # Ensure spinner is stopped (redundant cleanup)
+        self.feedback_manager.stop_spinner('smart_format')
 
         recording_id = self.current_recording_data['id']
         current_view_is_raw = (self.mode_switch.value() == 0)
@@ -1235,9 +1235,8 @@ class MainTranscriptionWidget(ResponsiveWidget):
         if hasattr(self, 'refinement_progress_id'):
             self.feedback_manager.close_progress(self.refinement_progress_id)
             
-        # Immediately re-enable UI elements
+        # Stop spinner; UI re-enable will occur when all operations finish
         self.feedback_manager.stop_spinner('refinement')
-        self.feedback_manager.set_ui_busy(False)
         
     def on_refinement_finished(self):
         """Called when refinement thread finishes."""
@@ -1251,8 +1250,6 @@ class MainTranscriptionWidget(ResponsiveWidget):
             self.feedback_manager.close_progress(self.refinement_progress_id)
             delattr(self, 'refinement_progress_id')
             
-        # Re-enable UI
-        self.feedback_manager.set_ui_busy(False)
         
         # Clean up thread reference
         self.gpt4_refinement_thread = None
@@ -1264,6 +1261,8 @@ class MainTranscriptionWidget(ResponsiveWidget):
         self.refinement_input.setEnabled(True)
         self.refinement_input.clear()
         self.refinement_submit_button.setEnabled(True)
+        # Ensure spinner is stopped (redundant cleanup)
+        self.feedback_manager.stop_spinner('refinement')
 
         if not self.current_recording_data: return
 
