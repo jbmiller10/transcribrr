@@ -23,8 +23,8 @@ It's primarily a **personal project** that I tinker with in my free time. If you
 The best way to try it out is using the pre-built installers. Grab the latest release from the [GitHub Releases](https://github.com/jbmiller10/transcribrr/releases) page:
 
 *   **Windows:**
-    *   `Transcribrr-windows-cpu-setup.exe` (Standard version)
-    *   `Transcribrr-windows-cuda-setup.exe` (Needs an NVIDIA GPU + CUDA drivers for faster local transcription)
+    *   `Transcribrr-windows-cpu-setup.exe` (CPU-only version)
+    *   `Transcribrr-windows-cuda-setup.exe` (Needs an NVIDIA GPU for *much* faster local transcription)
 *   **macOS:**
     *   `Transcribrr-macOS-*.dmg` (Download the DMG file)
 
