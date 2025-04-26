@@ -1,6 +1,7 @@
 from PyQt6.QtCore import QThread, pyqtSignal
 from pydub import AudioSegment
 import os
+from app.constants import RECORDINGS_DIR
 from moviepy.editor import VideoFileClip
 import traceback
 import math
@@ -20,7 +21,8 @@ class TranscodingThread(QThread):
         super().__init__(*args, **kwargs)
         self.file_path = file_path
         self.target_format = target_format
-        self.recordings_dir = 'Recordings'  # Directory for storing the output
+        # Use the configured user recordings directory
+        self.recordings_dir = RECORDINGS_DIR
         
         # Cancellation support
         self._is_canceled = False

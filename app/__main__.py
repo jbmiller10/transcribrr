@@ -491,6 +491,30 @@ def run_application():
         logger.info(f"User data directory: {USER_DATA_DIR}")
         logger.info(f"Resource directory: {RESOURCE_DIR}")
         
+        # --- Ensure User Directories Exist ---
+        try:
+            logger.info(f"Ensuring user data directories exist in: {USER_DATA_DIR}")
+            os.makedirs(RECORDINGS_DIR, exist_ok=True)
+            os.makedirs(DATABASE_DIR, exist_ok=True)
+            os.makedirs(LOG_DIR, exist_ok=True)
+            logger.info("User data directories checked/created successfully.")
+        except OSError as e:
+            logger.critical(f"Could not create required user directories in {USER_DATA_DIR}: {e}", exc_info=True)
+            # Attempt to show a message box if possible
+            try:
+                app_instance = QApplication.instance()
+                if not app_instance:
+                    app_instance = QApplication(sys.argv)
+                QMessageBox.critical(None, "Fatal Error",
+                                     f"Could not create application data directories in {USER_DATA_DIR}.\n"
+                                     f"Please check permissions.\nError: {e}")
+            except Exception as mb_error:
+                # Fallback if GUI cannot be shown
+                print(f"FATAL ERROR: Could not create application data directories in {USER_DATA_DIR}. Error: {e}")
+                print(f"Message box error: {mb_error}")
+            return 1
+        # --- End of Directory Creation Block ---
+        
         # Migrate API keys from old format to new format
         from app.secure import migrate_api_keys
         migration_results = migrate_api_keys()

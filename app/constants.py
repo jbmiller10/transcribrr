@@ -23,9 +23,10 @@ PROMPTS_PATH = os.path.join(USER_DATA_DIR, "preset_prompts.json")
 LOG_DIR = os.path.join(USER_DATA_DIR, "logs")
 LOG_FILE = os.path.join(LOG_DIR, "transcribrr.log")
 
-os.makedirs(RECORDINGS_DIR, exist_ok=True)
-os.makedirs(DATABASE_DIR, exist_ok=True)
-os.makedirs(LOG_DIR, exist_ok=True)
+# Directories are now created explicitly during app startup in __main__.py
+# os.makedirs(RECORDINGS_DIR, exist_ok=True)
+# os.makedirs(DATABASE_DIR, exist_ok=True)
+# os.makedirs(LOG_DIR, exist_ok=True)
 
 TABLE_RECORDINGS = "recordings"
 FIELD_ID = "id"
