@@ -18,17 +18,17 @@ from .constants import (
     APP_VERSION,
     DEFAULT_CONFIG,
     DEFAULT_PROMPTS,
-    CONFIG_PATH,
-    PROMPTS_PATH,
-    LOG_DIR,
-    LOG_FILE,
     AUDIO_EXTENSIONS,
     VIDEO_EXTENSIONS,
+    get_config_path,
+    get_prompts_path,
+    get_log_dir,
+    get_log_file,
 )
 
 # Configure logging
 # Ensure log directory exists
-os.makedirs(LOG_DIR, exist_ok=True)
+os.makedirs(get_log_dir(), exist_ok=True)
 # Configure logging once, using a rotating file handler to avoid unbounded
 # growth of the log file.  If another module (e.g. main.py) re‑configures
 # logging later this block will silently be ignored thanks to the `force`
@@ -41,7 +41,7 @@ if not logging.getLogger().handlers:
     backup_count = 3             # keep up to 15 MB total
 
     rotating_handler = RotatingFileHandler(
-        LOG_FILE,
+        get_log_file(),
         maxBytes=max_bytes,
         backupCount=backup_count,
         encoding="utf-8",
@@ -371,7 +371,7 @@ class ConfigManager(QObject):
     def instance(cls) -> 'ConfigManager':
         if cls._instance is None:
             # Ensure logs directory exists before initializing logger within instance
-            os.makedirs(LOG_DIR, exist_ok=True)
+            os.makedirs(get_log_dir(), exist_ok=True)
             cls._instance = ConfigManager()
         return cls._instance
 
@@ -381,7 +381,7 @@ class ConfigManager(QObject):
         if hasattr(self, '_config'):
             return
         self._config: Dict[str, Any] = {}
-        self._config_path = CONFIG_PATH
+        self._config_path = get_config_path()
         self._load_config()
 
     def _load_config(self) -> None:
@@ -466,7 +466,7 @@ class PromptManager(QObject):
     def instance(cls) -> 'PromptManager':
         if cls._instance is None:
             # Ensure logs directory exists before initializing logger within instance
-            os.makedirs(LOG_DIR, exist_ok=True)
+            os.makedirs(get_log_dir(), exist_ok=True)
             cls._instance = PromptManager()
         return cls._instance
 
@@ -476,7 +476,7 @@ class PromptManager(QObject):
         if hasattr(self, '_prompts'):
             return
         self._prompts: Dict[str, Dict[str, str]] = {}
-        self._prompts_path = PROMPTS_PATH
+        self._prompts_path = get_prompts_path()
         self._load_prompts()
 
     def _load_prompts(self) -> None:

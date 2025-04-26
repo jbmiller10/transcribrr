@@ -4,7 +4,7 @@ import queue
 import sqlite3
 from PyQt6.QtCore import QObject, pyqtSignal, QThread, QMutex, Qt
 
-from app.constants import DATABASE_PATH
+from app.constants import get_database_path
 from app.db_utils import (
     ensure_database_exists, get_connection, create_recordings_table,
     get_all_recordings, get_recording_by_id, create_recording, 
@@ -193,9 +193,10 @@ class DatabaseManager(QObject):
     def __init__(self, parent=None):
         super().__init__(parent)
         
-        os.makedirs(os.path.dirname(DATABASE_PATH), exist_ok=True)
+        # Ensure database directory exists
+        os.makedirs(os.path.dirname(get_database_path()), exist_ok=True)
         
-        if not os.path.exists(DATABASE_PATH):
+        if not os.path.exists(get_database_path()):
             ensure_database_exists()
         
         self.worker = DatabaseWorker()

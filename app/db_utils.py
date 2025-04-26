@@ -8,10 +8,10 @@ from typing import List, Dict, Any, Optional, Tuple, Callable, Union
 import datetime
 
 from app.constants import (
-    DATABASE_PATH, TABLE_RECORDINGS, FIELD_ID, FIELD_FILENAME, FIELD_FILE_PATH,
+    TABLE_RECORDINGS, FIELD_ID, FIELD_FILENAME, FIELD_FILE_PATH,
     FIELD_DATE_CREATED, FIELD_DURATION, FIELD_RAW_TRANSCRIPT, FIELD_PROCESSED_TEXT,
     FIELD_RAW_TRANSCRIPT_FORMATTED, FIELD_PROCESSED_TEXT_FORMATTED,
-    CONFIG_PATH, DEFAULT_CONFIG
+    DEFAULT_CONFIG, get_database_path, get_config_path
 )
 
 # Configure logging
@@ -30,7 +30,7 @@ def ensure_database_exists() -> None:
         logger.debug("Database structure verified/initialized successfully")
         
         # Create config file if it doesn't exist
-        if not os.path.exists(CONFIG_PATH):
+        if not os.path.exists(get_config_path()):
             create_config_file()
     except Exception as e:
         logger.error(f"Error initializing database structure: {e}", exc_info=True)
@@ -42,7 +42,7 @@ def ensure_database_exists() -> None:
 
 def create_config_file() -> None:
     try:
-        with open(CONFIG_PATH, 'w') as config_file:
+        with open(get_config_path(), 'w') as config_file:
             json.dump(DEFAULT_CONFIG, config_file, indent=4)
         logger.info("Config file created successfully")
     except Exception as e:
@@ -52,17 +52,18 @@ def create_config_file() -> None:
 # --- Connection ---
 def get_connection() -> sqlite3.Connection:
     """Return DB connection."""
-    db_dir = os.path.dirname(DATABASE_PATH)
-    os.makedirs(db_dir, exist_ok=True) # Ensure directory exists
+    db_path = get_database_path()
+    db_dir = os.path.dirname(db_path)
+    os.makedirs(db_dir, exist_ok=True)  # Ensure directory exists
     try:
         # Use a longer timeout to handle potential lock contention
         # check_same_thread=False since we're using a connection per thread pattern
         # isolation_level=None enables autocommit mode, letting us use explicit "with conn:" blocks for transactions
-        conn = sqlite3.connect(DATABASE_PATH, timeout=30.0, isolation_level=None, check_same_thread=False)
+        conn = sqlite3.connect(db_path, timeout=30.0, isolation_level=None, check_same_thread=False)
         conn.execute("PRAGMA foreign_keys = ON")
         return conn
     except sqlite3.Error as e:
-        logger.critical(f"FATAL: Failed to connect to database at {DATABASE_PATH}: {e}", exc_info=True)
+        logger.critical(f"FATAL: Failed to connect to database at {get_database_path()}: {e}", exc_info=True)
         raise RuntimeError(f"Could not connect to database: {e}")
 
 # --- Table Creation ---

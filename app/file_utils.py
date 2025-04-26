@@ -13,7 +13,7 @@ import datetime
 
 from app.constants import (
     AUDIO_EXTENSIONS, VIDEO_EXTENSIONS, DOCUMENT_EXTENSIONS,
-    FileType, FILE_TYPES, RECORDINGS_DIR, MAX_FILE_SIZE_MB
+    FileType, FILE_TYPES, MAX_FILE_SIZE_MB, get_recordings_dir
 )
 
 # Configure logging
@@ -51,8 +51,9 @@ def check_file_size(file_path: str, max_size_mb: int = MAX_FILE_SIZE_MB) -> Tupl
 
 def ensure_recordings_dir() -> str:
     """Ensure recordings dir exists."""
-    os.makedirs(RECORDINGS_DIR, exist_ok=True)
-    return RECORDINGS_DIR
+    recordings_dir = get_recordings_dir()
+    os.makedirs(recordings_dir, exist_ok=True)
+    return recordings_dir
 
 def generate_new_filename(base_name: str, directory: str) -> str:
     """Generate unique filename in directory."""

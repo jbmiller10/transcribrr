@@ -3,7 +3,7 @@ import json
 import logging
 import datetime
 from app.DatabaseManager import DatabaseManager
-from app.constants import DATABASE_PATH
+from app.constants import get_database_path
 
 logger = logging.getLogger('transcribrr')
 
@@ -24,7 +24,8 @@ class FolderManager:
         self.folders = []
         self.db_manager = DatabaseManager()
         
-        self.db_path = DATABASE_PATH
+        # Use the configured database path
+        self.db_path = get_database_path()
         self.init_database()
         self.load_folders()
     

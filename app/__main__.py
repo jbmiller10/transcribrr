@@ -25,7 +25,7 @@ from .services.transcription_service import ModelManager
 from .ThreadManager import ThreadManager
 
 # Import constants for paths
-from .constants import LOG_FORMAT, LOG_DIR, LOG_FILE, RECORDINGS_DIR, DATABASE_DIR, APP_NAME, USER_DATA_DIR
+from .constants import LOG_FORMAT, APP_NAME, get_user_data_dir, get_recordings_dir, get_database_dir, get_log_dir, get_log_file
 
 # Configure logging - now all paths come from constants
 # Root logging may have been configured by app.utils already (imported by
@@ -38,7 +38,7 @@ if not logging.getLogger().handlers:
         format=LOG_FORMAT,
         handlers=[
             logging.StreamHandler(),
-            logging.FileHandler(LOG_FILE),
+            logging.FileHandler(get_log_file()),
         ],
     )
 
@@ -51,7 +51,7 @@ logger.info(f"Secure logging filter initialized")
 
 # Now get the application‑level logger
 logger = logging.getLogger(APP_NAME)
-logger.info(f"Application starting. User data directory: {USER_DATA_DIR}")
+logger.info(f"Application starting. User data directory: {get_user_data_dir()}")
 
 # Directories are already created in constants.py, no need to recreate them here
 
@@ -84,12 +84,12 @@ class StartupThread(QThread):
 
             self.update_progress.emit(40, "Verifying environment...")
             # Log directory locations
-            from .constants import RESOURCE_DIR, USER_DATA_DIR, RECORDINGS_DIR, DATABASE_DIR, LOG_DIR
-            logger.info(f"Resource directory: {os.path.join(RESOURCE_DIR)}")
-            logger.info(f"User data directory: {os.path.join(USER_DATA_DIR)}")
-            logger.info(f"Recordings directory: {os.path.join(RECORDINGS_DIR)}")
-            logger.info(f"Database directory: {os.path.join(DATABASE_DIR)}")
-            logger.info(f"Log directory: {os.path.join(LOG_DIR)}") 
+            from .constants import RESOURCE_DIR, get_user_data_dir, get_recordings_dir, get_database_dir, get_log_dir
+            logger.info(f"Resource directory: {RESOURCE_DIR}")
+            logger.info(f"User data directory: {get_user_data_dir()}")
+            logger.info(f"Recordings directory: {get_recordings_dir()}")
+            logger.info(f"Database directory: {get_database_dir()}")
+            logger.info(f"Log directory: {get_log_dir()}")
             # Directories are already created in constants.py
             
             # Initialize configuration manager
@@ -443,7 +443,7 @@ def on_initialization_error(error_message, main_window, splash):
 
 def copy_initial_data_files():
     """Copy default configuration and preset files to user data directory on first run"""
-    from .constants import USER_DATA_DIR, RESOURCE_DIR, CONFIG_PATH, PROMPTS_PATH
+    from .constants import RESOURCE_DIR, get_user_data_dir, get_config_path, get_prompts_path
     from .path_utils import resource_path
     import shutil
     
@@ -455,20 +455,20 @@ def copy_initial_data_files():
         resource_dir = resource_path()
             
         # Copy config.json if it doesn't exist in user data directory
-        if not os.path.exists(CONFIG_PATH):
+        if not os.path.exists(get_config_path()):
             source_config = os.path.join(resource_dir, 'config.json')
             if os.path.exists(source_config):
-                logger.info(f"Copying default config.json to {CONFIG_PATH}")
-                shutil.copy2(source_config, CONFIG_PATH)
+                logger.info(f"Copying default config.json to {get_config_path()}")
+                shutil.copy2(source_config, get_config_path())
             else:
                 logger.warning(f"Default config.json not found at {source_config}")
                 
         # Copy preset_prompts.json if it doesn't exist in user data directory
-        if not os.path.exists(PROMPTS_PATH):
+        if not os.path.exists(get_prompts_path()):
             source_prompts = os.path.join(resource_dir, 'preset_prompts.json')
             if os.path.exists(source_prompts):
-                logger.info(f"Copying default preset_prompts.json to {PROMPTS_PATH}")
-                shutil.copy2(source_prompts, PROMPTS_PATH)
+                logger.info(f"Copying default preset_prompts.json to {get_prompts_path()}")
+                shutil.copy2(source_prompts, get_prompts_path())
             else:
                 logger.warning(f"Default preset_prompts.json not found at {source_prompts}")
 
@@ -486,17 +486,17 @@ def run_application():
         
         logger.info(f"Starting application: Frozen = {is_frozen}, PyInstaller = {is_pyinstaller}, py2app = {is_py2app}")
         logger.info(f"Working directory: {os.getcwd()}")
-        # Import constants directly instead of through app
-        from .constants import USER_DATA_DIR, RESOURCE_DIR
-        logger.info(f"User data directory: {USER_DATA_DIR}")
+        # Import user data and resource path functions
+        from .constants import RESOURCE_DIR, get_user_data_dir, get_recordings_dir, get_database_dir, get_log_dir
+        logger.info(f"User data directory: {get_user_data_dir()}")
         logger.info(f"Resource directory: {RESOURCE_DIR}")
         
         # --- Ensure User Directories Exist ---
         try:
-            logger.info(f"Ensuring user data directories exist in: {USER_DATA_DIR}")
-            os.makedirs(RECORDINGS_DIR, exist_ok=True)
-            os.makedirs(DATABASE_DIR, exist_ok=True)
-            os.makedirs(LOG_DIR, exist_ok=True)
+            logger.info(f"Ensuring user data directories exist in: {get_user_data_dir()}")
+            os.makedirs(get_recordings_dir(), exist_ok=True)
+            os.makedirs(get_database_dir(), exist_ok=True)
+            os.makedirs(get_log_dir(), exist_ok=True)
             logger.info("User data directories checked/created successfully.")
         except OSError as e:
             logger.critical(f"Could not create required user directories in {USER_DATA_DIR}: {e}", exc_info=True)
@@ -525,10 +525,9 @@ def run_application():
         copy_initial_data_files()
         
         # Check if critical files exist after potential copying
-        # Use constants directly
-        from .constants import CONFIG_PATH, PROMPTS_PATH
-        config_exists = os.path.exists(CONFIG_PATH)
-        prompts_exists = os.path.exists(PROMPTS_PATH)
+        from .constants import get_config_path, get_prompts_path
+        config_exists = os.path.exists(get_config_path())
+        prompts_exists = os.path.exists(get_prompts_path())
         logger.info(f"Config file exists in user data dir: {config_exists}")
         logger.info(f"Prompts file exists in user data dir: {prompts_exists}")
         
