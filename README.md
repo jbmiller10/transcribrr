@@ -1,109 +1,93 @@
 # Transcribrr
 
-Transcribrr is a desktop application designed for converting audio into text and refining it using OpenAI's GPT models. It's a versatile tool that handles local audio or video files, YouTube videos through URL links, and recordings captured directly in the app. This is a personal project that I am continually developing in my spare time, so expect ongoing improvements.
+<p align="center">
+  <img src="https://github.com/user-attachments/assets/b8336779-a554-424b-97ff-53e617bf7823" alt="Transcribrr Screenshot" width="75%">
+</p>
 
-![Transcribrr Screenshot](https://github.com/user-attachments/assets/b8336779-a554-424b-97ff-53e617bf7823)
+This is Transcribrr, a little desktop tool I've been building for myself to turn audio into text and then clean it up using OpenAI's GPT models. It handles local audio/video files, YouTube links, and direct recordings from the microphone.
 
-## Features
+It's primarily a **personal project** that I tinker with in my free time. If you happen to find it useful too, that's awesome! Just keep in mind it's developed by one person and might have rough edges.
 
-- **Local Transcription**: Fast and accurate transcription using `whisperx` with optional speaker detection.
-  - Alternatively, you may opt to use the OpenAI Whisper API.
-- **GPT Processing**: Use OpenAI's GPT models for text processing, summarization, and refinement.
-- **Transcription Management**: Adjust quality settings, manage preset prompts, and customize GPT processing parameters.
-- **Multiple Input Options**: Support for local files, YouTube URLs, or direct recordings.
-- **Recent Recordings**: Easily access and manage your previous transcriptions.
-- **Text Editor**: Built-in rich text editor with formatting options for your transcripts.
-- **Database Integration**: Improved storage and retrieval of transcriptions and settings.
+## What it Can Do
 
-## Installation
+*   **Transcribe Stuff:** Converts audio/video to text. You can use `whisperx` locally (faster, works offline, can detect speakers) or OpenAI's Whisper API (might be more accurate for some cases, needs internet/API key).
+*   **Clean Up Text with AI:** Uses OpenAI's GPT models (like GPT-4o) to reformat, summarize, translate, or otherwise process the raw transcript based on prompts.
+*   **Different Inputs:** Drop in local files, paste a YouTube URL, or record directly in the app.
+*   **Manage Transcripts:** Keeps a list of recent recordings, lets you edit the text, and save your work.
+*   **Settings:** You can tweak things like the transcription model, GPT settings, and manage custom prompts.
 
-### Pre-built Installers (Recommended)
+## Getting Started
 
-Download the latest release from the [GitHub Releases](https://github.com/jbmiller10/transcribrr/releases) page:
+**1. Installation (The Easy Way)**
 
-- **Windows**: Choose between:
-  - `Transcribrr-windows-cpu-setup.exe` - Standard version
-  - `Transcribrr-windows-cuda-setup.exe` - Version with CUDA support for GPU acceleration
-- **macOS**: Download the `Transcribrr-macOS.zip` file and extract the application
+The best way to try it out is using the pre-built installers. Grab the latest release from the [GitHub Releases](https://github.com/jbmiller10/transcribrr/releases) page:
 
-### Manual Installation
+*   **Windows:**
+    *   `Transcribrr-windows-cpu-setup.exe` (Standard version)
+    *   `Transcribrr-windows-cuda-setup.exe` (Needs an NVIDIA GPU + CUDA drivers for faster local transcription)
+*   **macOS:**
+    *   `Transcribrr-macOS-*.dmg` (Download the DMG file)
 
-#### Prerequisites
+**Important:** You'll likely still need **FFmpeg** installed on your system separately, as the app uses it for audio processing. You can usually get it from [ffmpeg.org/download.html](https://ffmpeg.org/download.html).
 
-Ensure you have the following before installing the application:
+**2. API Key (Important!)**
 
-- Python 3.10+
-- [Cuda 11.8 or higher](https://docs.nvidia.com/cuda/cuda-quick-start-guide/index.html) (optional for GPU acceleration)
-- [FFmpeg](https://ffmpeg.org/download.html)
+To use the GPT processing features or the OpenAI Whisper API for transcription (if you opt to use the API for transcription rather than a local model,) you *need* an OpenAI API key.
+*   Go to **Settings** within the app.
+*   Enter your key in the "API Keys" tab. It's stored securely in your system's keychain/credential manager.
+*   You can optionally add a HuggingFace token if you want to use speaker detection with local transcription.
 
-#### Clone the Repository
+**3. Using the App**
 
-Clone the project repository to your local machine:
+*   Choose your input method: File Upload, YouTube URL, or Direct Recording.
+*   Once you have audio loaded (or recorded), hit "Start Transcription".
+*   After transcription, you can use the "Process with GPT-4" button (or the other AI tools in the editor toolbar) to refine the text using the selected prompt.
+*   Your recordings/transcripts show up in the left panel. Click one to load it into the editor.
+*   Use the editor to make manual changes, format text, and save your progress.
 
-```bash
-git clone https://github.com/jbmiller10/transcribrr.git
-cd transcribrr
-```
+## Manual Installation (If You Prefer)
 
-### Create a Virtual Environment
+If you want to run it from source:
 
-Create a virtual environment to manage dependencies:
+**Prerequisites:**
 
-#### Windows
-```bash
-python -m venv venv
-.\venv\Scripts\activate
-```
+*   Python 3.12+
+*   [FFmpeg](https://ffmpeg.org/download.html) (needs to be in your system's PATH)
+*   (Optional) NVIDIA GPU + [CUDA Toolkit](https://developer.nvidia.com/cuda-toolkit) (matching PyTorch's requirements, usually 11.8 or 12.1) for GPU acceleration.
 
-#### MacOS/Linux
-```bash
-python -m venv venv
-source venv/bin/activate
-```
+**Steps:**
 
-### Install Dependencies
+1.  **Clone:**
+    ```bash
+    git clone https://github.com/jbmiller10/transcribrr.git
+    cd transcribrr
+    ```
+2.  **Set up a Virtual Environment:** (Recommended)
+    ```bash
+    # Windows
+    python -m venv venv
+    .\venv\Scripts\activate
+    # macOS/Linux
+    python -m venv venv
+    source venv/bin/activate
+    ```
+3.  **Install Dependencies:**
+    *   **(Optional) Install PyTorch with CUDA:** Find the correct command for your CUDA version on the [PyTorch website](https://pytorch.org/get-started/locally/). Example for CUDA 11.8:
+        ```bash
+        pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu118
+        ```
+    *   **Install other requirements:**
+        ```bash
+        pip install -r requirements.txt
+        ```
+4.  **Run:**
+    ```bash
+    python main.py
+    ```
+    
 
-#### Optional: Install Torch with Cuda for GPU
+## Feedback & Ideas Welcome
 
-```bash
-pip install torch~=2.0.0 torchaudio~=2.0.0 --index-url https://download.pytorch.org/whl/cu118
-```
+If run into bugs or have ideas for improvements, feel free to:
 
-#### Install Required Packages
-
-```bash
-pip install -r requirements.txt
-```
-
-## Usage
-
-To start the application, run:
-
-```bash
-python main.py
-```
-
-## Configuration
-
-Before using Transcribrr, configure your OpenAI API keys through the 'Settings' menu. You can also adjust settings such as transcription quality, GPT model, max tokens, temperature, and manage your preset GPT prompts.
-
-## How to Use
-
-1. Select your transcription mode: File Upload, YouTube URL, or Direct Recording.
-2. Upload a file or paste a YouTube URL into the app to begin.
-3. Click "Start Transcription" to convert audio to text.
-4. Utilize the "Process with GPT-4" button for refining transcripts with GPT settings.
-5. Save and manage your transcriptions through the Recent Recordings panel.
-6. Format and edit your transcripts using the built-in text editor.
-
-## Project Status
-
-This project is currently undergoing a major refactoring to improve:
-- Database management with a dedicated DatabaseManager
-- Service-oriented architecture with clear separation of concerns
-- Enhanced UI components with better reusability
-- Improved file and recording management
-
-## Contributing
-
-Contributions are welcome! Feel free to submit pull requests or open issues for bugs and feature requests.
+*   **Open an Issue:** Report bugs or suggest features on the [GitHub Issues](https://github.com/jbmiller10/transcribrr/issues) page.
