@@ -3,6 +3,7 @@ from PyQt6.QtCore import QThread, pyqtSignal
 import traceback
 from datetime import datetime
 import os
+from app.constants import RECORDINGS_DIR
 import time
 import logging # Use logging
 from threading import Lock
@@ -49,14 +50,13 @@ class YouTubeDownloadThread(QThread):
         info_dict = None
         try:
             self.update_progress.emit('Preparing YouTube download...')
-            # Ensure Recordings directory exists
-            recordings_dir = 'Recordings'
-            os.makedirs(recordings_dir, exist_ok=True)
+            # Ensure recordings directory exists
+            os.makedirs(RECORDINGS_DIR, exist_ok=True)
 
             # Define output template - use title and timestamp for uniqueness
             # Use a temporary placeholder name first
             temp_output_template = os.path.join(
-                recordings_dir,
+                RECORDINGS_DIR,
                 f'youtube_temp_{datetime.now().strftime("%Y%m%d%H%M%S%f")}.%(ext)s'
             )
 
@@ -111,7 +111,7 @@ class YouTubeDownloadThread(QThread):
                 sanitized_title = sanitized_title[:100] # Limit length
                 timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
                 final_filename_base = f'{sanitized_title}_{timestamp}'
-                final_wav_path = os.path.join(recordings_dir, f"{final_filename_base}.wav")
+                final_wav_path = os.path.join(RECORDINGS_DIR, f"{final_filename_base}.wav")
 
                 # Find the actual downloaded/processed file (yt-dlp might change extension)
                 # The actual output path after postprocessing is tricky to get directly.
@@ -239,7 +239,8 @@ class YouTubeDownloadThread(QThread):
               
               # Check for any files that include the base name (for partial downloads)
               base_name = os.path.basename(temp_base)
-              recordings_dir = 'Recordings'
+              # Use configured recordings directory
+              recordings_dir = RECORDINGS_DIR
               
               if os.path.exists(recordings_dir):
                   for filename in os.listdir(recordings_dir):

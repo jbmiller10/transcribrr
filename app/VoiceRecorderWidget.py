@@ -20,6 +20,7 @@ from app.path_utils import resource_path
 from app.path_utils import resource_path
 from app.utils import format_time_duration
 from app.ThreadManager import ThreadManager
+from app.constants import RECORDINGS_DIR
 
 # Logging configuration should be done in main.py, not here
 # logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
@@ -425,13 +426,13 @@ class VoiceRecorderWidget(QWidget):
                 self.ui_timer.stop()
 
             # Ask user for filename
-            recordings_dir = os.path.join(os.getcwd(), "Recordings")
-            os.makedirs(recordings_dir, exist_ok=True)
+            # Ensure recordings directory exists
+            os.makedirs(RECORDINGS_DIR, exist_ok=True)
             timestamp = datetime.datetime.now().strftime("%Y%m%d-%H%M%S")
             default_name = f"Recording-{timestamp}.mp3"
 
             file_path, _ = QFileDialog.getSaveFileName(
-                self, "Save Recording", os.path.join(recordings_dir, default_name),
+                self, "Save Recording", os.path.join(RECORDINGS_DIR, default_name),
                 "MP3 Files (*.mp3);;All Files (*)"
             )
 
