@@ -1,7 +1,7 @@
 # -*- mode: python ; coding: utf-8 -*-
 """
 Transcribrr – PyInstaller specification
-• Python 3.9, PyInstaller 6.x
+• Python 3.11, PyInstaller 6.x
 • One‑folder windowed build (`dist/Transcribrr`)
 
 Changed 2025‑04‑22: removed hard dependency on `cacert.pem` because the
