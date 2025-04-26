@@ -1,15 +1,18 @@
 import datetime
+import os
+import sys
+import logging
 from PyQt6.QtCore import Qt
 from PyQt6.QtWidgets import (
     QVBoxLayout, QApplication, QWidget, QHBoxLayout,
-    QSizePolicy, QMainWindow, QSplitter, QStatusBar
+    QSizePolicy, QMainWindow, QSplitter, QStatusBar,
+    QMessageBox
 )
-import os
-import logging
 
 from app.MainTranscriptionWidget import MainTranscriptionWidget
 from app.ControlPanelWidget import ControlPanelWidget
 from app.DatabaseManager import DatabaseManager
+from app.FolderManager import FolderManager
 from app.RecentRecordingsWidget import RecentRecordingsWidget
 from app.path_utils import resource_path
 from app.file_utils import calculate_duration
@@ -23,7 +26,37 @@ logger = logging.getLogger('transcribrr')
 class MainWindow(QMainWindow):
     def __init__(self):
         super().__init__()
-        self.init_ui()
+        
+        # 1. Create DatabaseManager FIRST
+        try:
+            self.db_manager = DatabaseManager(self)
+            logger.info("DatabaseManager created successfully.")
+        except Exception as e:
+            logger.critical(f"CRITICAL ERROR creating DatabaseManager: {e}", exc_info=True)
+            # Handle critical initialization error
+            QMessageBox.critical(self, "Initialization Error", f"Failed to initialize Database Manager: {e}")
+            sys.exit(1)
+
+        # 2. Attach DatabaseManager to FolderManager IMMEDIATELY
+        try:
+            # Use the singleton pattern correctly
+            folder_manager_instance = FolderManager.instance()
+            folder_manager_instance.attach_db_manager(self.db_manager)
+            logger.info("DatabaseManager attached to FolderManager singleton.")
+        except Exception as e:
+            logger.critical(f"CRITICAL ERROR attaching DB Manager to Folder Manager: {e}", exc_info=True)
+            # Handle critical initialization error
+            QMessageBox.critical(self, "Initialization Error", f"Failed to link Folder Manager to Database: {e}")
+            sys.exit(1)
+            
+        # 3. Now initialize the UI
+        try:
+            self.init_ui()
+            logger.info("MainWindow UI initialized successfully.")
+        except Exception as e:
+            logger.critical(f"CRITICAL ERROR during MainWindow UI initialization: {e}", exc_info=True)
+            QMessageBox.critical(self, "Initialization Error", f"Failed during UI setup: {e}")
+            sys.exit(1)
 
 
     def init_ui(self):
@@ -39,13 +72,8 @@ class MainWindow(QMainWindow):
             (screen_size.height() - window_height) // 2
         )
 
-        # Initialize the database manager (singleton instance)
-        self.db_manager = DatabaseManager(self)
-        
-        # Attach the database manager to FolderManager before any folder operations
-        from app.FolderManager import FolderManager
-        folder_manager = FolderManager()
-        folder_manager.attach_db_manager(self.db_manager)
+        # Database manager is initialized in __init__ method
+        # and already attached to FolderManager
         
         self.control_panel = ControlPanelWidget(self)
         self.recent_recordings_widget = RecentRecordingsWidget(db_manager=self.db_manager)
