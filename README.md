@@ -24,7 +24,7 @@ The best way to try it out is using the pre-built installers. Grab the latest re
 
 *   **Windows:**
     *   `Transcribrr-windows-cpu-setup.exe` (CPU-only version)
-    *   `Transcribrr-windows-cuda-setup.exe` (Needs an NVIDIA GPU for *much* faster local transcription. Bundled with CUDA.)
+    *   `Transcribrr-windows-cuda-setup.exe` (Needs an NVIDIA GPU for *much* faster local transcription. Bundled with CUDA Toolkit.)
 *   **macOS:**
     *   `Transcribrr-macOS-*.dmg` (Download the DMG file)
 
