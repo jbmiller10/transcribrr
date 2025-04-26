@@ -386,13 +386,10 @@ class ControlPanelWidget(QWidget):
         else:
             # File is already in a usable format
             logger.info(f"File {filepath} is ready, no transcoding needed.")
-            
+
             # Finish any progress indicators
             if hasattr(self, 'yt_progress_id'):
                 self.feedback_manager.close_progress(self.yt_progress_id)
-                
-            # Re-enable UI
-            self.feedback_manager.set_ui_busy(False)
             
             # Show status and emit file ready signal
             self.feedback_manager.show_status(f"Ready: {os.path.basename(filepath)}")
@@ -451,8 +448,6 @@ class ControlPanelWidget(QWidget):
                 self.feedback_manager.close_progress(self.transcoding_progress_id)
                 delattr(self, 'transcoding_progress_id')
                 
-            # Re-enable UI elements
-            self.feedback_manager.set_ui_busy(False)
             
             # Single file produced
             logger.info(f"Transcoding completed. File saved to: {file_path}")
@@ -479,8 +474,6 @@ class ControlPanelWidget(QWidget):
             self.feedback_manager.close_progress(self.transcoding_progress_id)
             delattr(self, 'transcoding_progress_id')
             
-        # Re-enable UI
-        self.feedback_manager.set_ui_busy(False)
         
         # Show error message
         show_error_message(self, "Operation Failed", message)
