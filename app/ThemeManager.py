@@ -122,7 +122,8 @@ class ThemeManager(QObject):
 
                     # Only process the legacy file if it has a theme key
                     if "theme" in legacy_config:
-                        legacy_theme = legacy_config.get("theme", "light").lower()
+                        legacy_theme = legacy_config.get(
+                            "theme", "light").lower()
                         if legacy_theme in ["light", "dark"]:
                             # Save to ConfigManager
                             logger.info(
@@ -132,7 +133,8 @@ class ThemeManager(QObject):
 
                 # Delete the legacy file after migration
                 os.remove(legacy_config_path)
-                logger.info(f"Removed legacy config file: {legacy_config_path}")
+                logger.info(
+                    f"Removed legacy config file: {legacy_config_path}")
             except Exception as e:
                 logger.error(f"Error migrating legacy theme config: {e}")
 
@@ -622,15 +624,18 @@ class ThemeManager(QObject):
 
         if self.current_theme == "dark":
             # Dark theme palette
-            palette.setColor(QPalette.ColorRole.Window, self.get_qcolor("background"))
+            palette.setColor(QPalette.ColorRole.Window,
+                             self.get_qcolor("background"))
             palette.setColor(
                 QPalette.ColorRole.WindowText, self.get_qcolor("foreground")
             )
             palette.setColor(
-                QPalette.ColorRole.Base, self.get_qcolor("background-secondary")
+                QPalette.ColorRole.Base, self.get_qcolor(
+                    "background-secondary")
             )
             palette.setColor(
-                QPalette.ColorRole.AlternateBase, self.get_qcolor("background-tertiary")
+                QPalette.ColorRole.AlternateBase, self.get_qcolor(
+                    "background-tertiary")
             )
             palette.setColor(
                 QPalette.ColorRole.ToolTipBase, self.get_qcolor("background")
@@ -638,23 +643,30 @@ class ThemeManager(QObject):
             palette.setColor(
                 QPalette.ColorRole.ToolTipText, self.get_qcolor("foreground")
             )
-            palette.setColor(QPalette.ColorRole.Text, self.get_qcolor("foreground"))
+            palette.setColor(QPalette.ColorRole.Text,
+                             self.get_qcolor("foreground"))
             palette.setColor(
-                QPalette.ColorRole.Button, self.get_qcolor("background-secondary")
+                QPalette.ColorRole.Button, self.get_qcolor(
+                    "background-secondary")
             )
             palette.setColor(
                 QPalette.ColorRole.ButtonText, self.get_qcolor("foreground")
             )
-            palette.setColor(QPalette.ColorRole.Link, self.get_qcolor("primary"))
-            palette.setColor(QPalette.ColorRole.Highlight, self.get_qcolor("primary"))
-            palette.setColor(QPalette.ColorRole.HighlightedText, QColor("white"))
+            palette.setColor(QPalette.ColorRole.Link,
+                             self.get_qcolor("primary"))
+            palette.setColor(QPalette.ColorRole.Highlight,
+                             self.get_qcolor("primary"))
+            palette.setColor(
+                QPalette.ColorRole.HighlightedText, QColor("white"))
         else:
             # Light theme palette
-            palette.setColor(QPalette.ColorRole.Window, self.get_qcolor("background"))
+            palette.setColor(QPalette.ColorRole.Window,
+                             self.get_qcolor("background"))
             palette.setColor(
                 QPalette.ColorRole.WindowText, self.get_qcolor("foreground")
             )
-            palette.setColor(QPalette.ColorRole.Base, self.get_qcolor("background"))
+            palette.setColor(QPalette.ColorRole.Base,
+                             self.get_qcolor("background"))
             palette.setColor(
                 QPalette.ColorRole.AlternateBase,
                 self.get_qcolor("background-secondary"),
@@ -665,15 +677,20 @@ class ThemeManager(QObject):
             palette.setColor(
                 QPalette.ColorRole.ToolTipText, self.get_qcolor("foreground")
             )
-            palette.setColor(QPalette.ColorRole.Text, self.get_qcolor("foreground"))
+            palette.setColor(QPalette.ColorRole.Text,
+                             self.get_qcolor("foreground"))
             palette.setColor(
-                QPalette.ColorRole.Button, self.get_qcolor("background-secondary")
+                QPalette.ColorRole.Button, self.get_qcolor(
+                    "background-secondary")
             )
             palette.setColor(
                 QPalette.ColorRole.ButtonText, self.get_qcolor("foreground")
             )
-            palette.setColor(QPalette.ColorRole.Link, self.get_qcolor("primary"))
-            palette.setColor(QPalette.ColorRole.Highlight, self.get_qcolor("primary"))
-            palette.setColor(QPalette.ColorRole.HighlightedText, QColor("white"))
+            palette.setColor(QPalette.ColorRole.Link,
+                             self.get_qcolor("primary"))
+            palette.setColor(QPalette.ColorRole.Highlight,
+                             self.get_qcolor("primary"))
+            palette.setColor(
+                QPalette.ColorRole.HighlightedText, QColor("white"))
 
         return palette

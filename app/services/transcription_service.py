@@ -42,7 +42,8 @@ class ModelManager:
         from app.utils import ConfigManager
 
         config_manager = ConfigManager.instance()
-        hw_accel_enabled = config_manager.get("hardware_acceleration_enabled", True)
+        hw_accel_enabled = config_manager.get(
+            "hardware_acceleration_enabled", True)
 
         # Track current device
         self.device = self._get_optimal_device(hw_accel_enabled)
@@ -51,7 +52,8 @@ class ModelManager:
     def _get_optimal_device(self, hw_acceleration_enabled: bool = True) -> str:
         """Return optimal device string."""
         if not hw_acceleration_enabled:
-            logger.info("Hardware acceleration disabled in settings. Using CPU.")
+            logger.info(
+                "Hardware acceleration disabled in settings. Using CPU.")
             return "cpu"
 
         if torch.cuda.is_available():
@@ -80,7 +82,8 @@ class ModelManager:
                 gpu_memory = torch.cuda.get_device_properties(0).total_memory / (
                     1024**3
                 )  # Convert to GB
-                allocated = torch.cuda.memory_allocated(0) / (1024**3)  # Convert to GB
+                allocated = torch.cuda.memory_allocated(
+                    0) / (1024**3)  # Convert to GB
                 return gpu_memory - allocated
             return 0.0
         except Exception as e:
@@ -114,7 +117,8 @@ class ModelManager:
         """
         if model_id not in self._processors:
             logger.info(f"Loading processor: {model_id}")
-            self._processors[model_id] = AutoProcessor.from_pretrained(model_id)
+            self._processors[model_id] = AutoProcessor.from_pretrained(
+                model_id)
         return self._processors[model_id]
 
     def _load_model(self, model_id: str) -> Any:

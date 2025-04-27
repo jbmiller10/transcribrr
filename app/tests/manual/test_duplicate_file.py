@@ -75,7 +75,8 @@ class TestWindow(QWidget):
 
         # Define callback for when the recording is created
         def on_recording_created(recording_id):
-            self.status_label.setText(f"Added test recording with ID: {recording_id}")
+            self.status_label.setText(
+                f"Added test recording with ID: {recording_id}")
             logger.info(f"Recording created with ID: {recording_id}")
 
         # Connect to handle database errors (similar to MainWindow.on_new_file)
@@ -112,7 +113,8 @@ class TestWindow(QWidget):
 
     def add_duplicate_recording(self):
         """Try to add a recording with the same file path (should trigger the error)"""
-        self.status_label.setText("Adding duplicate recording (should fail)...")
+        self.status_label.setText(
+            "Adding duplicate recording (should fail)...")
 
         # Use the same path as the test recording
         import datetime

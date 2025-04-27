@@ -416,7 +416,8 @@ class TestPromptBar(unittest.TestCase):
         # Verify components are disabled
         self.prompt_bar.prompt_dropdown.setEnabled.assert_called_with(False)
         self.prompt_bar.edit_button.setEnabled.assert_called_with(False)
-        self.prompt_bar.custom_prompt_input.setEnabled.assert_called_with(False)
+        self.prompt_bar.custom_prompt_input.setEnabled.assert_called_with(
+            False)
         self.prompt_bar.save_button.setEnabled.assert_called_with(False)
 
         # Test enabling

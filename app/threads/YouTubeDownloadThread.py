@@ -26,7 +26,8 @@ class YouTubeDownloadThread(QThread):
     def cancel(self):
         with self._lock:
             if not self._is_canceled:
-                logger.info("Cancellation requested for YouTube download thread.")
+                logger.info(
+                    "Cancellation requested for YouTube download thread.")
                 self._is_canceled = True
                 self.requestInterruption()  # Use QThread's built-in interruption
                 # Attempt to interrupt yt-dlp (might not always work)
@@ -40,7 +41,8 @@ class YouTubeDownloadThread(QThread):
 
     def run(self):
         if self.is_canceled():
-            self.update_progress.emit("YouTube download cancelled before starting.")
+            self.update_progress.emit(
+                "YouTube download cancelled before starting.")
             return
 
         temp_files = []
@@ -90,7 +92,8 @@ class YouTubeDownloadThread(QThread):
 
             # Check cancellation before setting up options
             if self.is_canceled():
-                self.update_progress.emit("YouTube download cancelled after preparing.")
+                self.update_progress.emit(
+                    "YouTube download cancelled after preparing.")
                 return
 
             ydl_opts = {
@@ -122,7 +125,8 @@ class YouTubeDownloadThread(QThread):
 
             logger.info(f"Starting download for: {self.youtube_url}")
             with yt_dlp.YoutubeDL(ydl_opts) as ydl:
-                self.ydl_instance = ydl  # Store for potential (limited) interruption
+                # Store for potential (limited) interruption
+                self.ydl_instance = ydl
 
                 # Check cancellation one more time before the actual download starts
                 if self.is_canceled():
@@ -164,14 +168,16 @@ class YouTubeDownloadThread(QThread):
                 # Find the actual downloaded/processed file (yt-dlp might change extension)
                 # The actual output path after postprocessing is tricky to get directly.
                 # We know the *base* temp name and the final extension is wav.
-                expected_temp_wav = temp_output_template.rsplit(".", 1)[0] + ".wav"
+                expected_temp_wav = temp_output_template.rsplit(".", 1)[
+                                                                0] + ".wav"
                 temp_files.append(expected_temp_wav)  # Track for cleanup
 
                 # Check if we have the renamed file from the extractor
                 if "filepath" in info_dict and os.path.exists(info_dict["filepath"]):
                     expected_temp_wav = info_dict["filepath"]
                     temp_files.append(expected_temp_wav)
-                    logger.info(f"Using filepath from info_dict: {expected_temp_wav}")
+                    logger.info(
+                        f"Using filepath from info_dict: {expected_temp_wav}")
 
                 # One final check before renaming and finishing
                 if self.is_canceled():
@@ -194,7 +200,8 @@ class YouTubeDownloadThread(QThread):
                             f"Audio extracted: {os.path.basename(final_wav_path)}"
                         )
                     except (PermissionError, OSError) as e:
-                        raise RuntimeError(f"Failed to rename temporary file: {e}")
+                        raise RuntimeError(
+                            f"Failed to rename temporary file: {e}")
                 else:
                     # Try to find the file using more aggressive search
                     logger.warning(
@@ -213,10 +220,12 @@ class YouTubeDownloadThread(QThread):
                                 f"Audio extracted: {os.path.basename(final_wav_path)}"
                             )
                         except (PermissionError, OSError) as e:
-                            raise RuntimeError(f"Failed to rename found file: {e}")
+                            raise RuntimeError(
+                                f"Failed to rename found file: {e}")
                     else:
                         # Fall back to reporting error
-                        logger.error("Could not find any downloaded audio file")
+                        logger.error(
+                            "Could not find any downloaded audio file")
                         self.error.emit(
                             "Failed to find downloaded audio file. The file may not have been downloaded correctly."
                         )
@@ -229,17 +238,20 @@ class YouTubeDownloadThread(QThread):
 
             # Handle common yt-dlp errors more specifically
             if "confirm your age" in error_str:
-                self.error.emit("Age-restricted video requires login (not supported).")
+                self.error.emit(
+                    "Age-restricted video requires login (not supported).")
             elif "video is unavailable" in error_str:
                 self.error.emit("Video is unavailable or has been removed.")
             elif "private video" in error_str:
                 self.error.emit("Cannot download private videos.")
             elif "copyright" in error_str:
-                self.error.emit("Video unavailable due to copyright restrictions.")
+                self.error.emit(
+                    "Video unavailable due to copyright restrictions.")
             elif "blocked" in error_str and "your country" in error_str:
                 self.error.emit("This video is not available in your country.")
             elif "sign in" in error_str or "log in" in error_str:
-                self.error.emit("This video requires a YouTube account to access.")
+                self.error.emit(
+                    "This video requires a YouTube account to access.")
             elif "ffmpeg" in error_str:
                 self.error.emit(
                     "Audio conversion failed. FFmpeg might be missing or misconfigured."
@@ -276,7 +288,8 @@ class YouTubeDownloadThread(QThread):
         except ValueError as e:
             if not self.is_canceled():
                 self.error.emit(f"Invalid input: {e}")
-                logger.error(f"YouTube download value error: {e}", exc_info=True)
+                logger.error(
+                    f"YouTube download value error: {e}", exc_info=True)
             else:
                 self.update_progress.emit(
                     "YouTube download cancelled during validation."
@@ -285,7 +298,8 @@ class YouTubeDownloadThread(QThread):
         except (PermissionError, OSError) as e:
             if not self.is_canceled():
                 self.error.emit(f"File system error: {e}")
-                logger.error(f"YouTube download file system error: {e}", exc_info=True)
+                logger.error(
+                    f"YouTube download file system error: {e}", exc_info=True)
             else:
                 self.update_progress.emit(
                     "YouTube download cancelled during file operation."
@@ -294,7 +308,8 @@ class YouTubeDownloadThread(QThread):
         except RuntimeError as e:
             if not self.is_canceled():
                 self.error.emit(f"Processing error: {e}")
-                logger.error(f"YouTube download runtime error: {e}", exc_info=True)
+                logger.error(
+                    f"YouTube download runtime error: {e}", exc_info=True)
             else:
                 self.update_progress.emit(
                     "YouTube download cancelled during processing."
@@ -306,9 +321,11 @@ class YouTubeDownloadThread(QThread):
 
                 safe_err = redact(str(e))
                 self.error.emit(f"An unexpected error occurred: {safe_err}")
-                logger.error(f"YouTubeDownloadThread error: {e}", exc_info=True)
+                logger.error(
+                    f"YouTubeDownloadThread error: {e}", exc_info=True)
             else:
-                self.update_progress.emit("YouTube download cancelled during error.")
+                self.update_progress.emit(
+                    "YouTube download cancelled during error.")
         finally:
             # Clean up resources
             try:
@@ -366,7 +383,8 @@ class YouTubeDownloadThread(QThread):
                 for filename in os.listdir(base_dir):
                     if filename.startswith(base_name):
                         full_path = os.path.join(base_dir, filename)
-                        logger.info(f"Found potential download file: {full_path}")
+                        logger.info(
+                            f"Found potential download file: {full_path}")
                         return full_path
             except Exception as e:
                 logger.error(f"Error while searching for downloaded file: {e}")
@@ -388,7 +406,8 @@ class YouTubeDownloadThread(QThread):
                         logger.info(f"Found file with video ID: {full_path}")
                         return full_path
             except Exception as e:
-                logger.error(f"Error while searching for file with video ID: {e}")
+                logger.error(
+                    f"Error while searching for file with video ID: {e}")
 
         return None
 
@@ -418,16 +437,20 @@ class YouTubeDownloadThread(QThread):
 
             # Check cancellation periodically during download
             if self.is_canceled():
-                logger.info("Cancellation detected during download progress update")
-                raise yt_dlp.utils.DownloadCancelled("Download cancelled by user")
+                logger.info(
+                    "Cancellation detected during download progress update")
+                raise yt_dlp.utils.DownloadCancelled(
+                    "Download cancelled by user")
         elif d["status"] == "finished":
             self.update_progress.emit("Download complete. Processing audio...")
             # Check cancellation before post-processing starts
             if self.is_canceled():
                 logger.info("Cancellation detected after download finished")
-                raise yt_dlp.utils.DownloadCancelled("Download cancelled by user")
+                raise yt_dlp.utils.DownloadCancelled(
+                    "Download cancelled by user")
         elif d["status"] == "error":
-            logger.error("yt-dlp reported an error during download/processing.")
+            logger.error(
+                "yt-dlp reported an error during download/processing.")
             # Error will likely be raised by extract_info, but log here too
 
     def cleanup_temp_file(self, template, info_dict):
@@ -481,7 +504,8 @@ class YouTubeDownloadThread(QThread):
             for temp_file in files_to_check:
                 if os.path.exists(temp_file):
                     os.remove(temp_file)
-                    logger.info(f"Removed temporary download file: {temp_file}")
+                    logger.info(
+                        f"Removed temporary download file: {temp_file}")
 
             return True
         except Exception as e:

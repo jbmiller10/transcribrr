@@ -49,7 +49,8 @@ class FileDropWidget(QWidget):
 
     def initUI(self):
         self.layout = QVBoxLayout(self)
-        self.label = QLabel("Drag audio/video files here or click to browse", self)
+        self.label = QLabel(
+            "Drag audio/video files here or click to browse", self)
         self.label.setAlignment(Qt.AlignmentFlag.AlignCenter)  # Fixed enum
         self.layout.addWidget(self.label)
         self.setLayout(self.layout)
@@ -104,7 +105,8 @@ class FileDropWidget(QWidget):
                     )
                     event.acceptProposedAction()
                 else:
-                    self.label.setText(f"Unsupported file type: .{file_extension}")
+                    self.label.setText(
+                        f"Unsupported file type: .{file_extension}")
                     self.setStyleSheet(
                         f"""
                         QLabel {{
@@ -227,7 +229,8 @@ class FileDropWidget(QWidget):
                 raise FileNotFoundError(f"File not found: {file_path}")
 
             # Check file size (prevent extremely large files)
-            file_size_mb = os.path.getsize(file_path) / (1024 * 1024)  # Convert to MB
+            file_size_mb = os.path.getsize(
+                file_path) / (1024 * 1024)  # Convert to MB
             if file_size_mb > 500:  # Limit to 500MB
                 response = QMessageBox.question(
                     self,
@@ -262,7 +265,8 @@ class FileDropWidget(QWidget):
                     name, ext = os.path.splitext(base_name)
                     while os.path.exists(new_path):
                         new_base_name = f"{name}_{counter}{ext}"
-                        new_path = os.path.join(get_recordings_dir(), new_base_name)
+                        new_path = os.path.join(
+                            get_recordings_dir(), new_base_name)
                         counter += 1
                     base_name = os.path.basename(new_path)
 
@@ -272,7 +276,8 @@ class FileDropWidget(QWidget):
                     f"Copying {base_name}...", "Cancel", 0, 100, self
                 )
                 progress.setWindowTitle("Copying File")
-                progress.setWindowModality(Qt.WindowModality.WindowModal)  # Fixed enum
+                progress.setWindowModality(
+                    Qt.WindowModality.WindowModal)  # Fixed enum
                 progress.setMinimumDuration(
                     500
                 )  # Only show for operations taking > 500ms
@@ -325,7 +330,8 @@ class FileDropWidget(QWidget):
         pen = QPen(QColor("#cccccc"), 2, Qt.PenStyle.DashLine)  # Fixed enum
         painter.setPen(pen)
         painter.setBrush(Qt.BrushStyle.NoBrush)  # Fixed enum
-        painter.drawRoundedRect(10, 10, self.width() - 20, self.height() - 20, 10, 10)
+        painter.drawRoundedRect(10, 10, self.width() - \
+                                20, self.height() - 20, 10, 10)
 
         # Draw plus sign
         pen.setStyle(Qt.PenStyle.SolidLine)  # Fixed enum

@@ -126,7 +126,8 @@ def calculate_duration(file_path: str) -> str:
         elif file_type == FileType.VIDEO:
             clip = VideoFileClip(file_path)
         else:
-            logger.error(f"Unsupported file type for duration calculation: {file_path}")
+            logger.error(
+                f"Unsupported file type for duration calculation: {file_path}")
             return "00:00:00"
 
         # Calculate the duration
@@ -134,7 +135,8 @@ def calculate_duration(file_path: str) -> str:
         clip.close()  # Close the clip to release the file
 
         # Format the duration as HH:MM:SS
-        duration_str = str(datetime.timedelta(seconds=int(duration_in_seconds)))
+        duration_str = str(datetime.timedelta(
+            seconds=int(duration_in_seconds)))
         return duration_str
 
     except Exception as e:
@@ -152,7 +154,8 @@ def save_temp_recording(
 
     try:
         # Write to a temporary WAV file first
-        temp_wav = tempfile.NamedTemporaryFile(suffix=".wav", delete=False).name
+        temp_wav = tempfile.NamedTemporaryFile(
+            suffix=".wav", delete=False).name
 
         with wave.open(temp_wav, "wb") as wf:
             wf.setnchannels(channels)

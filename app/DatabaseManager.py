@@ -237,7 +237,8 @@ class DatabaseWorker(QThread):
 
                     # Check for sentinel value indicating thread should exit
                     if operation is None:
-                        logger.debug("Received sentinel value, exiting worker thread")
+                        logger.debug(
+                            "Received sentinel value, exiting worker thread")
                         break
 
                     # Extract operation details with validation
@@ -247,7 +248,8 @@ class DatabaseWorker(QThread):
                     op_kwargs = operation.get("kwargs", {})
 
                     if not op_type:
-                        logger.error("Invalid operation received: missing 'type'")
+                        logger.error(
+                            "Invalid operation received: missing 'type'")
                         self.error_occurred.emit(
                             "invalid_operation",
                             "Invalid operation format: missing type",
@@ -331,9 +333,11 @@ class DatabaseWorker(QThread):
                                         "Recording-folder association modified by query"
                                     )
                                 elif "recordings" in query_lower:
-                                    logger.info("Recording data modified by query")
+                                    logger.info(
+                                        "Recording data modified by query")
                                 elif "folders" in query_lower:
-                                    logger.info("Folder data modified by query")
+                                    logger.info(
+                                        "Folder data modified by query")
 
                             # Use transaction for write operations with proper error handling
                             if is_modifying_query:
@@ -404,9 +408,11 @@ class DatabaseWorker(QThread):
 
                             try:
                                 with self.conn:  # Auto commit/rollback
-                                    result = create_recording(self.conn, op_args[0])
+                                    result = create_recording(
+                                        self.conn, op_args[0])
                                     data_modified = True
-                                    logger.info(f"Recording created with ID: {result}")
+                                    logger.info(
+                                        f"Recording created with ID: {result}")
                             except DuplicatePathError as dupe_error:
                                 # Special handling for duplicate path errors (don't log as error)
                                 self._log_error(
@@ -449,7 +455,8 @@ class DatabaseWorker(QThread):
                                 )
 
                             try:
-                                result = get_recording_by_id(self.conn, op_args[0])
+                                result = get_recording_by_id(
+                                    self.conn, op_args[0])
                             except Exception as get_error:
                                 self._log_error(
                                     f"Error getting recording by ID {op_args[0]}",
@@ -470,7 +477,8 @@ class DatabaseWorker(QThread):
 
                             try:
                                 with self.conn:  # Auto commit/rollback
-                                    update_recording(self.conn, op_args[0], **op_kwargs)
+                                    update_recording(
+                                        self.conn, op_args[0], **op_kwargs)
                                     data_modified = True
                                     logger.info(
                                         f"Recording updated with ID: {op_args[0]}"
@@ -519,7 +527,8 @@ class DatabaseWorker(QThread):
                                 )
 
                             try:
-                                result = search_recordings(self.conn, op_args[0])
+                                result = search_recordings(
+                                    self.conn, op_args[0])
                             except Exception as search_error:
                                 self._log_error(
                                     "Error searching recordings",
@@ -531,7 +540,8 @@ class DatabaseWorker(QThread):
                                     f"Failed to search recordings: {search_error}"
                                 )
                         else:
-                            logger.warning(f"Unknown operation type: {op_type}")
+                            logger.warning(
+                                f"Unknown operation type: {op_type}")
                             self.error_occurred.emit(
                                 op_type, f"Unknown operation type: {op_type}"
                             )
@@ -558,7 +568,8 @@ class DatabaseWorker(QThread):
                         data_modified = False
                     except ValueError as e:
                         # Input validation errors
-                        self._log_error("Validation error", e, op_type, level="warning")
+                        self._log_error("Validation error", e,
+                                        op_type, level="warning")
                     except RuntimeError as e:
                         # Operation execution errors
                         self._log_error("Runtime error", e, op_type)
@@ -582,7 +593,8 @@ class DatabaseWorker(QThread):
                     continue
                 except Exception as e:
                     # Error in the outer try block (queue operations)
-                    self._log_error("Operation queue error", e, "operation_queue")
+                    self._log_error("Operation queue error",
+                                    e, "operation_queue")
 
                     # Try to mark the task as done if we have an operation
                     if operation is not None:
@@ -616,7 +628,8 @@ class DatabaseWorker(QThread):
         """Enqueue operation."""
 
         self.operations_queue.put(
-            {"type": operation_type, "id": operation_id, "args": args, "kwargs": kwargs}
+            {"type": operation_type, "id": operation_id,
+                "args": args, "kwargs": kwargs}
         )
 
     def stop(self):
@@ -655,7 +668,8 @@ class DatabaseManager(QObject):
         # Start the worker thread
         logger.info("Starting DatabaseWorker thread")
         self.worker.start()
-        logger.info(f"DatabaseWorker thread started: {self.worker.isRunning()}")
+        logger.info(
+            f"DatabaseWorker thread started: {self.worker.isRunning()}")
 
     def _on_data_changed(self):
         """Handle data change from worker and emit our signal with parameters."""
@@ -668,7 +682,8 @@ class DatabaseManager(QObject):
     def create_recording(self, recording_data, callback=None):
         """Create a recording. recording_data tuple, optional callback."""
         operation_id = f"create_recording_{id(callback) if callback else 'no_callback'}"
-        self.worker.add_operation("create_recording", operation_id, recording_data)
+        self.worker.add_operation(
+            "create_recording", operation_id, recording_data)
 
         if callback and callable(callback):
 
@@ -693,7 +708,8 @@ class DatabaseManager(QObject):
                     _finalise()
 
             # Use UniqueConnection to prevent duplicate connections
-            self.operation_complete.connect(handler, Qt.ConnectionType.UniqueConnection)
+            self.operation_complete.connect(
+                handler, Qt.ConnectionType.UniqueConnection)
             self.error_occurred.connect(
                 error_handler, Qt.ConnectionType.UniqueConnection
             )
@@ -717,7 +733,8 @@ class DatabaseManager(QObject):
                 except TypeError:
                     pass
 
-        self.operation_complete.connect(handler, Qt.ConnectionType.UniqueConnection)
+        self.operation_complete.connect(
+            handler, Qt.ConnectionType.UniqueConnection)
 
     def get_recording_by_id(self, recording_id, callback):
         """
@@ -734,7 +751,8 @@ class DatabaseManager(QObject):
             return
 
         operation_id = f"get_recording_{recording_id}_{id(callback)}"
-        self.worker.add_operation("get_recording_by_id", operation_id, recording_id)
+        self.worker.add_operation(
+            "get_recording_by_id", operation_id, recording_id)
 
         def handler(result):
             if result["id"] == operation_id:
@@ -744,7 +762,8 @@ class DatabaseManager(QObject):
                 except TypeError:
                     pass
 
-        self.operation_complete.connect(handler, Qt.ConnectionType.UniqueConnection)
+        self.operation_complete.connect(
+            handler, Qt.ConnectionType.UniqueConnection)
 
     def update_recording(self, recording_id, callback=None, **kwargs):
         """
@@ -781,7 +800,8 @@ class DatabaseManager(QObject):
                 if op_name == "update_recording":
                     _finalise()
 
-            self.operation_complete.connect(handler, Qt.ConnectionType.UniqueConnection)
+            self.operation_complete.connect(
+                handler, Qt.ConnectionType.UniqueConnection)
             self.error_occurred.connect(
                 error_handler, Qt.ConnectionType.UniqueConnection
             )
@@ -795,7 +815,8 @@ class DatabaseManager(QObject):
             callback: Optional function to call when operation completes
         """
         operation_id = f"delete_recording_{recording_id}_{id(callback) if callback else 'no_callback'}"
-        self.worker.add_operation("delete_recording", operation_id, recording_id)
+        self.worker.add_operation(
+            "delete_recording", operation_id, recording_id)
 
         if callback and callable(callback):
 
@@ -818,7 +839,8 @@ class DatabaseManager(QObject):
                 if op_name == "delete_recording":
                     _finalise()
 
-            self.operation_complete.connect(handler, Qt.ConnectionType.UniqueConnection)
+            self.operation_complete.connect(
+                handler, Qt.ConnectionType.UniqueConnection)
             self.error_occurred.connect(
                 error_handler, Qt.ConnectionType.UniqueConnection
             )
@@ -865,7 +887,8 @@ class DatabaseManager(QObject):
                     except TypeError:
                         pass
 
-            self.operation_complete.connect(handler, Qt.ConnectionType.UniqueConnection)
+            self.operation_complete.connect(
+                handler, Qt.ConnectionType.UniqueConnection)
 
     def search_recordings(self, search_term, callback):
         """
@@ -876,11 +899,13 @@ class DatabaseManager(QObject):
             callback: Function to call with the result
         """
         if not callback or not callable(callback):
-            logger.warning("search_recordings called without a valid callback function")
+            logger.warning(
+                "search_recordings called without a valid callback function")
             return
 
         operation_id = f"search_recordings_{id(callback)}"
-        self.worker.add_operation("search_recordings", operation_id, search_term)
+        self.worker.add_operation(
+            "search_recordings", operation_id, search_term)
 
         def handler(result):
             if result["id"] == operation_id:
@@ -890,7 +915,8 @@ class DatabaseManager(QObject):
                 except TypeError:
                     pass
 
-        self.operation_complete.connect(handler, Qt.ConnectionType.UniqueConnection)
+        self.operation_complete.connect(
+            handler, Qt.ConnectionType.UniqueConnection)
 
     def shutdown(self):
         """Shut down the database manager and worker thread."""

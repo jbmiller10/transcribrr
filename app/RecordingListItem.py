@@ -30,7 +30,8 @@ class EditableLineEdit(QLineEdit):
         self.setReadOnly(True)
         self.setCursor(Qt.CursorShape.PointingHandCursor)
         # Simpler styling, rely on ThemeManager mostly
-        self.setStyleSheet("border: none; background: transparent; padding: 1px;")
+        self.setStyleSheet(
+            "border: none; background: transparent; padding: 1px;")
 
     def mouseDoubleClickEvent(self, event):
         if event.button() == Qt.MouseButton.LeftButton:
@@ -175,12 +176,14 @@ class RecordingListItem(QWidget):
         left_section.setSpacing(4)
         icon_label = QLabel()
         icon_path = self.get_icon_for_file()
-        icon_label.setPixmap(QIcon(resource_path(icon_path)).pixmap(QSize(24, 24)))
+        icon_label.setPixmap(
+            QIcon(resource_path(icon_path)).pixmap(QSize(24, 24)))
         self.status_indicator = StatusIndicator(self)
         self.status_indicator.set_status(
             bool(self.raw_transcript), bool(self.processed_text)
         )
-        left_section.addWidget(icon_label, alignment=Qt.AlignmentFlag.AlignHCenter)
+        left_section.addWidget(
+            icon_label, alignment=Qt.AlignmentFlag.AlignHCenter)
         left_section.addWidget(
             self.status_indicator, alignment=Qt.AlignmentFlag.AlignHCenter
         )
@@ -192,7 +195,8 @@ class RecordingListItem(QWidget):
         self.name_editable = EditableLineEdit(self.filename_no_ext)
         self.name_editable.setFont(QFont("Arial", 11, QFont.Weight.Bold))
         # Connect the internal signal to the class signal
-        self.name_editable.editingFinished.connect(self.handle_name_editing_finished)
+        self.name_editable.editingFinished.connect(
+            self.handle_name_editing_finished)
         center_section.addWidget(self.name_editable)
 
         self.date_label = QLabel()
@@ -201,7 +205,8 @@ class RecordingListItem(QWidget):
         center_section.addWidget(self.date_label)
 
         self.status_label = QLabel()
-        self.status_label.setFont(QFont("Arial", 9, QFont.Weight.Light, italic=True))
+        self.status_label.setFont(
+            QFont("Arial", 9, QFont.Weight.Light, italic=True))
         self.update_status_label()
         center_section.addWidget(self.status_label)
 
@@ -231,7 +236,8 @@ class RecordingListItem(QWidget):
 
         self.setMinimumHeight(70)
         # Let the list view manage the width, fix the height
-        self.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed)
+        self.setSizePolicy(QSizePolicy.Policy.Expanding,
+                           QSizePolicy.Policy.Fixed)
 
     def get_icon_for_file(self):
         extension = os.path.splitext(self.file_path)[1].lower()
@@ -252,8 +258,10 @@ class RecordingListItem(QWidget):
             return "icons/status/file.svg"
 
     def update_status_label(self):
-        has_transcript = bool(self.raw_transcript and self.raw_transcript.strip())
-        has_processed = bool(self.processed_text and self.processed_text.strip())
+        has_transcript = bool(
+            self.raw_transcript and self.raw_transcript.strip())
+        has_processed = bool(
+            self.processed_text and self.processed_text.strip())
 
         if has_transcript and has_processed:
             self.status_label.setText("Transcribed & Processed")
@@ -343,10 +351,12 @@ class RecordingListItem(QWidget):
             try:
                 # If we have access to db_manager, use it to ensure proper initialization
                 if hasattr(self, "db_manager") and self.db_manager is not None:
-                    folder_manager = FolderManager.instance(db_manager=self.db_manager)
+                    folder_manager = FolderManager.instance(
+                        db_manager=self.db_manager)
                 else:
                     folder_manager = FolderManager.instance()
-                folder_manager.get_folders_for_recording(self.id, on_folders_received)
+                folder_manager.get_folders_for_recording(
+                    self.id, on_folders_received)
             except RuntimeError as e:
                 logger.error(f"Error accessing FolderManager: {e}")
                 # If we can't get the instance yet, our folder list will be empty
@@ -388,7 +398,8 @@ class RecordingListItem(QWidget):
 
         # Check if the name actually changed
         if new_name_no_ext != self.filename_no_ext:
-            logger.info(f"Requesting rename for ID {self.id} to '{new_name_no_ext}'")
+            logger.info(
+                f"Requesting rename for ID {self.id} to '{new_name_no_ext}'")
             # Emit signal for the parent widget (RecentRecordingsWidget) to handle DB update
             self.nameChanged.emit(self.id, new_name_no_ext)
             # Optimistically update internal state, parent should confirm/revert if DB fails
@@ -424,7 +435,8 @@ class RecordingListItem(QWidget):
         try:
             # Try to initialize with db_manager if available
             if hasattr(self, "db_manager") and self.db_manager is not None:
-                folder_manager = FolderManager.instance(db_manager=self.db_manager)
+                folder_manager = FolderManager.instance(
+                    db_manager=self.db_manager)
             else:
                 folder_manager = FolderManager.instance()
         except RuntimeError as e:
@@ -450,7 +462,8 @@ class RecordingListItem(QWidget):
                 }
                 self.folders.append(folder)
 
-            logger.info(f"Loaded {len(self.folders)} folders for recording {self.id}")
+            logger.info(
+                f"Loaded {len(self.folders)} folders for recording {self.id}")
 
         # Load folders from database
         folder_manager.get_folders_for_recording(self.id, on_folders_loaded)
@@ -471,15 +484,18 @@ class RecordingListItem(QWidget):
         if "processed_text" in data:
             self.processed_text = data.get("processed_text", "")
         if "raw_transcript_formatted" in data:
-            self.raw_transcript_formatted_data = data.get("raw_transcript_formatted")
+            self.raw_transcript_formatted_data = data.get(
+                "raw_transcript_formatted")
         if "processed_text_formatted" in data:
-            self.processed_text_formatted_data = data.get("processed_text_formatted")
+            self.processed_text_formatted_data = data.get(
+                "processed_text_formatted")
 
         # Update filename if changed externally
         new_filename_no_ext = data.get("filename", self.filename_no_ext)
         if new_filename_no_ext != self.filename_no_ext:
             self.filename_no_ext = new_filename_no_ext
-            self.filename = new_filename_no_ext + os.path.splitext(self.filename)[1]
+            self.filename = new_filename_no_ext + \
+                os.path.splitext(self.filename)[1]
             self.name_editable.setText(self.filename_no_ext)  # Update UI
 
         # If status flags were provided, explicitly set them, otherwise infer from content

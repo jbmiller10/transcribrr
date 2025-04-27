@@ -54,7 +54,8 @@ def ensure_database_exists() -> None:
         if not os.path.exists(get_config_path()):
             create_config_file()
     except Exception as e:
-        logger.error(f"Error initializing database structure: {e}", exc_info=True)
+        logger.error(
+            f"Error initializing database structure: {e}", exc_info=True)
         raise
     finally:
         if conn:
@@ -124,7 +125,8 @@ def create_recordings_table(conn: sqlite3.Connection) -> None:
         cursor.execute(sql_create_filepath_index)
         conn.commit()
     except sqlite3.Error as e:
-        logger.error(f"Error creating recordings table or index: {e}", exc_info=True)
+        logger.error(
+            f"Error creating recordings table or index: {e}", exc_info=True)
         raise
 
 
@@ -165,7 +167,8 @@ def create_recording_folders_table(conn: sqlite3.Connection) -> None:
         cursor.execute(sql_create_recording_folders_table)
         conn.commit()
     except sqlite3.Error as e:
-        logger.error(f"Error creating recording_folders table: {e}", exc_info=True)
+        logger.error(
+            f"Error creating recording_folders table: {e}", exc_info=True)
         raise
 
 
@@ -192,7 +195,8 @@ def get_recording_by_id(
     try:
         cursor = conn.cursor()
         cursor.execute(
-            f"SELECT * FROM {TABLE_RECORDINGS} WHERE {FIELD_ID}=?", (recording_id,)
+            f"SELECT * FROM {TABLE_RECORDINGS} WHERE {FIELD_ID}=?", (
+                recording_id,)
         )
         record = cursor.fetchone()
         if record is None:
@@ -206,7 +210,8 @@ def get_recording_by_id(
             filename=record[1],
             file_path=record[2],
             date_created=(
-                datetime.fromisoformat(record[3]) if record[3] else datetime.now()
+                datetime.fromisoformat(
+                    record[3]) if record[3] else datetime.now()
             ),
             duration=record[4],
             raw_transcript=record[5],
@@ -216,7 +221,8 @@ def get_recording_by_id(
             original_source_identifier=record[9] if len(record) > 9 else None,
         )
     except sqlite3.Error as e:
-        logger.error(f"Error getting recording {recording_id}: {e}", exc_info=True)
+        logger.error(
+            f"Error getting recording {recording_id}: {e}", exc_info=True)
         raise
 
 
@@ -242,10 +248,12 @@ def create_recording(conn: sqlite3.Connection, recording_data: Tuple) -> int:
 
     try:
         cursor = conn.cursor()
-        cursor.execute(sql, tuple(data_to_insert[:7]))  # Insert first 7 elements
+        # Insert first 7 elements
+        cursor.execute(sql, tuple(data_to_insert[:7]))
         conn.commit()
         new_id = cursor.lastrowid
-        logger.info(f"Created recording '{data_to_insert[0]}' with ID {new_id}")
+        logger.info(
+            f"Created recording '{data_to_insert[0]}' with ID {new_id}")
         return new_id
     except sqlite3.IntegrityError as e:
         # Handle potential UNIQUE constraint violation on file_path
@@ -279,10 +287,12 @@ def update_recording(conn: sqlite3.Connection, recording_id: int, **kwargs) -> N
         if key in valid_fields:
             update_fields[key] = value
         else:
-            logger.warning(f"Invalid field '{key}' provided for update_recording.")
+            logger.warning(
+                f"Invalid field '{key}' provided for update_recording.")
 
     if not update_fields:
-        logger.warning(f"No valid fields provided to update recording {recording_id}.")
+        logger.warning(
+            f"No valid fields provided to update recording {recording_id}.")
         return
 
     parameters = [f"{key} = ?" for key in update_fields]
@@ -298,7 +308,8 @@ def update_recording(conn: sqlite3.Connection, recording_id: int, **kwargs) -> N
             f"Updated recording ID {recording_id} with fields: {', '.join(update_fields.keys())}"
         )
     except sqlite3.Error as e:
-        logger.error(f"Error updating recording {recording_id}: {e}", exc_info=True)
+        logger.error(
+            f"Error updating recording {recording_id}: {e}", exc_info=True)
         raise
 
 
@@ -313,7 +324,8 @@ def delete_recording(conn: sqlite3.Connection, recording_id: int) -> None:
         conn.commit()
         logger.info(f"Deleted recording ID {recording_id}")
     except sqlite3.Error as e:
-        logger.error(f"Error deleting recording {recording_id}: {e}", exc_info=True)
+        logger.error(
+            f"Error deleting recording {recording_id}: {e}", exc_info=True)
         raise
 
 

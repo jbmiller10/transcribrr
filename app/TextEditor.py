@@ -221,14 +221,16 @@ class FindReplaceDialog(QDialog):
 
             if found:
                 self.search_wrapped = True
-                self.status_label.setText("Search wrapped to the beginning/end")
+                self.status_label.setText(
+                    "Search wrapped to the beginning/end")
             else:
                 self.status_label.setText(f"No occurrences of '{text}' found.")
                 cursor.setPosition(self.search_start_position)
                 self.editor.editor.setTextCursor(cursor)
         else:
             if self.search_wrapped:
-                self.status_label.setText("Search wrapped to the beginning/end")
+                self.status_label.setText(
+                    "Search wrapped to the beginning/end")
             else:
                 self.status_label.setText(f"Found '{text}'")
 
@@ -365,7 +367,8 @@ class TextEditor(QMainWindow):
     # Define custom signals
     transcription_requested = pyqtSignal()
     gpt4_processing_requested = pyqtSignal()
-    smart_format_requested = pyqtSignal(str)  # Modified to accept text to format
+    # Modified to accept text to format
+    smart_format_requested = pyqtSignal(str)
     save_requested = pyqtSignal()
 
     def __init__(self):
@@ -515,7 +518,8 @@ class TextEditor(QMainWindow):
         self.font_family_combobox.setSizePolicy(
             QSizePolicy.Policy.Minimum, QSizePolicy.Policy.Minimum
         )
-        self.font_family_combobox.currentFontChanged.connect(self.font_family_changed)
+        self.font_family_combobox.currentFontChanged.connect(
+            self.font_family_changed)
         self.toolbar.addWidget(self.font_family_combobox)
 
         # Font size selector
@@ -545,7 +549,8 @@ class TextEditor(QMainWindow):
         )
         self.font_size_combobox.setEditable(True)
         self.font_size_combobox.setCurrentText("12")  # Default font size
-        self.font_size_combobox.currentTextChanged.connect(self.font_size_changed)
+        self.font_size_combobox.currentTextChanged.connect(
+            self.font_size_changed)
         self.toolbar.addWidget(self.font_size_combobox)
 
         # Text formatting actions
@@ -592,7 +597,8 @@ class TextEditor(QMainWindow):
 
         # Spacer to push toolbar items to the left
         spacer = QWidget()
-        spacer.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding)
+        spacer.setSizePolicy(QSizePolicy.Policy.Expanding,
+                             QSizePolicy.Policy.Expanding)
         self.toolbar.addWidget(spacer)
 
         # Word count display in main toolbar
@@ -749,7 +755,8 @@ class TextEditor(QMainWindow):
         export_button.setIcon(QIcon(resource_path("./icons/export.svg")))
         export_button.setToolTip("Export to different formats")
         export_button.setMenu(self.export_menu)
-        export_button.setPopupMode(QToolButton.ToolButtonPopupMode.InstantPopup)
+        export_button.setPopupMode(
+            QToolButton.ToolButtonPopupMode.InstantPopup)
         self.toolbar.addWidget(export_button)
 
     def add_action_with_spinner(
@@ -892,7 +899,8 @@ class TextEditor(QMainWindow):
             fmt = QTextCharFormat()
             fmt.setBackground(color)
             self.editor.mergeCurrentCharFormat(fmt)
-            self.show_status_message(f"Text highlighted with color: {color.name()}")
+            self.show_status_message(
+                f"Text highlighted with color: {color.name()}")
 
     def font_color(self):
         color = QColorDialog.getColor()
@@ -962,7 +970,8 @@ class TextEditor(QMainWindow):
         """Show print preview dialog."""
         printer = QPrinter(QPrinter.PrinterMode.HighResolution)
         preview = QPrintPreviewDialog(printer, self)
-        preview.paintRequested.connect(lambda p: self.editor.document().print(p))
+        preview.paintRequested.connect(
+            lambda p: self.editor.document().print(p))
         preview.exec()
 
     def export_to_pdf(self):
@@ -1006,7 +1015,8 @@ class TextEditor(QMainWindow):
                 # Export HTML to a temporary file
                 import tempfile
 
-                html_file = tempfile.NamedTemporaryFile(suffix=".html", delete=False)
+                html_file = tempfile.NamedTemporaryFile(
+                    suffix=".html", delete=False)
                 html_path = html_file.name
                 html_file.close()
 
@@ -1095,7 +1105,8 @@ class TextEditor(QMainWindow):
                     if importlib.util.find_spec("weasyprint"):
                         import weasyprint
 
-                        weasyprint.HTML(string=styled_html).write_pdf(file_path)
+                        weasyprint.HTML(
+                            string=styled_html).write_pdf(file_path)
 
                         # Clean up temp file
                         try:
@@ -1370,8 +1381,10 @@ class TextEditor(QMainWindow):
                     # Extract the HTML content between body tags and add our improved styling
                     import re
 
-                    head_match = re.search(r"<head>(.*?)</head>", html, re.DOTALL)
-                    body_match = re.search(r"<body.*?>(.*?)</body>", html, re.DOTALL)
+                    head_match = re.search(
+                        r"<head>(.*?)</head>", html, re.DOTALL)
+                    body_match = re.search(
+                        r"<body.*?>(.*?)</body>", html, re.DOTALL)
 
                     if head_match and body_match:
                         head_content = head_match.group(1)
@@ -1472,7 +1485,8 @@ class TextEditor(QMainWindow):
         words = [word for word in text.split() if word.strip()]
         word_count = len(words)
         char_count = len(text)
-        self.word_count_label.setText(f"Words: {word_count} | Chars: {char_count}")
+        self.word_count_label.setText(
+            f"Words: {word_count} | Chars: {char_count}")
 
     def _extract_body_content(self, html):
         """Extract the body content from HTML, or return the entire HTML if no body tags are found."""
@@ -1638,9 +1652,11 @@ class TextEditor(QMainWindow):
         if "italic" in self._toolbar_actions:
             self._toolbar_actions["italic"].setChecked(current_font.italic())
         if "underline" in self._toolbar_actions:
-            self._toolbar_actions["underline"].setChecked(current_font.underline())
+            self._toolbar_actions["underline"].setChecked(
+                current_font.underline())
         if "strikethrough" in self._toolbar_actions:
-            self._toolbar_actions["strikethrough"].setChecked(current_font.strikeOut())
+            self._toolbar_actions["strikethrough"].setChecked(
+                current_font.strikeOut())
 
         # Update alignment actions
         alignment = self.editor.alignment()
@@ -1764,7 +1780,8 @@ class TextEditor(QMainWindow):
 
                 # Update word count
                 self.update_word_count()
-                self.show_status_message(f"Loaded file: {os.path.basename(file_path)}")
+                self.show_status_message(
+                    f"Loaded file: {os.path.basename(file_path)}")
             else:
                 show_error_message(
                     self,
@@ -1788,7 +1805,8 @@ class TextEditor(QMainWindow):
             show_error_message(self, "Encoding Error", str(e))
             logger.error(f"Encoding error with file {file_path}: {e}")
         except Exception as e:
-            show_error_message(self, "Error Loading File", f"Failed to load file: {e}")
+            show_error_message(self, "Error Loading File",
+                               f"Failed to load file: {e}")
             logger.error(f"Error loading file {file_path}: {e}", exc_info=True)
 
 

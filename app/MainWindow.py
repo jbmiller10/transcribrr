@@ -51,7 +51,8 @@ class MainWindow(QMainWindow):
         try:
             # This single call now handles singleton creation AND attachment
             FolderManager.instance(db_manager=self.db_manager)
-            logger.info("FolderManager initialized and DatabaseManager attached.")
+            logger.info(
+                "FolderManager initialized and DatabaseManager attached.")
         except RuntimeError as e:
             logger.critical(
                 f"CRITICAL ERROR initializing FolderManager: {e}", exc_info=True
@@ -180,7 +181,8 @@ class MainWindow(QMainWindow):
             self.recent_recordings_widget.update_recording_status
         )
 
-        self.main_transcription_widget.status_update.connect(self.update_status_bar)
+        self.main_transcription_widget.status_update.connect(
+            self.update_status_bar)
 
     def set_style(self):
         # Not needed - styling is now handled by the ThemeManager
@@ -257,7 +259,8 @@ class MainWindow(QMainWindow):
             )
 
             # Execute the database operation in a background thread
-            self.db_manager.create_recording(recording_data, on_recording_created)
+            self.db_manager.create_recording(
+                recording_data, on_recording_created)
 
             # Set a timeout to disconnect the error handler if no error occurs
             from PyQt6.QtCore import QTimer

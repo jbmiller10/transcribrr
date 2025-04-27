@@ -110,7 +110,8 @@ class OpenAIModelFetcherThread(QThread):
                         "Authentication error: Please check your API key"
                     )
                 else:
-                    self.fetch_error.emit(f"Error fetching models: {redact(str(e))}")
+                    self.fetch_error.emit(
+                        f"Error fetching models: {redact(str(e))}")
 
     def stop(self):
         self.request_stop()
@@ -171,7 +172,8 @@ class SettingsDialog(QDialog):
 
         # Connect signals for speaker detection toggling
         self.toggle_speaker_detection_checkbox()
-        self.hf_api_key_edit.textChanged.connect(self.toggle_speaker_detection_checkbox)
+        self.hf_api_key_edit.textChanged.connect(
+            self.toggle_speaker_detection_checkbox)
         self.transcription_method_dropdown.currentIndexChanged.connect(
             self.toggle_speaker_detection_checkbox
         )
@@ -216,11 +218,13 @@ class SettingsDialog(QDialog):
         # HF token entry
         hf_layout = QVBoxLayout()
         self.hf_api_key_label = QLabel("HuggingFace Access Token:", self)
-        self.hf_api_key_label.setToolTip("Required for speaker detection (diarization)")
+        self.hf_api_key_label.setToolTip(
+            "Required for speaker detection (diarization)")
         self.hf_api_key_edit = QLineEdit(self)
         self.hf_api_key_edit.setEchoMode(QLineEdit.EchoMode.Password)
         # Disable copy/paste and drag-and-drop for security
-        self.hf_api_key_edit.setContextMenuPolicy(Qt.ContextMenuPolicy.NoContextMenu)
+        self.hf_api_key_edit.setContextMenuPolicy(
+            Qt.ContextMenuPolicy.NoContextMenu)
         self.hf_api_key_edit.setDragEnabled(False)
         hf_info = QLabel("Required for speaker detection (diarization)")
         hf_info.setStyleSheet("color: gray; font-size: 10pt;")
@@ -250,7 +254,8 @@ class SettingsDialog(QDialog):
         self.transcription_method_dropdown.currentIndexChanged.connect(
             self.update_transcription_ui
         )
-        method_info = QLabel("Local uses your CPU/GPU. API uses OpenAI (requires key).")
+        method_info = QLabel(
+            "Local uses your CPU/GPU. API uses OpenAI (requires key).")
         method_info.setStyleSheet("color: gray; font-size: 10pt;")
         method_layout.addWidget(self.transcription_method_label)
         method_layout.addWidget(self.transcription_method_dropdown)
@@ -322,13 +327,15 @@ class SettingsDialog(QDialog):
 
         # Hardware Acceleration
         self.hw_accel_layout = QHBoxLayout()
-        self.hw_accel_checkbox = QCheckBox("Enable Hardware Acceleration (CUDA/MPS)")
+        self.hw_accel_checkbox = QCheckBox(
+            "Enable Hardware Acceleration (CUDA/MPS)")
 
         # Check available hardware
         try:
             has_cuda = torch.cuda.is_available()
             has_mps = (
-                hasattr(torch.backends, "mps") and torch.backends.mps.is_available()
+                hasattr(torch.backends,
+                        "mps") and torch.backends.mps.is_available()
             )
             hw_info = []
 
@@ -349,7 +356,8 @@ class SettingsDialog(QDialog):
             self.hw_accel_checkbox.setToolTip(accel_tooltip)
         except Exception:
             # Handle case where torch might not be properly installed
-            logger.warning("Could not check hardware acceleration availability.")
+            logger.warning(
+                "Could not check hardware acceleration availability.")
             hw_info = []
             self.hw_accel_checkbox.setToolTip(
                 "Unable to detect hardware acceleration. Enable if your device has GPU support."
@@ -390,7 +398,8 @@ class SettingsDialog(QDialog):
         model_header_layout = QHBoxLayout()
         self.gpt_model_label = QLabel("GPT Model:", self)
         self.refresh_models_button = QPushButton("Refresh Models")
-        self.refresh_models_button.setToolTip("Fetch available models from OpenAI")
+        self.refresh_models_button.setToolTip(
+            "Fetch available models from OpenAI")
         self.refresh_models_button.clicked.connect(self.fetch_openai_models)
         model_header_layout.addWidget(self.gpt_model_label)
         model_header_layout.addWidget(self.refresh_models_button)
@@ -406,7 +415,8 @@ class SettingsDialog(QDialog):
         self.gpt_model_dropdown.addItems(self.default_models)
         model_status_layout = QHBoxLayout()
         self.model_status_label = QLabel("")
-        self.model_status_label.setStyleSheet("color: gray; font-style: italic;")
+        self.model_status_label.setStyleSheet(
+            "color: gray; font-style: italic;")
         model_status_layout.addWidget(self.model_status_label)
         model_status_layout.addStretch()
         model_info = QLabel(
@@ -451,7 +461,8 @@ class SettingsDialog(QDialog):
         prompts_layout = QVBoxLayout(prompts_group)
         self.manage_prompts_button = QPushButton("Manage Prompt Templates")
         self.manage_prompts_button.clicked.connect(self.open_prompt_manager)
-        self.manage_prompts_button.setIcon(QIcon(resource_path("icons/edit.svg")))
+        self.manage_prompts_button.setIcon(
+            QIcon(resource_path("icons/edit.svg")))
         prompts_layout.addWidget(self.manage_prompts_button)
         gpt_layout.addWidget(prompts_group)
         gpt_layout.addStretch()
@@ -472,7 +483,8 @@ class SettingsDialog(QDialog):
         self.theme_preview.setMinimumSize(300, 150)
         self.theme_preview.setAlignment(Qt.AlignmentFlag.AlignCenter)
         self.update_theme_preview()
-        self.theme_dropdown.currentTextChanged.connect(self.update_theme_preview)
+        self.theme_dropdown.currentTextChanged.connect(
+            self.update_theme_preview)
         preview_layout.addWidget(self.theme_preview)
         theme_layout.addWidget(self.theme_label)
         theme_layout.addWidget(self.theme_dropdown)
@@ -507,7 +519,8 @@ class SettingsDialog(QDialog):
                 # Check if MPS is the only available hardware - only then we need to disable speaker detection
                 has_cuda = torch.cuda.is_available()
                 has_mps = (
-                    hasattr(torch.backends, "mps") and torch.backends.mps.is_available()
+                    hasattr(torch.backends,
+                            "mps") and torch.backends.mps.is_available()
                 )
 
                 # Only disable speaker detection for MPS-only devices with hardware acceleration enabled
@@ -595,7 +608,8 @@ class SettingsDialog(QDialog):
         current_model = self.gpt_model_dropdown.currentText()
         self.gpt_model_dropdown.blockSignals(True)
         self.gpt_model_dropdown.clear()
-        self.gpt_model_dropdown.addItems(models if models else self.default_models)
+        self.gpt_model_dropdown.addItems(
+            models if models else self.default_models)
         index = self.gpt_model_dropdown.findText(current_model)
         self.gpt_model_dropdown.setCurrentIndex(index if index >= 0 else 0)
         self.gpt_model_dropdown.blockSignals(False)
@@ -653,7 +667,8 @@ class SettingsDialog(QDialog):
                 # Only check for MPS-only devices (no CUDA)
                 has_cuda = torch.cuda.is_available()
                 has_mps = (
-                    hasattr(torch.backends, "mps") and torch.backends.mps.is_available()
+                    hasattr(torch.backends,
+                            "mps") and torch.backends.mps.is_available()
                 )
                 mps_only = has_mps and not has_cuda
 
@@ -730,7 +745,8 @@ class SettingsDialog(QDialog):
             from app.ui_utils import safe_error
 
             logger.error(f"Error saving API keys to keyring: {redact(str(e))}")
-            safe_error(self, "Keyring Error", f"Could not save API keys securely: {e}")
+            safe_error(self, "Keyring Error",
+                       f"Could not save API keys securely: {e}")
             # Decide if we should proceed or stop here? For now, proceed with config save.
 
         # --- Save General Settings via ConfigManager ---
@@ -763,7 +779,8 @@ class SettingsDialog(QDialog):
 
         except Exception as e:
             logger.error(f"Error saving configuration: {e}")
-            show_error_message(self, "Save Error", f"Failed to save configuration: {e}")
+            show_error_message(self, "Save Error",
+                               f"Failed to save configuration: {e}")
 
     def accept(self):
         # Validation before saving
@@ -833,7 +850,8 @@ class SettingsDialog(QDialog):
             self.gpt_model_dropdown.setCurrentText(DEFAULT_CONFIG["gpt_model"])
             self.max_tokens_spinbox.setValue(DEFAULT_CONFIG["max_tokens"])
             self.temperature_spinbox.setValue(DEFAULT_CONFIG["temperature"])
-            self.theme_dropdown.setCurrentText(DEFAULT_CONFIG["theme"].capitalize())
+            self.theme_dropdown.setCurrentText(
+                DEFAULT_CONFIG["theme"].capitalize())
             self.update_theme_preview()
 
             # Restore API key UI fields (they weren't saved yet)

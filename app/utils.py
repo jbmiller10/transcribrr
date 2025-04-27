@@ -79,7 +79,8 @@ def ensure_ffmpeg_available():
         # Check bundled binary (MacOS app)
         os.path.join(os.path.dirname(sys.executable), "bin", "ffmpeg"),
         # Check one directory up in case we're in MacOS/bin structure
-        os.path.join(os.path.dirname(os.path.dirname(sys.executable)), "bin", "ffmpeg"),
+        os.path.join(os.path.dirname(
+            os.path.dirname(sys.executable)), "bin", "ffmpeg"),
         # Check Resources directory for bundled app
         resource_path("ffmpeg"),
         # Custom common locations
@@ -354,7 +355,8 @@ def check_system_requirements():
             gpu_info_list = []
             for i in range(gpu_count):
                 name = torch.cuda.get_device_name(i)
-                memory = torch.cuda.get_device_properties(i).total_memory / (1024**3)
+                memory = torch.cuda.get_device_properties(
+                    i).total_memory / (1024**3)
                 gpu_info_list.append(
                     {"index": i, "name": name, "memory": f"{memory:.2f} GB"}
                 )
@@ -473,7 +475,8 @@ def cleanup_temp_files(
                 # Optionally handle temporary directories later
                 pass
         except Exception as e:
-            logger.warning(f"Error during temp file cleanup for {file_path}: {e}")
+            logger.warning(
+                f"Error during temp file cleanup for {file_path}: {e}")
 
     if deleted_count > 0:
         logger.info(f"Cleaned up {deleted_count} old temporary files.")
@@ -525,12 +528,14 @@ class ConfigManager(QObject):
             )
             # Proceed to ensure defaults
         except Exception as e:
-            logger.error(f"Error loading config: {e}. Using defaults.", exc_info=True)
+            logger.error(
+                f"Error loading config: {e}. Using defaults.", exc_info=True)
             # Proceed to ensure defaults
 
         # Ensure all default keys exist, merging loaded config over defaults
         self._config = DEFAULT_CONFIG.copy()
-        self._config.update(loaded_config)  # Overwrite defaults with loaded values
+        # Overwrite defaults with loaded values
+        self._config.update(loaded_config)
 
         # Save back if defaults were added or file was missing/corrupt
         if not os.path.exists(self._config_path) or len(self._config) > len(
@@ -631,7 +636,8 @@ class PromptManager(QObject):
             )
             # Proceed to normalization
         except Exception as e:
-            logger.error(f"Error loading prompts: {e}. Using defaults.", exc_info=True)
+            logger.error(
+                f"Error loading prompts: {e}. Using defaults.", exc_info=True)
             # Proceed to normalization
 
         self._prompts = self._normalize_prompts(loaded_data)
@@ -661,7 +667,8 @@ class PromptManager(QObject):
                     ),  # Default category if missing
                 }
             else:
-                logger.warning(f"Skipping invalid prompt entry during load: '{name}'")
+                logger.warning(
+                    f"Skipping invalid prompt entry during load: '{name}'")
         return normalized
 
     def _save_prompts(self) -> None:
@@ -766,7 +773,8 @@ class PromptManager(QObject):
             logger.info(f"{action} {count} prompts from {file_path}")
             return True, f"Successfully {action.lower()} {count} prompts."
         except json.JSONDecodeError as e:
-            logger.error(f"Error decoding JSON from {file_path}: {e}", exc_info=True)
+            logger.error(
+                f"Error decoding JSON from {file_path}: {e}", exc_info=True)
             return False, f"Import failed: Invalid JSON file ({e})"
         except Exception as e:
             logger.error(
@@ -785,7 +793,8 @@ class PromptManager(QObject):
             logger.info(f"Exported {count} prompts to {file_path}")
             return True, f"Successfully exported {count} prompts."
         except Exception as e:
-            logger.error(f"Failed to export prompts to {file_path}: {e}", exc_info=True)
+            logger.error(
+                f"Failed to export prompts to {file_path}: {e}", exc_info=True)
             return False, f"Export failed: {e}"
 
 
@@ -821,12 +830,14 @@ def estimate_transcription_time(
         secs_per_mb = (
             3 / speed_factor
         )  # Adjusted baseline (e.g., medium takes ~3s/MB on CPU)
-        estimated_time = (file_size_mb * secs_per_mb) + 15  # Add fixed overhead
+        estimated_time = (file_size_mb * secs_per_mb) + \
+                          15  # Add fixed overhead
 
         logger.debug(
             f"Estimated time for {os.path.basename(file_path)} ({file_size_mb:.1f}MB, model='{model_name}', gpu={is_gpu}): {estimated_time:.1f}s"
         )
         return max(int(estimated_time), 5)  # Min 5 seconds estimate
     except Exception as e:
-        logger.warning(f"Could not estimate transcription time for {file_path}: {e}")
+        logger.warning(
+            f"Could not estimate transcription time for {file_path}: {e}")
         return None

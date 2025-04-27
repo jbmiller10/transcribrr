@@ -29,7 +29,8 @@ logger = logging.getLogger("transcribrr")
 
 class ControlPanelWidget(QWidget):
     # Renamed signal for clarity
-    file_ready_for_processing = pyqtSignal(str)  # Now only emits a single file path
+    file_ready_for_processing = pyqtSignal(
+        str)  # Now only emits a single file path
     # Removed record_clicked signal as VoiceRecorderWidget handles its own logic
     status_update = pyqtSignal(str)  # Use a more generic progress signal name
 
@@ -78,7 +79,8 @@ class ControlPanelWidget(QWidget):
         self.youtube_button = self.create_button(
             "./icons/youtube.svg", "Process YouTube URL"
         )
-        self.record_button = self.create_button("./icons/record.svg", "Record Audio")
+        self.record_button = self.create_button(
+            "./icons/record.svg", "Record Audio")
         button_layout.addWidget(self.upload_button)
         button_layout.addWidget(self.youtube_button)
         button_layout.addWidget(self.record_button)
@@ -123,7 +125,8 @@ class ControlPanelWidget(QWidget):
 
     def _create_file_upload_widget(self):
         uploader = FileDropWidget(self)
-        uploader.fileDropped.connect(self.handle_io_complete)  # Use renamed handler
+        uploader.fileDropped.connect(
+            self.handle_io_complete)  # Use renamed handler
         uploader.setVisible(False)
         # Wrap in a layout to control margins if needed, but FileDropWidget might handle it
         # wrapper = QWidget()
@@ -229,7 +232,8 @@ class ControlPanelWidget(QWidget):
             button.setIconSize(QSize(22, 22))  # Slightly larger icons
         else:
             logger.warning(f"Icon not found: {absolute_icon_path}")
-            button.setText(tool_tip.split()[0])  # Use first word as text fallback
+            # Use first word as text fallback
+            button.setText(tool_tip.split()[0])
         button.setFixedSize(40, 40)  # Slightly larger buttons
         button.setToolTip(tool_tip)
         button.setStyleSheet(self.button_stylesheet())
@@ -262,11 +266,13 @@ class ControlPanelWidget(QWidget):
     def submit_youtube_url(self):
         youtube_url = self.youtube_url_field.text().strip()
         if not youtube_url:
-            show_error_message(self, "Empty URL", "Please enter a YouTube URL.")
+            show_error_message(self, "Empty URL",
+                               "Please enter a YouTube URL.")
             return
 
         if not validate_url(youtube_url):
-            show_error_message(self, "Invalid URL", "Please enter a valid YouTube URL.")
+            show_error_message(self, "Invalid URL",
+                               "Please enter a valid YouTube URL.")
             return
 
         logger.info(f"Submitting YouTube URL: {youtube_url}")
@@ -279,9 +285,11 @@ class ControlPanelWidget(QWidget):
         self.youtube_url_field.clear()
 
         # Setup feedback
-        truncated_url = youtube_url[:40] + ("..." if len(youtube_url) > 40 else "")
+        truncated_url = youtube_url[:40] + \
+            ("..." if len(youtube_url) > 40 else "")
         self.feedback_manager.set_ui_busy(True, ui_elements)
-        self.feedback_manager.show_status(f"Requesting YouTube audio: {truncated_url}")
+        self.feedback_manager.show_status(
+            f"Requesting YouTube audio: {truncated_url}")
 
         # Create progress dialog for download
         self.yt_progress_id = "youtube_download"
@@ -309,7 +317,8 @@ class ControlPanelWidget(QWidget):
             self.youtube_download_thread.update_progress.connect(
                 self.on_youtube_progress
             )
-            self.youtube_download_thread.completed.connect(self.handle_io_complete)
+            self.youtube_download_thread.completed.connect(
+                self.handle_io_complete)
             self.youtube_download_thread.error.connect(self.on_error)
 
             # Register thread with ThreadManager
@@ -348,7 +357,8 @@ class ControlPanelWidget(QWidget):
         # Extract progress percentage if available
         if "Downloading:" in message and "%" in message:
             try:
-                percent_str = message.split("Downloading:")[1].split("%")[0].strip()
+                percent_str = message.split("Downloading:")[
+                                            1].split("%")[0].strip()
                 percent = float(percent_str)
 
                 if hasattr(self, "yt_progress_id"):
@@ -423,7 +433,8 @@ class ControlPanelWidget(QWidget):
                 self.transcoding_thread.update_progress.connect(
                     self.on_transcoding_progress
                 )
-                self.transcoding_thread.completed.connect(self.on_transcoding_complete)
+                self.transcoding_thread.completed.connect(
+                    self.on_transcoding_complete)
                 self.transcoding_thread.error.connect(self.on_error)
 
                 # Register thread with ThreadManager
@@ -440,7 +451,8 @@ class ControlPanelWidget(QWidget):
                 self.feedback_manager.close_progress(self.yt_progress_id)
 
             # Show status and emit file ready signal
-            self.feedback_manager.show_status(f"Ready: {os.path.basename(filepath)}")
+            self.feedback_manager.show_status(
+                f"Ready: {os.path.basename(filepath)}")
             self.file_ready_for_processing.emit(filepath)
 
     def get_transcoding_ui_elements(self):
@@ -476,7 +488,8 @@ class ControlPanelWidget(QWidget):
                     parts = message.split()
                     for part in parts:
                         if "/" in part:
-                            current, total = map(int, part.strip(".,").split("/"))
+                            current, total = map(
+                                int, part.strip(".,").split("/"))
                             progress_value = int(current * 100 / total)
                             break
                 except (ValueError, IndexError):
@@ -491,14 +504,16 @@ class ControlPanelWidget(QWidget):
         try:
             # Finish progress dialog
             if hasattr(self, "transcoding_progress_id"):
-                self.feedback_manager.close_progress(self.transcoding_progress_id)
+                self.feedback_manager.close_progress(
+                    self.transcoding_progress_id)
                 delattr(self, "transcoding_progress_id")
 
             # Single file produced
             logger.info(f"Transcoding completed. File saved to: {file_path}")
 
             # Show status and emit file ready
-            self.feedback_manager.show_status(f"Ready: {os.path.basename(file_path)}")
+            self.feedback_manager.show_status(
+                f"Ready: {os.path.basename(file_path)}")
 
             self.file_ready_for_processing.emit(file_path)
         except Exception as e:

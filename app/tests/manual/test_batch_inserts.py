@@ -65,7 +65,8 @@ class TestWindow(QWidget):
             nonlocal added_count
             added_count += 1
             self.pending_callbacks -= 1
-            logger.info(f"Recording {added_count} created with ID: {recording_id}")
+            logger.info(
+                f"Recording {added_count} created with ID: {recording_id}")
 
             if self.pending_callbacks == 0:
                 self.status_label.setText(f"Added {added_count} recordings")
@@ -93,7 +94,8 @@ class TestWindow(QWidget):
                 "",
                 original_source,
             )
-            self.db_manager.create_recording(recording_data, on_recording_created)
+            self.db_manager.create_recording(
+                recording_data, on_recording_created)
 
             # Very short delay to make them distinct but still rapid
             time.sleep(0.01)
@@ -104,7 +106,8 @@ class TestWindow(QWidget):
         # For this test, we just log the current count of visible recordings
         recording_count = len(self.tree_view.id_to_widget)
         logger.info(f"Tree view contains {recording_count} visible recordings")
-        self.status_label.setText(f"Tree view shows {recording_count} recordings")
+        self.status_label.setText(
+            f"Tree view shows {recording_count} recordings")
 
 
 def main():

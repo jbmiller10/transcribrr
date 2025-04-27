@@ -150,7 +150,8 @@ class FolderManager:
     def create_folder(self, name, parent_id=None, callback=None):
         """Create a new folder in the database and in-memory list."""
         if self.folder_exists(name, parent_id):
-            logger.warning(f"Folder with name '{name}' already exists at this level")
+            logger.warning(
+                f"Folder with name '{name}' already exists at this level")
             if callback:
                 callback(False, "A folder with this name already exists")
             return False
@@ -254,7 +255,8 @@ class FolderManager:
             return True
 
         # Execute the query
-        self.db_manager.execute_query(query, params, callback=on_folder_renamed)
+        self.db_manager.execute_query(
+            query, params, callback=on_folder_renamed)
 
         return True
 
@@ -263,7 +265,8 @@ class FolderManager:
         # First, store the folder info for in-memory updates later
         folder_to_delete = self.get_folder_by_id(folder_id)
         if not folder_to_delete:
-            logger.warning(f"Folder with ID {folder_id} not found for deletion")
+            logger.warning(
+                f"Folder with ID {folder_id} not found for deletion")
             if callback:
                 callback(False, "Folder not found")
             return False
@@ -320,7 +323,8 @@ class FolderManager:
 
         # First remove associations, then delete folder
         self.db_manager.execute_query(
-            remove_associations_query, (folder_id,), callback=after_associations_removed
+            remove_associations_query, (folder_id,
+                                        ), callback=after_associations_removed
         )
 
         # The function returns immediately as the DB operation is async
@@ -335,7 +339,8 @@ class FolderManager:
         """
 
         def on_association_added(result):
-            logger.info(f"Added recording {recording_id} to folder {folder_id}")
+            logger.info(
+                f"Added recording {recording_id} to folder {folder_id}")
 
             if callback:
                 callback(True, None)
@@ -349,7 +354,8 @@ class FolderManager:
                 VALUES (?, ?)
             """
             self.db_manager.execute_query(
-                insert_query, (recording_id, folder_id), callback=on_association_added
+                insert_query, (recording_id,
+                               folder_id), callback=on_association_added
             )
 
         def on_check_completed(result):
@@ -370,7 +376,8 @@ class FolderManager:
 
             # Remove from all existing folders, then add to the new one
             self.db_manager.execute_query(
-                remove_query, (recording_id,), callback=after_remove_from_other_folders
+                remove_query, (recording_id,
+                               ), callback=after_remove_from_other_folders
             )
 
         # First check if the association exists
@@ -389,7 +396,8 @@ class FolderManager:
         """
 
         def on_association_removed(result):
-            logger.info(f"Removed recording {recording_id} from folder {folder_id}")
+            logger.info(
+                f"Removed recording {recording_id} from folder {folder_id}")
 
             if callback:
                 callback(True, None)
@@ -526,7 +534,8 @@ class FolderManager:
             return count
 
         # Execute the query
-        self.db_manager.execute_query(query, (folder_id,), callback=on_count_fetched)
+        self.db_manager.execute_query(
+            query, (folder_id,), callback=on_count_fetched)
 
         # For backward compatibility with code that expects an immediate result
         # This is a fallback and will only be correct if the folder has been previously loaded
@@ -586,7 +595,8 @@ class FolderManager:
 
             # Execute clear folders after associations are cleared
             def on_associations_cleared(result):
-                self.db_manager.execute_query(clear_folders_query, callback=on_cleared)
+                self.db_manager.execute_query(
+                    clear_folders_query, callback=on_cleared)
 
             # First clear associations
             self.db_manager.execute_query(

@@ -68,7 +68,8 @@ class RecordingFolderModel(QStandardItemModel):
         recording_item = QStandardItem()
 
         # Clear the display text to prevent overlapping with custom widget
-        recording_item.setText("")  # Empty text to avoid overlap with custom widget
+        # Empty text to avoid overlap with custom widget
+        recording_item.setText("")
         # Still set file type icon as the custom widget will be overlaid
         # Choose icon based on file type
         file_type = self._determine_file_type(recording_data[2])  # File path
@@ -81,13 +82,16 @@ class RecordingFolderModel(QStandardItemModel):
 
         # Store recording metadata in item roles
         recording_item.setData("recording", self.ITEM_TYPE_ROLE)
-        recording_item.setData(recording_data[0], self.ITEM_ID_ROLE)  # recording ID
-        recording_item.setData(recording_data[2], self.FILE_PATH_ROLE)  # File path
+        recording_item.setData(
+            recording_data[0], self.ITEM_ID_ROLE)  # recording ID
+        recording_item.setData(
+            recording_data[2], self.FILE_PATH_ROLE)  # File path
 
         # Store transcript data if available
         raw_transcript = recording_data[4] or ""
         processed_transcript = recording_data[5] or ""
-        has_transcript = bool(raw_transcript.strip() or processed_transcript.strip())
+        has_transcript = bool(raw_transcript.strip()
+                              or processed_transcript.strip())
 
         # Combine all text for searching
         full_text_for_search = (
@@ -105,7 +109,8 @@ class RecordingFolderModel(QStandardItemModel):
             logger.warning(
                 f"Failed to parse date for recording {recording_data[0]}: {e}"
             )
-            recording_item.setData(datetime.now(), self.DATE_CREATED_ROLE)  # Fallback
+            recording_item.setData(
+                datetime.now(), self.DATE_CREATED_ROLE)  # Fallback
 
         # Store for quick lookup
         self.item_map[("recording", recording_data[0])] = recording_item
@@ -205,7 +210,8 @@ class RecordingFilterProxyModel(QSortFilterProxyModel):
             if self.filter_text:
                 # Get full text (filename + transcript) for searching
                 full_text = (
-                    source_item.data(RecordingFolderModel.FULL_TRANSCRIPT_ROLE) or ""
+                    source_item.data(
+                        RecordingFolderModel.FULL_TRANSCRIPT_ROLE) or ""
                 ).lower()
                 if self.filter_text not in full_text:
                     return False  # Text doesn't match
@@ -245,7 +251,8 @@ class RecordingFilterProxyModel(QSortFilterProxyModel):
                         start_of_week = now.replace(
                             hour=0, minute=0, second=0, microsecond=0
                         )
-                        start_of_week = start_of_week - timedelta(days=now.weekday())
+                        start_of_week = start_of_week - \
+                            timedelta(days=now.weekday())
                         if date_created < start_of_week:
                             return False
 

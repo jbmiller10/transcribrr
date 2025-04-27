@@ -33,7 +33,8 @@ class PromptEditorWidget(QWidget):
         self.name_layout = QHBoxLayout()
         self.name_label = QLabel("Prompt Name:")
         self.name_input = QLineEdit()
-        self.name_input.setPlaceholderText("Enter a concise, descriptive name...")
+        self.name_input.setPlaceholderText(
+            "Enter a concise, descriptive name...")
         self.category_label = QLabel("Category:")
         self.category_combo = QComboBox()
         self.category_combo.setEditable(True)
@@ -163,7 +164,8 @@ class PromptManagerDialog(QDialog):
         browse_layout = QVBoxLayout(browse_tab)
         filter_layout = QHBoxLayout()
         self.filter_input = QLineEdit()
-        self.filter_input.setPlaceholderText("Search prompts by name or text...")
+        self.filter_input.setPlaceholderText(
+            "Search prompts by name or text...")
         self.filter_input.textChanged.connect(self.apply_filter)
         self.category_filter = QComboBox()
         self._update_category_filter()  # Populate categories
@@ -175,15 +177,18 @@ class PromptManagerDialog(QDialog):
         browse_layout.addLayout(filter_layout)
 
         self.prompt_table = QTableWidget(0, 3)
-        self.prompt_table.setHorizontalHeaderLabels(["Name", "Category", "Prompt Text"])
+        self.prompt_table.setHorizontalHeaderLabels(
+            ["Name", "Category", "Prompt Text"])
         self.prompt_table.horizontalHeader().setSectionResizeMode(
             2, QHeaderView.ResizeMode.Stretch
         )
         self.prompt_table.setSelectionBehavior(
             QTableWidget.SelectionBehavior.SelectRows
         )
-        self.prompt_table.setSelectionMode(QTableWidget.SelectionMode.SingleSelection)
-        self.prompt_table.itemSelectionChanged.connect(self.on_prompt_selection_changed)
+        self.prompt_table.setSelectionMode(
+            QTableWidget.SelectionMode.SingleSelection)
+        self.prompt_table.itemSelectionChanged.connect(
+            self.on_prompt_selection_changed)
         self.prompt_table.setEditTriggers(
             QTableWidget.EditTrigger.NoEditTriggers
         )  # Not editable here
@@ -256,8 +261,10 @@ class PromptManagerDialog(QDialog):
 
                     self.prompt_table.insertRow(row)
                     self.prompt_table.setItem(row, 0, QTableWidgetItem(name))
-                    self.prompt_table.setItem(row, 1, QTableWidgetItem(category))
-                    display_text = text[:100] + "..." if len(text) > 100 else text
+                    self.prompt_table.setItem(
+                        row, 1, QTableWidgetItem(category))
+                    display_text = text[:100] + \
+                        "..." if len(text) > 100 else text
                     table_item = QTableWidgetItem(display_text)
                     table_item.setData(
                         Qt.ItemDataRole.UserRole, prompt_data
@@ -290,9 +297,11 @@ class PromptManagerDialog(QDialog):
         if not selected_rows:
             return
         row = selected_rows[0].row()
-        prompt_data = self.prompt_table.item(row, 2).data(Qt.ItemDataRole.UserRole)
+        prompt_data = self.prompt_table.item(
+            row, 2).data(Qt.ItemDataRole.UserRole)
 
-        self._editing_prompt_name = prompt_data["name"]  # Store name being edited
+        # Store name being edited
+        self._editing_prompt_name = prompt_data["name"]
         self.prompt_editor.set_prompt(
             prompt_data["name"], prompt_data["text"], prompt_data["category"]
         )
@@ -303,17 +312,20 @@ class PromptManagerDialog(QDialog):
         if not selected_rows:
             return
         row = selected_rows[0].row()
-        prompt_data = self.prompt_table.item(row, 2).data(Qt.ItemDataRole.UserRole)
+        prompt_data = self.prompt_table.item(
+            row, 2).data(Qt.ItemDataRole.UserRole)
         name = prompt_data["name"]
 
         if show_confirmation_dialog(
             self, "Confirm Deletion", f"Delete the prompt '{name}'?"
         ):
             if self.prompt_manager.delete_prompt(name):
-                show_info_message(self, "Prompt Deleted", f"Prompt '{name}' deleted.")
+                show_info_message(self, "Prompt Deleted",
+                                  f"Prompt '{name}' deleted.")
                 self._load_and_organize_prompts()  # Reload internal state and update UI
             else:
-                show_error_message(self, "Error", f"Failed to delete prompt '{name}'.")
+                show_error_message(
+                    self, "Error", f"Failed to delete prompt '{name}'.")
 
     def clear_editor(self):
         self._editing_prompt_name = None  # Clear editing state
@@ -323,10 +335,12 @@ class PromptManagerDialog(QDialog):
         """Save prompt."""
         data = self.prompt_editor.get_prompt_data()
         if not data["name"]:
-            show_error_message(self, "Missing Name", "Prompt name cannot be empty.")
+            show_error_message(self, "Missing Name",
+                               "Prompt name cannot be empty.")
             return
         if not data["text"]:
-            show_error_message(self, "Missing Text", "Prompt text cannot be empty.")
+            show_error_message(self, "Missing Text",
+                               "Prompt text cannot be empty.")
             return
         if not data["category"]:
             data["category"] = "General"  # Ensure category is set
@@ -359,7 +373,8 @@ class PromptManagerDialog(QDialog):
 
         if success:
             action = "updated" if is_update else "saved"
-            show_info_message(self, "Success", f"Prompt '{data['name']}' {action}.")
+            show_info_message(
+                self, "Success", f"Prompt '{data['name']}' {action}.")
             self._load_and_organize_prompts()  # Reload internal state and update UI
             self.clear_editor()
             self.tab_widget.setCurrentIndex(0)  # Switch back to browse tab
@@ -401,7 +416,8 @@ class PromptManagerDialog(QDialog):
         if not file_path.lower().endswith(".json"):
             file_path += ".json"
 
-        success, message = self.prompt_manager.export_prompts_to_file(file_path)
+        success, message = self.prompt_manager.export_prompts_to_file(
+            file_path)
         if success:
             show_info_message(self, "Export Successful", message)
         else:

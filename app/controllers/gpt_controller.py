@@ -105,7 +105,8 @@ class GPTController(QObject):
                     "processed_text": processed_text,
                     "processed_text_formatted": db_value if is_html else None,
                 }
-                self.recording_status_updated.emit(recording.id, status_updates)
+                self.recording_status_updated.emit(
+                    recording.id, status_updates)
 
                 # Call the completion callback if provided
                 if completion_callback:
@@ -300,7 +301,8 @@ class GPTController(QObject):
                     "processed_text": refined_text,
                     "processed_text_formatted": db_value if is_html else None,
                 }
-                self.recording_status_updated.emit(recording.id, status_updates)
+                self.recording_status_updated.emit(
+                    recording.id, status_updates)
 
                 # Call the completion callback if provided
                 if completion_callback:

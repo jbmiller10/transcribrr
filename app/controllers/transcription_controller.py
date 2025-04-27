@@ -22,7 +22,8 @@ class TranscriptionController(QObject):
 
     # Signals
     transcription_process_started = pyqtSignal()
-    transcription_process_completed = pyqtSignal(str)  # Emits final transcript text
+    transcription_process_completed = pyqtSignal(
+        str)  # Emits final transcript text
     transcription_process_stopped = pyqtSignal()
     status_update = pyqtSignal(str)  # Generic status update signal
     recording_status_updated = pyqtSignal(
@@ -69,13 +70,15 @@ class TranscriptionController(QObject):
 
         # Connect signals
         self.transcription_thread.completed.connect(
-            lambda transcript: self._on_transcription_completed(recording, transcript)
+            lambda transcript: self._on_transcription_completed(
+                recording, transcript)
         )
         self.transcription_thread.update_progress.connect(
             self._on_transcription_progress
         )
         self.transcription_thread.error.connect(self._on_transcription_error)
-        self.transcription_thread.finished.connect(self._on_transcription_finished)
+        self.transcription_thread.finished.connect(
+            self._on_transcription_finished)
 
         # Register thread with ThreadManager
         ThreadManager.instance().register_thread(self.transcription_thread)
@@ -113,7 +116,8 @@ class TranscriptionController(QObject):
         transcription_quality = config.get(
             "transcription_quality", "openai/whisper-large-v3"
         )
-        speaker_detection_enabled = config.get("speaker_detection_enabled", False)
+        speaker_detection_enabled = config.get(
+            "speaker_detection_enabled", False)
         hardware_acceleration_enabled = config.get(
             "hardware_acceleration_enabled", True
         )
@@ -132,7 +136,8 @@ class TranscriptionController(QObject):
         if speaker_detection_enabled:
             hf_auth_key = get_api_key("HF_API_KEY")
             if not hf_auth_key:
-                logger.error("Hugging Face API key missing for speaker detection")
+                logger.error(
+                    "Hugging Face API key missing for speaker detection")
                 return None
 
         # Build thread arguments
@@ -164,7 +169,8 @@ class TranscriptionController(QObject):
 
         # Check if result contains speaker labels
         is_formatted = (
-            transcript.strip().startswith("SPEAKER_") and ":" in transcript[:20]
+            transcript.strip().startswith(
+                "SPEAKER_") and ":" in transcript[:20]
         )
 
         if is_formatted:

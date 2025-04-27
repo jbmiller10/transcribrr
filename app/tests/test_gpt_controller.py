@@ -46,7 +46,8 @@ sys.modules["PyQt6.QtCore"] = qt_core
 with (
     patch("app.controllers.gpt_controller.GPT4ProcessingThread") as MockGPT4Thread,
     patch("app.controllers.gpt_controller.ThreadManager") as MockThreadManager,
-    patch("app.controllers.gpt_controller.get_api_key", return_value="fake-api-key"),
+    patch("app.controllers.gpt_controller.get_api_key",
+          return_value="fake-api-key"),
 ):
 
     # Set up mock thread manager
@@ -83,7 +84,8 @@ class TestGPTController(unittest.TestCase):
         )
 
         # Sample config
-        self.config = {"gpt_model": "gpt-4o", "max_tokens": 16000, "temperature": 1.0}
+        self.config = {"gpt_model": "gpt-4o",
+            "max_tokens": 16000, "temperature": 1.0}
 
         # Test prompt
         self.prompt = "Summarize the following transcript:"
@@ -120,7 +122,8 @@ class TestGPTController(unittest.TestCase):
 
         GPT4ProcessingThread.assert_called_once()
         call_args = GPT4ProcessingThread.call_args[1]
-        self.assertEqual(call_args["transcript"], self.recording.raw_transcript)
+        self.assertEqual(call_args["transcript"],
+                         self.recording.raw_transcript)
         self.assertEqual(call_args["prompt_instructions"], self.prompt)
         self.assertEqual(call_args["gpt_model"], "gpt-4o")
         self.assertEqual(call_args["max_tokens"], 16000)
@@ -213,7 +216,8 @@ class TestGPTController(unittest.TestCase):
         self.assertEqual(
             call_args["gpt_model"], "gpt-4o-mini"
         )  # Should use cheaper model
-        self.assertEqual(call_args["temperature"], 0.3)  # Should use lower temperature
+        # Should use lower temperature
+        self.assertEqual(call_args["temperature"], 0.3)
 
         # Verify BusyGuard was created
         self.busy_guard_callback.assert_called_once()
@@ -280,7 +284,8 @@ class TestGPTController(unittest.TestCase):
 
         # Verify user message contains raw transcript
         self.assertEqual(messages[1]["role"], "user")
-        self.assertIn(processed_recording.raw_transcript, messages[1]["content"])
+        self.assertIn(processed_recording.raw_transcript,
+                      messages[1]["content"])
 
         # Verify assistant message contains processed text
         self.assertEqual(messages[2]["role"], "assistant")

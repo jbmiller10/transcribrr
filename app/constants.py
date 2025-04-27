@@ -113,9 +113,11 @@ AUDIO_EXTENSIONS: Set[str] = {
     ".wma",
 }
 
-VIDEO_EXTENSIONS: Set[str] = {".mp4", ".mkv", ".avi", ".mov", ".webm", ".flv", ".wmv"}
+VIDEO_EXTENSIONS: Set[str] = {".mp4", ".mkv",
+    ".avi", ".mov", ".webm", ".flv", ".wmv"}
 
-DOCUMENT_EXTENSIONS: Set[str] = {".txt", ".md", ".doc", ".docx", ".pdf", ".odt"}
+DOCUMENT_EXTENSIONS: Set[str] = {
+    ".txt", ".md", ".doc", ".docx", ".pdf", ".odt"}
 
 FILE_TYPES: Dict[str, Dict[str, Any]] = {
     # Audio formats

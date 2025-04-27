@@ -31,7 +31,8 @@ except ModuleNotFoundError:
 
     QTest = _QTest
 
-sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
+sys.path.insert(0, os.path.abspath(
+    os.path.join(os.path.dirname(__file__), "..")))
 
 
 class Delayed(QObject):
@@ -58,7 +59,8 @@ class TestTree(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
         cls.app = (
-            QApplication([]) if not QApplication.instance() else QApplication.instance()
+            QApplication([]) if not QApplication.instance(
+            ) else QApplication.instance()
         )
 
     # ------------------------------------------------------------------
@@ -173,7 +175,8 @@ class TestTree(unittest.TestCase):
             QTest.qWait(50)
             QApplication.processEvents()
 
-        ids = {k[1] for k in self.tv.source_model.item_map if k[0] == "recording"}
+        ids = {k[1]
+            for k in self.tv.source_model.item_map if k[0] == "recording"}
         self.assertEqual(len(ids), len(set(ids)))  # uniqueness
         self.assertTrue(
             ids.issubset({r[0] for r in (self.unassigned + self.f1 + self.f2)})
@@ -197,7 +200,8 @@ class TestTree(unittest.TestCase):
         QTest.qWait(50)
         QApplication.processEvents()
 
-        ids_after = [k for k in self.tv.source_model.item_map if k[0] == "recording"]
+        ids_after = [
+            k for k in self.tv.source_model.item_map if k[0] == "recording"]
         self.assertEqual(ids_after, [])  # stale callback ignored
 
 

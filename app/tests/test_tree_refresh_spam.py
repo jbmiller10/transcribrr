@@ -34,7 +34,8 @@ import unittest
 raise unittest.SkipTest("Skipping legacy test in headless environment")
 
 # Add parent directory to path to import app modules
-sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
+sys.path.insert(0, os.path.abspath(
+    os.path.join(os.path.dirname(__file__), "..")))
 
 
 class RefreshSpamTester(QMainWindow):
@@ -45,7 +46,8 @@ class RefreshSpamTester(QMainWindow):
 
         # Get actual DB and folder manager instances
         self.db_manager = DatabaseManager()
-        self.folder_manager = FolderManager.instance(db_manager=self.db_manager)
+        self.folder_manager = FolderManager.instance(
+            db_manager=self.db_manager)
 
         # Create tree view
         self.tree_view = UnifiedFolderTreeView(self.db_manager)

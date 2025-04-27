@@ -84,7 +84,8 @@ class ResponsiveUIManager(QObject):
 
             # Base scale factor calculation (adjust as needed)
             self.scale_factor = max(1.0, dpi / 96.0)
-            logger.info(f"Detected DPI: {dpi}, scale factor: {self.scale_factor}")
+            logger.info(
+                f"Detected DPI: {dpi}, scale factor: {self.scale_factor}")
 
     def register_widget(self, widget):
         """Register widget."""

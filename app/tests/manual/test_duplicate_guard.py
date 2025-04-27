@@ -130,7 +130,8 @@ class TestWindow(QWidget):
 
         # Define callback for when the recording is created
         def on_recording_created(recording_id):
-            self.status_label.setText(f"Added test recording with ID: {recording_id}")
+            self.status_label.setText(
+                f"Added test recording with ID: {recording_id}")
             self.add_log(f"Recording created with ID: {recording_id}")
 
         # Connect to handle database errors
@@ -209,7 +210,8 @@ class TestWindow(QWidget):
 
             # Check if dataChanged count increased - should NOT happen
             if self.data_changed_count > initial_count:
-                self.add_log("BUG: dataChanged signal was emitted for duplicate path!")
+                self.add_log(
+                    "BUG: dataChanged signal was emitted for duplicate path!")
 
         # Connect to handle database errors
         def on_db_error(operation_name, error_message):

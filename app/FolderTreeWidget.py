@@ -57,7 +57,8 @@ class FolderTreeWidget(QWidget):
         header_layout.addWidget(self.refresh_button)
 
         self.add_folder_button = QToolButton()
-        self.add_folder_button.setIcon(QIcon(resource_path("icons/folder.svg")))
+        self.add_folder_button.setIcon(
+            QIcon(resource_path("icons/folder.svg")))
         self.add_folder_button.setToolTip("Add New Folder")
         self.add_folder_button.setFixedSize(24, 24)
         self.add_folder_button.clicked.connect(self.create_folder)
@@ -69,8 +70,10 @@ class FolderTreeWidget(QWidget):
         self.folder_tree.setHeaderHidden(True)
         self.folder_tree.setIconSize(QSize(16, 16))
         self.folder_tree.setIndentation(20)
-        self.folder_tree.setContextMenuPolicy(Qt.ContextMenuPolicy.CustomContextMenu)
-        self.folder_tree.customContextMenuRequested.connect(self.show_context_menu)
+        self.folder_tree.setContextMenuPolicy(
+            Qt.ContextMenuPolicy.CustomContextMenu)
+        self.folder_tree.customContextMenuRequested.connect(
+            self.show_context_menu)
         self.folder_tree.itemClicked.connect(self.on_folder_selected)
         self.folder_tree.itemExpanded.connect(self.on_item_expanded)
         self.folder_tree.itemCollapsed.connect(self.on_item_collapsed)
@@ -101,7 +104,8 @@ class FolderTreeWidget(QWidget):
         root_item.setText(0, "Unorganized Recordings")
         root_item.setIcon(0, QIcon(resource_path("icons/folder.svg")))
         root_item.setData(
-            0, Qt.ItemDataRole.UserRole, {"id": -1, "name": "Unorganized Recordings"}
+            0, Qt.ItemDataRole.UserRole, {
+                "id": -1, "name": "Unorganized Recordings"}
         )
         root_item.setExpanded(True)
         self.folder_tree.setCurrentItem(root_item)
@@ -129,11 +133,13 @@ class FolderTreeWidget(QWidget):
         try:
             # Try to get instance, or initialize with db_manager if available
             if hasattr(self, "db_manager") and self.db_manager is not None:
-                folder_manager = FolderManager.instance(db_manager=self.db_manager)
+                folder_manager = FolderManager.instance(
+                    db_manager=self.db_manager)
             else:
                 # Try to initialize with db_manager if available
                 if hasattr(self, "db_manager") and self.db_manager is not None:
-                    folder_manager = FolderManager.instance(db_manager=self.db_manager)
+                    folder_manager = FolderManager.instance(
+                        db_manager=self.db_manager)
                 else:
                     folder_manager = FolderManager.instance()
             root_folders = folder_manager.get_all_root_folders()
@@ -161,7 +167,8 @@ class FolderTreeWidget(QWidget):
             conn.close()
 
             if root_item:
-                root_item.setText(0, f"Unorganized Recordings ({unorganized_count})")
+                root_item.setText(
+                    0, f"Unorganized Recordings ({unorganized_count})")
         except Exception as e:
             logger.error(f"Error getting unorganized recording count: {e}")
             unorganized_count = 0
@@ -213,7 +220,8 @@ class FolderTreeWidget(QWidget):
             try:
                 # Try to initialize with db_manager if available
                 if hasattr(self, "db_manager") and self.db_manager is not None:
-                    folder_manager = FolderManager.instance(db_manager=self.db_manager)
+                    folder_manager = FolderManager.instance(
+                        db_manager=self.db_manager)
                 else:
                     folder_manager = FolderManager.instance()
                 recordings = folder_manager.get_recordings_in_folder(folder_id)
@@ -222,7 +230,8 @@ class FolderTreeWidget(QWidget):
                 logger.error(f"Error accessing FolderManager: {e}")
                 return 0
         except Exception as e:
-            logger.error(f"Error getting recording count for folder {folder_id}: {e}")
+            logger.error(
+                f"Error getting recording count for folder {folder_id}: {e}")
             return 0
 
     def on_item_expanded(self, item):
@@ -306,10 +315,12 @@ class FolderTreeWidget(QWidget):
         if not is_all_recordings:
             # Regular folder options
             rename_action = menu.addAction("Rename Folder")
-            rename_action.triggered.connect(lambda: self.rename_folder(item, folder_id))
+            rename_action.triggered.connect(
+                lambda: self.rename_folder(item, folder_id))
 
             delete_action = menu.addAction("Delete Folder")
-            delete_action.triggered.connect(lambda: self.delete_folder(item, folder_id))
+            delete_action.triggered.connect(
+                lambda: self.delete_folder(item, folder_id))
 
             # Show recording count in the menu
             menu.addSeparator()
@@ -317,7 +328,8 @@ class FolderTreeWidget(QWidget):
                 empty_label = menu.addAction("Empty Folder")
                 empty_label.setEnabled(False)
             else:
-                count_label = menu.addAction(f"Contains {recording_count} recording(s)")
+                count_label = menu.addAction(
+                    f"Contains {recording_count} recording(s)")
                 count_label.setEnabled(False)
 
         menu.addSeparator()
@@ -347,7 +359,8 @@ class FolderTreeWidget(QWidget):
             try:
                 # Try to initialize with db_manager if available
                 if hasattr(self, "db_manager") and self.db_manager is not None:
-                    folder_manager = FolderManager.instance(db_manager=self.db_manager)
+                    folder_manager = FolderManager.instance(
+                        db_manager=self.db_manager)
                 else:
                     folder_manager = FolderManager.instance()
             except RuntimeError as e:
@@ -385,7 +398,8 @@ class FolderTreeWidget(QWidget):
             try:
                 # Try to initialize with db_manager if available
                 if hasattr(self, "db_manager") and self.db_manager is not None:
-                    folder_manager = FolderManager.instance(db_manager=self.db_manager)
+                    folder_manager = FolderManager.instance(
+                        db_manager=self.db_manager)
                 else:
                     folder_manager = FolderManager.instance()
             except RuntimeError as e:
@@ -408,7 +422,8 @@ class FolderTreeWidget(QWidget):
                         self, "Error", f"Failed to create subfolder: {result}"
                     )
 
-            folder_manager.create_folder(folder_name, parent_id, on_folder_created)
+            folder_manager.create_folder(
+                folder_name, parent_id, on_folder_created)
 
     def rename_folder(self, item, folder_id):
         """Rename a folder."""
@@ -424,7 +439,8 @@ class FolderTreeWidget(QWidget):
             try:
                 # Try to initialize with db_manager if available
                 if hasattr(self, "db_manager") and self.db_manager is not None:
-                    folder_manager = FolderManager.instance(db_manager=self.db_manager)
+                    folder_manager = FolderManager.instance(
+                        db_manager=self.db_manager)
                 else:
                     folder_manager = FolderManager.instance()
             except RuntimeError as e:
@@ -446,7 +462,8 @@ class FolderTreeWidget(QWidget):
                         self, "Error", f"Failed to rename folder: {result}"
                     )
 
-            folder_manager.rename_folder(folder_id, new_name, on_folder_renamed)
+            folder_manager.rename_folder(
+                folder_id, new_name, on_folder_renamed)
 
     def delete_folder(self, item, folder_id):
         """Delete a folder."""
@@ -467,7 +484,8 @@ class FolderTreeWidget(QWidget):
             try:
                 # Try to initialize with db_manager if available
                 if hasattr(self, "db_manager") and self.db_manager is not None:
-                    folder_manager = FolderManager.instance(db_manager=self.db_manager)
+                    folder_manager = FolderManager.instance(
+                        db_manager=self.db_manager)
                 else:
                     folder_manager = FolderManager.instance()
             except RuntimeError as e:

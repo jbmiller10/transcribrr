@@ -24,7 +24,8 @@ def _get_base_resource_path() -> str:
     # Check if running as a py2app bundle
     elif getattr(sys, "frozen", False) and "MacOS" in sys.executable:
         bundle_dir = os.path.normpath(
-            os.path.join(os.path.dirname(sys.executable), os.pardir, "Resources")
+            os.path.join(os.path.dirname(sys.executable),
+                         os.pardir, "Resources")
         )
         py2app_path: str = bundle_dir  # Type annotation to ensure correct type
         logger.debug(f"Using py2app bundle path: {py2app_path}")

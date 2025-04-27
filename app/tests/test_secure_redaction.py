@@ -13,16 +13,19 @@ import unittest
 # Skip legacy tests in headless environment
 raise unittest.SkipTest("Skipping legacy test in headless environment")
 
-sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "../..")))
+sys.path.insert(0, os.path.abspath(
+    os.path.join(os.path.dirname(__file__), "../..")))
 
 
 # ───────────────────────── redaction ────────────────────────
 class TestSecureRedaction(unittest.TestCase):
     def test_redact_openai(self):
-        self.assertIn("***-REDACTED-***", redact("sk-abcdefghijklmnopqrstuvwxyz123456"))
+        self.assertIn("***-REDACTED-***",
+                      redact("sk-abcdefghijklmnopqrstuvwxyz123456"))
 
     def test_redact_hf(self):
-        self.assertIn("***-REDACTED-***", redact("hf_abcdefghijklmnopqrstuvwxyz123456"))
+        self.assertIn("***-REDACTED-***",
+                      redact("hf_abcdefghijklmnopqrstuvwxyz123456"))
 
     def test_redact_multiple(self):
         raw = "sk-abcdefghijklmnopqrstuvwxyz123456 hf_abcdefghijklmnopqrstuvwxyz123456"
@@ -39,7 +42,8 @@ class TestSecureRedaction(unittest.TestCase):
     def test_service_id(self):
         from app.constants import APP_NAME, APP_VERSION
 
-        self.assertEqual(get_service_id(), f"{APP_NAME.lower()}-v{APP_VERSION}")
+        self.assertEqual(get_service_id(),
+                         f"{APP_NAME.lower()}-v{APP_VERSION}")
 
 
 # ───────────────────────── HTTPS guards ─────────────────────

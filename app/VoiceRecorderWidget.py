@@ -133,7 +133,8 @@ class RecordingThread(QThread):
             except IOError as e:
                 raise RuntimeError(f"Audio device error: {e}")
             except Exception as e:
-                raise RuntimeError(f"Unexpected error initializing audio stream: {e}")
+                raise RuntimeError(
+                    f"Unexpected error initializing audio stream: {e}")
 
             self.elapsed_time = 0
             last_time_update = time.time()
@@ -157,7 +158,8 @@ class RecordingThread(QThread):
                         # Calculate audio level for visualization
                         if len(data) > 0:
                             try:
-                                audio_array = np.frombuffer(data, dtype=np.int16)
+                                audio_array = np.frombuffer(
+                                    data, dtype=np.int16)
                                 max_amplitude = (
                                     np.max(np.abs(audio_array))
                                     if len(audio_array) > 0
@@ -201,7 +203,8 @@ class RecordingThread(QThread):
                             time.sleep(0.5)
                     except Exception as e:
                         self.error.emit(f"Error reading audio: {e}")
-                        logger.error(f"Audio processing error: {e}", exc_info=True)
+                        logger.error(
+                            f"Audio processing error: {e}", exc_info=True)
                         # Short sleep before retrying
                         time.sleep(0.5)
                 else:
@@ -221,12 +224,14 @@ class RecordingThread(QThread):
                     try:
                         self.stream.stop_stream()
                     except Exception as stop_error:
-                        logger.warning(f"Error stopping audio stream: {stop_error}")
+                        logger.warning(
+                            f"Error stopping audio stream: {stop_error}")
 
                     try:
                         self.stream.close()
                     except Exception as close_error:
-                        logger.warning(f"Error closing audio stream: {close_error}")
+                        logger.warning(
+                            f"Error closing audio stream: {close_error}")
 
                     self.stream = None
                     logger.debug("Audio stream properly closed")
@@ -269,7 +274,8 @@ class RecordingThread(QThread):
 
         if filename is None:
             timestamp = datetime.datetime.now().strftime("%Y%m%d-%H%M%S")
-            filename = os.path.join(recordings_dir, f"Recording-{timestamp}.mp3")
+            filename = os.path.join(
+                recordings_dir, f"Recording-{timestamp}.mp3")
 
         temp_wav_path = None
         temp_mp3_path = None
@@ -362,7 +368,8 @@ class VoiceRecorderWidget(QWidget):
         instruction_label = QLabel(
             "Click the button below to start recording from your microphone"
         )
-        instruction_label.setAlignment(Qt.AlignmentFlag.AlignCenter)  # Fixed enum
+        instruction_label.setAlignment(
+            Qt.AlignmentFlag.AlignCenter)  # Fixed enum
         instruction_label.setStyleSheet("color: #666; font-style: italic;")
         self.layout.addWidget(instruction_label)
 
@@ -372,13 +379,15 @@ class VoiceRecorderWidget(QWidget):
 
         # Timer display
         self.timerLabel = QLabel("00:00:00")
-        self.timerLabel.setAlignment(Qt.AlignmentFlag.AlignCenter)  # Fixed enum
+        self.timerLabel.setAlignment(
+            Qt.AlignmentFlag.AlignCenter)  # Fixed enum
         self.timerLabel.setStyleSheet("font-size: 20px; font-weight: bold;")
         self.layout.addWidget(self.timerLabel)
 
         # Status label
         self.statusLabel = QLabel("Ready to record")
-        self.statusLabel.setAlignment(Qt.AlignmentFlag.AlignCenter)  # Fixed enum
+        self.statusLabel.setAlignment(
+            Qt.AlignmentFlag.AlignCenter)  # Fixed enum
         self.layout.addWidget(self.statusLabel)
 
         # Record button with SVG icons
@@ -399,7 +408,8 @@ class VoiceRecorderWidget(QWidget):
 
         # Save and Delete buttons in a horizontal layout
         buttonLayout = QHBoxLayout()
-        buttonLayout.setAlignment(Qt.AlignmentFlag.AlignCenter)  # Center the buttons
+        buttonLayout.setAlignment(
+            Qt.AlignmentFlag.AlignCenter)  # Center the buttons
         buttonLayout.setSpacing(20)  # Add spacing between buttons
 
         # Icon-only save button with transparent background
@@ -481,7 +491,8 @@ class VoiceRecorderWidget(QWidget):
 
         except Exception as e:
             logger.error(f"Error initializing audio: {e}", exc_info=True)
-            self.statusLabel.setText("Error: Could not initialize audio system")
+            self.statusLabel.setText(
+                "Error: Could not initialize audio system")
             self.recordButton.setEnabled(False)
 
     def toggleRecording(self):
@@ -512,7 +523,8 @@ class VoiceRecorderWidget(QWidget):
                 self.rate,
                 self.frames_per_buffer,
             )
-            self.recording_thread.update_level.connect(self.level_meter.set_level)
+            self.recording_thread.update_level.connect(
+                self.level_meter.set_level)
             self.recording_thread.update_time.connect(self.updateTimerValue)
             self.recording_thread.error.connect(self.handleRecordingError)
 
@@ -521,7 +533,8 @@ class VoiceRecorderWidget(QWidget):
             self.recording_thread.startRecording()
 
             # Start UI update timer
-            self.ui_timer.start(100)  # Update UI frequently for smoother appearance
+            # Update UI frequently for smoother appearance
+            self.ui_timer.start(100)
 
             # Emit signal that recording has started
             self.recordingStarted.emit()
@@ -594,7 +607,8 @@ class VoiceRecorderWidget(QWidget):
                         self.resetUI()
                         self.recordingCompleted.emit(file_name)
                     else:
-                        self.statusLabel.setText("Error: Failed to save recording")
+                        self.statusLabel.setText(
+                            "Error: Failed to save recording")
 
                     # Close progress dialog if it was shown
                     if self.elapsed_time > 10:

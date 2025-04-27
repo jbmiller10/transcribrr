@@ -57,7 +57,8 @@ class TestSpinnerFunctionality(unittest.TestCase):
 
         # Test toggling again to stop
         result = spinner_manager.toggle_spinner("test_spinner")
-        self.assertFalse(result)  # Should return False indicating it's now inactive
+        # Should return False indicating it's now inactive
+        self.assertFalse(result)
         self.assertFalse(spinner_manager.is_active("test_spinner"))
 
     @patch("app.ui_utils_legacy.QMovie")
@@ -93,17 +94,20 @@ class TestSpinnerFunctionality(unittest.TestCase):
 
         # Test starting spinner via feedback manager
         result = feedback_manager.start_spinner("test_spinner")
-        self.assertTrue(result)  # Should return True indicating it's now active
+        # Should return True indicating it's now active
+        self.assertTrue(result)
         self.assertTrue(spinner_manager.is_active("test_spinner"))
 
         # Test stopping spinner via feedback manager
         result = feedback_manager.stop_spinner("test_spinner")
-        self.assertTrue(result)  # Should return True indicating it stopped successfully
+        # Should return True indicating it stopped successfully
+        self.assertTrue(result)
         self.assertFalse(spinner_manager.is_active("test_spinner"))
 
         # Test non-existent spinner
         result = feedback_manager.start_spinner("nonexistent")
-        self.assertFalse(result)  # Should return False as spinner doesn't exist
+        # Should return False as spinner doesn't exist
+        self.assertFalse(result)
 
 
 if __name__ == "__main__":

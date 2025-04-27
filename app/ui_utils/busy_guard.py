@@ -135,7 +135,8 @@ class BusyGuard(Generic[T]):
             if self.status_message:
                 self.feedback_manager.show_status(self.status_message)
 
-            logger.debug(f"BusyGuard started for operation: {self.operation_name}")
+            logger.debug(
+                f"BusyGuard started for operation: {self.operation_name}")
 
         except Exception as e:
             logger.error(f"Error in BusyGuard setup: {e}", exc_info=True)
@@ -167,7 +168,8 @@ class BusyGuard(Generic[T]):
 
             # The feedback_manager will automatically re-enable UI when operations complete
 
-            logger.debug(f"BusyGuard completed for operation: {self.operation_name}")
+            logger.debug(
+                f"BusyGuard completed for operation: {self.operation_name}")
 
         except Exception as e:
             logger.error(f"Error in BusyGuard cleanup: {e}", exc_info=True)
@@ -183,7 +185,8 @@ class BusyGuard(Generic[T]):
             message: Optional new progress message
         """
         if self.progress_started:
-            self.feedback_manager.update_progress(self.operation_id, value, message)
+            self.feedback_manager.update_progress(
+                self.operation_id, value, message)
 
     def cancel(self) -> None:
         """Cancel the operation and clean up UI state."""

@@ -36,7 +36,8 @@ def run_test():
     config_manager.set("theme", target_theme)
     print("ThemeManager theme:", theme_manager.current_theme)
     print("ConfigManager theme:", config_manager.get("theme"))
-    print("Config update successful:", theme_manager.current_theme == target_theme)
+    print("Config update successful:",
+          theme_manager.current_theme == target_theme)
 
     return 0
 

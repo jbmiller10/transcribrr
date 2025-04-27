@@ -72,7 +72,8 @@ def handle_error(
     safe_error_message = redact(error_message)
 
     # Get user-friendly message from map or use generic message
-    user_friendly_message = ERROR_MESSAGE_MAP.get(error_type, safe_error_message)
+    user_friendly_message = ERROR_MESSAGE_MAP.get(
+        error_type, safe_error_message)
 
     # Get context if source is recognized
     context = ERROR_CONTEXT_MAP.get(source, "Application")
@@ -83,7 +84,8 @@ def handle_error(
     # Log the error with appropriate level
     if error_type in [FileNotFoundError, ValueError, PermissionError]:
         # Less severe errors
-        logger.warning(f"{context} error ({error_type.__name__}): {safe_error_message}")
+        logger.warning(
+            f"{context} error ({error_type.__name__}): {safe_error_message}")
     else:
         # More severe errors - log with full traceback
         logger.error(

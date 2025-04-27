@@ -63,7 +63,8 @@ logger.info("Secure logging filter initialized")
 
 # Now get the application‑level logger
 logger = logging.getLogger(APP_NAME)
-logger.info(f"Application starting. User data directory: {get_user_data_dir()}")
+logger.info(
+    f"Application starting. User data directory: {get_user_data_dir()}")
 
 # Directories are already created in constants.py, no need to recreate them here
 
@@ -202,7 +203,8 @@ class StartupThread(QThread):
                 return True, gpu_info
             else:
                 mps_available = (
-                    hasattr(torch.backends, "mps") and torch.backends.mps.is_available()
+                    hasattr(torch.backends,
+                            "mps") and torch.backends.mps.is_available()
                 )
                 if mps_available:
                     return False, ["  • Apple MPS acceleration available"]
@@ -270,7 +272,8 @@ def create_splash_screen():
 
     # Add app name
     app_name = QLabel("Transcribrr")
-    app_name.setStyleSheet("font-size: 24px; font-weight: bold; color: #3366CC;")
+    app_name.setStyleSheet(
+        "font-size: 24px; font-weight: bold; color: #3366CC;")
     app_name.setAlignment(Qt.AlignmentFlag.AlignCenter)
     layout.addWidget(app_name)
 
@@ -379,13 +382,15 @@ def initialize_app():
         # Connect signals to main thread handlers
         startup_thread.update_progress.connect(update_splash)
         startup_thread.initialization_done.connect(
-            lambda results: on_initialization_done(results, main_window, splash)
+            lambda results: on_initialization_done(
+                results, main_window, splash)
         )
         startup_thread.error.connect(
             lambda msg: on_initialization_error(msg, main_window, splash)
         )
         startup_thread.apply_theme.connect(apply_theme_main_thread)
-        startup_thread.apply_responsive_ui.connect(apply_responsive_ui_main_thread)
+        startup_thread.apply_responsive_ui.connect(
+            apply_responsive_ui_main_thread)
 
         # Register with ThreadManager before starting
         ThreadManager.instance().register_thread(startup_thread)
@@ -442,7 +447,8 @@ def on_initialization_done(
 
     # Log configuration information
     if "config" in results:
-        logger.info(f"Loaded configuration with {len(results['config'])} settings")
+        logger.info(
+            f"Loaded configuration with {len(results['config'])} settings")
         logger.info(f"Theme: {results['config'].get('theme', 'light')}")
         logger.info(
             f"Transcription model: {results['config'].get('transcription_quality', 'Not set')}"
@@ -455,7 +461,8 @@ def on_initialization_done(
     if main_window:
         # Apply responsive UI scaling based on main window dimensions
         responsive_manager = ResponsiveUIManager.instance()
-        responsive_manager.update_size(main_window.width(), main_window.height())
+        responsive_manager.update_size(
+            main_window.width(), main_window.height())
 
     # Log system information
     logger.info("Application started")
@@ -467,7 +474,8 @@ def on_initialization_done(
             logger.info(gpu)
 
     # Show the main window and close the splash screen
-    QTimer.singleShot(800, lambda: (main_window.show(), splash.finish(main_window)))
+    QTimer.singleShot(800, lambda: (
+        main_window.show(), splash.finish(main_window)))
 
 
 @pyqtSlot(str)
@@ -504,10 +512,12 @@ def copy_initial_data_files():
         if not os.path.exists(get_config_path()):
             source_config = os.path.join(resource_dir, "config.json")
             if os.path.exists(source_config):
-                logger.info(f"Copying default config.json to {get_config_path()}")
+                logger.info(
+                    f"Copying default config.json to {get_config_path()}")
                 shutil.copy2(source_config, get_config_path())
             else:
-                logger.warning(f"Default config.json not found at {source_config}")
+                logger.warning(
+                    f"Default config.json not found at {source_config}")
 
         # Copy preset_prompts.json if it doesn't exist in user data directory
         if not os.path.exists(get_prompts_path()):
@@ -652,7 +662,8 @@ def cleanup_application():
             thread.terminate()
             thread.wait(500)  # Brief wait after terminate
         except Exception as e:
-            logger.error(f"Error terminating thread {thread.__class__.__name__}: {e}")
+            logger.error(
+                f"Error terminating thread {thread.__class__.__name__}: {e}")
 
     # Release model resources
     try:

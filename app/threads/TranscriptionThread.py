@@ -97,7 +97,8 @@ class TranscriptionThread(QThread):
 
     def run(self):
         if self.is_canceled():
-            self.update_progress.emit("Transcription cancelled before starting.")
+            self.update_progress.emit(
+                "Transcription cancelled before starting.")
             return  # Exit if validation failed or cancelled early
 
         start_time = time.time()
@@ -111,7 +112,8 @@ class TranscriptionThread(QThread):
                 self.update_progress.emit("Transcription cancelled.")
             else:
                 self.completed.emit(transcript)
-                self.update_progress.emit("Transcription finished successfully.")
+                self.update_progress.emit(
+                    "Transcription finished successfully.")
 
         except FileNotFoundError as e:
             if not self.is_canceled():
@@ -128,7 +130,8 @@ class TranscriptionThread(QThread):
                 safe_msg = redact(str(e))
                 self.error.emit(f"Configuration error: {safe_msg}")
                 logger.error(f"Transcription configuration error: {safe_msg}")
-            self.update_progress.emit("Transcription failed: Configuration issue")
+            self.update_progress.emit(
+                "Transcription failed: Configuration issue")
         except RuntimeError as e:
             if not self.is_canceled():
                 from app.secure import redact
@@ -142,8 +145,10 @@ class TranscriptionThread(QThread):
                 from app.secure import redact
 
                 safe_msg = redact(str(e))
-                self.error.emit(f"Network error during transcription: {safe_msg}")
-                logger.error(f"Transcription network error: {safe_msg}", exc_info=True)
+                self.error.emit(
+                    f"Network error during transcription: {safe_msg}")
+                logger.error(
+                    f"Transcription network error: {safe_msg}", exc_info=True)
             self.update_progress.emit("Transcription failed: Network error")
         except (torch.cuda.OutOfMemoryError, RuntimeError) as e:
             if not self.is_canceled():
@@ -155,7 +160,8 @@ class TranscriptionThread(QThread):
                     logger.error(
                         f"Transcription memory error: {err_str}", exc_info=True
                     )
-                    self.update_progress.emit("Transcription failed: Out of memory")
+                    self.update_progress.emit(
+                        "Transcription failed: Out of memory")
                 else:
                     raise  # Re-raise if it's not a memory error
         except Exception as e:
@@ -169,7 +175,8 @@ class TranscriptionThread(QThread):
         finally:
             try:
                 # Always attempt to release resources regardless of cancellation state
-                self.update_progress.emit("Cleaning up transcription resources...")
+                self.update_progress.emit(
+                    "Cleaning up transcription resources...")
                 ModelManager.instance().release_memory()
 
                 # Clean up any temporary files that might still exist
@@ -196,10 +203,12 @@ class TranscriptionThread(QThread):
 
             # Calculate appropriate chunk size based on file size
             file_size_mb = os.path.getsize(file_path) / (1024 * 1024)
-            num_chunks = max(2, int(file_size_mb / self.api_file_size_limit) + 1)
+            num_chunks = max(
+                2, int(file_size_mb / self.api_file_size_limit) + 1)
             chunk_duration_ms = duration_ms // num_chunks
 
-            logger.info(f"Creating {num_chunks} temporary chunks for API transcription")
+            logger.info(
+                f"Creating {num_chunks} temporary chunks for API transcription")
             self.update_progress.emit(
                 f"Creating {num_chunks} temporary chunks for API transcription..."
             )
@@ -235,11 +244,13 @@ class TranscriptionThread(QThread):
                 temp_files.append(temp_path)
                 self.temp_files.append(temp_path)
 
-            self.update_progress.emit(f"Created {len(temp_files)} temporary chunks.")
+            self.update_progress.emit(
+                f"Created {len(temp_files)} temporary chunks.")
             return temp_files
 
         except Exception as e:
-            logger.error(f"Error creating temporary chunks: {e}", exc_info=True)
+            logger.error(
+                f"Error creating temporary chunks: {e}", exc_info=True)
             self.error.emit(f"Failed to create temporary chunks: {e}")
             # Clean up any temporary files that were created
             self._cleanup_temp_files()
@@ -253,7 +264,8 @@ class TranscriptionThread(QThread):
                     os.remove(temp_file)
                     logger.debug(f"Removed temporary file: {temp_file}")
             except Exception as e:
-                logger.warning(f"Failed to remove temporary file {temp_file}: {e}")
+                logger.warning(
+                    f"Failed to remove temporary file {temp_file}: {e}")
 
         # Clear the list after cleanup
         self.temp_files = []
@@ -301,12 +313,14 @@ class TranscriptionThread(QThread):
 
             # Combine results
             combined_transcript = " ".join(chunk_results)
-            self.update_progress.emit("Combining temporary chunk transcriptions...")
+            self.update_progress.emit(
+                "Combining temporary chunk transcriptions...")
 
             return combined_transcript
 
         except Exception as e:
-            logger.error(f"Error processing temporary chunks: {e}", exc_info=True)
+            logger.error(
+                f"Error processing temporary chunks: {e}", exc_info=True)
             return "[Error processing chunks]"
         finally:
             # Always clean up the temporary files
@@ -344,11 +358,13 @@ class TranscriptionThread(QThread):
                     return "[Failed to create temporary chunks for API processing]"
 
                 # Process the temporary chunks
-                result = self._process_temporary_chunks(temp_chunks, time.time())
+                result = self._process_temporary_chunks(
+                    temp_chunks, time.time())
 
                 end_time = time.time()
                 runtime = end_time - start_time
-                logger.info(f"Finished temporary chunk processing in {runtime:.2f}s")
+                logger.info(
+                    f"Finished temporary chunk processing in {runtime:.2f}s")
                 self.update_progress.emit(
                     f"Finished API transcription with temporary chunks in {runtime:.2f}s"
                 )
@@ -409,12 +425,15 @@ class TranscriptionThread(QThread):
                 return formatted_text
             elif "text" in transcription_result:
                 text = transcription_result.get("text", "")
-                self.update_progress.emit(f"Finished {task_label} in {runtime:.2f}s")
+                self.update_progress.emit(
+                    f"Finished {task_label} in {runtime:.2f}s")
                 return text
             else:
-                logger.warning(f"Transcription for {task_label} returned no text.")
+                logger.warning(
+                    f"Transcription for {task_label} returned no text.")
                 return "[No transcription generated]"
         except Exception as e:
-            logger.error(f"Error processing file {file_path}: {e}", exc_info=True)
+            logger.error(
+                f"Error processing file {file_path}: {e}", exc_info=True)
             self.error.emit(f"Error processing file: {e}")
             return f"[Error: {str(e)}]"

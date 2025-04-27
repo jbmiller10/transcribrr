@@ -26,8 +26,10 @@ class PromptBar(QWidget):
     """Widget for managing prompt selection and editing."""
 
     # Signals
-    instruction_changed = pyqtSignal(str)  # Emitted when the prompt text changes
-    edit_requested = pyqtSignal(str)  # Emitted when user requests to edit a prompt
+    # Emitted when the prompt text changes
+    instruction_changed = pyqtSignal(str)
+    # Emitted when user requests to edit a prompt
+    edit_requested = pyqtSignal(str)
 
     def __init__(self, parent=None):
         super().__init__(parent)
@@ -100,7 +102,8 @@ class PromptBar(QWidget):
         self.main_layout.addWidget(self.prompt_widget)
 
         # Initialize state
-        self.prompt_widget.setVisible(False)  # Hide custom prompt area initially
+        # Hide custom prompt area initially
+        self.prompt_widget.setVisible(False)
 
         # Connect signals
         self.prompt_dropdown.currentIndexChanged.connect(
@@ -110,7 +113,8 @@ class PromptBar(QWidget):
         self.save_button.clicked.connect(self.save_custom_prompt_as_template)
 
         # Connect to PromptManager signals
-        self.prompt_manager.prompts_changed.connect(self.load_prompts_to_dropdown)
+        self.prompt_manager.prompts_changed.connect(
+            self.load_prompts_to_dropdown)
 
         # Initial load
         self.load_prompts_to_dropdown()
@@ -135,7 +139,8 @@ class PromptBar(QWidget):
         for category in sorted(categorized_prompts.keys()):
             prompt_names_in_category = sorted(categorized_prompts[category])
             if category != "General":  # Add separator for non-general categories
-                self.prompt_dropdown.insertSeparator(self.prompt_dropdown.count())
+                self.prompt_dropdown.insertSeparator(
+                    self.prompt_dropdown.count())
             for name in prompt_names_in_category:
                 # Display as "Name (Category)" for clarity, except for General
                 display_name = f"{name} ({category})" if category != "General" else name
@@ -145,10 +150,12 @@ class PromptBar(QWidget):
 
         # Add Custom Prompt option
         self.prompt_dropdown.insertSeparator(self.prompt_dropdown.count())
-        self.prompt_dropdown.addItem("Custom Prompt", "CUSTOM")  # Use unique user data
+        self.prompt_dropdown.addItem(
+            "Custom Prompt", "CUSTOM")  # Use unique user data
 
         # Restore selection if possible
-        index = self.prompt_dropdown.findData(current_selection)  # Find by real name
+        index = self.prompt_dropdown.findData(
+            current_selection)  # Find by real name
         if index == -1 and current_selection == "Custom Prompt":
             index = self.prompt_dropdown.findData("CUSTOM")
 
@@ -173,8 +180,10 @@ class PromptBar(QWidget):
             except TypeError:
                 pass  # No connections to disconnect
 
-            self.save_button.clicked.connect(self.save_custom_prompt_as_template)
-            self.edit_button.setVisible(False)  # Cannot edit the "Custom" option itself
+            self.save_button.clicked.connect(
+                self.save_custom_prompt_as_template)
+            # Cannot edit the "Custom" option itself
+            self.edit_button.setVisible(False)
         else:
             # A predefined prompt is selected
             self.hide_custom_prompt_input()
@@ -211,7 +220,8 @@ class PromptBar(QWidget):
             selected_prompt_name = self.prompt_dropdown.itemData(current_index)
 
             if selected_prompt_name != "CUSTOM":
-                prompt_text = self.prompt_manager.get_prompt_text(selected_prompt_name)
+                prompt_text = self.prompt_manager.get_prompt_text(
+                    selected_prompt_name)
                 if prompt_text is not None:
                     self.is_editing_existing_prompt = True
                     self.custom_prompt_input.setPlainText(prompt_text)
@@ -241,7 +251,8 @@ class PromptBar(QWidget):
         """Save the custom prompt as a new template via PromptManager."""
         prompt_text = self.custom_prompt_input.toPlainText().strip()
         if not prompt_text:
-            show_error_message(self, "Empty Prompt", "Cannot save an empty prompt.")
+            show_error_message(self, "Empty Prompt",
+                               "Cannot save an empty prompt.")
             return
 
         prompt_name, ok = QInputDialog.getText(
@@ -297,13 +308,15 @@ class PromptBar(QWidget):
                         self, "Error", f"Failed to save prompt '{prompt_name}'."
                     )
             else:
-                show_info_message(self, "Save Cancelled", "Prompt save cancelled.")
+                show_info_message(self, "Save Cancelled",
+                                  "Prompt save cancelled.")
 
     def save_edited_prompt(self):
         """Save the edited prompt via PromptManager."""
         edited_text = self.custom_prompt_input.toPlainText().strip()
         if not edited_text:
-            show_error_message(self, "Empty Prompt", "Prompt text cannot be empty.")
+            show_error_message(self, "Empty Prompt",
+                               "Prompt text cannot be empty.")
             return
 
         current_index = self.prompt_dropdown.currentIndex()

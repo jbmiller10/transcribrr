@@ -81,9 +81,12 @@ class TestRecordingFolderModel(unittest.TestCase):
         ]
 
         # Create some test folders
-        self.root_folder = {"type": "folder", "id": -1, "name": "Root", "children": []}
-        self.folder1 = {"type": "folder", "id": 1, "name": "Folder 1", "children": []}
-        self.folder2 = {"type": "folder", "id": 2, "name": "Folder 2", "children": []}
+        self.root_folder = {"type": "folder",
+            "id": -1, "name": "Root", "children": []}
+        self.folder1 = {"type": "folder", "id": 1,
+            "name": "Folder 1", "children": []}
+        self.folder2 = {"type": "folder", "id": 2,
+            "name": "Folder 2", "children": []}
 
     def test_duplicate_prevention(self):
         """Test that duplicates are prevented via model single source of truth."""
@@ -140,8 +143,10 @@ class TestRecordingFolderModel(unittest.TestCase):
         # Test getting recordings
         for rec in self.recordings:
             item = self.model.get_item_by_id(rec[0], "recording")
-            self.assertIsNotNone(item, f"Should find recording with ID {rec[0]}")
-            self.assertEqual(item.data(RecordingFolderModel.ITEM_ID_ROLE), rec[0])
+            self.assertIsNotNone(
+                item, f"Should find recording with ID {rec[0]}")
+            self.assertEqual(
+                item.data(RecordingFolderModel.ITEM_ID_ROLE), rec[0])
             self.assertEqual(
                 item.data(RecordingFolderModel.ITEM_TYPE_ROLE), "recording"
             )
@@ -152,7 +157,8 @@ class TestRecordingFolderModel(unittest.TestCase):
             folder_item, f"Should find folder with ID {self.folder1['id']}"
         )
         self.assertEqual(
-            folder_item.data(RecordingFolderModel.ITEM_ID_ROLE), self.folder1["id"]
+            folder_item.data(
+                RecordingFolderModel.ITEM_ID_ROLE), self.folder1["id"]
         )
         self.assertEqual(
             folder_item.data(RecordingFolderModel.ITEM_TYPE_ROLE), "folder"
@@ -178,7 +184,8 @@ class TestRecordingFolderModel(unittest.TestCase):
             self.model.add_recording_item(rec, folder1_item)
 
         # Verify items exist
-        self.assertGreater(len(self.model.item_map), 0, "Model should have items")
+        self.assertGreater(len(self.model.item_map), 0,
+                           "Model should have items")
 
         # Clear the model
         self.model.clear_model()

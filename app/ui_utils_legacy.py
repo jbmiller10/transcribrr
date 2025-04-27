@@ -51,7 +51,8 @@ class SpinnerManager:
         if os.path.exists(action_icon_path):
             button.setIcon(QIcon(action_icon_path))
         else:
-            logger.warning(f"Action icon not found: {action_icon_path}. Using text.")
+            logger.warning(
+                f"Action icon not found: {action_icon_path}. Using text.")
             button.setText(action_tooltip.split()[0])  # Fallback text
         button.setIconSize(QSize(18, 18))
         button.setFixedSize(28, 28)
@@ -66,7 +67,8 @@ class SpinnerManager:
         if spinner_movie.isValid():
             spinner_movie.setScaledSize(QSize(24, 24))
         else:
-            logger.error(f"Spinner GIF is not valid or not found: {spinner_icon_path}")
+            logger.error(
+                f"Spinner GIF is not valid or not found: {spinner_icon_path}")
         spinner_label = QLabel()
         spinner_label.setMovie(spinner_movie)
         spinner_label.setFixedSize(QSize(28, 28))
@@ -271,7 +273,8 @@ class FeedbackManager:
 
         # Store references to active progress dialogs
         self.progress_dialogs: Dict[str, QProgressDialog] = {}
-        self.ui_state: Dict[QWidget, bool] = {}  # Track UI elements disabled state
+        # Track UI elements disabled state
+        self.ui_state: Dict[QWidget, bool] = {}
         # Track active operation IDs for robust UI enable/disable
         self.active_operations: set[str] = set()
 
@@ -413,7 +416,8 @@ class FeedbackManager:
 
             if auto_close:
                 # Use a timer to auto-close after showing completion
-                QTimer.singleShot(delay, lambda: self.close_progress(operation_id))
+                QTimer.singleShot(
+                    delay, lambda: self.close_progress(operation_id))
         # Track finish of operation
         self.finish_operation(operation_id)
 

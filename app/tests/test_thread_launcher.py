@@ -91,8 +91,10 @@ class TestThreadLauncher(unittest.TestCase):
         )
 
         # Verify signal connections
-        mock_thread.completed.connect.assert_called_once_with(completion_handler)
-        mock_thread.update_progress.connect.assert_called_once_with(progress_handler)
+        mock_thread.completed.connect.assert_called_once_with(
+            completion_handler)
+        mock_thread.update_progress.connect.assert_called_once_with(
+            progress_handler)
         mock_thread.error.connect.assert_called_once_with(error_handler)
         mock_thread.finished.connect.assert_called_once_with(finished_handler)
 
@@ -137,8 +139,10 @@ class TestThreadLauncher(unittest.TestCase):
         )
 
         # Verify signal connections still made
-        mock_thread.completed.connect.assert_called_once_with(completion_handler)
-        mock_thread.update_progress.connect.assert_called_once_with(progress_handler)
+        mock_thread.completed.connect.assert_called_once_with(
+            completion_handler)
+        mock_thread.update_progress.connect.assert_called_once_with(
+            progress_handler)
         mock_thread.error.connect.assert_called_once_with(error_handler)
         mock_thread.finished.connect.assert_called_once_with(finished_handler)
 

@@ -48,7 +48,8 @@ logger = logging.getLogger("transcribrr")
 class MainTranscriptionWidget(ResponsiveWidget):
     # Transcription and GPT workflow signals
     transcription_process_started = pyqtSignal()
-    transcription_process_completed = pyqtSignal(str)  # Emits final transcript text
+    transcription_process_completed = pyqtSignal(
+        str)  # Emits final transcript text
     transcription_process_stopped = pyqtSignal()
     gpt_process_started = pyqtSignal()
     gpt_process_completed = pyqtSignal(str)  # Emits final processed text
@@ -72,11 +73,14 @@ class MainTranscriptionWidget(ResponsiveWidget):
         self.prompt_manager = PromptManager.instance()
 
         # UI feedback managers
-        self.spinner_manager = SpinnerManager(self)  # For backward compatibility
-        self.feedback_manager = FeedbackManager(self)  # Centralized feedback management
+        self.spinner_manager = SpinnerManager(
+            self)  # For backward compatibility
+        self.feedback_manager = FeedbackManager(
+            self)  # Centralized feedback management
 
         # Controllers
-        self.transcription_controller = TranscriptionController(self.db_manager, self)
+        self.transcription_controller = TranscriptionController(
+            self.db_manager, self)
         self.gpt_controller = GPTController(self.db_manager, self)
 
         # State variables
@@ -140,8 +144,10 @@ class MainTranscriptionWidget(ResponsiveWidget):
         )
 
         # GPT controller signals
-        self.gpt_controller.gpt_process_started.connect(self.gpt_process_started)
-        self.gpt_controller.gpt_process_completed.connect(self.gpt_process_completed)
+        self.gpt_controller.gpt_process_started.connect(
+            self.gpt_process_started)
+        self.gpt_controller.gpt_process_completed.connect(
+            self.gpt_process_completed)
         self.gpt_controller.status_update.connect(self.status_update)
         self.gpt_controller.recording_status_updated.connect(
             self.recording_status_updated
@@ -149,7 +155,8 @@ class MainTranscriptionWidget(ResponsiveWidget):
 
     def connect_signals(self):
         # Connect signals for TextEditor
-        self.transcript_text.transcription_requested.connect(self.start_transcription)
+        self.transcript_text.transcription_requested.connect(
+            self.start_transcription)
         self.transcript_text.gpt4_processing_requested.connect(
             self.start_gpt4_processing
         )
@@ -166,9 +173,12 @@ class MainTranscriptionWidget(ResponsiveWidget):
 
         # Connect toolbar signals
         self.mode_switch.valueChanged.connect(self.on_mode_switch_changed)
-        self.settings_button.clicked.connect(self.open_settings_dialog)  # Direct call
-        self.prompt_bar.instruction_changed.connect(self.on_prompt_instructions_changed)
-        self.refinement_submit_button.clicked.connect(self.start_refinement_processing)
+        self.settings_button.clicked.connect(
+            self.open_settings_dialog)  # Direct call
+        self.prompt_bar.instruction_changed.connect(
+            self.on_prompt_instructions_changed)
+        self.refinement_submit_button.clicked.connect(
+            self.start_refinement_processing)
 
     def init_top_toolbar(self):
         # Create the elements but do not add them to layout here
@@ -183,7 +193,8 @@ class MainTranscriptionWidget(ResponsiveWidget):
         self.gpt_processed_label = QLabel("Processed")
 
         self.settings_button = QPushButton()
-        self.settings_button.setIcon(QIcon(resource_path("icons/settings.svg")))
+        self.settings_button.setIcon(
+            QIcon(resource_path("icons/settings.svg")))
         self.settings_button.setToolTip("Open Settings")
         self.settings_button.setIconSize(QSize(18, 18))
         self.settings_button.setFixedSize(28, 28)
@@ -206,7 +217,8 @@ class MainTranscriptionWidget(ResponsiveWidget):
 
         # Control bar above the editor
         control_bar = QHBoxLayout()
-        control_bar.addWidget(self.prompt_bar, 1)  # Add the prompt bar with stretch
+        # Add the prompt bar with stretch
+        control_bar.addWidget(self.prompt_bar, 1)
         control_bar.addStretch(1)
         control_bar.addWidget(self.raw_transcript_label)
         control_bar.addWidget(self.mode_switch)
@@ -340,9 +352,12 @@ class MainTranscriptionWidget(ResponsiveWidget):
                 duration=recording.get("duration"),
                 raw_transcript=recording.get("raw_transcript"),
                 processed_text=recording.get("processed_text"),
-                raw_transcript_formatted=recording.get("raw_transcript_formatted"),
-                processed_text_formatted=recording.get("processed_text_formatted"),
-                original_source_identifier=recording.get("original_source_identifier"),
+                raw_transcript_formatted=recording.get(
+                    "raw_transcript_formatted"),
+                processed_text_formatted=recording.get(
+                    "processed_text_formatted"),
+                original_source_identifier=recording.get(
+                    "original_source_identifier"),
             )
 
         # Mark UI as busy
@@ -493,7 +508,8 @@ class MainTranscriptionWidget(ResponsiveWidget):
 
         # Check if result contains speaker labels
         is_formatted = (
-            transcript.strip().startswith("SPEAKER_") and ":" in transcript[:20]
+            transcript.strip().startswith(
+                "SPEAKER_") and ":" in transcript[:20]
         )
 
         # Update the editor with the transcript
@@ -515,7 +531,8 @@ class MainTranscriptionWidget(ResponsiveWidget):
         show_error_message(self, "Transcription Error", error_message)
 
         # Exit BusyGuard context to clean up UI state
-        self.transcription_guard.__exit__(Exception, ValueError(error_message), None)
+        self.transcription_guard.__exit__(
+            Exception, ValueError(error_message), None)
         delattr(self, "transcription_guard")
 
     def on_transcription_finished(self):
@@ -548,7 +565,8 @@ class MainTranscriptionWidget(ResponsiveWidget):
         # Get prompt instructions
         self.initial_prompt_instructions = self.get_current_prompt_instructions()
         if not self.initial_prompt_instructions.strip():
-            show_error_message(self, "No Prompt", "Please select or enter a prompt.")
+            show_error_message(self, "No Prompt",
+                               "Please select or enter a prompt.")
             return
 
         # Convert to Recording object if needed
@@ -562,8 +580,10 @@ class MainTranscriptionWidget(ResponsiveWidget):
                 duration=recording.get("duration"),
                 raw_transcript=recording.get("raw_transcript"),
                 processed_text=recording.get("processed_text"),
-                raw_transcript_formatted=recording.get("raw_transcript_formatted"),
-                processed_text_formatted=recording.get("processed_text_formatted"),
+                raw_transcript_formatted=recording.get(
+                    "raw_transcript_formatted"),
+                processed_text_formatted=recording.get(
+                    "processed_text_formatted"),
             )
 
         # Mark as processing
@@ -603,7 +623,8 @@ class MainTranscriptionWidget(ResponsiveWidget):
 
         # Define completion callback
         def on_completion(processed_text, is_html):
-            self.mode_switch.setValue(ViewMode.PROCESSED)  # Switch to processed view
+            # Switch to processed view
+            self.mode_switch.setValue(ViewMode.PROCESSED)
             self.view_mode = ViewMode.PROCESSED
 
             # Update editor with processed text
@@ -673,18 +694,21 @@ class MainTranscriptionWidget(ResponsiveWidget):
             db_value = processed_text
             self.last_processed_text_html = None  # Not HTML
 
-        self.mode_switch.setValue(ViewMode.PROCESSED)  # Switch to processed view
+        # Switch to processed view
+        self.mode_switch.setValue(ViewMode.PROCESSED)
         self.view_mode = ViewMode.PROCESSED  # Keep view_mode in sync with switch
         self.status_update.emit("GPT processing complete. Saving...")
 
         # Define callback for DB update
         def on_update_complete():
-            self.current_recording_data[raw_field] = processed_text  # Update local data
+            # Update local data
+            self.current_recording_data[raw_field] = processed_text
             self.current_recording_data[formatted_field] = db_value if is_html else None
             self.status_update.emit(SUCCESS_GPT_PROCESSING)
             self.gpt_process_completed.emit(processed_text)  # Emit signal
             self.refinement_widget.setVisible(True)  # Show refinement options
-            logger.info(f"GPT processing saved for recording ID: {recording_id}")
+            logger.info(
+                f"GPT processing saved for recording ID: {recording_id}")
 
             # Emit signal to update UI in other components
             status_updates = {
@@ -699,7 +723,8 @@ class MainTranscriptionWidget(ResponsiveWidget):
         if is_html:
             update_data[formatted_field] = db_value
         else:
-            update_data[formatted_field] = None  # Clear formatted if saving raw
+            # Clear formatted if saving raw
+            update_data[formatted_field] = None
 
         self.db_manager.update_recording(
             recording_id, on_update_complete, **update_data
@@ -745,7 +770,8 @@ class MainTranscriptionWidget(ResponsiveWidget):
     def start_smart_format_processing(self, text_to_format):
         """Apply smart formatting to the current text using GPT."""
         if not text_to_format.strip():
-            show_error_message(self, "Empty Text", "There is no text to format.")
+            show_error_message(self, "Empty Text",
+                               "There is no text to format.")
             return
 
         # Mark as processing
@@ -896,7 +922,8 @@ class MainTranscriptionWidget(ResponsiveWidget):
                 db_update_data = {field_to_update: formatted_html}
             else:
                 field_to_update = "processed_text_formatted"
-                raw_field = "processed_text"  # Update the processed raw text as well? Maybe not.
+                # Update the processed raw text as well? Maybe not.
+                raw_field = "processed_text"
                 db_update_data = {field_to_update: formatted_html}
                 # Also update self.last_processed_text_html for refinement
                 self.last_processed_text_html = formatted_html
@@ -948,7 +975,8 @@ class MainTranscriptionWidget(ResponsiveWidget):
             self.current_recording_data
             and "processed_text" in self.current_recording_data
         ):
-            processed_text = self.current_recording_data.get("processed_text", "")
+            processed_text = self.current_recording_data.get(
+                "processed_text", "")
 
         # Use the prompt that generated the processed text
         initial_prompt = (
@@ -957,7 +985,8 @@ class MainTranscriptionWidget(ResponsiveWidget):
 
         # Validate data
         if not self.current_recording_data.get("raw_transcript"):
-            show_error_message(self, "Missing Data", "Original transcript is missing.")
+            show_error_message(self, "Missing Data",
+                               "Original transcript is missing.")
             return
         if not processed_text:
             show_error_message(
@@ -978,8 +1007,10 @@ class MainTranscriptionWidget(ResponsiveWidget):
                 duration=recording.get("duration"),
                 raw_transcript=recording.get("raw_transcript"),
                 processed_text=recording.get("processed_text"),
-                raw_transcript_formatted=recording.get("raw_transcript_formatted"),
-                processed_text_formatted=recording.get("processed_text_formatted"),
+                raw_transcript_formatted=recording.get(
+                    "raw_transcript_formatted"),
+                processed_text_formatted=recording.get(
+                    "processed_text_formatted"),
             )
 
         # Mark as processing
@@ -1130,14 +1161,16 @@ class MainTranscriptionWidget(ResponsiveWidget):
                 )
                 self.status_update.emit("Refinement saved.")
                 self.gpt_process_completed.emit(refined_text)  # Emit signal
-                logger.info(f"Refinement saved for recording ID: {recording_id}")
+                logger.info(
+                    f"Refinement saved for recording ID: {recording_id}")
 
             # Save the refined text to the database
             update_data = {raw_field: refined_text}
             if is_html:
                 update_data[formatted_field] = db_value
             else:
-                update_data[formatted_field] = None  # Clear formatted if saving raw
+                # Clear formatted if saving raw
+                update_data[formatted_field] = None
 
             self.db_manager.update_recording(
                 recording_id, on_update_complete, **update_data
@@ -1314,7 +1347,8 @@ class MainTranscriptionWidget(ResponsiveWidget):
         editor_plain = self.transcript_text.editor.toPlainText()
 
         if not editor_html:  # Should ideally not happen with QTextEdit
-            show_error_message(self, "Save Error", "Cannot retrieve editor content.")
+            show_error_message(self, "Save Error",
+                               "Cannot retrieve editor content.")
             return
 
         is_raw_view = self.view_mode is ViewMode.RAW
@@ -1323,12 +1357,14 @@ class MainTranscriptionWidget(ResponsiveWidget):
         if is_raw_view:
             # Saving the raw view - update raw_transcript_formatted and raw_transcript
             update_data["raw_transcript_formatted"] = editor_html
-            update_data["raw_transcript"] = editor_plain  # Store plain text version too
+            # Store plain text version too
+            update_data["raw_transcript"] = editor_plain
             field_saved = "Raw transcript"
         else:
             # Saving the processed view - update processed_text_formatted and processed_text
             update_data["processed_text_formatted"] = editor_html
-            update_data["processed_text"] = editor_plain  # Store plain text version
+            # Store plain text version
+            update_data["processed_text"] = editor_plain
             field_saved = "Processed text"
             self.last_processed_text_html = editor_html  # Update last processed state
 

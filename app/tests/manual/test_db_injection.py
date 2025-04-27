@@ -41,9 +41,11 @@ def main():
     fm_instance = FolderManager.instance(db_manager=db_manager)
 
     # Check threads and QThread status
-    logger.info(f"Thread count after initialization: {len(threading.enumerate())}")
+    logger.info(
+        f"Thread count after initialization: {len(threading.enumerate())}")
     logger.info(f"Thread names: {[t.name for t in threading.enumerate()]}")
-    logger.info(f"DatabaseWorker thread running: {db_manager.worker.isRunning()}")
+    logger.info(
+        f"DatabaseWorker thread running: {db_manager.worker.isRunning()}")
 
     # Make a database operation to test the worker thread
     test_results = []
@@ -58,14 +60,16 @@ def main():
         # Check threads again
         logger.info(f"Thread count after query: {len(threading.enumerate())}")
         logger.info(f"Thread names: {[t.name for t in threading.enumerate()]}")
-        logger.info(f"DatabaseWorker thread running: {db_manager.worker.isRunning()}")
+        logger.info(
+            f"DatabaseWorker thread running: {db_manager.worker.isRunning()}")
 
         # Clean shutdown
         logger.info("Shutting down DatabaseManager")
         db_manager.shutdown()
 
         logger.info(f"Final thread count: {len(threading.enumerate())}")
-        logger.info(f"Final thread names: {[t.name for t in threading.enumerate()]}")
+        logger.info(
+            f"Final thread names: {[t.name for t in threading.enumerate()]}")
 
         # Quit the application
         app.quit()

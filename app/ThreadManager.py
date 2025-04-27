@@ -86,7 +86,8 @@ class ThreadManager:
                     thread.cancel()
                     logger.debug(f"Called cancel() on thread: {thread_name}")
                 except Exception as e:
-                    logger.error(f"Error cancelling thread {thread_name}: {str(e)}")
+                    logger.error(
+                        f"Error cancelling thread {thread_name}: {str(e)}")
             else:
                 logger.warning(f"Thread {thread_name} has no cancel() method")
 

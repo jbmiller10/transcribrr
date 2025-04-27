@@ -47,7 +47,8 @@ class TranscodingThread(QThread):
         temp_files = []  # Track temporary files for cleanup in case of cancellation
         try:
             if self.is_canceled():
-                self.update_progress.emit("Transcoding cancelled before starting.")
+                self.update_progress.emit(
+                    "Transcoding cancelled before starting.")
                 return
 
             # Validate input file exists
@@ -75,7 +76,8 @@ class TranscodingThread(QThread):
                 self.update_progress.emit("Transcoding audio file...")
                 self.transcode_audio(self.file_path, recordings_dir)
             elif is_video_file(self.file_path):
-                self.update_progress.emit("Extracting audio from video file...")
+                self.update_progress.emit(
+                    "Extracting audio from video file...")
                 self.extract_audio_from_video(self.file_path, recordings_dir)
             else:
                 raise ValueError(
@@ -87,12 +89,14 @@ class TranscodingThread(QThread):
                 self.error.emit(f"File not found: {e}")
                 logger.error(f"Transcoding file not found: {e}", exc_info=True)
             else:
-                self.update_progress.emit("Transcoding cancelled during file check.")
+                self.update_progress.emit(
+                    "Transcoding cancelled during file check.")
 
         except PermissionError as e:
             if not self.is_canceled():
                 self.error.emit(f"Permission error: {e}")
-                logger.error(f"Transcoding permission error: {e}", exc_info=True)
+                logger.error(
+                    f"Transcoding permission error: {e}", exc_info=True)
             else:
                 self.update_progress.emit(
                     "Transcoding cancelled during permission check."
@@ -115,14 +119,16 @@ class TranscodingThread(QThread):
                 self.error.emit(f"Invalid input: {e}")
                 logger.error(f"Transcoding value error: {e}", exc_info=True)
             else:
-                self.update_progress.emit("Transcoding cancelled during validation.")
+                self.update_progress.emit(
+                    "Transcoding cancelled during validation.")
 
         except RuntimeError as e:
             if not self.is_canceled():
                 self.error.emit(f"Processing error: {e}")
                 logger.error(f"Transcoding runtime error: {e}", exc_info=True)
             else:
-                self.update_progress.emit("Transcoding cancelled during processing.")
+                self.update_progress.emit(
+                    "Transcoding cancelled during processing.")
 
         except Exception as e:
             if not self.is_canceled():
@@ -130,9 +136,11 @@ class TranscodingThread(QThread):
 
                 safe_err = redact(str(e))
                 self.error.emit(f"Unexpected error: {safe_err}")
-                logger.error(f"Transcoding unexpected error: {e}", exc_info=True)
+                logger.error(
+                    f"Transcoding unexpected error: {e}", exc_info=True)
             else:
-                self.update_progress.emit("Transcoding cancelled during processing.")
+                self.update_progress.emit(
+                    "Transcoding cancelled during processing.")
         finally:
             # Clean up any temporary files if thread was cancelled
             try:
@@ -141,7 +149,8 @@ class TranscodingThread(QThread):
                     if temp_file and os.path.exists(temp_file):
                         try:
                             os.remove(temp_file)
-                            logger.info(f"Cleaned up temporary file: {temp_file}")
+                            logger.info(
+                                f"Cleaned up temporary file: {temp_file}")
                         except Exception as cleanup_error:
                             logger.warning(
                                 f"Failed to clean up temporary file {temp_file}: {cleanup_error}"
@@ -176,7 +185,8 @@ class TranscodingThread(QThread):
         try:
             with VideoFileClip(video_path) as video:
                 if video.audio is None:
-                    raise ValueError("The selected video file contains no audio track.")
+                    raise ValueError(
+                        "The selected video file contains no audio track.")
                 video.audio.write_audiofile(audio_path, logger=None)
         except Exception as e:
             if isinstance(e, ValueError):

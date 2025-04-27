@@ -54,7 +54,8 @@ with (
         "app.controllers.transcription_controller.get_api_key",
         return_value="fake-api-key",
     ),
-    patch("app.controllers.transcription_controller.os.path.exists", return_value=True),
+    patch("app.controllers.transcription_controller.os.path.exists",
+          return_value=True),
     patch(
         "app.controllers.transcription_controller.os.path.getsize",
         return_value=1024 * 1024,
@@ -174,7 +175,8 @@ class TestTranscriptionController(unittest.TestCase):
         config_speaker["speaker_detection_enabled"] = True
 
         # This should succeed since we mocked get_api_key
-        args = self.controller._build_thread_args(self.recording, config_speaker)
+        args = self.controller._build_thread_args(
+            self.recording, config_speaker)
         self.assertIsNotNone(args)
         self.assertTrue(args["speaker_detection_enabled"])
         self.assertEqual(args["hf_auth_key"], "fake-api-key")
