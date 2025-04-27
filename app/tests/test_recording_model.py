@@ -48,7 +48,7 @@ class TestRecordingFolderModel(unittest.TestCase):
             [
                 1,
                 "Recording 1",
-                "/path/1.mp3",
+                "app/tests/resources/test.mp3",
                 "2023-10-01 10:00:00",
                 "01:30",
                 "transcript 1",
@@ -59,7 +59,7 @@ class TestRecordingFolderModel(unittest.TestCase):
             [
                 2,
                 "Recording 2",
-                "/path/2.mp3",
+                "app/tests/resources/test.mp3",
                 "2023-10-02 10:00:00",
                 "02:30",
                 "transcript 2",
@@ -70,7 +70,7 @@ class TestRecordingFolderModel(unittest.TestCase):
             [
                 3,
                 "Recording 3",
-                "/path/3.mp3",
+                "app/tests/resources/test.mp3",
                 "2023-10-03 10:00:00",
                 "03:30",
                 "transcript 3",

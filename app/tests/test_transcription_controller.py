@@ -84,9 +84,9 @@ class TestTranscriptionController(unittest.TestCase):
         self.recording = Recording(
             id=123,
             filename="test_recording.mp3",
-            file_path="/path/to/test_recording.mp3",
+            file_path="app/tests/resources/test.mp3",
             date_created="2023-01-01 12:00:00",
-            duration=60.0,
+            duration=3.0,
             raw_transcript=None,
             processed_text=None,
         )
