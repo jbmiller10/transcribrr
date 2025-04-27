@@ -147,7 +147,7 @@ exe = EXE(
     exclude_binaries=True,
     name="Transcribrr",
     icon="icons/app/app_icon.ico", # Ensure this path is correct relative to spec
-    console=False,
+    console=True,
 )
 
 # ---------------------------------------------------------------------------
