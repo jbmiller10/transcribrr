@@ -342,11 +342,11 @@ class TranscriptionService:
                     logger.error(
                         f"Speaker detection failed, returning normal transcript: {e}"
                     )
-                    return result
+                    # Ensure we return a dict[str, Any] type
+                    return dict(result) if isinstance(result, dict) else {"text": str(result)}
 
-            # Explicitly cast to the correct return type
-            transcript_result: Dict[str, Any] = result
-            return transcript_result
+            # Return properly typed dictionary result 
+            return dict(result) if isinstance(result, dict) else {"text": str(result)}
 
         except Exception as e:
             logger.error(f"Local transcription error: {e}")
@@ -408,9 +408,8 @@ class TranscriptionService:
                 logger.info("Transcribing audio with MPS...")
                 result = pipe(file_path)
 
-                # Return result in standard format
-                transcript_result: Dict[str, Any] = result
-                return transcript_result
+                # Return result in standard format as a properly typed dict
+                return dict(result) if isinstance(result, dict) else {"text": str(result)}
 
             else:
                 # Fall back to regular transcription if MPS not available

@@ -294,16 +294,11 @@ def check_ffmpeg():
         if platform.system() == "Windows":
             # Windows-specific imports
             import ctypes
-            import subprocess
-
-            # Constants on Windows
-            STARTF_USESHOWWINDOW = 0x00000001
-            SW_HIDE = 0
-
-            # Create startupinfo
-            startupinfo = subprocess.STARTUPINFO()
-            startupinfo.dwFlags |= STARTF_USESHOWWINDOW
-            startupinfo.wShowWindow = SW_HIDE
+            # On Windows, subprocess has these attributes at runtime
+            # For type checking, we'll ignore mypy errors here
+            startupinfo = subprocess.STARTUPINFO()  # type: ignore
+            startupinfo.dwFlags |= subprocess.STARTF_USESHOWWINDOW  # type: ignore
+            startupinfo.wShowWindow = 0  # SW_HIDE
 
         result = subprocess.run(
             ["ffmpeg", "-version"],

@@ -95,7 +95,7 @@ class BusyGuard(Generic[T]):
         self.spinner_started = False
         self.progress_started = False
         self.ui_busy = False
-        self.result = None  # Will hold operation result if any
+        self.result: Optional[T] = None  # Will hold operation result if any
 
     def __enter__(self) -> "BusyGuard[T]":
         """Start the feedback indicators when entering context.
@@ -216,8 +216,6 @@ class BusyGuard(Generic[T]):
         Returns:
             The same result value (for fluent usage)
         """
-        # Initialize self.result with proper type annotation, then assign
-        if self.result is None:  # This prevents the type error
-            self.result: T
+        # Assign the result (no need to redeclare type here, already defined in __init__)
         self.result = result
         return result

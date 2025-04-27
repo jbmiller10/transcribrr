@@ -44,7 +44,8 @@ class GPT4ProcessingThread(QThread):
         # Cancellation flag
         self._is_canceled = False
         self._lock = Lock()
-        self.current_request = None  # To potentially cancel the request
+        # To potentially cancel the request
+        self.current_request: Optional[requests.Session] = None
         self._session: Optional[requests.Session] = None
         self._response: Optional[requests.Response] = None
 
@@ -290,13 +291,13 @@ class GPT4ProcessingThread(QThread):
                 }
 
                 # Create a new session for each attempt to ensure clean state
-                session = requests.Session()
-                self._session = session  # Store in instance variable
+                # This assignment ensures type is maintained for mypy
+                self._session = requests.Session()
                 prepared_request = requests.Request(
                     "POST", self.API_ENDPOINT, json=data, headers=headers
                 ).prepare()
                 self.current_request = (
-                    session  # Store session for potential cancellation
+                    self._session  # Store session for potential cancellation
                 )
 
                 # Check cancellation again before sending request
@@ -403,7 +404,7 @@ class GPT4ProcessingThread(QThread):
                 return f"{etype} ({code}): {msg}"
             elif "error" in error_data:  # Sometimes error is just a string
                 return str(error_data["error"])
-            return response.text  # Fallback to raw text
+            return str(response.text)  # Fallback to raw text
         except json.JSONDecodeError:
             # Truncate long non-JSON errors
             return f"HTTP {response.status_code}: {response.text[:200]}..."
