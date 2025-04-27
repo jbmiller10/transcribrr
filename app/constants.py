@@ -114,7 +114,7 @@ AUDIO_EXTENSIONS: Set[str] = {
 }
 
 VIDEO_EXTENSIONS: Set[str] = {".mp4", ".mkv",
-    ".avi", ".mov", ".webm", ".flv", ".wmv"}
+                              ".avi", ".mov", ".webm", ".flv", ".wmv"}
 
 DOCUMENT_EXTENSIONS: Set[str] = {
     ".txt", ".md", ".doc", ".docx", ".pdf", ".odt"}

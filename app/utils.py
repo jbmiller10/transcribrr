@@ -826,7 +826,7 @@ def estimate_transcription_time(
             3 / speed_factor
         )  # Adjusted baseline (e.g., medium takes ~3s/MB on CPU)
         estimated_time = (file_size_mb * secs_per_mb) + \
-                          15  # Add fixed overhead
+            15  # Add fixed overhead
 
         logger.debug(
             f"Estimated time for {os.path.basename(file_path)} ({file_size_mb:.1f}MB, model='{model_name}', gpu={is_gpu}): {estimated_time:.1f}s"

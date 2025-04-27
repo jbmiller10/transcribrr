@@ -169,7 +169,7 @@ class YouTubeDownloadThread(QThread):
                 # The actual output path after postprocessing is tricky to get directly.
                 # We know the *base* temp name and the final extension is wav.
                 expected_temp_wav = temp_output_template.rsplit(".", 1)[
-                                                                0] + ".wav"
+                    0] + ".wav"
                 temp_files.append(expected_temp_wav)  # Track for cleanup
 
                 # Check if we have the renamed file from the extractor

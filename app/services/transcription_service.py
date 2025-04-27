@@ -345,7 +345,7 @@ class TranscriptionService:
                     # Ensure we return a dict[str, Any] type
                     return dict(result) if isinstance(result, dict) else {"text": str(result)}
 
-            # Return properly typed dictionary result 
+            # Return properly typed dictionary result
             return dict(result) if isinstance(result, dict) else {"text": str(result)}
 
         except Exception as e:

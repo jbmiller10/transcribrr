@@ -82,11 +82,11 @@ class TestRecordingFolderModel(unittest.TestCase):
 
         # Create some test folders
         self.root_folder = {"type": "folder",
-            "id": -1, "name": "Root", "children": []}
+                            "id": -1, "name": "Root", "children": []}
         self.folder1 = {"type": "folder", "id": 1,
-            "name": "Folder 1", "children": []}
+                        "name": "Folder 1", "children": []}
         self.folder2 = {"type": "folder", "id": 2,
-            "name": "Folder 2", "children": []}
+                        "name": "Folder 2", "children": []}
 
     def test_duplicate_prevention(self):
         """Test that duplicates are prevented via model single source of truth."""

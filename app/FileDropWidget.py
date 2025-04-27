@@ -330,7 +330,7 @@ class FileDropWidget(QWidget):
         pen = QPen(QColor("#cccccc"), 2, Qt.PenStyle.DashLine)  # Fixed enum
         painter.setPen(pen)
         painter.setBrush(Qt.BrushStyle.NoBrush)  # Fixed enum
-        painter.drawRoundedRect(10, 10, self.width() - \
+        painter.drawRoundedRect(10, 10, self.width() -
                                 20, self.height() - 20, 10, 10)
 
         # Draw plus sign

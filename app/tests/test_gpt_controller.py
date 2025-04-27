@@ -85,7 +85,7 @@ class TestGPTController(unittest.TestCase):
 
         # Sample config
         self.config = {"gpt_model": "gpt-4o",
-            "max_tokens": 16000, "temperature": 1.0}
+                       "max_tokens": 16000, "temperature": 1.0}
 
         # Test prompt
         self.prompt = "Summarize the following transcript:"

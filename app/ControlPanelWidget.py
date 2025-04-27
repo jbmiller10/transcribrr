@@ -358,7 +358,7 @@ class ControlPanelWidget(QWidget):
         if "Downloading:" in message and "%" in message:
             try:
                 percent_str = message.split("Downloading:")[
-                                            1].split("%")[0].strip()
+                    1].split("%")[0].strip()
                 percent = float(percent_str)
 
                 if hasattr(self, "yt_progress_id"):
