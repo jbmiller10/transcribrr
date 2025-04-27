@@ -168,7 +168,7 @@ Args:
                 )
                 
                 # Select the newly added recording automatically
-                widget = self.recent_recordings_widget.unified_view.recordings_map.get(recording_id)
+                widget = self.recent_recordings_widget.unified_view.id_to_widget.get(recording_id)                
                 if widget:
                     for i in range(self.recent_recordings_widget.unified_view.topLevelItemCount()):
                         parent_item = self.recent_recordings_widget.unified_view.topLevelItem(i)
