@@ -2,7 +2,14 @@ import os
 import datetime
 import logging
 from PyQt6.QtCore import pyqtSignal, Qt, QModelIndex, QTimer, QSize
-from PyQt6.QtWidgets import QTreeView, QAbstractItemView, QMenu, QStyledItemDelegate, QStyleOptionViewItem
+from PyQt6.QtWidgets import (
+    QTreeView,
+    QAbstractItemView,
+    QMenu,
+    QStyledItemDelegate,
+    QStyleOptionViewItem,
+    QStyle,
+)
 from PyQt6.QtGui import QIcon
 from app.RecordingFolderModel import RecordingFolderModel, RecordingFilterProxyModel
 from app.RecordingListItem import RecordingListItem
@@ -38,7 +45,8 @@ class RecordingItemDelegate(QStyledItemDelegate):
             return
             
         # For recordings, we need to handle selection state but not paint text
-        if option.state & QStyleOptionViewItem.State.Selected:
+        # In PyQt6, selection state is checked against QStyle.StateFlag.State_Selected
+        if option.state & QStyle.StateFlag.State_Selected:
             painter.fillRect(option.rect, option.palette.highlight())
         
         # Draw only the icon (text is handled by RecordingListItem)
@@ -936,3 +944,52 @@ class UnifiedFolderTreeView(QTreeView):
         
         logger.info(f"Added recording ID {rec_id} to model")
         return recording_model_item
+
+    # ------------------------------------------------------------------
+    # Public helper: select_item_by_id
+    # ------------------------------------------------------------------
+
+    def select_item_by_id(self, item_id, item_type):
+        """Find and select an item in the tree view by its ID and type.
+
+        Parameters
+        ----------
+        item_id : int
+            The database ID of the item to select.
+        item_type : str
+            Either "folder" or "recording".
+
+        Returns
+        -------
+        bool
+            True if the item was found and selected, False otherwise.
+        """
+
+        logger.debug(f"Attempting to select {item_type} with ID {item_id}")
+
+        # Look up the underlying QStandardItem in the source model
+        item = self.source_model.get_item_by_id(item_id, item_type)
+        if item is None:
+            logger.warning(f"Item not found in source model: {item_type} ID {item_id}")
+            return False
+
+        source_index = item.index()
+        proxy_index = self.proxy_model.mapFromSource(source_index)
+
+        if not proxy_index.isValid():
+            logger.warning(
+                f"Could not map source index to proxy index for {item_type} ID {item_id}")
+            return False
+
+        # Expand ancestor nodes so that the index is visible
+        parent = proxy_index.parent()
+        while parent.isValid():
+            self.setExpanded(parent, True)
+            parent = parent.parent()
+
+        # Perform selection
+        self.setCurrentIndex(proxy_index)
+        self.scrollTo(proxy_index, QAbstractItemView.ScrollHint.PositionAtCenter)
+
+        logger.info(f"Successfully selected {item_type} ID {item_id}")
+        return True
