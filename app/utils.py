@@ -204,9 +204,16 @@ def check_ffmpeg():
         # Use startupinfo for cleaner execution on Windows
         startupinfo = None
         if platform.system() == "Windows":
-            # Import these only on Windows to avoid errors on other platforms
-            from subprocess import STARTUPINFO, STARTF_USESHOWWINDOW, SW_HIDE
-            startupinfo = STARTUPINFO()
+            # Windows-specific imports
+            import ctypes
+            import subprocess
+            
+            # Constants on Windows
+            STARTF_USESHOWWINDOW = 0x00000001
+            SW_HIDE = 0
+            
+            # Create startupinfo
+            startupinfo = subprocess.STARTUPINFO()
             startupinfo.dwFlags |= STARTF_USESHOWWINDOW
             startupinfo.wShowWindow = SW_HIDE
 

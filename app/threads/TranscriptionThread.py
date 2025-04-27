@@ -333,7 +333,7 @@ class TranscriptionThread(QThread):
 
         try:
             # Process file with normal transcription
-            result: Dict[str, Any] = self.transcription_service.transcribe_file(
+            transcription_result: Dict[str, Any] = self.transcription_service.transcribe_file(
                 file_path=file_path,
                 model_id=self.transcription_quality,
                 language=self.language,
@@ -352,12 +352,12 @@ class TranscriptionThread(QThread):
             logger.info(f"Finished processing {task_label} in {runtime:.2f}s")
 
             # Return formatted text if speaker detection was successful, otherwise plain text
-            if self.speaker_detection_enabled and 'formatted_text' in result:
-                formatted_text: str = result.get('formatted_text', '')
+            if self.speaker_detection_enabled and 'formatted_text' in transcription_result:
+                formatted_text = transcription_result.get('formatted_text', '')
                 self.update_progress.emit(f"Finished {task_label} with speakers in {runtime:.2f}s")
                 return formatted_text
-            elif 'text' in result:
-                text: str = result.get('text', '')
+            elif 'text' in transcription_result:
+                text = transcription_result.get('text', '')
                 self.update_progress.emit(f"Finished {task_label} in {runtime:.2f}s")
                 return text
             else:

@@ -158,7 +158,8 @@ def show_confirmation_dialog(parent: Optional[QWidget], title: str, message: str
     result = show_message_box(parent, QMessageBox.Icon.Question, title, message,
                               QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
                               default_button)
-    return result == QMessageBox.StandardButton.Yes
+    result_bool: bool = result == QMessageBox.StandardButton.Yes
+    return result_bool
 
 
 def create_progress_dialog(parent: QWidget, title: str, message: str,

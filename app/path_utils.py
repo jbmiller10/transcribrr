@@ -16,9 +16,9 @@ def _get_base_resource_path() -> str:
     """
     # Check if running as PyInstaller bundle
     if hasattr(sys, '_MEIPASS'):
-        base_path: str = sys._MEIPASS  # Type annotation to ensure correct type
-        logger.debug(f"Using PyInstaller _MEIPASS path: {base_path}")
-        return base_path
+        pyinstaller_path: str = sys._MEIPASS  # Type annotation to ensure correct type
+        logger.debug(f"Using PyInstaller _MEIPASS path: {pyinstaller_path}")
+        return pyinstaller_path
         
     # Check if running as a py2app bundle
     elif getattr(sys, 'frozen', False) and 'MacOS' in sys.executable:
@@ -26,15 +26,15 @@ def _get_base_resource_path() -> str:
             os.path.dirname(sys.executable), 
             os.pardir, 'Resources'
         ))
-        base_path: str = bundle_dir  # Type annotation to ensure correct type
-        logger.debug(f"Using py2app bundle path: {base_path}")
-        return base_path
+        py2app_path: str = bundle_dir  # Type annotation to ensure correct type
+        logger.debug(f"Using py2app bundle path: {py2app_path}")
+        return py2app_path
         
     # Default: Not running as a bundled app, use project root directory
     # Go up two levels from this file's directory (app/path_utils.py → project root)
-    base_path: str = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-    logger.debug(f"Using development path: {base_path}")
-    return base_path
+    dev_path: str = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+    logger.debug(f"Using development path: {dev_path}")
+    return dev_path
 
 def resource_path(relative_path: Optional[str] = None) -> str:
     """

@@ -300,12 +300,15 @@ class TranscriptionService:
             # If speaker detection is enabled and we have a HF key
             if speaker_detection and hf_auth_key:
                 try:
-                    return self._add_speaker_detection(file_path, result, hf_auth_key)
+                    result_with_speakers: Dict[str, Any] = self._add_speaker_detection(file_path, result, hf_auth_key)
+                    return result_with_speakers
                 except Exception as e:
                     logger.error(f"Speaker detection failed, returning normal transcript: {e}")
                     return result
             
-            return result
+            # Explicitly cast to the correct return type
+            transcript_result: Dict[str, Any] = result
+            return transcript_result
             
         except Exception as e:
             logger.error(f"Local transcription error: {e}")
@@ -367,7 +370,8 @@ class TranscriptionService:
                 result = pipe(file_path)
                 
                 # Return result in standard format
-                return result
+                transcript_result: Dict[str, Any] = result
+                return transcript_result
                 
             else:
                 # Fall back to regular transcription if MPS not available

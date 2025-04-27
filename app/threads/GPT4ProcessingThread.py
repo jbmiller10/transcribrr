@@ -235,9 +235,10 @@ class GPT4ProcessingThread(QThread):
                            'Content-Type': 'application/json'}
 
                 # Create a new session for each attempt to ensure clean state
-                self._session = requests.Session()
+                session = requests.Session()
+                self._session = session  # Store in instance variable
                 prepared_request = requests.Request('POST', self.API_ENDPOINT, json=data, headers=headers).prepare()
-                self.current_request = self._session # Store session for potential cancellation
+                self.current_request = session # Store session for potential cancellation
 
                 # Check cancellation again before sending request
                 if self.isInterruptionRequested() or self.is_canceled(): 

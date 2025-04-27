@@ -204,5 +204,8 @@ class BusyGuard(Generic[T]):
         Returns:
             The same result value (for fluent usage)
         """
+        # Initialize self.result with proper type annotation, then assign
+        if self.result is None:  # This prevents the type error
+            self.result: T
         self.result = result
         return result
