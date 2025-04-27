@@ -311,10 +311,12 @@ class RecentRecordingsWidget(ResponsiveWidget):
         self.pending_filter_criteria = self.search_widget.get_filter_criteria()
         self._apply_filter()
         
-        # Refresh the selected folder to ensure we have the latest contents
-        folder_item = self.unified_view.find_item_by_id(folder_id, "folder")
-        if folder_item:
-            self.unified_view.load_recordings_for_item(folder_item, force_ui_update=True)
+        # In the model/view architecture the UnifiedFolderTreeView handles data updates
+        # internally via model signals. Filtering above is sufficient to reflect the
+        # newly-selected folder, so we no longer attempt to manually reload the
+        # folder's recordings here (the previous call attempted to use a
+        # non-existent load_recordings_for_item API and triggered an
+        # AttributeError).
 
 
     def update_recording_status(self, recording_id, status_updates):

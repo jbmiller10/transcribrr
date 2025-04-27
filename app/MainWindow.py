@@ -165,12 +165,16 @@ Args:
                     recording_id, filename, file_path, date_created, duration, "", ""
                 )
                 
-                # Select the newly added recording automatically
-                widget = self.recent_recordings_widget.unified_view.id_to_widget.get(recording_id)                
-                if widget:
-                    for i in range(self.recent_recordings_widget.unified_view.topLevelItemCount()):
-                        parent_item = self.recent_recordings_widget.unified_view.topLevelItem(i)
-                        self._find_and_select_recording_item(parent_item, recording_id)
+                # Select the newly added recording automatically using the
+                # UnifiedFolderTreeView's helper.  Delay slightly to ensure the
+                # view has refreshed and the item has been inserted.
+                from PyQt6.QtCore import QTimer
+                QTimer.singleShot(
+                    100,
+                    lambda: self.recent_recordings_widget.unified_view.select_item_by_id(
+                        recording_id, "recording"
+                    ),
+                )
                 
                 self.update_status_bar(f"Added new recording: {filename}")
                 
@@ -217,25 +221,7 @@ Args:
         self.statusBar().showMessage(message)
         logger.debug(f"Status bar updated: {message}")
         
-    def _find_and_select_recording_item(self, parent_item, recording_id):
-        # First check this item
-        item_data = parent_item.data(0, Qt.ItemDataRole.UserRole)
-        if item_data and item_data.get("type") == "recording" and item_data.get("id") == recording_id:
-            self.recent_recordings_widget.unified_view.setCurrentItem(parent_item)
-            # Ensure parent folders are expanded
-            current_parent = parent_item.parent()
-            while current_parent:
-                current_parent.setExpanded(True)
-                current_parent = current_parent.parent()
-            return True
-            
-        # Check children
-        for i in range(parent_item.childCount()):
-            child = parent_item.child(i)
-            if self._find_and_select_recording_item(child, recording_id):
-                return True
-                
-        return False
+
 
     # Method removed - thread management handled by ThreadManager
 

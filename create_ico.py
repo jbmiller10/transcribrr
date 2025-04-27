@@ -3,10 +3,8 @@ Script to convert SVG icon to ICO file for Windows installer.
 """
 
 import os
-import sys
 from PIL import Image
 import cairosvg
-from io import BytesIO
 import tempfile
 
 def svg_to_ico(svg_path, output_path, sizes=[16, 24, 32, 48, 64, 128, 256]):
