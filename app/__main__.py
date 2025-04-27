@@ -1,3 +1,19 @@
+from app.secure import SensitiveLogFilter
+from .constants import LOG_FORMAT, APP_NAME, get_user_data_dir, get_log_file
+from .ThreadManager import ThreadManager
+from .services.transcription_service import ModelManager
+from .ResponsiveUI import ResponsiveUIManager, ResponsiveEventFilter
+from .ThemeManager import ThemeManager
+from .utils import check_system_requirements, cleanup_temp_files, ConfigManager, ensure_ffmpeg_available
+from .path_utils import resource_path
+from .MainWindow import MainWindow
+from PyQt6.QtSvg import QSvgRenderer
+from PyQt6.QtCore import Qt, QTimer, QThread, pyqtSignal, pyqtSlot, QRect
+from PyQt6.QtGui import QPixmap, QIcon
+from PyQt6.QtWidgets import (
+    QApplication, QMessageBox, QSplashScreen, QVBoxLayout,
+    QLabel, QProgressBar, QWidget
+)
 import sys
 import os
 import logging
@@ -6,25 +22,11 @@ import warnings
 from typing import Tuple, Dict, Any, List
 
 # Filter urllib3 LibreSSL warning
-warnings.filterwarnings("ignore", message="urllib3 v2 only supports OpenSSL 1.1.1+, currently the 'ssl' module is compiled with")
+warnings.filterwarnings(
+    "ignore", message="urllib3 v2 only supports OpenSSL 1.1.1+, currently the 'ssl' module is compiled with")
 
-from PyQt6.QtWidgets import (
-    QApplication, QMessageBox, QSplashScreen, QVBoxLayout,
-    QLabel, QProgressBar, QWidget
-)
-from PyQt6.QtGui import QPixmap, QIcon
-from PyQt6.QtCore import Qt, QTimer, QThread, pyqtSignal, pyqtSlot, QRect
-from PyQt6.QtSvg import QSvgRenderer
-from .MainWindow import MainWindow
-from .path_utils import resource_path
-from .utils import check_system_requirements, cleanup_temp_files, ConfigManager, ensure_ffmpeg_available
-from .ThemeManager import ThemeManager
-from .ResponsiveUI import ResponsiveUIManager, ResponsiveEventFilter
-from .services.transcription_service import ModelManager
-from .ThreadManager import ThreadManager
 
 # Import constants for paths
-from .constants import LOG_FORMAT, APP_NAME, get_user_data_dir, get_log_file
 
 # Configure logging - now all paths come from constants
 # Root logging may have been configured by app.utils already (imported by
@@ -42,7 +44,6 @@ if not logging.getLogger().handlers:
     )
 
 # Apply sensitive data redaction filter to the root logger
-from app.secure import SensitiveLogFilter
 root_logger = logging.getLogger()
 root_logger.addFilter(SensitiveLogFilter())
 logger = logging.getLogger(APP_NAME)
@@ -90,29 +91,29 @@ class StartupThread(QThread):
             logger.info(f"Database directory: {get_database_dir()}")
             logger.info(f"Log directory: {get_log_dir()}")
             # Directories are already created in constants.py
-            
+
             # Initialize configuration manager
             self.update_progress.emit(50, "Loading configuration...")
             config_manager = ConfigManager.instance()
             config = config_manager.get_all()
-            
+
             # Signal to initialize theme manager with config (don't call directly from thread)
             self.update_progress.emit(60, "Setting up theme...")
             theme = config.get("theme", "light")
             # Emit signal for GUI thread to apply theme
             self.apply_theme.emit(theme)
-            
+
             # Pre-initialize model manager without loading models
             self.update_progress.emit(70, "Initializing model manager...")
             model_manager = ModelManager.instance()
-            
+
             # Initialize responsive UI manager via signal
             self.update_progress.emit(80, "Setting up UI manager...")
             # Don't create the responsive manager in the worker thread
             # Just send a signal with the parameters for the main thread to handle
             # We'll emit with dummy size values first - real ones will be set in on_initialization_done
             self.apply_responsive_ui.emit({"width": 1024, "height": 768})
-            
+
             # Check system requirements
             self.update_progress.emit(90, "Checking system requirements...")
             system_info = check_system_requirements()
@@ -137,7 +138,7 @@ class StartupThread(QThread):
     def check_dependencies(self) -> Dict[str, bool]:
         """
         Check if required dependencies are available.
-        
+
         Returns:
             Dictionary of dependency availability
         """
@@ -160,7 +161,7 @@ class StartupThread(QThread):
     def check_cuda_availability(self) -> Tuple[bool, List[str]]:
         """
         Check if CUDA is available and return GPU info.
-        
+
         Returns:
             Tuple of (CUDA available, GPU info list)
         """
@@ -207,10 +208,10 @@ def create_splash_screen():
     # Try to use the SVG splash image if available
     svg_path = resource_path('./icons/app/splash.svg')
     png_path = resource_path('./icons/app/splash.png')
-    
+
     logger.debug(f"Splash SVG path: {svg_path}")
     logger.debug(f"Splash PNG path: {png_path}")
-    
+
     try:
         if os.path.exists(svg_path):
             # Render SVG to pixmap
@@ -293,6 +294,7 @@ def apply_theme_main_thread(theme):
     logger.info(f"Applying theme on main thread: {theme}")
     ThemeManager.instance().apply_theme(theme)
 
+
 @pyqtSlot(dict)
 def apply_responsive_ui_main_thread(ui_params):
     """Apply responsive UI settings on the main thread"""
@@ -302,6 +304,7 @@ def apply_responsive_ui_main_thread(ui_params):
     # Fetch the singleton in the main thread
     responsive_manager = ResponsiveUIManager.instance()
     responsive_manager.update_size(width, height)
+
 
 def initialize_app():
     """Initialize the application with proper error handling."""
@@ -320,7 +323,7 @@ def initialize_app():
 
         # Initialize the responsive UI manager (defer applying until we're signaled)
         responsive_manager = ResponsiveUIManager.instance()
-        
+
         # Create an event filter to handle window resize events
         responsive_event_filter = ResponsiveEventFilter()
         app.installEventFilter(responsive_event_filter)
@@ -346,14 +349,15 @@ def initialize_app():
         # Initialize background startup thread
         global startup_thread
         startup_thread = StartupThread()
-        
+
         # Connect signals to main thread handlers
         startup_thread.update_progress.connect(update_splash)
-        startup_thread.initialization_done.connect(lambda results: on_initialization_done(results, main_window, splash))
+        startup_thread.initialization_done.connect(
+            lambda results: on_initialization_done(results, main_window, splash))
         startup_thread.error.connect(lambda msg: on_initialization_error(msg, main_window, splash))
         startup_thread.apply_theme.connect(apply_theme_main_thread)
         startup_thread.apply_responsive_ui.connect(apply_responsive_ui_main_thread)
-        
+
         # Register with ThreadManager before starting
         ThreadManager.instance().register_thread(startup_thread)
         startup_thread.start()
@@ -382,7 +386,7 @@ def initialize_app():
 def on_initialization_done(results: Dict[str, Any], main_window: MainWindow, splash: QSplashScreen) -> None:
     """
     Handle successful initialization.
-    
+
     Args:
         results: Initialization results
         main_window: Main application window
@@ -391,18 +395,20 @@ def on_initialization_done(results: Dict[str, Any], main_window: MainWindow, spl
     # Check for critical dependencies
     if not results["dependencies"]["ffmpeg"]:
         QMessageBox.warning(main_window, "Missing Dependency",
-                          "FFmpeg is not installed or not in PATH. Some features may not work properly.")
+                            "FFmpeg is not installed or not in PATH. Some features may not work properly.")
 
     if not results["dependencies"]["pyaudio"]:
         QMessageBox.warning(main_window, "Missing Dependency",
-                          "PyAudio is not properly installed. Recording functionality may not work.")
+                            "PyAudio is not properly installed. Recording functionality may not work.")
 
     # Log configuration information
     if "config" in results:
         logger.info(f"Loaded configuration with {len(results['config'])} settings")
         logger.info(f"Theme: {results['config'].get('theme', 'light')}")
-        logger.info(f"Transcription model: {results['config'].get('transcription_quality', 'Not set')}")
-        logger.info(f"Transcription method: {results['config'].get('transcription_method', 'local')}")
+        logger.info(
+            f"Transcription model: {results['config'].get('transcription_quality', 'Not set')}")
+        logger.info(
+            f"Transcription method: {results['config'].get('transcription_method', 'local')}")
 
     # Apply responsive UI sizing on the main thread
     if main_window:
@@ -431,11 +437,11 @@ def on_initialization_error(error_message, main_window, splash):
     """Handle initialization errors."""
     # Close splash screen
     splash.close()
-    
+
     # Show error message
-    QMessageBox.critical(main_window, "Initialization Error", 
-                        f"There was a problem initializing the application:\n\n{error_message}")
-    
+    QMessageBox.critical(main_window, "Initialization Error",
+                         f"There was a problem initializing the application:\n\n{error_message}")
+
     # Show main window anyway
     main_window.show()
 
@@ -445,14 +451,14 @@ def copy_initial_data_files():
     from .constants import get_config_path, get_prompts_path
     from .path_utils import resource_path
     import shutil
-    
+
     # Check if running in a bundled app
     is_frozen = getattr(sys, 'frozen', False)
-    
+
     if is_frozen:
         # Use resource_path to get the correct resource directory
         resource_dir = resource_path()
-            
+
         # Copy config.json if it doesn't exist in user data directory
         if not os.path.exists(get_config_path()):
             source_config = os.path.join(resource_dir, 'config.json')
@@ -461,7 +467,7 @@ def copy_initial_data_files():
                 shutil.copy2(source_config, get_config_path())
             else:
                 logger.warning(f"Default config.json not found at {source_config}")
-                
+
         # Copy preset_prompts.json if it doesn't exist in user data directory
         if not os.path.exists(get_prompts_path()):
             source_prompts = os.path.join(resource_dir, 'preset_prompts.json')
@@ -475,20 +481,21 @@ def copy_initial_data_files():
 def run_application():
     """Main application entry point."""
     # Keep a reference to the startup thread to prevent early destruction
-    
+
     try:
         # Log startup information
         is_frozen = getattr(sys, 'frozen', False)
         is_pyinstaller = hasattr(sys, '_MEIPASS')
         is_py2app = is_frozen and 'MacOS' in sys.executable
-        
-        logger.info(f"Starting application: Frozen = {is_frozen}, PyInstaller = {is_pyinstaller}, py2app = {is_py2app}")
+
+        logger.info(
+            f"Starting application: Frozen = {is_frozen}, PyInstaller = {is_pyinstaller}, py2app = {is_py2app}")
         logger.info(f"Working directory: {os.getcwd()}")
         # Import user data and resource path functions
         from .constants import RESOURCE_DIR, get_user_data_dir, get_recordings_dir, get_database_dir, get_log_dir
         logger.info(f"User data directory: {get_user_data_dir()}")
         logger.info(f"Resource directory: {RESOURCE_DIR}")
-        
+
         # --- Ensure User Directories Exist ---
         try:
             logger.info(f"Ensuring user data directories exist in: {get_user_data_dir()}")
@@ -497,7 +504,8 @@ def run_application():
             os.makedirs(get_log_dir(), exist_ok=True)
             logger.info("User data directories checked/created successfully.")
         except OSError as e:
-            logger.critical(f"Could not create required user directories in {get_user_data_dir()}: {e}", exc_info=True)
+            logger.critical(
+                f"Could not create required user directories in {get_user_data_dir()}: {e}", exc_info=True)
             # Attempt to show a message box if possible
             try:
                 app_instance = QApplication.instance()
@@ -508,33 +516,34 @@ def run_application():
                                      f"Please check permissions.\nError: {e}")
             except Exception as mb_error:
                 # Fallback if GUI cannot be shown
-                print(f"FATAL ERROR: Could not create application data directories in {get_user_data_dir()}. Error: {e}")
+                print(
+                    f"FATAL ERROR: Could not create application data directories in {get_user_data_dir()}. Error: {e}")
                 print(f"Message box error: {mb_error}")
             return 1
         # --- End of Directory Creation Block ---
-        
+
         # Migrate API keys from old format to new format
         from app.secure import migrate_api_keys
         migration_results = migrate_api_keys()
         if migration_results["openai"] or migration_results["hf"]:
             logger.info("Successfully migrated API keys to new secure format")
-        
+
         # Copy default configuration files on first run
         copy_initial_data_files()
-        
+
         # Check if critical files exist after potential copying
         from .constants import get_config_path, get_prompts_path
         config_exists = os.path.exists(get_config_path())
         prompts_exists = os.path.exists(get_prompts_path())
         logger.info(f"Config file exists in user data dir: {config_exists}")
         logger.info(f"Prompts file exists in user data dir: {prompts_exists}")
-        
+
         # Initialize application
         app, main_window = initialize_app()
-        
+
         # Register cleanup for application exit
         app.aboutToQuit.connect(cleanup_application)
-        
+
         # Run application main loop
         logger.info("Starting application main loop")
         return app.exec()
@@ -553,50 +562,52 @@ def run_application():
 
         # Make sure to clean up threads
         cleanup_application()
-        
+
         return 1
+
 
 def cleanup_application():
     """Clean up any resources before application exit."""
     logger.info("Cleaning up application resources...")
-    
+
     # Use ThreadManager to cancel all active threads
     thread_manager = ThreadManager.instance()
     thread_manager.cancel_all_threads(wait_timeout=1000)
-    
+
     # Get any threads that didn't respond to cancellation
     threads_to_terminate = []
     for thread in thread_manager.get_active_threads():
         if thread.isRunning():
             threads_to_terminate.append(thread)
-    
+
     # Force terminate any threads that didn't respond to cancellation
     for thread in threads_to_terminate:
         try:
-            logger.warning(f"Terminating thread {thread.__class__.__name__} that didn't respond to cancellation...")
+            logger.warning(
+                f"Terminating thread {thread.__class__.__name__} that didn't respond to cancellation...")
             thread.terminate()
             thread.wait(500)  # Brief wait after terminate
         except Exception as e:
             logger.error(f"Error terminating thread {thread.__class__.__name__}: {e}")
-    
+
     # Release model resources
     try:
         ModelManager.instance().release_memory()
         logger.info("Released model resources")
     except Exception as e:
         logger.error(f"Error releasing model resources: {e}")
-    
+
     # Wait for the startup thread to finish if it's still running
     if startup_thread and startup_thread.isRunning():
         logger.info("Waiting for startup thread to finish...")
         startup_thread.wait(2000)  # Wait up to 2 seconds
-        
+
         # Force quit if still running
         if startup_thread.isRunning():
             logger.warning("Terminating startup thread...")
             startup_thread.terminate()
             startup_thread.wait(1000)
-            
+
     # Save any pending configuration changes
     try:
         config = ConfigManager.instance().get_all()

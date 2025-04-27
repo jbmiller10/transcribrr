@@ -1,5 +1,12 @@
 """Database utilities."""
 
+from app.constants import (
+    TABLE_RECORDINGS, FIELD_ID, FIELD_FILENAME, FIELD_FILE_PATH,
+    FIELD_DATE_CREATED, FIELD_DURATION, FIELD_RAW_TRANSCRIPT, FIELD_PROCESSED_TEXT,
+    FIELD_RAW_TRANSCRIPT_FORMATTED, FIELD_PROCESSED_TEXT_FORMATTED,
+    DEFAULT_CONFIG, get_database_path, get_config_path
+)
+from app.models.recording import Recording
 import sqlite3
 import os
 import logging
@@ -8,20 +15,16 @@ from typing import List, Optional, Tuple, Dict, Union
 from datetime import datetime
 
 # Custom exceptions for better error handling
+
+
 class DuplicatePathError(Exception):
     """Exception raised when attempting to insert a recording with a duplicate path."""
+
     def __init__(self, path, message="Recording with this path already exists"):
         self.path = path
         self.message = f"{message}: '{path}'"
         super().__init__(self.message)
 
-from app.constants import (
-    TABLE_RECORDINGS, FIELD_ID, FIELD_FILENAME, FIELD_FILE_PATH,
-    FIELD_DATE_CREATED, FIELD_DURATION, FIELD_RAW_TRANSCRIPT, FIELD_PROCESSED_TEXT,
-    FIELD_RAW_TRANSCRIPT_FORMATTED, FIELD_PROCESSED_TEXT_FORMATTED,
-    DEFAULT_CONFIG, get_database_path, get_config_path
-)
-from app.models.recording import Recording
 
 # Configure logging
 logger = logging.getLogger('transcribrr')
@@ -37,7 +40,7 @@ def ensure_database_exists() -> None:
         create_folders_table(conn)
         create_recording_folders_table(conn)
         logger.debug("Database structure verified/initialized successfully")
-        
+
         # Create config file if it doesn't exist
         if not os.path.exists(get_config_path()):
             create_config_file()
@@ -59,6 +62,8 @@ def create_config_file() -> None:
         raise
 
 # --- Connection ---
+
+
 def get_connection() -> sqlite3.Connection:
     """Return DB connection."""
     db_path = get_database_path()
@@ -72,10 +77,13 @@ def get_connection() -> sqlite3.Connection:
         conn.execute("PRAGMA foreign_keys = ON")
         return conn
     except sqlite3.Error as e:
-        logger.critical(f"FATAL: Failed to connect to database at {get_database_path()}: {e}", exc_info=True)
+        logger.critical(
+            f"FATAL: Failed to connect to database at {get_database_path()}: {e}", exc_info=True)
         raise RuntimeError(f"Could not connect to database: {e}")
 
 # --- Table Creation ---
+
+
 def create_recordings_table(conn: sqlite3.Connection) -> None:
     sql_create_recordings_table = f"""
     CREATE TABLE IF NOT EXISTS {TABLE_RECORDINGS} (
@@ -146,6 +154,8 @@ def create_recording_folders_table(conn: sqlite3.Connection) -> None:
         raise
 
 # --- CRUD Operations for Recordings ---
+
+
 def get_all_recordings(conn: sqlite3.Connection) -> List[Tuple]:
     """Return all recordings."""
     try:
@@ -156,6 +166,7 @@ def get_all_recordings(conn: sqlite3.Connection) -> List[Tuple]:
         logger.error(f"Error getting all recordings: {e}", exc_info=True)
         raise
 
+
 def get_recording_by_id(conn: sqlite3.Connection, recording_id: int) -> Optional[Recording]:
     """Return recording by ID as a Recording object."""
     try:
@@ -164,9 +175,9 @@ def get_recording_by_id(conn: sqlite3.Connection, recording_id: int) -> Optional
         record = cursor.fetchone()
         if record is None:
             return None
-            
+
         # Convert the tuple to a Recording object
-        # Column order: id, filename, file_path, date_created, duration, raw_transcript, 
+        # Column order: id, filename, file_path, date_created, duration, raw_transcript,
         # processed_text, raw_transcript_formatted, processed_text_formatted, original_source_identifier
         return Recording(
             id=record[0],
@@ -184,17 +195,19 @@ def get_recording_by_id(conn: sqlite3.Connection, recording_id: int) -> Optional
         logger.error(f"Error getting recording {recording_id}: {e}", exc_info=True)
         raise
 
+
 def create_recording(conn: sqlite3.Connection, recording_data: Tuple) -> int:
     """Insert new recording."""
     # Expects (filename, file_path, date_created, duration, raw_transcript, processed_text, original_source_identifier)
     # Ensure date_created is in correct format 'YYYY-MM-DD HH:MM:SS'
     if len(recording_data) < 4:
-         raise ValueError("Recording data must contain at least filename, file_path, date_created, duration")
+        raise ValueError(
+            "Recording data must contain at least filename, file_path, date_created, duration")
 
     # Pad with defaults if transcript/processed text are missing
     data_to_insert = list(recording_data)
     while len(data_to_insert) < 7:  # Updated to account for original_source_identifier
-        data_to_insert.append(None) # Use None for missing fields
+        data_to_insert.append(None)  # Use None for missing fields
 
     sql = f"""INSERT INTO {TABLE_RECORDINGS}(
         {FIELD_FILENAME}, {FIELD_FILE_PATH}, {FIELD_DATE_CREATED},
@@ -204,23 +217,26 @@ def create_recording(conn: sqlite3.Connection, recording_data: Tuple) -> int:
 
     try:
         cursor = conn.cursor()
-        cursor.execute(sql, tuple(data_to_insert[:7])) # Insert first 7 elements
+        cursor.execute(sql, tuple(data_to_insert[:7]))  # Insert first 7 elements
         conn.commit()
         new_id = cursor.lastrowid
         logger.info(f"Created recording '{data_to_insert[0]}' with ID {new_id}")
         return new_id
     except sqlite3.IntegrityError as e:
         # Handle potential UNIQUE constraint violation on file_path
-        logger.error(f"Error creating recording (duplicate path '{data_to_insert[1]}'): {e}", exc_info=True)
+        logger.error(
+            f"Error creating recording (duplicate path '{data_to_insert[1]}'): {e}", exc_info=True)
         # Raise custom exception with the path that caused the error
         raise DuplicatePathError(data_to_insert[1]) from e
     except sqlite3.Error as e:
         logger.error(f"Error creating recording: {e}", exc_info=True)
         raise
 
+
 def update_recording(conn: sqlite3.Connection, recording_id: int, **kwargs) -> None:
     """Update recording."""
-    if not kwargs: return
+    if not kwargs:
+        return
     valid_fields = [FIELD_FILENAME, FIELD_FILE_PATH, FIELD_DATE_CREATED, FIELD_DURATION,
                     FIELD_RAW_TRANSCRIPT, FIELD_PROCESSED_TEXT,
                     FIELD_RAW_TRANSCRIPT_FORMATTED, FIELD_PROCESSED_TEXT_FORMATTED]
@@ -232,8 +248,8 @@ def update_recording(conn: sqlite3.Connection, recording_id: int, **kwargs) -> N
             logger.warning(f"Invalid field '{key}' provided for update_recording.")
 
     if not update_fields:
-         logger.warning(f"No valid fields provided to update recording {recording_id}.")
-         return
+        logger.warning(f"No valid fields provided to update recording {recording_id}.")
+        return
 
     parameters = [f"{key} = ?" for key in update_fields]
     values = list(update_fields.values())
@@ -244,10 +260,12 @@ def update_recording(conn: sqlite3.Connection, recording_id: int, **kwargs) -> N
         cursor = conn.cursor()
         cursor.execute(sql, values)
         conn.commit()
-        logger.info(f"Updated recording ID {recording_id} with fields: {', '.join(update_fields.keys())}")
+        logger.info(
+            f"Updated recording ID {recording_id} with fields: {', '.join(update_fields.keys())}")
     except sqlite3.Error as e:
         logger.error(f"Error updating recording {recording_id}: {e}", exc_info=True)
         raise
+
 
 def delete_recording(conn: sqlite3.Connection, recording_id: int) -> None:
     """Delete recording."""
@@ -264,16 +282,21 @@ def delete_recording(conn: sqlite3.Connection, recording_id: int) -> None:
         raise
 
 # --- Utility Queries ---
+
+
 def recording_exists(conn: sqlite3.Connection, file_path: str) -> bool:
     """Check if a recording with the given file path already exists."""
     try:
         cursor = conn.cursor()
         # Use the index for potentially faster check
-        cursor.execute(f"SELECT 1 FROM {TABLE_RECORDINGS} WHERE {FIELD_FILE_PATH}=? LIMIT 1", (file_path,))
+        cursor.execute(
+            f"SELECT 1 FROM {TABLE_RECORDINGS} WHERE {FIELD_FILE_PATH}=? LIMIT 1", (file_path,))
         return cursor.fetchone() is not None
     except sqlite3.Error as e:
-        logger.error(f"Error checking if recording exists for path '{file_path}': {e}", exc_info=True)
+        logger.error(
+            f"Error checking if recording exists for path '{file_path}': {e}", exc_info=True)
         raise
+
 
 def search_recordings(conn: sqlite3.Connection, search_term: str) -> List[Tuple]:
     """Search recordings."""
@@ -284,7 +307,7 @@ def search_recordings(conn: sqlite3.Connection, search_term: str) -> List[Tuple]
        OR {FIELD_RAW_TRANSCRIPT} LIKE ?
        OR {FIELD_PROCESSED_TEXT} LIKE ?
     ORDER BY {FIELD_DATE_CREATED} DESC"""
-    
+
     try:
         cursor = conn.cursor()
         cursor.execute(sql, (search_pattern, search_pattern, search_pattern))

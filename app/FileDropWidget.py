@@ -34,7 +34,7 @@ class FileDropWidget(QWidget):
         self.setAcceptDrops(True)
         self.setMinimumHeight(150)
         self.initUI()
-        
+
         # Ensure recordings directory exists
         os.makedirs(get_recordings_dir(), exist_ok=True)
 
@@ -67,7 +67,8 @@ class FileDropWidget(QWidget):
             url = event.mimeData().urls()[0]
             if url.isLocalFile():
                 file_path = url.toLocalFile()
-                file_extension = os.path.splitext(file_path)[1].lower()[1:]  # Get extension without dot
+                file_extension = os.path.splitext(file_path)[1].lower()[
+                    1:]  # Get extension without dot
 
                 if file_extension in self.supported_file_types:
                     self.label.setText(f"Release to upload {os.path.basename(file_path)}")
@@ -320,25 +321,25 @@ class FileDropWidget(QWidget):
         for ext, desc in self.supported_file_types.items():
             formats.append(f".{ext} ({desc})")
         return formats
-        
+
     @property
     def recordings_dir(self):
         """Return recordings directory path for compatibility.
-        
+
         This property ensures compatibility with code that might still
         access self.recordings_dir, ensuring it always points to the
         centralized RECORDINGS_DIR constant.
         """
         return get_recordings_dir()
-        
+
     @staticmethod
     def check_recordings_dir_consistency():
         """Test method to verify constant/attribute consistency.
-        
+
         This method checks that the FileDropWidget.recordings_dir property
         returns the same value as the RECORDINGS_DIR constant, satisfying
         the regression test requirement.
-        
+
         Returns:
             bool: True if consistent, False otherwise.
         """

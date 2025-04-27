@@ -8,27 +8,28 @@ from app.ui_utils.busy_guard import BusyGuard
 
 class TestBusyGuard(unittest.TestCase):
     """Test BusyGuard context manager functionality."""
-    
+
     def setUp(self):
         """Set up common test fixtures."""
         # Create mock feedback manager
         self.feedback_manager = Mock()
         self.feedback_manager.start_spinner.return_value = True
-        
+
         # Create mock UI elements
         self.button1 = Mock()
         self.button2 = Mock()
-        
+
         # Default cancel callback for testing
         self.cancel_called = False
+
         def cancel_callback():
             self.cancel_called = True
         self.cancel_callback = cancel_callback
-        
+
     def test_basic_usage(self):
         """Test basic usage with spinner and UI elements."""
         with BusyGuard(
-            self.feedback_manager, 
+            self.feedback_manager,
             "Test Operation",
             ui_elements=[self.button1, self.button2],
             spinner="test_spinner"
@@ -38,10 +39,10 @@ class TestBusyGuard(unittest.TestCase):
                 True, [self.button1, self.button2]
             )
             self.feedback_manager.start_spinner.assert_called_once_with("test_spinner")
-        
+
         # Verify cleanup actions after context
         self.feedback_manager.stop_spinner.assert_called_once_with("test_spinner")
-        
+
     def test_progress_dialog(self):
         """Test with progress dialog."""
         with BusyGuard(
@@ -56,14 +57,14 @@ class TestBusyGuard(unittest.TestCase):
         ) as guard:
             # Verify progress dialog was created
             self.feedback_manager.start_progress.assert_called_once()
-            
+
             # Test progress update
             guard.update_progress(50, "Halfway done")
             self.feedback_manager.update_progress.assert_called_once()
-            
+
         # Verify finishing actions
         self.feedback_manager.finish_progress.assert_called_once()
-        
+
     def test_exception_handling(self):
         """Test proper cleanup when exception occurs in context."""
         try:
@@ -76,11 +77,11 @@ class TestBusyGuard(unittest.TestCase):
                 raise ValueError("Test exception")
         except ValueError:
             pass  # Expected exception
-            
+
         # Verify cleanup still occurred
         self.feedback_manager.stop_spinner.assert_called_once_with("test_spinner")
         self.feedback_manager.close_progress.assert_called_once()
-        
+
     def test_cancel_callback(self):
         """Test cancel callback is called."""
         guard = BusyGuard(
@@ -89,14 +90,14 @@ class TestBusyGuard(unittest.TestCase):
             progress=True,
             cancel_callback=self.cancel_callback
         )
-        
+
         with guard:
             guard.cancel()
-            
+
         # Verify cancel callback was called
         self.assertTrue(self.cancel_called)
         self.feedback_manager.close_progress.assert_called_once()
-        
+
     def test_result_capture(self):
         """Test result capture functionality."""
         with BusyGuard(
@@ -104,11 +105,11 @@ class TestBusyGuard(unittest.TestCase):
             "Test Result"
         ) as guard:
             result = guard.set_result("success")
-            
+
         # Verify result is stored and returned
         self.assertEqual(result, "success")
         self.assertEqual(guard.result, "success")
-        
+
     def test_multiple_feedback_types(self):
         """Test using all feedback types together."""
         with BusyGuard(
@@ -124,22 +125,22 @@ class TestBusyGuard(unittest.TestCase):
             self.feedback_manager.start_spinner.assert_called_once()
             self.feedback_manager.start_progress.assert_called_once()
             self.feedback_manager.show_status.assert_called_once_with("Working...")
-            
+
     def test_no_spinner_found(self):
         """Test graceful handling when spinner not found."""
         # Set up feedback manager to fail spinner start
         self.feedback_manager.start_spinner.return_value = False
-        
+
         with BusyGuard(
             self.feedback_manager,
             "Missing Spinner Test",
             spinner="nonexistent"
         ):
             pass
-            
+
         # Verify stop_spinner isn't called when start failed
         self.feedback_manager.stop_spinner.assert_not_called()
-        
+
     def test_nested_guards(self):
         """Test nested BusyGuard instances work properly."""
         with BusyGuard(
@@ -149,7 +150,7 @@ class TestBusyGuard(unittest.TestCase):
         ):
             # Verify outer guard setup
             self.feedback_manager.start_spinner.assert_called_with("outer_spinner")
-            
+
             with BusyGuard(
                 self.feedback_manager,
                 "Inner Operation",
@@ -157,10 +158,10 @@ class TestBusyGuard(unittest.TestCase):
             ):
                 # Verify inner guard setup
                 self.feedback_manager.start_spinner.assert_called_with("inner_spinner")
-                
+
             # Verify inner guard cleanup
             self.feedback_manager.stop_spinner.assert_called_with("inner_spinner")
-            
+
         # Verify outer guard cleanup
         self.feedback_manager.stop_spinner.assert_called_with("outer_spinner")
 

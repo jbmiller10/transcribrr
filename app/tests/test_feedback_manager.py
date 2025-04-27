@@ -1,3 +1,4 @@
+from app.ui_utils import FeedbackManager
 import sys
 import types
 import unittest
@@ -5,14 +6,18 @@ import unittest
 sys.modules.setdefault('PyQt6', types.ModuleType('PyQt6'))
 qt_widgets = types.ModuleType('PyQt6.QtWidgets')
 # Stub QWidget classes and QMessageBox with StandardButton
+
+
 class QMessageBox:
     class Icon:
         Information = Critical = Question = Ok = None
+
     class StandardButton:
         Ok = 0
         NoButton = 0
         Yes = 0
         No = 0
+
 
 setattr(qt_widgets, 'QMessageBox', QMessageBox)
 for name in ['QProgressDialog', 'QLabel', 'QWidget', 'QWidgetAction',
@@ -21,39 +26,53 @@ for name in ['QProgressDialog', 'QLabel', 'QWidget', 'QWidgetAction',
 sys.modules['PyQt6.QtWidgets'] = qt_widgets
 qt_core = types.ModuleType('PyQt6.QtCore')
 # Dummy Qt and QTimer
+
+
 class Qt:
     class WindowModality:
         WindowModal = None
+
     class AlignmentFlag:
         AlignCenter = None
+
     class Orientation:
         Vertical = None
+
+
 qt_core.Qt = Qt
+
+
 class QTimer:
     @staticmethod
     def singleShot(delay, func):
         # Immediately call for tests
         func()
+
+
 qt_core.QTimer = QTimer
 qt_core.pyqtSignal = lambda *args, **kwargs: None
 qt_core.QSize = lambda *args, **kwargs: None
 sys.modules['PyQt6.QtCore'] = qt_core
 qt_gui = types.ModuleType('PyQt6.QtGui')
+
+
 class QMovie:
     def __init__(self, *args, **kwargs): pass
     def isValid(self): return False
     def setScaledSize(self, size): pass
     def start(self): pass
     def stop(self): pass
+
+
 qt_gui.QMovie = QMovie
 qt_gui.QIcon = lambda *args, **kwargs: None
 qt_gui.QAction = type('QAction', (object,), {'__init__': lambda self, *args, **kwargs: None})
 sys.modules['PyQt6.QtGui'] = qt_gui
-from app.ui_utils import FeedbackManager
 
 
 class DummyElement:
     """Dummy UI element with setEnabled/isEnabled methods."""
+
     def __init__(self, enabled=True):
         self._enabled = enabled
         self.history = []

@@ -2,11 +2,12 @@ from PyQt6.QtCore import QThread, pyqtSignal
 import requests
 from requests.exceptions import RequestException, Timeout, ConnectionError
 import json
-from threading import Lock # Import Lock
+from threading import Lock  # Import Lock
 from typing import List, Dict, Optional, Any, Union
-import logging # Use logging
+import logging  # Use logging
 
 logger = logging.getLogger('transcribrr')
+
 
 class GPT4ProcessingThread(QThread):
     update_progress = pyqtSignal(str)
@@ -20,14 +21,14 @@ class GPT4ProcessingThread(QThread):
     TIMEOUT = 120  # seconds (Increased timeout for potentially long responses)
 
     def __init__(self,
-                transcript: str,
-                prompt_instructions: str,
-                gpt_model: str,
-                max_tokens: int,
-                temperature: float,
-                openai_api_key: str,
-                messages: Optional[List[Dict[str, str]]] = None,
-                *args, **kwargs):
+                 transcript: str,
+                 prompt_instructions: str,
+                 gpt_model: str,
+                 max_tokens: int,
+                 temperature: float,
+                 openai_api_key: str,
+                 messages: Optional[List[Dict[str, str]]] = None,
+                 *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.transcript = transcript
         self.prompt_instructions = prompt_instructions
@@ -40,7 +41,7 @@ class GPT4ProcessingThread(QThread):
         # Cancellation flag
         self._is_canceled = False
         self._lock = Lock()
-        self.current_request = None # To potentially cancel the request
+        self.current_request = None  # To potentially cancel the request
         self._session: Optional[requests.Session] = None
         self._response: Optional[requests.Response] = None
 
@@ -50,7 +51,7 @@ class GPT4ProcessingThread(QThread):
                 logger.info("Cancellation requested for GPT processing thread.")
                 self._is_canceled = True
                 self.requestInterruption()  # Use QThread's built-in interruption
-                
+
                 # Close the response first, then the session
                 if self._response is not None:
                     try:
@@ -59,7 +60,7 @@ class GPT4ProcessingThread(QThread):
                     except Exception as e:
                         logger.warning(f"Could not close response: {e}")
                     self._response = None
-                
+
                 if self._session is not None:
                     try:
                         logger.debug("Closing active HTTP session.")
@@ -67,7 +68,7 @@ class GPT4ProcessingThread(QThread):
                     except Exception as e:
                         logger.warning(f"Could not close session: {e}")
                     self._session = None
-                
+
                 # Backward compatibility with existing code
                 if self.current_request and hasattr(self.current_request, 'close'):
                     try:
@@ -75,7 +76,6 @@ class GPT4ProcessingThread(QThread):
                         self.current_request.close()
                     except Exception as e:
                         logger.warning(f"Could not forcefully close request: {e}")
-
 
     def is_canceled(self):
         # Check both the custom flag and QThread's interruption status
@@ -103,13 +103,13 @@ class GPT4ProcessingThread(QThread):
             else:
                 messages_to_send = self.messages
 
-            if self.is_canceled(): # Check again before API call
+            if self.is_canceled():  # Check again before API call
                 self.update_progress.emit("GPT processing cancelled.")
                 return
 
             result = self._send_api_request(messages_to_send)
 
-            if self.is_canceled(): # Check after API call returns
+            if self.is_canceled():  # Check after API call returns
                 self.update_progress.emit("GPT processing cancelled.")
             else:
                 self.completed.emit(result)
@@ -123,7 +123,7 @@ class GPT4ProcessingThread(QThread):
                 logger.error(f"GPT Processing timeout: {redact(str(e))}", exc_info=True)
             else:
                 self.update_progress.emit("GPT processing cancelled during timeout.")
-                
+
         except requests.exceptions.ConnectionError as e:
             if not self.is_canceled():
                 error_message = "Connection error. Check your internet connection or OpenAI service status."
@@ -132,7 +132,7 @@ class GPT4ProcessingThread(QThread):
                 logger.error(f"GPT Processing connection error: {redact(str(e))}", exc_info=True)
             else:
                 self.update_progress.emit("GPT processing cancelled during connection error.")
-                
+
         except requests.exceptions.RequestException as e:
             if not self.is_canceled():
                 from app.secure import redact
@@ -142,7 +142,7 @@ class GPT4ProcessingThread(QThread):
                 logger.error(f"GPT Processing request error: {safe_msg}", exc_info=True)
             else:
                 self.update_progress.emit("GPT processing cancelled during request error.")
-                
+
         except ValueError as e:
             if not self.is_canceled():
                 # API key or configuration error
@@ -151,13 +151,13 @@ class GPT4ProcessingThread(QThread):
                 logger.error(f"GPT Processing configuration error: {error_message}")
             else:
                 self.update_progress.emit("GPT processing cancelled during configuration error.")
-                
+
         except Exception as e:
             if not self.is_canceled():
                 from app.secure import redact
                 error_message = str(e)
                 safe_msg = redact(error_message)
-                
+
                 # Refine error messages
                 if "rate limit" in error_message.lower():
                     error_message = "Rate limit exceeded. Please wait or check your OpenAI plan limits."
@@ -180,39 +180,38 @@ class GPT4ProcessingThread(QThread):
                 self.error.emit(error_message)
                 logger.error(f"GPT Processing error: {safe_msg}", exc_info=True)
             else:
-                 self.update_progress.emit("GPT processing cancelled during error handling.")
+                self.update_progress.emit("GPT processing cancelled during error handling.")
         finally:
-             # Clean up any resources
-             try:
-                 # Close the response first, then the session
-                 if self._response is not None:
-                     try:
-                         logger.debug("Closing HTTP response in finally block.")
-                         self._response.close()
-                     except Exception as e:
-                         logger.warning(f"Error closing response in finally block: {e}")
-                     self._response = None
-                 
-                 if self._session is not None:
-                     try:
-                         logger.debug("Closing HTTP session in finally block.")
-                         self._session.close()
-                     except Exception as e:
-                         logger.warning(f"Error closing session in finally block: {e}")
-                     self._session = None
-                 
-                 # Legacy cleanup
-                 if hasattr(self, 'current_request') and self.current_request:
-                     if hasattr(self.current_request, 'close'):
-                         try:
-                             self.current_request.close()
-                         except Exception as e:
-                             logger.warning(f"Error closing request in finally block: {e}")
-                     self.current_request = None
-             except Exception as cleanup_e:
-                 logger.warning(f"Error during resource cleanup: {cleanup_e}")
-             logger.info("GPT processing thread finished execution.")
+            # Clean up any resources
+            try:
+                # Close the response first, then the session
+                if self._response is not None:
+                    try:
+                        logger.debug("Closing HTTP response in finally block.")
+                        self._response.close()
+                    except Exception as e:
+                        logger.warning(f"Error closing response in finally block: {e}")
+                    self._response = None
 
+                if self._session is not None:
+                    try:
+                        logger.debug("Closing HTTP session in finally block.")
+                        self._session.close()
+                    except Exception as e:
+                        logger.warning(f"Error closing session in finally block: {e}")
+                    self._session = None
+
+                # Legacy cleanup
+                if hasattr(self, 'current_request') and self.current_request:
+                    if hasattr(self.current_request, 'close'):
+                        try:
+                            self.current_request.close()
+                        except Exception as e:
+                            logger.warning(f"Error closing request in finally block: {e}")
+                    self.current_request = None
+            except Exception as cleanup_e:
+                logger.warning(f"Error during resource cleanup: {cleanup_e}")
+            logger.info("GPT processing thread finished execution.")
 
     def _send_api_request(self, messages: List[Dict[str, str]]) -> str:
         retry_count = 0
@@ -220,15 +219,17 @@ class GPT4ProcessingThread(QThread):
         session: Optional[requests.Session] = None
 
         while retry_count < self.MAX_RETRY_ATTEMPTS:
-            if self.isInterruptionRequested() or self.is_canceled(): return "[Cancelled]"
+            if self.isInterruptionRequested() or self.is_canceled():
+                return "[Cancelled]"
 
             try:
-                self.update_progress.emit(f'Sending request to OpenAI ({self.gpt_model})... Attempt {retry_count + 1}')
-                
+                self.update_progress.emit(
+                    f'Sending request to OpenAI ({self.gpt_model})... Attempt {retry_count + 1}')
+
                 # Verify HTTPS is being used
                 if not self.API_ENDPOINT.startswith("https://"):
                     raise ValueError("API URL must use HTTPS for security")
-                    
+
                 data = {'messages': messages, 'model': self.gpt_model,
                         'max_tokens': self.max_tokens, 'temperature': self.temperature}
                 headers = {'Authorization': f'Bearer {self.openai_api_key}',
@@ -237,62 +238,69 @@ class GPT4ProcessingThread(QThread):
                 # Create a new session for each attempt to ensure clean state
                 session = requests.Session()
                 self._session = session  # Store in instance variable
-                prepared_request = requests.Request('POST', self.API_ENDPOINT, json=data, headers=headers).prepare()
-                self.current_request = session # Store session for potential cancellation
+                prepared_request = requests.Request(
+                    'POST', self.API_ENDPOINT, json=data, headers=headers).prepare()
+                self.current_request = session  # Store session for potential cancellation
 
                 # Check cancellation again before sending request
-                if self.isInterruptionRequested() or self.is_canceled(): 
+                if self.isInterruptionRequested() or self.is_canceled():
                     return "[Cancelled]"
 
                 self._response = self._session.send(prepared_request, timeout=self.TIMEOUT)
-                self.current_request = None # Request finished
+                self.current_request = None  # Request finished
 
-                if self.isInterruptionRequested() or self.is_canceled(): return "[Cancelled]" # Check after potentially long request
+                if self.isInterruptionRequested() or self.is_canceled():
+                    return "[Cancelled]"  # Check after potentially long request
 
-                self._response.raise_for_status() # Raise HTTPError for bad responses (4xx or 5xx)
+                self._response.raise_for_status()  # Raise HTTPError for bad responses (4xx or 5xx)
 
                 response_data = self._response.json()
-                content: str = response_data.get('choices', [{}])[0].get('message', {}).get('content', '')
-                logger.info(f"Received successful response from OpenAI API. Choice 0 content length: {len(content)}")
+                content: str = response_data.get('choices', [{}])[0].get(
+                    'message', {}).get('content', '')
+                logger.info(
+                    f"Received successful response from OpenAI API. Choice 0 content length: {len(content)}")
                 return content
 
             except Timeout as e:
-                 last_error = e
-                 logger.warning(f"Request timed out (Attempt {retry_count + 1}): {e}")
-                 # Fall through to retry logic
+                last_error = e
+                logger.warning(f"Request timed out (Attempt {retry_count + 1}): {e}")
+                # Fall through to retry logic
 
             except ConnectionError as e:
-                 # Don't retry connection errors usually
-                 logger.error(f"Connection error: {e}")
-                 raise Exception(f"Unable to connect to OpenAI API: {e}") from e
+                # Don't retry connection errors usually
+                logger.error(f"Connection error: {e}")
+                raise Exception(f"Unable to connect to OpenAI API: {e}") from e
 
-            except RequestException as e: # Catches HTTPError, etc.
-                 last_error = e
-                 logger.warning(f"RequestException (Attempt {retry_count + 1}): {e}. Status: {e.response.status_code if e.response else 'N/A'}")
-                 error_info = self._parse_error_response(e.response) if e.response else str(e)
-                 status_code = e.response.status_code if e.response else 500 # Assume server error if no response code
+            except RequestException as e:  # Catches HTTPError, etc.
+                last_error = e
+                logger.warning(
+                    f"RequestException (Attempt {retry_count + 1}): {e}. Status: {e.response.status_code if e.response else 'N/A'}")
+                error_info = self._parse_error_response(e.response) if e.response else str(e)
+                status_code = e.response.status_code if e.response else 500  # Assume server error if no response code
 
-                 if self._should_retry(status_code, error_info):
-                     # Fall through to retry logic
-                     pass
-                 else:
-                     # Don't retry other client errors (e.g., 400 Bad Request, 401 Auth Error)
-                     raise Exception(f"OpenAI API error: {error_info}") from e
+                if self._should_retry(status_code, error_info):
+                    # Fall through to retry logic
+                    pass
+                else:
+                    # Don't retry other client errors (e.g., 400 Bad Request, 401 Auth Error)
+                    raise Exception(f"OpenAI API error: {error_info}") from e
             except Exception as e:
-                 # Catch any other unexpected errors
-                 last_error = e
-                 logger.error(f"Unexpected error during API request (Attempt {retry_count + 1}): {e}", exc_info=True)
-                 # Don't retry unexpected errors
-                 raise # Re-raise the original exception
+                # Catch any other unexpected errors
+                last_error = e
+                logger.error(
+                    f"Unexpected error during API request (Attempt {retry_count + 1}): {e}", exc_info=True)
+                # Don't retry unexpected errors
+                raise  # Re-raise the original exception
 
             # --- Retry Logic ---
             retry_count += 1
             if retry_count < self.MAX_RETRY_ATTEMPTS:
-                if self.isInterruptionRequested() or self.is_canceled(): 
+                if self.isInterruptionRequested() or self.is_canceled():
                     return "[Cancelled]"
-                retry_delay = self.RETRY_DELAY * (2 ** (retry_count - 1)) # Exponential backoff
-                self.update_progress.emit(f"Retrying in {retry_delay:.1f}s... (Attempt {retry_count + 1}/{self.MAX_RETRY_ATTEMPTS})")
-                
+                retry_delay = self.RETRY_DELAY * (2 ** (retry_count - 1))  # Exponential backoff
+                self.update_progress.emit(
+                    f"Retrying in {retry_delay:.1f}s... (Attempt {retry_count + 1}/{self.MAX_RETRY_ATTEMPTS})")
+
                 # Check for interruption during sleep to ensure prompt return
                 ms_delay = int(retry_delay * 1000)  # Convert to milliseconds
                 step = 100  # Check every 100ms
@@ -301,11 +309,11 @@ class GPT4ProcessingThread(QThread):
                         return "[Cancelled]"
                     self.msleep(step)
             else:
-                 logger.error("Max retry attempts reached.")
-                 raise Exception(f"Failed after {self.MAX_RETRY_ATTEMPTS} attempts. Last error: {last_error}") from last_error
+                logger.error("Max retry attempts reached.")
+                raise Exception(
+                    f"Failed after {self.MAX_RETRY_ATTEMPTS} attempts. Last error: {last_error}") from last_error
 
-        return "[Error: Max retries exceeded]" # Should not be reached
-
+        return "[Error: Max retries exceeded]"  # Should not be reached
 
     def _parse_error_response(self, response: requests.Response) -> str:
         try:
@@ -315,11 +323,12 @@ class GPT4ProcessingThread(QThread):
                 etype = error_data['error'].get('type', 'Unknown type')
                 code = error_data['error'].get('code', 'Unknown code')
                 return f"{etype} ({code}): {msg}"
-            elif 'error' in error_data: # Sometimes error is just a string
-                 return str(error_data['error'])
-            return response.text # Fallback to raw text
+            elif 'error' in error_data:  # Sometimes error is just a string
+                return str(error_data['error'])
+            return response.text  # Fallback to raw text
         except json.JSONDecodeError:
-            return f"HTTP {response.status_code}: {response.text[:200]}..." # Truncate long non-JSON errors
+            # Truncate long non-JSON errors
+            return f"HTTP {response.status_code}: {response.text[:200]}..."
 
     def _should_retry(self, status_code: int, error_info: str) -> bool:
         # Retry on specific server errors and rate limits
@@ -330,8 +339,9 @@ class GPT4ProcessingThread(QThread):
         # Check specific error types from OpenAI that might be transient
         transient_error_codes = ['server_error', 'rate_limit_exceeded']
         if any(code in error_info.lower() for code in transient_error_codes):
-             logger.info(f"Retry condition met for error info: {error_info[:100]}...")
-             return True
+            logger.info(f"Retry condition met for error info: {error_info[:100]}...")
+            return True
 
-        logger.warning(f"No retry condition met for status {status_code}, error: {error_info[:100]}...")
+        logger.warning(
+            f"No retry condition met for status {status_code}, error: {error_info[:100]}...")
         return False

@@ -21,6 +21,7 @@ ICONS_DIR = os.path.join(RESOURCE_DIR, "icons")
 
 _USER_DATA_DIR_CACHE = None
 
+
 def get_user_data_dir() -> str:
     """Gets the user-specific data directory, caching the result."""
     global _USER_DATA_DIR_CACHE
@@ -40,23 +41,30 @@ def get_user_data_dir() -> str:
             _USER_DATA_DIR_CACHE = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
     return _USER_DATA_DIR_CACHE
 
+
 def get_recordings_dir() -> str:
     return os.path.join(get_user_data_dir(), "Recordings")
+
 
 def get_database_dir() -> str:
     return os.path.join(get_user_data_dir(), "database")
 
+
 def get_database_path() -> str:
     return os.path.join(get_database_dir(), "database.sqlite")
+
 
 def get_config_path() -> str:
     return os.path.join(get_user_data_dir(), "config.json")
 
+
 def get_prompts_path() -> str:
     return os.path.join(get_user_data_dir(), "preset_prompts.json")
 
+
 def get_log_dir() -> str:
     return os.path.join(get_user_data_dir(), "logs")
+
 
 def get_log_file() -> str:
     return os.path.join(get_log_dir(), "transcribrr.log")
@@ -65,6 +73,7 @@ def get_log_file() -> str:
 # os.makedirs(RECORDINGS_DIR, exist_ok=True)
 # os.makedirs(DATABASE_DIR, exist_ok=True)
 # os.makedirs(LOG_DIR, exist_ok=True)
+
 
 TABLE_RECORDINGS = "recordings"
 FIELD_ID = "id"
@@ -77,13 +86,15 @@ FIELD_PROCESSED_TEXT = "processed_text"
 FIELD_RAW_TRANSCRIPT_FORMATTED = "raw_transcript_formatted"
 FIELD_PROCESSED_TEXT_FORMATTED = "processed_text_formatted"
 
+
 class FileType(Enum):
     """Supported file type enum."""
     AUDIO = auto()
     VIDEO = auto()
     DOCUMENT = auto()
     UNKNOWN = auto()
-    
+
+
 AUDIO_EXTENSIONS: Set[str] = {
     '.mp3', '.wav', '.aac', '.flac', '.ogg', '.m4a', '.aiff', '.wma'
 }
@@ -106,7 +117,7 @@ FILE_TYPES: Dict[str, Dict[str, Any]] = {
     '.aac': {'name': 'Advanced Audio Coding', 'type': FileType.AUDIO},
     '.aiff': {'name': 'Audio Interchange File Format', 'type': FileType.AUDIO},
     '.wma': {'name': 'Windows Media Audio', 'type': FileType.AUDIO},
-    
+
     # Video formats
     '.mp4': {'name': 'MPEG-4 Video', 'type': FileType.VIDEO},
     '.mkv': {'name': 'Matroska Video', 'type': FileType.VIDEO},
@@ -115,7 +126,7 @@ FILE_TYPES: Dict[str, Dict[str, Any]] = {
     '.webm': {'name': 'WebM Video', 'type': FileType.VIDEO},
     '.flv': {'name': 'Flash Video', 'type': FileType.VIDEO},
     '.wmv': {'name': 'Windows Media Video', 'type': FileType.VIDEO},
-    
+
     # Document formats
     '.txt': {'name': 'Plain Text', 'type': FileType.DOCUMENT},
     '.md': {'name': 'Markdown', 'type': FileType.DOCUMENT},

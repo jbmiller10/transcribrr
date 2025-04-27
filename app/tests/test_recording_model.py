@@ -1,19 +1,19 @@
 # app/tests/test_recording_model.py
+from app.RecordingFolderModel import RecordingFolderModel
+from PyQt6.QtGui import QIcon
+from PyQt6.QtWidgets import QApplication
+import os
 import sys
 import unittest
 # Skip legacy tests in headless environment
 raise unittest.SkipTest("Skipping legacy test in headless environment")
-import os
-from PyQt6.QtWidgets import QApplication
 # Explicitly import QIcon and other necessary Qt classes here
-from PyQt6.QtGui import QIcon
 
 # Add parent directory to path to import app modules
 # Ensure this path adjustment is correct for your structure
 if os.path.abspath(os.path.join(os.path.dirname(__file__), "../..")) not in sys.path:
-     sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "../..")))
+    sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "../..")))
 
-from app.RecordingFolderModel import RecordingFolderModel
 
 class TestRecordingFolderModel(unittest.TestCase):
     """Test cases for RecordingFolderModel."""
@@ -42,9 +42,12 @@ class TestRecordingFolderModel(unittest.TestCase):
         # Create some test recordings
         self.recordings = [
             # id, filename, file_path, date_created, duration, raw_transcript, processed_text, rt_formatted, pt_formatted
-            [1, "Recording 1", "/path/1.mp3", "2023-10-01 10:00:00", "01:30", "transcript 1", "processed 1", None, None],
-            [2, "Recording 2", "/path/2.mp3", "2023-10-02 10:00:00", "02:30", "transcript 2", "processed 2", None, None],
-            [3, "Recording 3", "/path/3.mp3", "2023-10-03 10:00:00", "03:30", "transcript 3", "processed 3", None, None],
+            [1, "Recording 1", "/path/1.mp3", "2023-10-01 10:00:00",
+                "01:30", "transcript 1", "processed 1", None, None],
+            [2, "Recording 2", "/path/2.mp3", "2023-10-02 10:00:00",
+                "02:30", "transcript 2", "processed 2", None, None],
+            [3, "Recording 3", "/path/3.mp3", "2023-10-03 10:00:00",
+                "03:30", "transcript 3", "processed 3", None, None],
         ]
 
         # Create some test folders
@@ -135,6 +138,7 @@ class TestRecordingFolderModel(unittest.TestCase):
         # Verify items were cleared
         self.assertEqual(len(self.model.item_map), 0, "Model map should be empty after clear")
         self.assertEqual(self.model.rowCount(), 0, "Model should have no rows after clear")
+
 
 if __name__ == '__main__':
     unittest.main()

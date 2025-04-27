@@ -2,19 +2,17 @@
 Redaction utilities + HTTPS-guard tests.
 """
 
+from app.secure import SensitiveLogFilter, get_service_id, redact
+from unittest.mock import MagicMock, patch
+import tempfile
+import sys
+import os
 import logging
 import unittest
 # Skip legacy tests in headless environment
 raise unittest.SkipTest("Skipping legacy test in headless environment")
-import os
-import sys
-import tempfile
-import unittest
-from unittest.mock import MagicMock, patch
 
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "../..")))
-
-from app.secure import SensitiveLogFilter, get_service_id, redact
 
 
 # ───────────────────────── redaction ────────────────────────
@@ -31,7 +29,8 @@ class TestSecureRedaction(unittest.TestCase):
 
     def test_log_filter(self):
         f = SensitiveLogFilter()
-        r = logging.LogRecord("x", logging.INFO, "t.py", 1, "sk-abcdefghijklmnopqrstuvwxyz", (), None)
+        r = logging.LogRecord("x", logging.INFO, "t.py", 1,
+                              "sk-abcdefghijklmnopqrstuvwxyz", (), None)
         f.filter(r)
         self.assertIn("***-REDACTED-***", r.msg)
 

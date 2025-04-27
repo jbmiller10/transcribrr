@@ -6,16 +6,15 @@ Key tweaks:
   • Compare *counts* of unique IDs to prove no duplication.
 """
 
+from PyQt6.QtWidgets import QApplication
+from PyQt6.QtCore import QObject, QTimer, Qt, pyqtSignal
+import sys
+import os
+import importlib
 import unittest
 # Skip legacy tests in headless environment
 raise unittest.SkipTest("Skipping legacy test in headless environment")
-import importlib
-import os
-import sys
-import unittest
 
-from PyQt6.QtCore import QObject, QTimer, Qt, pyqtSignal
-from PyQt6.QtWidgets import QApplication
 
 # optional QtTest shim
 try:
@@ -61,7 +60,8 @@ class TestTree(unittest.TestCase):
 
     # ------------------------------------------------------------------
     def setUp(self):
-        self.UFTV = importlib.reload(importlib.import_module("app.UnifiedFolderTreeView")).UnifiedFolderTreeView
+        self.UFTV = importlib.reload(importlib.import_module(
+            "app.UnifiedFolderTreeView")).UnifiedFolderTreeView
 
         class MockDB(QObject):
             dataChanged = pyqtSignal(str, int)
@@ -91,9 +91,12 @@ class TestTree(unittest.TestCase):
 
         self.cb = {"u": None, "f1": None, "f2": None}
 
-        self.unassigned = [[i, f"R{i}", f"/p{i}.mp3", "2023-01-01 00:00:00", "00:10", "", "", None, None] for i in range(4)]
-        self.f1 = [[i, f"R{i}", f"/p{i}.mp3", "2023-01-01 00:00:00", "00:10", "", "", None, None] for i in range(4, 7)]
-        self.f2 = [[i, f"R{i}", f"/p{i}.mp3", "2023-01-01 00:00:00", "00:10", "", "", None, None] for i in range(7, 10)]
+        self.unassigned = [[i, f"R{i}", f"/p{i}.mp3", "2023-01-01 00:00:00",
+                            "00:10", "", "", None, None] for i in range(4)]
+        self.f1 = [[i, f"R{i}", f"/p{i}.mp3", "2023-01-01 00:00:00",
+                    "00:10", "", "", None, None] for i in range(4, 7)]
+        self.f2 = [[i, f"R{i}", f"/p{i}.mp3", "2023-01-01 00:00:00",
+                    "00:10", "", "", None, None] for i in range(7, 10)]
 
         self.tv = self.UFTV(self.db)
 

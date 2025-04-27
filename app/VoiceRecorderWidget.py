@@ -101,7 +101,7 @@ class RecordingThread(QThread):
         self.is_paused = False
         self.elapsed_time = 0
         self.stream = None
-        
+
         # Don't create timers here - we'll handle time tracking differently
 
     def run(self):
@@ -132,29 +132,31 @@ class RecordingThread(QThread):
                         # Read audio data with timeout protection
                         data = self.stream.read(self.frames_per_buffer, exception_on_overflow=False)
                         if not data:
-                            logger.warning("Empty audio data received, possible device disconnection")
+                            logger.warning(
+                                "Empty audio data received, possible device disconnection")
                             continue
-                            
+
                         self.frames.append(data)
 
                         # Calculate audio level for visualization
                         if len(data) > 0:
                             try:
                                 audio_array = np.frombuffer(data, dtype=np.int16)
-                                max_amplitude = np.max(np.abs(audio_array)) if len(audio_array) > 0 else 0
+                                max_amplitude = np.max(np.abs(audio_array)) if len(
+                                    audio_array) > 0 else 0
                                 normalized_level = max_amplitude / 32768.0  # Normalize to 0.0-1.0
                                 self.update_level.emit(normalized_level)
                             except Exception as viz_error:
                                 # Non-critical error, just log it
                                 logger.warning(f"Error calculating audio level: {viz_error}")
-                        
+
                         # Check if we need to update elapsed time (every second)
                         current_time = time.time()
                         if current_time - last_time_update >= 1.0:
                             self.elapsed_time += 1
                             self.update_time.emit(self.elapsed_time)
                             last_time_update = current_time
-                            
+
                     except IOError as e:
                         if "Input overflowed" in str(e):
                             # This is a non-critical error, just log and continue
@@ -194,17 +196,17 @@ class RecordingThread(QThread):
                         self.stream.stop_stream()
                     except Exception as stop_error:
                         logger.warning(f"Error stopping audio stream: {stop_error}")
-                    
+
                     try:
                         self.stream.close()
                     except Exception as close_error:
                         logger.warning(f"Error closing audio stream: {close_error}")
-                    
+
                     self.stream = None
                     logger.debug("Audio stream properly closed")
             except Exception as cleanup_error:
                 logger.error(f"Error during audio stream cleanup: {cleanup_error}", exc_info=True)
-            
+
             logger.info("Recording thread finished execution")
 
     # Time updates are now handled directly in the run method
@@ -355,7 +357,8 @@ class VoiceRecorderWidget(QWidget):
         self.recordButton = SVGToggleButton(record_button_svg_files)
         self.recordButton.setFixedSize(80, 80)
         self.recordButton.clicked.connect(self.toggleRecording)
-        record_button_layout.addWidget(self.recordButton, 0, Qt.AlignmentFlag.AlignCenter)  # Fixed enum
+        record_button_layout.addWidget(
+            self.recordButton, 0, Qt.AlignmentFlag.AlignCenter)  # Fixed enum
 
         self.layout.addLayout(record_button_layout)
 
@@ -452,7 +455,7 @@ class VoiceRecorderWidget(QWidget):
         self.statusLabel.setText("Recording...")
         self.saveButton.setEnabled(True)
         self.deleteButton.setEnabled(True)
-        
+
         # Update timer display immediately to show 00:00:00
         self.timerLabel.setText(format_time_duration(0))
 
@@ -463,11 +466,11 @@ class VoiceRecorderWidget(QWidget):
             self.recording_thread.update_level.connect(self.level_meter.set_level)
             self.recording_thread.update_time.connect(self.updateTimerValue)
             self.recording_thread.error.connect(self.handleRecordingError)
-            
+
             # Register with ThreadManager
             ThreadManager.instance().register_thread(self.recording_thread)
             self.recording_thread.startRecording()
-            
+
             # Start UI update timer
             self.ui_timer.start(100)  # Update UI frequently for smoother appearance
 
@@ -581,7 +584,7 @@ class VoiceRecorderWidget(QWidget):
         if self.is_recording:
             time_str = format_time_duration(self.elapsed_time)
             self.timerLabel.setText(time_str)
-    
+
     def updateTimerValue(self, seconds):
         self.elapsed_time = seconds
         logger.debug(f"Received timer update: {seconds}s")

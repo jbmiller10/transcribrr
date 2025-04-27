@@ -9,18 +9,19 @@ from app.utils import ConfigManager
 
 logger = logging.getLogger('transcribrr')
 
+
 class ThemeManager(QObject):
     """Manage app themes."""
-    
+
     _instance = None
-    
+
     @classmethod
     def instance(cls):
         """Return singleton ThemeManager."""
         if cls._instance is None:
             cls._instance = ThemeManager()
         return cls._instance
-    
+
     def __init__(self):
         """Init ThemeManager."""
         super().__init__()
@@ -30,37 +31,37 @@ class ThemeManager(QObject):
             'primary': '#3366CC',
             'primary-light': '#5588EE',
             'primary-dark': '#224499',
-            
+
             # Secondary colors
             'secondary': '#6699CC',
             'secondary-light': '#88BBEE',
             'secondary-dark': '#447799',
-            
+
             # Accent color
             'accent': '#FF9900',
             'accent-light': '#FFBB33',
             'accent-dark': '#DD7700',
-            
+
             # Status colors
             'error': '#FF5252',
             'success': '#4CAF50',
             'warning': '#FFC107',
             'info': '#2196F3',
-            
+
             # Font settings
             'font-family': 'Arial, Helvetica, sans-serif',
             'font-size-small': '11px',
             'font-size-normal': '13px',
             'font-size-large': '15px',
             'font-size-xlarge': '18px',
-            
+
             # Spacing
             'spacing-xs': '4px',
             'spacing-small': '8px',
             'spacing-normal': '12px',
             'spacing-large': '16px',
             'spacing-xl': '24px',
-            
+
             # Borders
             'border-radius-small': '3px',
             'border-radius': '4px',
@@ -68,7 +69,7 @@ class ThemeManager(QObject):
             'border-width': '1px',
             'border-width-thick': '2px',
         }
-        
+
         # Light theme variables
         self.light_variables = {
             'background': '#FFFFFF',
@@ -85,7 +86,7 @@ class ThemeManager(QObject):
             'selected': '#E0E0E0',
             'overlay': 'rgba(0, 0, 0, 0.1)',
         }
-        
+
         # Dark theme variables
         self.dark_variables = {
             'background': '#2B2B2B',
@@ -102,21 +103,21 @@ class ThemeManager(QObject):
             'selected': '#404040',
             'overlay': 'rgba(0, 0, 0, 0.25)',
         }
-        
+
         self.current_theme = 'light'
         self.current_variables = {}
         self.current_stylesheet = ""
-        
+
         # Initialize ConfigManager and connect signal handler
         self.config_manager = ConfigManager.instance()
         self.config_manager.config_updated.connect(self._handle_config_update)
-        
+
         # Migrate from old config.json if needed
         self._migrate_legacy_config()
-        
+
         # Load theme preference
         self.load_theme_preference()
-    
+
     def _migrate_legacy_config(self):
         """Migrate theme settings from legacy config.json to ConfigManager."""
         legacy_config_path = resource_path('config.json')
@@ -124,40 +125,41 @@ class ThemeManager(QObject):
             try:
                 with open(legacy_config_path, 'r') as config_file:
                     legacy_config = json.load(config_file)
-                    
+
                     # Only process the legacy file if it has a theme key
                     if 'theme' in legacy_config:
                         legacy_theme = legacy_config.get('theme', 'light').lower()
                         if legacy_theme in ['light', 'dark']:
                             # Save to ConfigManager
-                            logger.info(f"Migrating theme '{legacy_theme}' from legacy config to ConfigManager")
+                            logger.info(
+                                f"Migrating theme '{legacy_theme}' from legacy config to ConfigManager")
                             self.config_manager.set('theme', legacy_theme)
-                
+
                 # Delete the legacy file after migration
                 os.remove(legacy_config_path)
                 logger.info(f"Removed legacy config file: {legacy_config_path}")
             except Exception as e:
                 logger.error(f"Error migrating legacy theme config: {e}")
-    
+
     def load_theme_preference(self):
         """Load theme preference from ConfigManager."""
         try:
             theme = self.config_manager.get('theme', 'light').lower()
             if theme in ['light', 'dark']:
                 self.current_theme = theme
-                
+
                 # Apply the theme immediately
                 self._update_theme_variables()
         except Exception as e:
             logger.error(f"Error loading theme preference: {e}")
-    
+
     def save_theme_preference(self, theme):
         """Save theme preference using ConfigManager."""
         try:
             self.config_manager.set('theme', theme)
         except Exception as e:
             logger.error(f"Error saving theme preference: {e}")
-    
+
     @pyqtSlot(dict)
     def _handle_config_update(self, changes):
         """Handle config updates from ConfigManager."""
@@ -167,7 +169,7 @@ class ThemeManager(QObject):
                 logger.info(f"Applying theme '{new_theme}' from config update")
                 self.current_theme = new_theme
                 self._update_theme_variables()
-    
+
     def _update_theme_variables(self):
         """Update current variables based on current theme."""
         # Combine base variables with theme-specific variables
@@ -176,40 +178,40 @@ class ThemeManager(QObject):
             self.current_variables.update(self.dark_variables)
         else:
             self.current_variables.update(self.light_variables)
-        
+
         # Generate stylesheet
         self.current_stylesheet = self._generate_stylesheet()
-        
+
         # Apply to application
         if QApplication.instance():
             QApplication.instance().setStyleSheet(self.current_stylesheet)
-    
+
     def toggle_theme(self):
         """Toggle theme."""
         if self.current_theme == 'light':
             self.apply_theme('dark')
         else:
             self.apply_theme('light')
-    
+
     def apply_theme(self, theme_name):
         """Apply theme."""
         if theme_name not in ['light', 'dark']:
             logger.warning(f"Unknown theme: {theme_name}, defaulting to light")
             theme_name = 'light'
-        
+
         if theme_name != self.current_theme:
             self.current_theme = theme_name
-            
+
             # Save preference to ConfigManager
             self.save_theme_preference(theme_name)
-            
+
             # Update variables and apply stylesheet
             self._update_theme_variables()
-    
+
     def _generate_stylesheet(self):
         """Generate stylesheet."""
         v = self.current_variables  # Shorthand for variables
-        
+
         # Common stylesheet for all widgets
         stylesheet = f"""
         /* Global styles */
@@ -607,28 +609,29 @@ class ThemeManager(QObject):
             min-width: 80px;
         }}
         """
-        
+
         return stylesheet
-    
+
     def get_color(self, name):
         """Return color."""
         return self.current_variables.get(name, '#000000')
-    
+
     def get_qcolor(self, name):
         """Return QColor."""
         color_str = self.get_color(name)
         return QColor(color_str)
-    
+
     def get_palette(self):
         """Return QPalette."""
         palette = QPalette()
-        
+
         if self.current_theme == 'dark':
             # Dark theme palette
             palette.setColor(QPalette.ColorRole.Window, self.get_qcolor('background'))
             palette.setColor(QPalette.ColorRole.WindowText, self.get_qcolor('foreground'))
             palette.setColor(QPalette.ColorRole.Base, self.get_qcolor('background-secondary'))
-            palette.setColor(QPalette.ColorRole.AlternateBase, self.get_qcolor('background-tertiary'))
+            palette.setColor(QPalette.ColorRole.AlternateBase,
+                             self.get_qcolor('background-tertiary'))
             palette.setColor(QPalette.ColorRole.ToolTipBase, self.get_qcolor('background'))
             palette.setColor(QPalette.ColorRole.ToolTipText, self.get_qcolor('foreground'))
             palette.setColor(QPalette.ColorRole.Text, self.get_qcolor('foreground'))
@@ -642,7 +645,8 @@ class ThemeManager(QObject):
             palette.setColor(QPalette.ColorRole.Window, self.get_qcolor('background'))
             palette.setColor(QPalette.ColorRole.WindowText, self.get_qcolor('foreground'))
             palette.setColor(QPalette.ColorRole.Base, self.get_qcolor('background'))
-            palette.setColor(QPalette.ColorRole.AlternateBase, self.get_qcolor('background-secondary'))
+            palette.setColor(QPalette.ColorRole.AlternateBase,
+                             self.get_qcolor('background-secondary'))
             palette.setColor(QPalette.ColorRole.ToolTipBase, self.get_qcolor('background'))
             palette.setColor(QPalette.ColorRole.ToolTipText, self.get_qcolor('foreground'))
             palette.setColor(QPalette.ColorRole.Text, self.get_qcolor('foreground'))
@@ -651,5 +655,5 @@ class ThemeManager(QObject):
             palette.setColor(QPalette.ColorRole.Link, self.get_qcolor('primary'))
             palette.setColor(QPalette.ColorRole.Highlight, self.get_qcolor('primary'))
             palette.setColor(QPalette.ColorRole.HighlightedText, QColor('white'))
-        
+
         return palette

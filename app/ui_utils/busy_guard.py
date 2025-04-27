@@ -16,23 +16,24 @@ logger = logging.getLogger('transcribrr')
 # Generic type for operation result
 T = TypeVar('T')
 
+
 class BusyGuard(Generic[T]):
     """Context manager to handle UI state during long operations.
-    
+
     This manager coordinates:
     - UI element disabling/enabling
     - Spinner animations
     - Progress dialog display and updates
     - Status message updates
     - Cancellation handling
-    
+
     Example:
         ```python
         # Simple usage
         with BusyGuard(feedback_manager, "Operation", ui_elements=[button1, button2], 
                        spinner="my_spinner"):
             # Do long-running operation...
-            
+
         # With progress dialog
         with BusyGuard(feedback_manager, "Operation", progress=True, 
                       progress_title="Processing Data") as guard:
@@ -41,9 +42,9 @@ class BusyGuard(Generic[T]):
             # Complete the operation
         ```
     """
-    
+
     def __init__(
-        self, 
+        self,
         feedback_manager: FeedbackManager,
         operation_name: str,
         ui_elements: Optional[List[QWidget]] = None,
@@ -57,7 +58,7 @@ class BusyGuard(Generic[T]):
         status_message: Optional[str] = None,
     ):
         """Initialize BusyGuard with operation parameters.
-        
+
         Args:
             feedback_manager: The feedback manager to use
             operation_name: Name of the operation (used in logs and IDs)
@@ -82,19 +83,19 @@ class BusyGuard(Generic[T]):
         self.progress_cancelable = progress_cancelable
         self.cancel_callback = cancel_callback
         self.status_message = status_message or f"Starting {operation_name.lower()}..."
-        
+
         # Create unique operation ID to track this specific operation
         self.operation_id = f"{operation_name.lower().replace(' ', '_')}_{uuid.uuid4().hex[:8]}"
-        
+
         # Track started components for proper cleanup
         self.spinner_started = False
         self.progress_started = False
         self.ui_busy = False
         self.result = None  # Will hold operation result if any
-        
+
     def __enter__(self) -> 'BusyGuard[T]':
         """Start the feedback indicators when entering context.
-        
+
         Returns:
             Self for fluent usage
         """
@@ -103,13 +104,14 @@ class BusyGuard(Generic[T]):
             if self.ui_elements:
                 self.feedback_manager.set_ui_busy(True, self.ui_elements)
                 self.ui_busy = True
-            
+
             # Start spinner if requested
             if self.spinner_name:
                 self.spinner_started = self.feedback_manager.start_spinner(self.spinner_name)
                 if not self.spinner_started:
-                    logger.warning(f"Spinner '{self.spinner_name}' not found or couldn't be started")
-            
+                    logger.warning(
+                        f"Spinner '{self.spinner_name}' not found or couldn't be started")
+
             # Show progress dialog if requested
             if self.show_progress:
                 self.feedback_manager.start_progress(
@@ -121,28 +123,28 @@ class BusyGuard(Generic[T]):
                     cancel_callback=self.cancel_callback
                 )
                 self.progress_started = True
-            
+
             # Show status message
             if self.status_message:
                 self.feedback_manager.show_status(self.status_message)
-                
+
             logger.debug(f"BusyGuard started for operation: {self.operation_name}")
-                
+
         except Exception as e:
             logger.error(f"Error in BusyGuard setup: {e}", exc_info=True)
             # Clean up partial setup if there was an error
             self.__exit__(type(e), e, e.__traceback__)
             raise
-            
+
         return self
-        
+
     def __exit__(self, exc_type, exc_val, exc_tb):
         """Clean up all feedback indicators when leaving context."""
         try:
             # Stop spinner if it was started
             if self.spinner_started and self.spinner_name:
                 self.feedback_manager.stop_spinner(self.spinner_name)
-                
+
             # Close progress dialog if it was started
             if self.progress_started:
                 if exc_type:
@@ -155,27 +157,27 @@ class BusyGuard(Generic[T]):
                         message=f"{self.operation_name} completed successfully.",
                         auto_close=True
                     )
-                    
+
             # The feedback_manager will automatically re-enable UI when operations complete
-                
+
             logger.debug(f"BusyGuard completed for operation: {self.operation_name}")
-                
+
         except Exception as e:
             logger.error(f"Error in BusyGuard cleanup: {e}", exc_info=True)
             # Don't re-raise here to avoid masking the original exception
-            
+
         return False  # Don't suppress exceptions
-        
+
     def update_progress(self, value: int, message: Optional[str] = None) -> None:
         """Update progress dialog if it's being shown.
-        
+
         Args:
             value: Current progress value
             message: Optional new progress message
         """
         if self.progress_started:
             self.feedback_manager.update_progress(self.operation_id, value, message)
-            
+
     def cancel(self) -> None:
         """Cancel the operation and clean up UI state."""
         # Call user's cancel callback if provided
@@ -184,23 +186,23 @@ class BusyGuard(Generic[T]):
                 self.cancel_callback()
             except Exception as e:
                 logger.error(f"Error in cancel callback: {e}", exc_info=True)
-                
+
         # Close the progress dialog immediately
         if self.progress_started:
             self.feedback_manager.close_progress(self.operation_id)
-            
+
         # Update status to show cancellation
         self.feedback_manager.show_status(f"{self.operation_name} canceled")
-        
+
     def set_result(self, result: T) -> T:
         """Store operation result and return it.
-        
+
         This allows capturing the result in the context manager
         while still returning it to the caller.
-        
+
         Args:
             result: The operation result to store
-            
+
         Returns:
             The same result value (for fluent usage)
         """

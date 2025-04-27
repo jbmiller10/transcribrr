@@ -61,7 +61,8 @@ class TestMainTranscriptionWidgetFeedback(unittest.TestCase):
         # Verify UI busy and spinner/progress invoked
         self.widget.feedback_manager.set_ui_busy.assert_called_with(True, ['ui1', 'ui2'])
         self.widget.feedback_manager.start_spinner.assert_called_with('transcribe')
-        self.widget.feedback_manager.start_progress.assert_called()  # At least called for transcription progress
+        # At least called for transcription progress
+        self.widget.feedback_manager.start_progress.assert_called()
 
 
 @unittest.skipUnless(HAVE_CONTROL, "PyQt6 or ControlPanelWidget not available")

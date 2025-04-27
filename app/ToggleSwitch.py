@@ -1,6 +1,7 @@
 from PyQt6.QtWidgets import QSlider
 from PyQt6.QtCore import Qt
 
+
 class ToggleSwitch(QSlider):
     def __init__(self, parent=None):
         super().__init__(Qt.Orientation.Horizontal, parent)

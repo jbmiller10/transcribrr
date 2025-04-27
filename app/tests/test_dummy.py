@@ -1,9 +1,10 @@
 import unittest
 from unittest.mock import MagicMock, patch
 
+
 class TestDummy(unittest.TestCase):
     """A simple test to verify imports."""
-    
+
     def test_imports(self):
         """Test that we can import modules."""
         try:
@@ -12,7 +13,7 @@ class TestDummy(unittest.TestCase):
             self.assertTrue(True, "Successfully imported models")
         except ImportError as e:
             self.fail(f"Failed to import models: {e}")
-            
+
     def test_record_class(self):
         """Test that Recording dataclass works."""
         try:
@@ -28,7 +29,7 @@ class TestDummy(unittest.TestCase):
             self.assertTrue(recording.file_path.endswith("test.mp3"))
         except Exception as e:
             self.fail(f"Failed to create Recording: {e}")
-            
+
     def test_view_mode(self):
         """Test that ViewMode enum works."""
         try:

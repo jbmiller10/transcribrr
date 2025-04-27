@@ -1,3 +1,5 @@
+from .path_utils import resource_path
+from logging.handlers import RotatingFileHandler
 import os
 import re
 import sys
@@ -32,7 +34,6 @@ os.makedirs(get_log_dir(), exist_ok=True)
 # logging later this block will silently be ignored thanks to the `force`
 # parameter defaulting to *False* in older Python versions.
 
-from logging.handlers import RotatingFileHandler
 
 if not logging.getLogger().handlers:
     max_bytes = 5 * 1024 * 1024  # 5 MB per log file
@@ -67,49 +68,49 @@ def is_audio_file(file_path):
 
 def ensure_ffmpeg_available():
     logger = logging.getLogger('transcribrr')
-    
+
     # Check if we're running in a bundled app
     is_bundled = getattr(sys, 'frozen', False) and hasattr(sys, '_MEIPASS')
-    
+
     # Potential locations for ffmpeg
     potential_locations = [
         # Check in PATH first
         shutil.which('ffmpeg'),
-        
+
         # Check bundled binary (MacOS app)
         os.path.join(os.path.dirname(sys.executable), 'bin', 'ffmpeg'),
-        
+
         # Check one directory up in case we're in MacOS/bin structure
         os.path.join(os.path.dirname(os.path.dirname(sys.executable)), 'bin', 'ffmpeg'),
-        
+
         # Check Resources directory for bundled app
         resource_path('ffmpeg'),
-        
+
         # Custom common locations
         '/usr/local/bin/ffmpeg',
         '/opt/homebrew/bin/ffmpeg',
         '/usr/bin/ffmpeg',
     ]
-    
+
     # Log the locations we're checking
     logger.info(f"Checking for ffmpeg in: {potential_locations}")
-    
+
     # Check each potential location
     for location in potential_locations:
         if location and os.path.exists(location) and os.access(location, os.X_OK):
             logger.info(f"Found ffmpeg at: {location}")
-            
+
             # Add the directory to PATH if it's not already there
             ffmpeg_dir = os.path.dirname(location)
             if ffmpeg_dir not in os.environ.get('PATH', ''):
                 logger.info(f"Adding {ffmpeg_dir} to PATH")
                 os.environ['PATH'] = f"{ffmpeg_dir}{os.pathsep}{os.environ.get('PATH', '')}"
-            
+
             # Try running ffmpeg to verify it works
             try:
                 result = subprocess.run(
-                    [location, '-version'], 
-                    stdout=subprocess.PIPE, 
+                    [location, '-version'],
+                    stdout=subprocess.PIPE,
                     stderr=subprocess.PIPE,
                     timeout=5
                 )
@@ -118,7 +119,7 @@ def ensure_ffmpeg_available():
                     return True, f"Found ffmpeg at {location}"
             except Exception as e:
                 logger.warning(f"Found ffmpeg at {location} but executing it failed: {e}")
-    
+
     logger.error("Could not find ffmpeg in any of the expected locations")
     return False, "FFmpeg not found. Please install FFmpeg to enable audio/video processing."
 
@@ -126,13 +127,13 @@ def ensure_ffmpeg_available():
 def validate_url(url):
     """Return True if YouTube URL."""
     # Modified regex pattern to handle more YouTube URL formats
-    youtube_regex = r'(?:https?:\/\/)?(?:www\.|m\.)?(?:youtube\.com|youtu\.be)\/(?:watch\?v=|embed\/|v\/|shorts\/)?([a-zA-Z0-9_-]{11})' # More specific video ID
+    # More specific video ID
+    youtube_regex = r'(?:https?:\/\/)?(?:www\.|m\.)?(?:youtube\.com|youtu\.be)\/(?:watch\?v=|embed\/|v\/|shorts\/)?([a-zA-Z0-9_-]{11})'
     # search() instead of match() so the pattern can appear anywhere in the URL
     return re.search(youtube_regex, url) is not None
 
 
 # Moved to path_utils.py
-from .path_utils import resource_path
 
 
 def language_to_iso(language_name):
@@ -167,7 +168,7 @@ def language_to_iso(language_name):
         "Xhosa": "xh", "Yiddish": "yi", "Yoruba": "yo", "Zulu": "zu"
     }
     normalized_name = language_name.strip().title()
-    return language_map.get(normalized_name, "en") # Default to English
+    return language_map.get(normalized_name, "en")  # Default to English
 
 
 def create_backup(file_path: str, backup_dir: Optional[str] = None) -> Optional[str]:
@@ -207,11 +208,11 @@ def check_ffmpeg():
             # Windows-specific imports
             import ctypes
             import subprocess
-            
+
             # Constants on Windows
             STARTF_USESHOWWINDOW = 0x00000001
             SW_HIDE = 0
-            
+
             # Create startupinfo
             startupinfo = subprocess.STARTUPINFO()
             startupinfo.dwFlags |= STARTF_USESHOWWINDOW
@@ -220,20 +221,23 @@ def check_ffmpeg():
         result = subprocess.run(
             ["ffmpeg", "-version"],
             capture_output=True, text=True, check=False,
-            startupinfo=startupinfo # Pass startupinfo
+            startupinfo=startupinfo  # Pass startupinfo
         )
         if result.returncode == 0 and "ffmpeg version" in result.stdout.lower():
-             logger.info("FFmpeg found and accessible.")
-             return True
+            logger.info("FFmpeg found and accessible.")
+            return True
         else:
-             logger.warning(f"FFmpeg check failed. Return code: {result.returncode}. Stdout: {result.stdout[:100]}...")
-             return False
+            logger.warning(
+                f"FFmpeg check failed. Return code: {result.returncode}. Stdout: {result.stdout[:100]}...")
+            return False
     except FileNotFoundError:
-        logger.error("FFmpeg command not found. Please ensure FFmpeg is installed and in your system's PATH.")
+        logger.error(
+            "FFmpeg command not found. Please ensure FFmpeg is installed and in your system's PATH.")
         return False
     except Exception as e:
         logger.error(f"Error checking FFmpeg: {e}", exc_info=True)
         return False
+
 
 def check_system_requirements():
     """Check system requirements for running the application."""
@@ -249,7 +253,8 @@ def check_system_requirements():
     }
 
     if sys.version_info < (3, 11):
-        results["issues"].append("Python 3.11+ is recommended for optimal performance and compatibility.")
+        results["issues"].append(
+            "Python 3.11+ is recommended for optimal performance and compatibility.")
 
     if results["cuda_available"]:
         try:
@@ -265,14 +270,15 @@ def check_system_requirements():
             logger.error(f"Error getting GPU info: {e}", exc_info=True)
             results["issues"].append(f"Error accessing GPU information: {e}")
     elif results["mps_available"]:
-         results["issues"].append("MPS acceleration available (Apple Silicon).")
-         logger.info("MPS acceleration available.")
+        results["issues"].append("MPS acceleration available (Apple Silicon).")
+        logger.info("MPS acceleration available.")
     else:
         results["issues"].append("CUDA/MPS not detected. Using CPU (transcription may be slower).")
         logger.info("No GPU acceleration (CUDA/MPS) detected. Using CPU.")
 
     if not results["ffmpeg_installed"]:
-        results["issues"].append("FFmpeg not found. Required for audio/video processing and conversion.")
+        results["issues"].append(
+            "FFmpeg not found. Required for audio/video processing and conversion.")
 
     return results
 
@@ -281,7 +287,8 @@ def format_time_duration(seconds: Union[float, int, str]) -> str:
     """Format seconds into HH:MM:SS or MM:SS."""
     try:
         secs = float(seconds)
-        if secs < 0: secs = 0
+        if secs < 0:
+            secs = 0
     except (ValueError, TypeError):
         logger.warning(f"Invalid input for format_time_duration: {seconds}. Returning 00:00.")
         return "00:00"
@@ -299,7 +306,7 @@ def format_time_duration(seconds: Union[float, int, str]) -> str:
 
 def show_system_info(parent=None):
     """Display system information in a message box."""
-    from .ui_utils import show_info_message # Local import to avoid circular dependency
+    from .ui_utils import show_info_message  # Local import to avoid circular dependency
     info = check_system_requirements()
 
     message = f"{APP_NAME} System Information:\n\n"
@@ -314,7 +321,7 @@ def show_system_info(parent=None):
         for gpu in info['gpu_info']:
             message += f"  • GPU {gpu['index']}: {gpu['name']} ({gpu['memory']})\n"
     elif info['cuda_available']:
-         message += "CUDA detected, but failed to get GPU details.\n"
+        message += "CUDA detected, but failed to get GPU details.\n"
     else:
         message += "No CUDA-enabled GPU detected.\n"
 
@@ -323,7 +330,7 @@ def show_system_info(parent=None):
         for issue in info['issues']:
             message += f"  • {issue}\n"
     else:
-         message += "\nSystem check passed with no major issues noted."
+        message += "\nSystem check passed with no major issues noted."
 
     show_info_message(parent, f"{APP_NAME} System Info", message)
     return message
@@ -345,7 +352,8 @@ def cleanup_temp_files(directory=None, file_pattern="transcribrr_temp_*", max_ag
     max_age_seconds = max_age_days * 24 * 60 * 60
     deleted_count = 0
 
-    logger.debug(f"Checking for old temp files in '{directory}' matching '{file_pattern}' older than {max_age_days} day(s)...")
+    logger.debug(
+        f"Checking for old temp files in '{directory}' matching '{file_pattern}' older than {max_age_days} day(s)...")
 
     for file_path in files_to_check:
         try:
@@ -355,10 +363,11 @@ def cleanup_temp_files(directory=None, file_pattern="transcribrr_temp_*", max_ag
                 if file_age > max_age_seconds:
                     os.remove(file_path)
                     deleted_count += 1
-                    logger.info(f"Deleted old temp file: {file_path} (Age: {file_age/3600:.1f} hours)")
+                    logger.info(
+                        f"Deleted old temp file: {file_path} (Age: {file_age/3600:.1f} hours)")
             elif os.path.isdir(file_path):
-                 # Optionally handle temporary directories later
-                 pass
+                # Optionally handle temporary directories later
+                pass
         except Exception as e:
             logger.warning(f"Error during temp file cleanup for {file_path}: {e}")
 
@@ -371,7 +380,7 @@ def cleanup_temp_files(directory=None, file_pattern="transcribrr_temp_*", max_ag
 
 class ConfigManager(QObject):
     """Singleton configuration manager."""
-    config_updated = pyqtSignal(dict) # Emits changes {key: new_value}
+    config_updated = pyqtSignal(dict)  # Emits changes {key: new_value}
     _instance = None
 
     @classmethod
@@ -403,20 +412,20 @@ class ConfigManager(QObject):
                 logger.warning(f"Config file not found at {self._config_path}, creating default.")
                 # Proceed to ensure defaults, which will trigger save
         except json.JSONDecodeError as e:
-             logger.error(f"Error decoding config file {self._config_path}: {e}. Using defaults.", exc_info=True)
-             # Proceed to ensure defaults
+            logger.error(
+                f"Error decoding config file {self._config_path}: {e}. Using defaults.", exc_info=True)
+            # Proceed to ensure defaults
         except Exception as e:
             logger.error(f"Error loading config: {e}. Using defaults.", exc_info=True)
             # Proceed to ensure defaults
 
         # Ensure all default keys exist, merging loaded config over defaults
         self._config = DEFAULT_CONFIG.copy()
-        self._config.update(loaded_config) # Overwrite defaults with loaded values
+        self._config.update(loaded_config)  # Overwrite defaults with loaded values
 
         # Save back if defaults were added or file was missing/corrupt
         if not os.path.exists(self._config_path) or len(self._config) > len(loaded_config):
             self._save_config()
-
 
     def _save_config(self) -> None:
         """Save the current configuration state."""
@@ -434,7 +443,7 @@ class ConfigManager(QObject):
 
     def set(self, key: str, value: Any) -> None:
         """Set a single config value and save."""
-        if self.get(key) != value: # Check against current effective value
+        if self.get(key) != value:  # Check against current effective value
             self._config[key] = value
             self._save_config()
             self.config_updated.emit({key: value})
@@ -466,7 +475,7 @@ class ConfigManager(QObject):
 
 class PromptManager(QObject):
     """Singleton prompt template manager."""
-    prompts_changed = pyqtSignal() # Emitted when prompts are added, updated, deleted, or imported
+    prompts_changed = pyqtSignal()  # Emitted when prompts are added, updated, deleted, or imported
     _instance = None
 
     @classmethod
@@ -498,8 +507,9 @@ class PromptManager(QObject):
                 logger.warning(f"Prompts file not found at {self._prompts_path}, creating default.")
                 # Proceed to normalization which handles defaults
         except json.JSONDecodeError as e:
-             logger.error(f"Error decoding prompts file {self._prompts_path}: {e}. Using defaults.", exc_info=True)
-             # Proceed to normalization
+            logger.error(
+                f"Error decoding prompts file {self._prompts_path}: {e}. Using defaults.", exc_info=True)
+            # Proceed to normalization
         except Exception as e:
             logger.error(f"Error loading prompts: {e}. Using defaults.", exc_info=True)
             # Proceed to normalization
@@ -510,7 +520,6 @@ class PromptManager(QObject):
         if not os.path.exists(self._prompts_path) or len(self._prompts) > len(loaded_data):
             self._save_prompts()
 
-
     def _normalize_prompts(self, loaded_data: Dict) -> Dict[str, Dict[str, str]]:
         """Ensure all prompts have 'text' and 'category' keys, merge with defaults."""
         normalized = {}
@@ -520,15 +529,15 @@ class PromptManager(QObject):
 
         # Override/add from loaded data
         for name, data in loaded_data.items():
-            if isinstance(data, str): # Handle old format
+            if isinstance(data, str):  # Handle old format
                 normalized[name] = {"text": data, "category": "General"}
             elif isinstance(data, dict) and "text" in data:
-                 normalized[name] = {
-                     "text": data["text"],
-                     "category": data.get("category", "General") # Default category if missing
-                 }
+                normalized[name] = {
+                    "text": data["text"],
+                    "category": data.get("category", "General")  # Default category if missing
+                }
             else:
-                 logger.warning(f"Skipping invalid prompt entry during load: '{name}'")
+                logger.warning(f"Skipping invalid prompt entry during load: '{name}'")
         return normalized
 
     def _save_prompts(self) -> None:
@@ -568,23 +577,23 @@ class PromptManager(QObject):
         return True
 
     def update_prompt(self, name: str, text: str, category: Optional[str] = None) -> bool:
-         """Update an existing prompt. Category is optional."""
-         name = name.strip()
-         text = text.strip()
-         if name not in self._prompts:
-             logger.error(f"Prompt '{name}' not found for updating.")
-             return False
-         if not text:
-             logger.error("Prompt text cannot be empty.")
-             return False
+        """Update an existing prompt. Category is optional."""
+        name = name.strip()
+        text = text.strip()
+        if name not in self._prompts:
+            logger.error(f"Prompt '{name}' not found for updating.")
+            return False
+        if not text:
+            logger.error("Prompt text cannot be empty.")
+            return False
 
-         self._prompts[name]["text"] = text
-         if category is not None:
-             self._prompts[name]["category"] = category.strip() or "General"
-         self._save_prompts()
-         self.prompts_changed.emit()
-         logger.info(f"Updated prompt: '{name}'")
-         return True
+        self._prompts[name]["text"] = text
+        if category is not None:
+            self._prompts[name]["category"] = category.strip() or "General"
+        self._save_prompts()
+        self.prompts_changed.emit()
+        logger.info(f"Updated prompt: '{name}'")
+        return True
 
     def delete_prompt(self, name: str) -> bool:
         """Delete a prompt by name."""
@@ -607,7 +616,7 @@ class PromptManager(QObject):
             with open(file_path, 'r', encoding='utf-8') as file:
                 imported_data = json.load(file)
 
-            new_prompts = self._normalize_prompts(imported_data) # Normalize imported data
+            new_prompts = self._normalize_prompts(imported_data)  # Normalize imported data
             count = len(new_prompts)
 
             if not merge:
@@ -634,41 +643,51 @@ class PromptManager(QObject):
     def export_prompts_to_file(self, file_path: str) -> Tuple[bool, str]:
         """Export current prompts to a JSON file."""
         try:
-             os.makedirs(os.path.dirname(file_path), exist_ok=True)
-             with open(file_path, 'w', encoding='utf-8') as file:
-                 # Exclude defaults maybe? Or export all? Export all for now.
-                 json.dump(self._prompts, file, indent=4, sort_keys=True)
-             count = len(self._prompts)
-             logger.info(f"Exported {count} prompts to {file_path}")
-             return True, f"Successfully exported {count} prompts."
+            os.makedirs(os.path.dirname(file_path), exist_ok=True)
+            with open(file_path, 'w', encoding='utf-8') as file:
+                # Exclude defaults maybe? Or export all? Export all for now.
+                json.dump(self._prompts, file, indent=4, sort_keys=True)
+            count = len(self._prompts)
+            logger.info(f"Exported {count} prompts to {file_path}")
+            return True, f"Successfully exported {count} prompts."
         except Exception as e:
-             logger.error(f"Failed to export prompts to {file_path}: {e}", exc_info=True)
-             return False, f"Export failed: {e}"
+            logger.error(f"Failed to export prompts to {file_path}: {e}", exc_info=True)
+            return False, f"Export failed: {e}"
+
 
 def estimate_transcription_time(file_path: str, model_name: str, is_gpu: bool = False) -> Optional[int]:
     """Estimate transcription time (very rough estimate)."""
-    if not os.path.exists(file_path): return None
+    if not os.path.exists(file_path):
+        return None
     try:
         file_size_mb = os.path.getsize(file_path) / (1024 * 1024)
         # Simplified speed factor based on model size name
-        speed_factor = 1.0 # Base (medium)
-        if "tiny" in model_name: speed_factor = 3.0
-        elif "base" in model_name: speed_factor = 2.0
-        elif "small" in model_name: speed_factor = 1.5
-        elif "large" in model_name: speed_factor = 0.5
-        if "distil" in model_name: speed_factor *= 1.2 # Distilled models are faster
+        speed_factor = 1.0  # Base (medium)
+        if "tiny" in model_name:
+            speed_factor = 3.0
+        elif "base" in model_name:
+            speed_factor = 2.0
+        elif "small" in model_name:
+            speed_factor = 1.5
+        elif "large" in model_name:
+            speed_factor = 0.5
+        if "distil" in model_name:
+            speed_factor *= 1.2  # Distilled models are faster
 
-        if is_gpu: speed_factor *= 3 # Rough GPU boost
+        if is_gpu:
+            speed_factor *= 3  # Rough GPU boost
 
         # Time = Size / Speed (lower speed factor means slower -> more time)
         # Avoid division by zero
-        if speed_factor <= 0: speed_factor = 0.1
+        if speed_factor <= 0:
+            speed_factor = 0.1
         # Estimate seconds per MB
-        secs_per_mb = 3 / speed_factor # Adjusted baseline (e.g., medium takes ~3s/MB on CPU)
-        estimated_time = (file_size_mb * secs_per_mb) + 15 # Add fixed overhead
+        secs_per_mb = 3 / speed_factor  # Adjusted baseline (e.g., medium takes ~3s/MB on CPU)
+        estimated_time = (file_size_mb * secs_per_mb) + 15  # Add fixed overhead
 
-        logger.debug(f"Estimated time for {os.path.basename(file_path)} ({file_size_mb:.1f}MB, model='{model_name}', gpu={is_gpu}): {estimated_time:.1f}s")
-        return max(int(estimated_time), 5) # Min 5 seconds estimate
+        logger.debug(
+            f"Estimated time for {os.path.basename(file_path)} ({file_size_mb:.1f}MB, model='{model_name}', gpu={is_gpu}): {estimated_time:.1f}s")
+        return max(int(estimated_time), 5)  # Min 5 seconds estimate
     except Exception as e:
         logger.warning(f"Could not estimate transcription time for {file_path}: {e}")
         return None
