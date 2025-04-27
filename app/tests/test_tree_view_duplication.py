@@ -13,7 +13,6 @@ import importlib
 import os
 import sys
 import unittest
-from unittest.mock import patch
 
 from PyQt6.QtCore import QObject, QTimer, Qt, pyqtSignal
 from PyQt6.QtWidgets import QApplication

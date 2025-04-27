@@ -8,7 +8,7 @@ import sys
 import time
 import logging
 from PyQt6.QtWidgets import QApplication, QWidget, QVBoxLayout, QPushButton, QLabel
-from PyQt6.QtCore import Qt, QTimer
+from PyQt6.QtCore import QTimer
 
 from app.DatabaseManager import DatabaseManager
 from app.FolderManager import FolderManager

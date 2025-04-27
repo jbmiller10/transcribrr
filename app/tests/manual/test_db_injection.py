@@ -5,7 +5,6 @@ This test should be run manually and is not part of the automated test suite.
 """
 
 import sys
-import time
 import threading
 from PyQt6.QtWidgets import QApplication
 from PyQt6.QtCore import QTimer

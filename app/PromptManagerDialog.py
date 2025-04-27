@@ -1,13 +1,10 @@
 from PyQt6.QtWidgets import (
     QPushButton, QTableWidget, QTextEdit, QDialog, QVBoxLayout, QHBoxLayout,
     QTableWidgetItem, QLineEdit, QLabel, QComboBox, QTabWidget, QWidget,
-    QFileDialog, QMessageBox, QGroupBox, QSplitter, QHeaderView
+    QFileDialog, QMessageBox, QHeaderView
 )
-from PyQt6.QtCore import pyqtSignal, Qt, QSize
-from PyQt6.QtGui import QIcon, QFont
-import json
-import os
-from app.path_utils import resource_path
+from PyQt6.QtCore import Qt
+from PyQt6.QtGui import QIcon
 from app.path_utils import resource_path
 from app.utils import PromptManager
 from app.ui_utils import show_error_message, show_info_message, show_confirmation_dialog

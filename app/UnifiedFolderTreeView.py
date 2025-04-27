@@ -1,9 +1,9 @@
 import os
 import datetime
 import logging
-from PyQt6.QtCore import pyqtSignal, Qt, QModelIndex, QTimer, QMimeData, QPoint, QSize
+from PyQt6.QtCore import pyqtSignal, Qt, QModelIndex, QTimer, QSize
 from PyQt6.QtWidgets import QTreeView, QAbstractItemView, QMenu, QStyledItemDelegate, QStyleOptionViewItem
-from PyQt6.QtGui import QIcon, QAction, QDrag
+from PyQt6.QtGui import QIcon
 from app.RecordingFolderModel import RecordingFolderModel, RecordingFilterProxyModel
 from app.RecordingListItem import RecordingListItem
 from app.FolderManager import FolderManager
@@ -59,7 +59,6 @@ class UnifiedFolderTreeView(QTreeView):
         self.db_manager = db_manager
         
         # Get the properly initialized FolderManager instance with shared DatabaseManager
-        from app.FolderManager import FolderManager
         try:
             # Pass the database manager to ensure proper initialization
             self.folder_manager = FolderManager.instance(db_manager=self.db_manager)
@@ -493,7 +492,7 @@ class UnifiedFolderTreeView(QTreeView):
     # Compatibility method for legacy code that might call apply_filter instead of set_filter
     def apply_filter(self, search_text, filter_criteria):
         """Legacy method - redirects to set_filter for compatibility."""
-        logger.info(f"Legacy apply_filter called, redirecting to set_filter")
+        logger.info("Legacy apply_filter called, redirecting to set_filter")
         self.set_filter(search_text, filter_criteria)
         
     # ----- Compatibility methods for QTreeWidget API -----
@@ -650,7 +649,7 @@ class UnifiedFolderTreeView(QTreeView):
             logger.debug("No item currently selected")
                 
         # Reload structure
-        logger.info(f"Triggering structure reload due to data change")
+        logger.info("Triggering structure reload due to data change")
         self.load_structure(current_id, current_type, expanded_folder_ids)
     
     def _process_pending_refresh(self):

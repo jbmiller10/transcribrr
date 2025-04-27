@@ -17,12 +17,11 @@ raise unittest.SkipTest("Skipping legacy test in headless environment")
 import os
 import gc
 import psutil
-import time
 from PyQt6.QtWidgets import (
     QApplication, QMainWindow, QPushButton, QVBoxLayout, 
-    QHBoxLayout, QLabel, QWidget, QTreeView, QScrollArea
+    QHBoxLayout, QLabel, QWidget, QScrollArea
 )
-from PyQt6.QtCore import QTimer, Qt
+from PyQt6.QtCore import QTimer
 
 # Add parent directory to path to import app modules
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))

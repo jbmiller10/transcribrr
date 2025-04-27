@@ -4,8 +4,7 @@ import sqlite3
 import os
 import logging
 import json
-from typing import List, Dict, Any, Optional, Tuple, Callable, Union
-import datetime
+from typing import List, Optional, Tuple
 
 # Custom exceptions for better error handling
 class DuplicatePathError(Exception):

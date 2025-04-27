@@ -1,10 +1,8 @@
 import yt_dlp
 from PyQt6.QtCore import QThread, pyqtSignal
-import traceback
 from datetime import datetime
 import os
 from app.constants import get_recordings_dir
-import time
 import logging # Use logging
 from threading import Lock
 

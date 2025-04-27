@@ -1,20 +1,15 @@
 from PyQt6.QtWidgets import (
     QPushButton, QComboBox, QDoubleSpinBox, QSpinBox, QCheckBox, QDialog,
     QVBoxLayout, QLabel, QLineEdit, QDialogButtonBox, QHBoxLayout, QGroupBox,
-    QTabWidget, QWidget, QToolTip, QMessageBox, QScrollArea
+    QTabWidget, QWidget, QMessageBox, QScrollArea
 )
-from PyQt6.QtCore import pyqtSignal, Qt, QSize, QThread, QTimer
+from PyQt6.QtCore import pyqtSignal, Qt, QThread, QTimer
 from PyQt6.QtGui import QIcon
-import keyring
-import json
-import os
 import logging
-import requests
 from openai import OpenAI
 import torch
 from threading import Lock
 
-from app.path_utils import resource_path
 from app.path_utils import resource_path
 from app.utils import ConfigManager, PromptManager
 from app.PromptManagerDialog import PromptManagerDialog

@@ -1,11 +1,9 @@
 from PyQt6.QtCore import QThread, pyqtSignal
-from typing import List, Optional, Union, Dict, Any
+from typing import List, Optional
 import os
 import time
 import logging
-import concurrent.futures
 from threading import Lock # Import Lock
-from app.utils import language_to_iso
 from app.services.transcription_service import TranscriptionService, ModelManager
 
 # Configure logging
@@ -283,7 +281,7 @@ class TranscriptionThread(QThread):
                 
                 return result
             else:
-                self.update_progress.emit(f'Using OpenAI API for transcription')
+                self.update_progress.emit('Using OpenAI API for transcription')
         elif method == 'local':
             device = ModelManager.instance().device
             self.update_progress.emit(f'Using device: {device}')

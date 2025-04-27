@@ -1,9 +1,9 @@
 import os
 import logging
-from typing import Optional, Union, Callable, Dict, Any
+from typing import Optional, Callable, Dict, Any
 from PyQt6.QtWidgets import (
     QMessageBox, QProgressDialog, QLabel, QWidget, QWidgetAction, QToolBar,
-    QPushButton, QSizePolicy, QStatusBar
+    QPushButton, QStatusBar
 )
 from PyQt6.QtCore import Qt, QSize, QTimer
 from PyQt6.QtGui import QMovie, QIcon, QAction

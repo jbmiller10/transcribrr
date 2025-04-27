@@ -3,10 +3,8 @@
 Test ThemeManager and ConfigManager integration
 """
 
-import os
 import sys
 from PyQt6.QtWidgets import QApplication
-from PyQt6.QtCore import QObject, pyqtSignal, pyqtSlot
 
 from app.utils import ConfigManager
 from app.ThemeManager import ThemeManager

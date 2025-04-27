@@ -6,7 +6,7 @@ from pydub import AudioSegment
 import wave
 from PyQt6.QtWidgets import (
     QApplication, QWidget, QVBoxLayout, QLabel, QPushButton, QHBoxLayout,
-    QSlider, QStyle, QMessageBox, QProgressDialog, QFileDialog, QLineEdit
+    QMessageBox, QProgressDialog, QFileDialog
 )
 from PyQt6.QtCore import QThread, pyqtSignal, QTimer, Qt, QSize
 from PyQt6.QtGui import QIcon, QColor
@@ -17,7 +17,6 @@ import tempfile
 import numpy as np
 import time
 from app.SVGToggleButton import SVGToggleButton
-from app.path_utils import resource_path
 from app.path_utils import resource_path
 from app.utils import format_time_duration
 from app.ThreadManager import ThreadManager
@@ -55,7 +54,7 @@ class AudioLevelMeter(QWidget):
         self.update()
 
     def paintEvent(self, event):
-        from PyQt6.QtGui import QPainter, QColor, QLinearGradient, QBrush
+        from PyQt6.QtGui import QPainter, QLinearGradient, QBrush
 
         painter = QPainter(self)
         painter.setRenderHint(QPainter.RenderHint.Antialiasing)  # Fixed enum

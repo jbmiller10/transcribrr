@@ -4,19 +4,16 @@ import logging
 from PyQt6.QtWidgets import (
     QApplication, QMainWindow, QTextEdit, QToolBar, QColorDialog, QWidget,
     QWidgetAction, QFontComboBox, QComboBox, QSizePolicy, QLabel, QToolButton, QMenu, QFileDialog,
-    QMessageBox, QPlainTextEdit, QPushButton, QStatusBar, QDialog, QVBoxLayout,
-    QHBoxLayout, QCheckBox, QTabWidget, QScrollArea, QLineEdit
+    QMessageBox, QPushButton, QStatusBar, QDialog, QVBoxLayout,
+    QHBoxLayout, QCheckBox, QLineEdit
 )
 from PyQt6.QtGui import (
-    QIcon, QFont, QColor, QTextListFormat, QActionGroup, QTextCursor, QAction, QMovie,
-    QTextCharFormat, QKeySequence, QPixmap, QTextDocument, QTextDocumentWriter,
-    QShortcut
+    QIcon, QFont, QColor, QTextListFormat, QActionGroup, QTextCursor, QAction, QTextCharFormat, QKeySequence, QTextDocument, QShortcut
 )
-from PyQt6.QtCore import Qt, QSize, pyqtSignal, QUrl, QTimer, QMimeData
+from PyQt6.QtCore import Qt, QSize, pyqtSignal, QTimer
 from PyQt6.QtPrintSupport import QPrinter, QPrintDialog, QPrintPreviewDialog
 import docx
 from htmldocx import HtmlToDocx
-from PyPDF2 import PdfFileWriter
 
 from app.path_utils import resource_path
 

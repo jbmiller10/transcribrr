@@ -7,15 +7,13 @@ import subprocess
 import torch
 import shutil
 import json
-from typing import Dict, Any, Optional, List, Union, Tuple
-from PyQt6.QtWidgets import QMessageBox
+from typing import Dict, Any, Optional, Union, Tuple
 from PyQt6.QtCore import QObject, pyqtSignal
 import datetime
 
 # Assuming constants.py is in the same directory or accessible via path
 from .constants import (
     APP_NAME,
-    APP_VERSION,
     DEFAULT_CONFIG,
     DEFAULT_PROMPTS,
     AUDIO_EXTENSIONS,

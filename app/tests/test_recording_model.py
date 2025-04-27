@@ -1,14 +1,12 @@
 # app/tests/test_recording_model.py
 import sys
 import unittest
-import unittest
 # Skip legacy tests in headless environment
 raise unittest.SkipTest("Skipping legacy test in headless environment")
 import os
 from PyQt6.QtWidgets import QApplication
 # Explicitly import QIcon and other necessary Qt classes here
-from PyQt6.QtGui import QStandardItemModel, QStandardItem, QIcon
-from PyQt6.QtCore import Qt # Import Qt if needed for roles
+from PyQt6.QtGui import QIcon
 
 # Add parent directory to path to import app modules
 # Ensure this path adjustment is correct for your structure

@@ -1,9 +1,8 @@
-import sys
 import os
-from PyQt6.QtWidgets import QApplication, QMainWindow, QVBoxLayout, QWidget, QLabel, QFileDialog, QMessageBox, \
+from PyQt6.QtWidgets import QApplication, QVBoxLayout, QWidget, QLabel, QFileDialog, QMessageBox, \
     QProgressDialog
-from PyQt6.QtCore import Qt, pyqtSignal, QSize
-from PyQt6.QtGui import QDragEnterEvent, QDropEvent, QPainter, QPen, QFont, QColor, QBrush
+from PyQt6.QtCore import Qt, pyqtSignal
+from PyQt6.QtGui import QDragEnterEvent, QDropEvent, QPainter, QPen, QColor
 import shutil
 import logging
 from app.path_utils import resource_path

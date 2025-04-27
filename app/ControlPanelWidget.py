@@ -1,17 +1,16 @@
 from PyQt6.QtCore import pyqtSignal, QSize, QPropertyAnimation, QEasingCurve, QTimer, Qt
 from PyQt6.QtGui import QIcon
 from PyQt6.QtWidgets import (
-    QWidget, QHBoxLayout, QPushButton, QMessageBox, QLineEdit,
-    QApplication, QMainWindow, QVBoxLayout, QLabel, QProgressBar
+    QWidget, QHBoxLayout, QPushButton, QLineEdit,
+    QVBoxLayout, QLabel, QProgressBar
 )
 import os
-import sys
 import logging
 from moviepy.editor import VideoFileClip
 # Use managers and ui_utils
 from app.path_utils import resource_path
 from app.utils import validate_url, resource_path, ConfigManager
-from app.ui_utils import show_error_message, show_info_message, FeedbackManager
+from app.ui_utils import show_error_message, FeedbackManager
 from app.threads.TranscodingThread import TranscodingThread
 from app.threads.YouTubeDownloadThread import YouTubeDownloadThread
 from app.VoiceRecorderWidget import VoiceRecorderWidget
