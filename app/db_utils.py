@@ -4,7 +4,8 @@ import sqlite3
 import os
 import logging
 import json
-from typing import List, Optional, Tuple
+from typing import List, Optional, Tuple, Dict, Union
+from datetime import datetime
 
 # Custom exceptions for better error handling
 class DuplicatePathError(Exception):
@@ -20,6 +21,7 @@ from app.constants import (
     FIELD_RAW_TRANSCRIPT_FORMATTED, FIELD_PROCESSED_TEXT_FORMATTED,
     DEFAULT_CONFIG, get_database_path, get_config_path
 )
+from app.models.recording import Recording
 
 # Configure logging
 logger = logging.getLogger('transcribrr')
@@ -154,12 +156,30 @@ def get_all_recordings(conn: sqlite3.Connection) -> List[Tuple]:
         logger.error(f"Error getting all recordings: {e}", exc_info=True)
         raise
 
-def get_recording_by_id(conn: sqlite3.Connection, recording_id: int) -> Optional[Tuple]:
-    """Return recording by ID."""
+def get_recording_by_id(conn: sqlite3.Connection, recording_id: int) -> Optional[Recording]:
+    """Return recording by ID as a Recording object."""
     try:
         cursor = conn.cursor()
         cursor.execute(f"SELECT * FROM {TABLE_RECORDINGS} WHERE {FIELD_ID}=?", (recording_id,))
-        return cursor.fetchone()
+        record = cursor.fetchone()
+        if record is None:
+            return None
+            
+        # Convert the tuple to a Recording object
+        # Column order: id, filename, file_path, date_created, duration, raw_transcript, 
+        # processed_text, raw_transcript_formatted, processed_text_formatted, original_source_identifier
+        return Recording(
+            id=record[0],
+            filename=record[1],
+            file_path=record[2],
+            date_created=datetime.fromisoformat(record[3]) if record[3] else datetime.now(),
+            duration=record[4],
+            raw_transcript=record[5],
+            processed_text=record[6],
+            raw_transcript_formatted=record[7],
+            processed_text_formatted=record[8],
+            original_source_identifier=record[9] if len(record) > 9 else None
+        )
     except sqlite3.Error as e:
         logger.error(f"Error getting recording {recording_id}: {e}", exc_info=True)
         raise

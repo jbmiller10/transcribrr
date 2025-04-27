@@ -16,11 +16,11 @@ if os.path.abspath(os.path.join(os.path.dirname(__file__), "../..")) not in sys.
 class TestSpinnerFunctionality(unittest.TestCase):
     """Test the SpinnerManager and FeedbackManager functionality."""
 
-    @patch('app.ui_utils.QMovie')
-    @patch('app.ui_utils.QWidgetAction')
-    @patch('app.ui_utils.QAction')
-    @patch('app.ui_utils.QLabel')
-    @patch('app.ui_utils.QPushButton')
+    @patch('app.ui_utils_legacy.QMovie')
+    @patch('app.ui_utils_legacy.QWidgetAction')
+    @patch('app.ui_utils_legacy.QAction')
+    @patch('app.ui_utils_legacy.QLabel')
+    @patch('app.ui_utils_legacy.QPushButton')
     def test_spinner_creation(self, mock_button, mock_label, mock_action, mock_widget_action, mock_movie):
         """Test creating and toggling a spinner."""
         from app.ui_utils import SpinnerManager
@@ -57,11 +57,11 @@ class TestSpinnerFunctionality(unittest.TestCase):
         self.assertFalse(spinner_manager.is_active('test_spinner'))
 
 
-    @patch('app.ui_utils.QMovie')
-    @patch('app.ui_utils.QWidgetAction')
-    @patch('app.ui_utils.QAction')
-    @patch('app.ui_utils.QLabel')
-    @patch('app.ui_utils.QPushButton')
+    @patch('app.ui_utils_legacy.QMovie')
+    @patch('app.ui_utils_legacy.QWidgetAction')
+    @patch('app.ui_utils_legacy.QAction')
+    @patch('app.ui_utils_legacy.QLabel')
+    @patch('app.ui_utils_legacy.QPushButton')
     def test_feedback_manager(self, mock_button, mock_label, mock_action, mock_widget_action, mock_movie):
         """Test FeedbackManager integration with SpinnerManager."""
         from app.ui_utils import FeedbackManager
