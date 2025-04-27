@@ -12,25 +12,29 @@ from app.services.transcription_service import TranscriptionService, ModelManage
 
 # Configure logging
 # logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s') # Configured in main
-logger = logging.getLogger('transcribrr')
+logger = logging.getLogger("transcribrr")
 
 
 class TranscriptionThread(QThread):
     """Transcription thread."""
+
     update_progress = pyqtSignal(str)
     completed = pyqtSignal(str)
     error = pyqtSignal(str)
 
-    def __init__(self,
-                 file_path: str,
-                 transcription_quality: str,
-                 speaker_detection_enabled: bool,
-                 hf_auth_key: Optional[str],
-                 language: str = 'English',
-                 transcription_method: str = 'local',
-                 openai_api_key: Optional[str] = None,
-                 hardware_acceleration_enabled: bool = True,
-                 *args, **kwargs):
+    def __init__(
+        self,
+        file_path: str,
+        transcription_quality: str,
+        speaker_detection_enabled: bool,
+        hf_auth_key: Optional[str],
+        language: str = "English",
+        transcription_method: str = "local",
+        openai_api_key: Optional[str] = None,
+        hardware_acceleration_enabled: bool = True,
+        *args,
+        **kwargs,
+    ):
         super().__init__(*args, **kwargs)
         self.file_path = file_path
 
@@ -74,7 +78,8 @@ class TranscriptionThread(QThread):
         MAX_SIZE = 500  # MB, adjust as needed
         if file_size_mb > MAX_SIZE:
             raise ValueError(
-                f"File size too large: {file_size_mb:.1f}MB > {MAX_SIZE}MB limit ({os.path.basename(file_path)})")
+                f"File size too large: {file_size_mb:.1f}MB > {MAX_SIZE}MB limit ({os.path.basename(file_path)})"
+            )
 
     def cancel(self):
         with self._lock:
@@ -92,85 +97,97 @@ class TranscriptionThread(QThread):
 
     def run(self):
         if self.is_canceled():
-            self.update_progress.emit('Transcription cancelled before starting.')
+            self.update_progress.emit("Transcription cancelled before starting.")
             return  # Exit if validation failed or cancelled early
 
         start_time = time.time()
         transcript = ""
 
         try:
-            self.update_progress.emit('Transcription started...')
+            self.update_progress.emit("Transcription started...")
             transcript = self.process_single_file(self.file_path, start_time)
 
             if self.is_canceled():
-                self.update_progress.emit('Transcription cancelled.')
+                self.update_progress.emit("Transcription cancelled.")
             else:
                 self.completed.emit(transcript)
-                self.update_progress.emit('Transcription finished successfully.')
+                self.update_progress.emit("Transcription finished successfully.")
 
         except FileNotFoundError as e:
             if not self.is_canceled():
                 from app.secure import redact
+
                 safe_msg = redact(str(e))
                 self.error.emit(f"File error: {safe_msg}")
                 logger.error(f"Transcription file error: {safe_msg}")
-            self.update_progress.emit('Transcription failed: File not found')
+            self.update_progress.emit("Transcription failed: File not found")
         except ValueError as e:
             if not self.is_canceled():
                 from app.secure import redact
+
                 safe_msg = redact(str(e))
                 self.error.emit(f"Configuration error: {safe_msg}")
                 logger.error(f"Transcription configuration error: {safe_msg}")
-            self.update_progress.emit('Transcription failed: Configuration issue')
+            self.update_progress.emit("Transcription failed: Configuration issue")
         except RuntimeError as e:
             if not self.is_canceled():
                 from app.secure import redact
+
                 safe_msg = redact(str(e))
                 self.error.emit(f"Processing error: {safe_msg}")
                 logger.error(f"Transcription processing error: {safe_msg}")
-            self.update_progress.emit('Transcription failed: Processing issue')
+            self.update_progress.emit("Transcription failed: Processing issue")
         except requests.exceptions.RequestException as e:
             if not self.is_canceled():
                 from app.secure import redact
+
                 safe_msg = redact(str(e))
                 self.error.emit(f"Network error during transcription: {safe_msg}")
                 logger.error(f"Transcription network error: {safe_msg}", exc_info=True)
-            self.update_progress.emit('Transcription failed: Network error')
+            self.update_progress.emit("Transcription failed: Network error")
         except (torch.cuda.OutOfMemoryError, RuntimeError) as e:
             if not self.is_canceled():
                 err_str = str(e)
                 if "CUDA out of memory" in err_str or "MPS out of memory" in err_str:
                     self.error.emit(
-                        "Not enough GPU memory. Try disabling hardware acceleration in settings.")
-                    logger.error(f"Transcription memory error: {err_str}", exc_info=True)
-                    self.update_progress.emit('Transcription failed: Out of memory')
+                        "Not enough GPU memory. Try disabling hardware acceleration in settings."
+                    )
+                    logger.error(
+                        f"Transcription memory error: {err_str}", exc_info=True
+                    )
+                    self.update_progress.emit("Transcription failed: Out of memory")
                 else:
                     raise  # Re-raise if it's not a memory error
         except Exception as e:
             if not self.is_canceled():
                 from app.secure import redact
+
                 safe_msg = redact(str(e))
                 self.error.emit(f"Unexpected error: {safe_msg}")
                 logger.error(f"Transcription error: {e}", exc_info=True)
-            self.update_progress.emit('Transcription failed: Unexpected error')
+            self.update_progress.emit("Transcription failed: Unexpected error")
         finally:
             try:
                 # Always attempt to release resources regardless of cancellation state
-                self.update_progress.emit('Cleaning up transcription resources...')
+                self.update_progress.emit("Cleaning up transcription resources...")
                 ModelManager.instance().release_memory()
 
                 # Clean up any temporary files that might still exist
                 self._cleanup_temp_files()
             except Exception as cleanup_error:
                 logger.error(
-                    f"Error during transcription resource cleanup: {cleanup_error}", exc_info=True)
+                    f"Error during transcription resource cleanup: {cleanup_error}",
+                    exc_info=True,
+                )
             logger.info("Transcription thread finished execution.")
 
     def _create_temporary_chunks(self, file_path: str) -> List[str]:
         """Create temporary chunks for API-based transcription of large files."""
         # AudioSegment and tempfile are already imported at the top
 
-        self.update_progress.emit("File exceeds API size limit. Creating temporary chunks...")
+        self.update_progress.emit(
+            "File exceeds API size limit. Creating temporary chunks..."
+        )
 
         # Load the audio file
         try:
@@ -184,7 +201,8 @@ class TranscriptionThread(QThread):
 
             logger.info(f"Creating {num_chunks} temporary chunks for API transcription")
             self.update_progress.emit(
-                f"Creating {num_chunks} temporary chunks for API transcription...")
+                f"Creating {num_chunks} temporary chunks for API transcription..."
+            )
 
             # Create temporary files for the chunks
             temp_files = []
@@ -202,11 +220,15 @@ class TranscriptionThread(QThread):
                 chunk = audio[start_ms:end_ms]
 
                 # Create a temporary file
-                fd, temp_path = tempfile.mkstemp(suffix='.wav', prefix=f'temp_chunk_{i+1}_')
+                fd, temp_path = tempfile.mkstemp(
+                    suffix=".wav", prefix=f"temp_chunk_{i+1}_"
+                )
                 os.close(fd)  # Close file descriptor, we'll use the path
 
                 # Export chunk to the temporary file
-                self.update_progress.emit(f"Exporting temporary chunk {i+1}/{num_chunks}...")
+                self.update_progress.emit(
+                    f"Exporting temporary chunk {i+1}/{num_chunks}..."
+                )
                 chunk.export(temp_path, format="wav")
 
                 # Track the temporary file
@@ -236,7 +258,9 @@ class TranscriptionThread(QThread):
         # Clear the list after cleanup
         self.temp_files = []
 
-    def _process_temporary_chunks(self, temp_files: List[str], start_time: float) -> str:
+    def _process_temporary_chunks(
+        self, temp_files: List[str], start_time: float
+    ) -> str:
         """Process temporary chunks for API transcription and combine results."""
         if not temp_files:
             return "[No chunks to process]"
@@ -248,28 +272,32 @@ class TranscriptionThread(QThread):
             for i, chunk_path in enumerate(temp_files):
                 if self.is_canceled():
                     logger.info(
-                        f"Temporary chunk processing cancelled at chunk {i+1}/{total_chunks}")
+                        f"Temporary chunk processing cancelled at chunk {i+1}/{total_chunks}"
+                    )
                     return "[Transcription Cancelled]"
 
-                self.update_progress.emit(f"Transcribing temporary chunk {i+1}/{total_chunks}...")
+                self.update_progress.emit(
+                    f"Transcribing temporary chunk {i+1}/{total_chunks}..."
+                )
 
                 # Process this chunk with API method
                 result = self.transcription_service._transcribe_with_api(
                     file_path=chunk_path,
                     language=self.language,
-                    api_key=self.openai_api_key
+                    api_key=self.openai_api_key,
                 )
 
                 # Get the transcription text
-                if 'text' in result:
-                    chunk_results.append(result['text'])
+                if "text" in result:
+                    chunk_results.append(result["text"])
                 else:
                     chunk_results.append(f"[Error in Chunk {i+1}]")
 
                 # Update progress percentage
                 progress_pct = int((i + 1) / total_chunks * 100)
                 self.update_progress.emit(
-                    f"Progress: {progress_pct}% ({i+1}/{total_chunks} chunks processed)")
+                    f"Progress: {progress_pct}% ({i+1}/{total_chunks} chunks processed)"
+                )
 
             # Combine results
             combined_transcript = " ".join(chunk_results)
@@ -284,30 +312,31 @@ class TranscriptionThread(QThread):
             # Always clean up the temporary files
             self._cleanup_temp_files()
 
-    def process_single_file(self,
-                            file_path: str,
-                            start_time: float,
-                            chunk_label: str = "") -> str:
+    def process_single_file(
+        self, file_path: str, start_time: float, chunk_label: str = ""
+    ) -> str:
         if self.is_canceled():
             return "[Cancelled]"
 
         task_label = f"{os.path.basename(file_path)}"
         logger.info(f"Starting processing for: {task_label}")
-        self.update_progress.emit(f'Processing: {task_label}...')
+        self.update_progress.emit(f"Processing: {task_label}...")
 
         # Check if using API method and if file exceeds API size limit
         method = self.transcription_method.lower()
-        if method == 'api':
+        if method == "api":
             file_size_mb = os.path.getsize(file_path) / (1024 * 1024)
             if file_size_mb > self.api_file_size_limit:
                 self.update_progress.emit(
-                    f'File size ({file_size_mb:.1f}MB) exceeds API limit ({self.api_file_size_limit}MB)')
+                    f"File size ({file_size_mb:.1f}MB) exceeds API limit ({self.api_file_size_limit}MB)"
+                )
 
                 # Disable speaker detection for chunked API processing
                 original_speaker_detection = self.speaker_detection_enabled
                 if original_speaker_detection:
                     self.update_progress.emit(
-                        'Speaker detection is disabled for chunked API processing')
+                        "Speaker detection is disabled for chunked API processing"
+                    )
 
                 # Create temporary chunks for processing
                 temp_chunks = self._create_temporary_chunks(file_path)
@@ -321,18 +350,21 @@ class TranscriptionThread(QThread):
                 runtime = end_time - start_time
                 logger.info(f"Finished temporary chunk processing in {runtime:.2f}s")
                 self.update_progress.emit(
-                    f"Finished API transcription with temporary chunks in {runtime:.2f}s")
+                    f"Finished API transcription with temporary chunks in {runtime:.2f}s"
+                )
 
                 return result
             else:
-                self.update_progress.emit('Using OpenAI API for transcription')
-        elif method == 'local':
+                self.update_progress.emit("Using OpenAI API for transcription")
+        elif method == "local":
             device = ModelManager.instance().device
-            self.update_progress.emit(f'Using device: {device}')
-            if device == 'cuda':
+            self.update_progress.emit(f"Using device: {device}")
+            if device == "cuda":
                 try:
-                    gpu_mem = torch.cuda.get_device_properties(0).total_memory / (1024**3)
-                    self.update_progress.emit(f'GPU Memory: {gpu_mem:.2f}GB')
+                    gpu_mem = torch.cuda.get_device_properties(0).total_memory / (
+                        1024**3
+                    )
+                    self.update_progress.emit(f"GPU Memory: {gpu_mem:.2f}GB")
                 except Exception:
                     pass  # Ignore if props fail
 
@@ -342,15 +374,19 @@ class TranscriptionThread(QThread):
 
         try:
             # Process file with normal transcription
-            transcription_result: Dict[str, Any] = self.transcription_service.transcribe_file(
-                file_path=file_path,
-                model_id=self.transcription_quality,
-                language=self.language,
-                method=self.transcription_method,
-                openai_api_key=self.openai_api_key,
-                hf_auth_key=self.hf_auth_key if self.speaker_detection_enabled else None,
-                speaker_detection=self.speaker_detection_enabled,
-                hardware_acceleration_enabled=self.hardware_acceleration_enabled
+            transcription_result: Dict[str, Any] = (
+                self.transcription_service.transcribe_file(
+                    file_path=file_path,
+                    model_id=self.transcription_quality,
+                    language=self.language,
+                    method=self.transcription_method,
+                    openai_api_key=self.openai_api_key,
+                    hf_auth_key=(
+                        self.hf_auth_key if self.speaker_detection_enabled else None
+                    ),
+                    speaker_detection=self.speaker_detection_enabled,
+                    hardware_acceleration_enabled=self.hardware_acceleration_enabled,
+                )
             )
 
             # Process Result
@@ -362,12 +398,17 @@ class TranscriptionThread(QThread):
             logger.info(f"Finished processing {task_label} in {runtime:.2f}s")
 
             # Return formatted text if speaker detection was successful, otherwise plain text
-            if self.speaker_detection_enabled and 'formatted_text' in transcription_result:
-                formatted_text = transcription_result.get('formatted_text', '')
-                self.update_progress.emit(f"Finished {task_label} with speakers in {runtime:.2f}s")
+            if (
+                self.speaker_detection_enabled
+                and "formatted_text" in transcription_result
+            ):
+                formatted_text = transcription_result.get("formatted_text", "")
+                self.update_progress.emit(
+                    f"Finished {task_label} with speakers in {runtime:.2f}s"
+                )
                 return formatted_text
-            elif 'text' in transcription_result:
-                text = transcription_result.get('text', '')
+            elif "text" in transcription_result:
+                text = transcription_result.get("text", "")
                 self.update_progress.emit(f"Finished {task_label} in {runtime:.2f}s")
                 return text
             else:

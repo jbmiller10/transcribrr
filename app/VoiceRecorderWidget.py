@@ -5,8 +5,15 @@ import pyaudio
 from pydub import AudioSegment
 import wave
 from PyQt6.QtWidgets import (
-    QApplication, QWidget, QVBoxLayout, QLabel, QPushButton, QHBoxLayout,
-    QMessageBox, QProgressDialog, QFileDialog
+    QApplication,
+    QWidget,
+    QVBoxLayout,
+    QLabel,
+    QPushButton,
+    QHBoxLayout,
+    QMessageBox,
+    QProgressDialog,
+    QFileDialog,
 )
 from PyQt6.QtCore import QThread, pyqtSignal, QTimer, Qt, QSize
 from PyQt6.QtGui import QIcon, QColor
@@ -24,7 +31,7 @@ from app.constants import get_recordings_dir
 
 # Logging configuration should be done in main.py, not here
 # logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
-logger = logging.getLogger('transcribrr')
+logger = logging.getLogger("transcribrr")
 
 
 class AudioLevelMeter(QWidget):
@@ -50,7 +57,9 @@ class AudioLevelMeter(QWidget):
         if self.level > 0:
             self.level = max(0, self.level - self.decay_rate)
         if self.peak_level > 0:
-            self.peak_level = max(0, self.peak_level - self.decay_rate / 4)  # Peak decays slower
+            self.peak_level = max(
+                0, self.peak_level - self.decay_rate / 4
+            )  # Peak decays slower
         self.update()
 
     def paintEvent(self, event):
@@ -89,7 +98,9 @@ class RecordingThread(QThread):
     update_time = pyqtSignal(int)
     error = pyqtSignal(str)
 
-    def __init__(self, audio_instance, format, channels, rate, frames_per_buffer, parent=None):
+    def __init__(
+        self, audio_instance, format, channels, rate, frames_per_buffer, parent=None
+    ):
         super().__init__(parent)
         self.audio = audio_instance
         self.format = format
@@ -113,10 +124,12 @@ class RecordingThread(QThread):
                     channels=self.channels,
                     rate=self.rate,
                     input=True,
-                    frames_per_buffer=self.frames_per_buffer
+                    frames_per_buffer=self.frames_per_buffer,
                 )
             except (KeyError, ValueError) as e:
-                raise RuntimeError(f"Failed to initialize audio stream with current settings: {e}")
+                raise RuntimeError(
+                    f"Failed to initialize audio stream with current settings: {e}"
+                )
             except IOError as e:
                 raise RuntimeError(f"Audio device error: {e}")
             except Exception as e:
@@ -130,10 +143,13 @@ class RecordingThread(QThread):
                 if not self.is_paused:
                     try:
                         # Read audio data with timeout protection
-                        data = self.stream.read(self.frames_per_buffer, exception_on_overflow=False)
+                        data = self.stream.read(
+                            self.frames_per_buffer, exception_on_overflow=False
+                        )
                         if not data:
                             logger.warning(
-                                "Empty audio data received, possible device disconnection")
+                                "Empty audio data received, possible device disconnection"
+                            )
                             continue
 
                         self.frames.append(data)
@@ -142,13 +158,20 @@ class RecordingThread(QThread):
                         if len(data) > 0:
                             try:
                                 audio_array = np.frombuffer(data, dtype=np.int16)
-                                max_amplitude = np.max(np.abs(audio_array)) if len(
-                                    audio_array) > 0 else 0
-                                normalized_level = max_amplitude / 32768.0  # Normalize to 0.0-1.0
+                                max_amplitude = (
+                                    np.max(np.abs(audio_array))
+                                    if len(audio_array) > 0
+                                    else 0
+                                )
+                                normalized_level = (
+                                    max_amplitude / 32768.0
+                                )  # Normalize to 0.0-1.0
                                 self.update_level.emit(normalized_level)
                             except Exception as viz_error:
                                 # Non-critical error, just log it
-                                logger.warning(f"Error calculating audio level: {viz_error}")
+                                logger.warning(
+                                    f"Error calculating audio level: {viz_error}"
+                                )
 
                         # Check if we need to update elapsed time (every second)
                         current_time = time.time()
@@ -162,7 +185,9 @@ class RecordingThread(QThread):
                             # This is a non-critical error, just log and continue
                             logger.warning("Audio input overflow detected")
                             continue
-                        elif "Device unavailable" in str(e) or "Input underflowed" in str(e):
+                        elif "Device unavailable" in str(
+                            e
+                        ) or "Input underflowed" in str(e):
                             # Device might be temporarily unavailable
                             logger.warning(f"Audio device issue: {e}")
                             # Short sleep to avoid CPU spinning
@@ -185,13 +210,14 @@ class RecordingThread(QThread):
 
         except Exception as e:
             from app.secure import redact
+
             safe_msg = redact(str(e))
             self.error.emit(f"Recording error: {safe_msg}")
             logger.error(f"Recording thread error: {e}", exc_info=True)
         finally:
             # Clean up resources properly in all cases
             try:
-                if hasattr(self, 'stream') and self.stream:
+                if hasattr(self, "stream") and self.stream:
                     try:
                         self.stream.stop_stream()
                     except Exception as stop_error:
@@ -205,7 +231,9 @@ class RecordingThread(QThread):
                     self.stream = None
                     logger.debug("Audio stream properly closed")
             except Exception as cleanup_error:
-                logger.error(f"Error during audio stream cleanup: {cleanup_error}", exc_info=True)
+                logger.error(
+                    f"Error during audio stream cleanup: {cleanup_error}", exc_info=True
+                )
 
             logger.info("Recording thread finished execution")
 
@@ -250,11 +278,11 @@ class RecordingThread(QThread):
 
         try:
             # 1. Save raw audio to temp WAV file
-            with tempfile.NamedTemporaryFile(suffix='.wav', delete=False) as tmp_wav:
+            with tempfile.NamedTemporaryFile(suffix=".wav", delete=False) as tmp_wav:
                 temp_wav_path = tmp_wav.name
             logger.debug(f"Created temporary WAV path: {temp_wav_path}")
 
-            wf = wave.open(temp_wav_path, 'wb')
+            wf = wave.open(temp_wav_path, "wb")
             wf.setnchannels(self.channels)
             wf.setsampwidth(self.audio.get_sample_size(self.format))
             wf.setframerate(self.rate)
@@ -263,7 +291,7 @@ class RecordingThread(QThread):
             logger.debug(f"Saved raw audio to temporary WAV: {temp_wav_path}")
 
             # 2. Convert WAV to temp MP3 file
-            with tempfile.NamedTemporaryFile(suffix='.mp3', delete=False) as tmp_mp3:
+            with tempfile.NamedTemporaryFile(suffix=".mp3", delete=False) as tmp_mp3:
                 temp_mp3_path = tmp_mp3.name
             logger.debug(f"Created temporary MP3 path: {temp_mp3_path}")
 
@@ -293,14 +321,18 @@ class RecordingThread(QThread):
                     os.remove(temp_wav_path)
                     logger.debug(f"Cleaned up temp WAV: {temp_wav_path}")
                 except Exception as cleanup_err:
-                    logger.warning(f"Failed to clean up temp WAV {temp_wav_path}: {cleanup_err}")
+                    logger.warning(
+                        f"Failed to clean up temp WAV {temp_wav_path}: {cleanup_err}"
+                    )
             # Cleanup temp MP3 if not moved
             if temp_mp3_path and os.path.exists(temp_mp3_path):
                 try:
                     os.remove(temp_mp3_path)
                     logger.debug(f"Cleaned up temp MP3: {temp_mp3_path}")
                 except Exception as cleanup_err:
-                    logger.warning(f"Failed to clean up temp MP3 {temp_mp3_path}: {cleanup_err}")
+                    logger.warning(
+                        f"Failed to clean up temp MP3 {temp_mp3_path}: {cleanup_err}"
+                    )
 
 
 class VoiceRecorderWidget(QWidget):
@@ -327,7 +359,9 @@ class VoiceRecorderWidget(QWidget):
         self.layout.setSpacing(10)
 
         # Instructions
-        instruction_label = QLabel("Click the button below to start recording from your microphone")
+        instruction_label = QLabel(
+            "Click the button below to start recording from your microphone"
+        )
         instruction_label.setAlignment(Qt.AlignmentFlag.AlignCenter)  # Fixed enum
         instruction_label.setStyleSheet("color: #666; font-style: italic;")
         self.layout.addWidget(instruction_label)
@@ -350,15 +384,16 @@ class VoiceRecorderWidget(QWidget):
         # Record button with SVG icons
         record_button_layout = QHBoxLayout()
         record_button_svg_files = {
-            'record': resource_path('icons/record.svg'),
-            'pause': resource_path('icons/pause.svg'),
+            "record": resource_path("icons/record.svg"),
+            "pause": resource_path("icons/pause.svg"),
         }
 
         self.recordButton = SVGToggleButton(record_button_svg_files)
         self.recordButton.setFixedSize(80, 80)
         self.recordButton.clicked.connect(self.toggleRecording)
         record_button_layout.addWidget(
-            self.recordButton, 0, Qt.AlignmentFlag.AlignCenter)  # Fixed enum
+            self.recordButton, 0, Qt.AlignmentFlag.AlignCenter
+        )  # Fixed enum
 
         self.layout.addLayout(record_button_layout)
 
@@ -369,9 +404,10 @@ class VoiceRecorderWidget(QWidget):
 
         # Icon-only save button with transparent background
         self.saveButton = QPushButton()
-        self.saveButton.setIcon(QIcon(resource_path('icons/save.svg')))
+        self.saveButton.setIcon(QIcon(resource_path("icons/save.svg")))
         self.saveButton.setIconSize(QSize(24, 24))  # Smaller icon size
-        self.saveButton.setStyleSheet("""
+        self.saveButton.setStyleSheet(
+            """
             QPushButton {
                 background-color: transparent;
                 border: none;
@@ -383,7 +419,8 @@ class VoiceRecorderWidget(QWidget):
             QPushButton:pressed {
                 background-color: rgba(150, 150, 150, 50);
             }
-        """)
+        """
+        )
         self.saveButton.setToolTip("Save recording")
         self.saveButton.clicked.connect(self.saveRecording)
         self.saveButton.setEnabled(False)
@@ -392,9 +429,10 @@ class VoiceRecorderWidget(QWidget):
 
         # Icon-only delete button with transparent background
         self.deleteButton = QPushButton()
-        self.deleteButton.setIcon(QIcon(resource_path('icons/delete.svg')))
+        self.deleteButton.setIcon(QIcon(resource_path("icons/delete.svg")))
         self.deleteButton.setIconSize(QSize(24, 24))  # Smaller icon size
-        self.deleteButton.setStyleSheet("""
+        self.deleteButton.setStyleSheet(
+            """
             QPushButton {
                 background-color: transparent;
                 border: none;
@@ -406,7 +444,8 @@ class VoiceRecorderWidget(QWidget):
             QPushButton:pressed {
                 background-color: rgba(150, 150, 150, 50);
             }
-        """)
+        """
+        )
         self.deleteButton.setToolTip("Discard recording")
         self.deleteButton.clicked.connect(self.deleteRecording)
         self.deleteButton.setEnabled(False)
@@ -426,13 +465,19 @@ class VoiceRecorderWidget(QWidget):
 
             # Check available input devices
             info = self.audio.get_host_api_info_by_index(0)
-            num_devices = info.get('deviceCount')
+            num_devices = info.get("deviceCount")
 
             # Log available input devices for debugging
             for i in range(num_devices):
-                if self.audio.get_device_info_by_host_api_device_index(0, i).get('maxInputChannels') > 0:
+                if (
+                    self.audio.get_device_info_by_host_api_device_index(0, i).get(
+                        "maxInputChannels"
+                    )
+                    > 0
+                ):
                     logger.info(
-                        f"Input Device {i}: {self.audio.get_device_info_by_host_api_device_index(0, i).get('name')}")
+                        f"Input Device {i}: {self.audio.get_device_info_by_host_api_device_index(0, i).get('name')}"
+                    )
 
         except Exception as e:
             logger.error(f"Error initializing audio: {e}", exc_info=True)
@@ -451,7 +496,7 @@ class VoiceRecorderWidget(QWidget):
         self.is_recording = True
         self.is_paused = False
         self.elapsed_time = 0
-        self.recordButton.set_svg('pause')
+        self.recordButton.set_svg("pause")
         self.statusLabel.setText("Recording...")
         self.saveButton.setEnabled(True)
         self.deleteButton.setEnabled(True)
@@ -461,7 +506,11 @@ class VoiceRecorderWidget(QWidget):
 
         try:
             self.recording_thread = RecordingThread(
-                self.audio, self.format, self.channels, self.rate, self.frames_per_buffer
+                self.audio,
+                self.format,
+                self.channels,
+                self.rate,
+                self.frames_per_buffer,
             )
             self.recording_thread.update_level.connect(self.level_meter.set_level)
             self.recording_thread.update_time.connect(self.updateTimerValue)
@@ -483,7 +532,7 @@ class VoiceRecorderWidget(QWidget):
     def pauseRecording(self):
         if self.recording_thread:
             self.is_paused = True
-            self.recordButton.set_svg('record')
+            self.recordButton.set_svg("record")
             self.statusLabel.setText("Recording paused")
             self.recording_thread.pauseRecording()
             self.ui_timer.stop()
@@ -491,7 +540,7 @@ class VoiceRecorderWidget(QWidget):
     def resumeRecording(self):
         if self.recording_thread:
             self.is_paused = False
-            self.recordButton.set_svg('pause')
+            self.recordButton.set_svg("pause")
             self.statusLabel.setText("Recording...")
             self.recording_thread.resumeRecording()
             self.ui_timer.start(100)
@@ -502,7 +551,7 @@ class VoiceRecorderWidget(QWidget):
             if self.is_recording:
                 self.is_recording = False
                 self.is_paused = False
-                self.recordButton.set_svg('record')
+                self.recordButton.set_svg("record")
                 self.recording_thread.stopRecording()
                 self.recording_thread.wait()
                 self.ui_timer.stop()
@@ -514,20 +563,26 @@ class VoiceRecorderWidget(QWidget):
             default_name = f"Recording-{timestamp}.mp3"
 
             file_path, _ = QFileDialog.getSaveFileName(
-                self, "Save Recording", os.path.join(get_recordings_dir(), default_name),
-                "MP3 Files (*.mp3);;All Files (*)"
+                self,
+                "Save Recording",
+                os.path.join(get_recordings_dir(), default_name),
+                "MP3 Files (*.mp3);;All Files (*)",
             )
 
             if file_path:
                 # Ensure the extension is .mp3
-                if not file_path.lower().endswith('.mp3'):
-                    file_path += '.mp3'
+                if not file_path.lower().endswith(".mp3"):
+                    file_path += ".mp3"
 
                 # Show a progress dialog for longer recordings
                 if self.elapsed_time > 10:  # Only for recordings longer than 10 seconds
-                    progress = QProgressDialog("Saving recording...", None, 0, 100, self)
+                    progress = QProgressDialog(
+                        "Saving recording...", None, 0, 100, self
+                    )
                     progress.setWindowTitle("Saving Recording")
-                    progress.setWindowModality(Qt.WindowModality.WindowModal)  # Fixed enum
+                    progress.setWindowModality(
+                        Qt.WindowModality.WindowModal
+                    )  # Fixed enum
                     progress.setValue(10)
                     QApplication.processEvents()
 
@@ -557,13 +612,13 @@ class VoiceRecorderWidget(QWidget):
             if self.is_recording:
                 self.is_recording = False
                 self.is_paused = False
-                self.recordButton.set_svg('record')
+                self.recordButton.set_svg("record")
                 self.recording_thread.stopRecording()
                 self.recording_thread.wait()
                 self.ui_timer.stop()
 
             # Clear the recorded frames
-            if hasattr(self.recording_thread, 'frames'):
+            if hasattr(self.recording_thread, "frames"):
                 self.recording_thread.frames.clear()
 
             self.statusLabel.setText("Recording discarded")
@@ -572,7 +627,7 @@ class VoiceRecorderWidget(QWidget):
     def resetUI(self):
         self.elapsed_time = 0
         self.timerLabel.setText("00:00:00")
-        self.recordButton.set_svg('record')
+        self.recordButton.set_svg("record")
         self.saveButton.setEnabled(False)
         self.deleteButton.setEnabled(False)
         self.is_recording = False
@@ -599,8 +654,11 @@ class VoiceRecorderWidget(QWidget):
         self.resetUI()
 
         # Show error message to user
-        QMessageBox.critical(self, "Recording Error",
-                             f"An error occurred during recording:\n{error_message}")
+        QMessageBox.critical(
+            self,
+            "Recording Error",
+            f"An error occurred during recording:\n{error_message}",
+        )
 
 
 # For standalone testing

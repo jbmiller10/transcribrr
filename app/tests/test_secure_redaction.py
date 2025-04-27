@@ -9,6 +9,7 @@ import sys
 import os
 import logging
 import unittest
+
 # Skip legacy tests in headless environment
 raise unittest.SkipTest("Skipping legacy test in headless environment")
 
@@ -29,13 +30,15 @@ class TestSecureRedaction(unittest.TestCase):
 
     def test_log_filter(self):
         f = SensitiveLogFilter()
-        r = logging.LogRecord("x", logging.INFO, "t.py", 1,
-                              "sk-abcdefghijklmnopqrstuvwxyz", (), None)
+        r = logging.LogRecord(
+            "x", logging.INFO, "t.py", 1, "sk-abcdefghijklmnopqrstuvwxyz", (), None
+        )
         f.filter(r)
         self.assertIn("***-REDACTED-***", r.msg)
 
     def test_service_id(self):
         from app.constants import APP_NAME, APP_VERSION
+
         self.assertEqual(get_service_id(), f"{APP_NAME.lower()}-v{APP_VERSION}")
 
 
@@ -59,9 +62,13 @@ class TestSecureHTTPS(unittest.TestCase):
         svc = TranscriptionService()
 
         with self.assertRaises(ValueError):
-            svc._transcribe_with_api(tmp.name, "en", "sk", base_url="http://api.openai.com/v1")
+            svc._transcribe_with_api(
+                tmp.name, "en", "sk", base_url="http://api.openai.com/v1"
+            )
 
-        out = svc._transcribe_with_api(tmp.name, "en", "sk", base_url="https://api.openai.com/v1")
+        out = svc._transcribe_with_api(
+            tmp.name, "en", "sk", base_url="https://api.openai.com/v1"
+        )
         self.assertEqual(out["text"], "demo")
 
         os.unlink(tmp.name)

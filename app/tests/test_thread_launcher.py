@@ -13,8 +13,15 @@ class ThreadLauncherTestHelper:
         """Initialize with minimal requirements."""
         self.test_thread = None
 
-    def _launch_thread(self, thread, completion_handler, progress_handler,
-                       error_handler, finished_handler, thread_attr_name=None):
+    def _launch_thread(
+        self,
+        thread,
+        completion_handler,
+        progress_handler,
+        error_handler,
+        finished_handler,
+        thread_attr_name=None,
+    ):
         """
         Clone of the MainTranscriptionWidget._launch_thread method for testing.
         """
@@ -30,6 +37,7 @@ class ThreadLauncherTestHelper:
 
         # Register thread with ThreadManager
         from app.ThreadManager import ThreadManager
+
         ThreadManager.instance().register_thread(thread)
 
         # Start the thread
@@ -53,7 +61,7 @@ class MockThread:
 class TestThreadLauncher(unittest.TestCase):
     """Test the _launch_thread helper method."""
 
-    @patch('app.ThreadManager.ThreadManager.instance')
+    @patch("app.ThreadManager.ThreadManager.instance")
     def test_launch_thread_connects_signals(self, mock_thread_manager_instance):
         """Test that _launch_thread connects all signals correctly."""
         # Set up the ThreadManager mock
@@ -79,7 +87,7 @@ class TestThreadLauncher(unittest.TestCase):
             progress_handler=progress_handler,
             error_handler=error_handler,
             finished_handler=finished_handler,
-            thread_attr_name='test_thread'
+            thread_attr_name="test_thread",
         )
 
         # Verify signal connections
@@ -100,7 +108,7 @@ class TestThreadLauncher(unittest.TestCase):
         # Verify method returns the thread
         self.assertEqual(result, mock_thread)
 
-    @patch('app.ThreadManager.ThreadManager.instance')
+    @patch("app.ThreadManager.ThreadManager.instance")
     def test_launch_thread_without_attribute_name(self, mock_thread_manager_instance):
         """Test that _launch_thread works when no thread_attr_name is provided."""
         # Set up the ThreadManager mock
@@ -125,7 +133,7 @@ class TestThreadLauncher(unittest.TestCase):
             completion_handler=completion_handler,
             progress_handler=progress_handler,
             error_handler=error_handler,
-            finished_handler=finished_handler
+            finished_handler=finished_handler,
         )
 
         # Verify signal connections still made
@@ -144,5 +152,5 @@ class TestThreadLauncher(unittest.TestCase):
         self.assertEqual(result, mock_thread)
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     unittest.main()

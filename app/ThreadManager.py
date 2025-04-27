@@ -10,10 +10,10 @@ logger = logging.getLogger(__name__)
 class ThreadManager:
     """Singleton for managing QThreads."""
 
-    _instance: Optional['ThreadManager'] = None
+    _instance: Optional["ThreadManager"] = None
 
     @classmethod
-    def instance(cls) -> 'ThreadManager':
+    def instance(cls) -> "ThreadManager":
         """Return singleton ThreadManager."""
         if cls._instance is None:
             cls._instance = ThreadManager()
@@ -51,10 +51,13 @@ class ThreadManager:
         thread_id = id(thread)
         if thread_id in self._active_threads:
             del self._active_threads[thread_id]
-            logger.debug(f"Thread unregistered: {thread.__class__.__name__} (id: {thread_id})")
+            logger.debug(
+                f"Thread unregistered: {thread.__class__.__name__} (id: {thread_id})"
+            )
         else:
             logger.debug(
-                f"Attempted to unregister non-registered thread: {thread.__class__.__name__} (id: {thread_id})")
+                f"Attempted to unregister non-registered thread: {thread.__class__.__name__} (id: {thread_id})"
+            )
 
     def get_active_threads(self) -> List[QThread]:
         return list(self._active_threads.values())
@@ -74,9 +77,11 @@ class ThreadManager:
             thread_name = thread.__class__.__name__
             thread_id = id(thread)
 
-            logger.debug(f"Attempting to cancel thread: {thread_name} (id: {thread_id})")
+            logger.debug(
+                f"Attempting to cancel thread: {thread_name} (id: {thread_id})"
+            )
 
-            if hasattr(thread, 'cancel') and callable(getattr(thread, 'cancel')):
+            if hasattr(thread, "cancel") and callable(getattr(thread, "cancel")):
                 try:
                     thread.cancel()
                     logger.debug(f"Called cancel() on thread: {thread_name}")
@@ -87,11 +92,14 @@ class ThreadManager:
 
             if thread.isRunning():
                 logger.debug(
-                    f"Waiting for thread {thread_name} to finish (timeout: {wait_timeout}ms)")
+                    f"Waiting for thread {thread_name} to finish (timeout: {wait_timeout}ms)"
+                )
                 thread_finished = thread.wait(wait_timeout)
 
                 if not thread_finished:
-                    logger.warning(f"Thread {thread_name} did not finish within timeout")
+                    logger.warning(
+                        f"Thread {thread_name} did not finish within timeout"
+                    )
                     # Thread will be forcefully terminated by cleanup_application in main.py
                 else:
                     logger.debug(f"Thread {thread_name} finished successfully")

@@ -7,7 +7,7 @@ from PyQt6.QtCore import pyqtSlot, QObject
 from app.path_utils import resource_path
 from app.utils import ConfigManager
 
-logger = logging.getLogger('transcribrr')
+logger = logging.getLogger("transcribrr")
 
 
 class ThemeManager(QObject):
@@ -28,83 +28,77 @@ class ThemeManager(QObject):
         # Base theme variables (shared between light and dark)
         self.base_variables = {
             # Primary colors
-            'primary': '#3366CC',
-            'primary-light': '#5588EE',
-            'primary-dark': '#224499',
-
+            "primary": "#3366CC",
+            "primary-light": "#5588EE",
+            "primary-dark": "#224499",
             # Secondary colors
-            'secondary': '#6699CC',
-            'secondary-light': '#88BBEE',
-            'secondary-dark': '#447799',
-
+            "secondary": "#6699CC",
+            "secondary-light": "#88BBEE",
+            "secondary-dark": "#447799",
             # Accent color
-            'accent': '#FF9900',
-            'accent-light': '#FFBB33',
-            'accent-dark': '#DD7700',
-
+            "accent": "#FF9900",
+            "accent-light": "#FFBB33",
+            "accent-dark": "#DD7700",
             # Status colors
-            'error': '#FF5252',
-            'success': '#4CAF50',
-            'warning': '#FFC107',
-            'info': '#2196F3',
-
+            "error": "#FF5252",
+            "success": "#4CAF50",
+            "warning": "#FFC107",
+            "info": "#2196F3",
             # Font settings
-            'font-family': 'Arial, Helvetica, sans-serif',
-            'font-size-small': '11px',
-            'font-size-normal': '13px',
-            'font-size-large': '15px',
-            'font-size-xlarge': '18px',
-
+            "font-family": "Arial, Helvetica, sans-serif",
+            "font-size-small": "11px",
+            "font-size-normal": "13px",
+            "font-size-large": "15px",
+            "font-size-xlarge": "18px",
             # Spacing
-            'spacing-xs': '4px',
-            'spacing-small': '8px',
-            'spacing-normal': '12px',
-            'spacing-large': '16px',
-            'spacing-xl': '24px',
-
+            "spacing-xs": "4px",
+            "spacing-small": "8px",
+            "spacing-normal": "12px",
+            "spacing-large": "16px",
+            "spacing-xl": "24px",
             # Borders
-            'border-radius-small': '3px',
-            'border-radius': '4px',
-            'border-radius-large': '6px',
-            'border-width': '1px',
-            'border-width-thick': '2px',
+            "border-radius-small": "3px",
+            "border-radius": "4px",
+            "border-radius-large": "6px",
+            "border-width": "1px",
+            "border-width-thick": "2px",
         }
 
         # Light theme variables
         self.light_variables = {
-            'background': '#FFFFFF',
-            'background-secondary': '#F5F5F5',
-            'background-tertiary': '#EEEEEE',
-            'foreground': '#202020',
-            'foreground-secondary': '#505050',
-            'foreground-tertiary': '#707070',
-            'border': '#DDDDDD',
-            'border-light': '#EEEEEE',
-            'border-dark': '#BBBBBB',
-            'inactive': '#AAAAAA',
-            'hover': '#F0F0F0',
-            'selected': '#E0E0E0',
-            'overlay': 'rgba(0, 0, 0, 0.1)',
+            "background": "#FFFFFF",
+            "background-secondary": "#F5F5F5",
+            "background-tertiary": "#EEEEEE",
+            "foreground": "#202020",
+            "foreground-secondary": "#505050",
+            "foreground-tertiary": "#707070",
+            "border": "#DDDDDD",
+            "border-light": "#EEEEEE",
+            "border-dark": "#BBBBBB",
+            "inactive": "#AAAAAA",
+            "hover": "#F0F0F0",
+            "selected": "#E0E0E0",
+            "overlay": "rgba(0, 0, 0, 0.1)",
         }
 
         # Dark theme variables
         self.dark_variables = {
-            'background': '#2B2B2B',
-            'background-secondary': '#333333',
-            'background-tertiary': '#3A3A3A',
-            'foreground': '#EEEEEE',
-            'foreground-secondary': '#BBBBBB',
-            'foreground-tertiary': '#999999',
-            'border': '#555555',
-            'border-light': '#666666',
-            'border-dark': '#444444',
-            'inactive': '#777777',
-            'hover': '#3E3E3E',
-            'selected': '#404040',
-            'overlay': 'rgba(0, 0, 0, 0.25)',
+            "background": "#2B2B2B",
+            "background-secondary": "#333333",
+            "background-tertiary": "#3A3A3A",
+            "foreground": "#EEEEEE",
+            "foreground-secondary": "#BBBBBB",
+            "foreground-tertiary": "#999999",
+            "border": "#555555",
+            "border-light": "#666666",
+            "border-dark": "#444444",
+            "inactive": "#777777",
+            "hover": "#3E3E3E",
+            "selected": "#404040",
+            "overlay": "rgba(0, 0, 0, 0.25)",
         }
 
-        self.current_theme = 'light'
+        self.current_theme = "light"
         self.current_variables = {}
         self.current_stylesheet = ""
 
@@ -120,20 +114,21 @@ class ThemeManager(QObject):
 
     def _migrate_legacy_config(self):
         """Migrate theme settings from legacy config.json to ConfigManager."""
-        legacy_config_path = resource_path('config.json')
+        legacy_config_path = resource_path("config.json")
         if os.path.exists(legacy_config_path):
             try:
-                with open(legacy_config_path, 'r') as config_file:
+                with open(legacy_config_path, "r") as config_file:
                     legacy_config = json.load(config_file)
 
                     # Only process the legacy file if it has a theme key
-                    if 'theme' in legacy_config:
-                        legacy_theme = legacy_config.get('theme', 'light').lower()
-                        if legacy_theme in ['light', 'dark']:
+                    if "theme" in legacy_config:
+                        legacy_theme = legacy_config.get("theme", "light").lower()
+                        if legacy_theme in ["light", "dark"]:
                             # Save to ConfigManager
                             logger.info(
-                                f"Migrating theme '{legacy_theme}' from legacy config to ConfigManager")
-                            self.config_manager.set('theme', legacy_theme)
+                                f"Migrating theme '{legacy_theme}' from legacy config to ConfigManager"
+                            )
+                            self.config_manager.set("theme", legacy_theme)
 
                 # Delete the legacy file after migration
                 os.remove(legacy_config_path)
@@ -144,8 +139,8 @@ class ThemeManager(QObject):
     def load_theme_preference(self):
         """Load theme preference from ConfigManager."""
         try:
-            theme = self.config_manager.get('theme', 'light').lower()
-            if theme in ['light', 'dark']:
+            theme = self.config_manager.get("theme", "light").lower()
+            if theme in ["light", "dark"]:
                 self.current_theme = theme
 
                 # Apply the theme immediately
@@ -156,16 +151,16 @@ class ThemeManager(QObject):
     def save_theme_preference(self, theme):
         """Save theme preference using ConfigManager."""
         try:
-            self.config_manager.set('theme', theme)
+            self.config_manager.set("theme", theme)
         except Exception as e:
             logger.error(f"Error saving theme preference: {e}")
 
     @pyqtSlot(dict)
     def _handle_config_update(self, changes):
         """Handle config updates from ConfigManager."""
-        if 'theme' in changes:
-            new_theme = changes['theme'].lower()
-            if new_theme in ['light', 'dark'] and new_theme != self.current_theme:
+        if "theme" in changes:
+            new_theme = changes["theme"].lower()
+            if new_theme in ["light", "dark"] and new_theme != self.current_theme:
                 logger.info(f"Applying theme '{new_theme}' from config update")
                 self.current_theme = new_theme
                 self._update_theme_variables()
@@ -174,7 +169,7 @@ class ThemeManager(QObject):
         """Update current variables based on current theme."""
         # Combine base variables with theme-specific variables
         self.current_variables = {**self.base_variables}
-        if self.current_theme == 'dark':
+        if self.current_theme == "dark":
             self.current_variables.update(self.dark_variables)
         else:
             self.current_variables.update(self.light_variables)
@@ -188,16 +183,16 @@ class ThemeManager(QObject):
 
     def toggle_theme(self):
         """Toggle theme."""
-        if self.current_theme == 'light':
-            self.apply_theme('dark')
+        if self.current_theme == "light":
+            self.apply_theme("dark")
         else:
-            self.apply_theme('light')
+            self.apply_theme("light")
 
     def apply_theme(self, theme_name):
         """Apply theme."""
-        if theme_name not in ['light', 'dark']:
+        if theme_name not in ["light", "dark"]:
             logger.warning(f"Unknown theme: {theme_name}, defaulting to light")
-            theme_name = 'light'
+            theme_name = "light"
 
         if theme_name != self.current_theme:
             self.current_theme = theme_name
@@ -614,7 +609,7 @@ class ThemeManager(QObject):
 
     def get_color(self, name):
         """Return color."""
-        return self.current_variables.get(name, '#000000')
+        return self.current_variables.get(name, "#000000")
 
     def get_qcolor(self, name):
         """Return QColor."""
@@ -625,35 +620,60 @@ class ThemeManager(QObject):
         """Return QPalette."""
         palette = QPalette()
 
-        if self.current_theme == 'dark':
+        if self.current_theme == "dark":
             # Dark theme palette
-            palette.setColor(QPalette.ColorRole.Window, self.get_qcolor('background'))
-            palette.setColor(QPalette.ColorRole.WindowText, self.get_qcolor('foreground'))
-            palette.setColor(QPalette.ColorRole.Base, self.get_qcolor('background-secondary'))
-            palette.setColor(QPalette.ColorRole.AlternateBase,
-                             self.get_qcolor('background-tertiary'))
-            palette.setColor(QPalette.ColorRole.ToolTipBase, self.get_qcolor('background'))
-            palette.setColor(QPalette.ColorRole.ToolTipText, self.get_qcolor('foreground'))
-            palette.setColor(QPalette.ColorRole.Text, self.get_qcolor('foreground'))
-            palette.setColor(QPalette.ColorRole.Button, self.get_qcolor('background-secondary'))
-            palette.setColor(QPalette.ColorRole.ButtonText, self.get_qcolor('foreground'))
-            palette.setColor(QPalette.ColorRole.Link, self.get_qcolor('primary'))
-            palette.setColor(QPalette.ColorRole.Highlight, self.get_qcolor('primary'))
-            palette.setColor(QPalette.ColorRole.HighlightedText, QColor('white'))
+            palette.setColor(QPalette.ColorRole.Window, self.get_qcolor("background"))
+            palette.setColor(
+                QPalette.ColorRole.WindowText, self.get_qcolor("foreground")
+            )
+            palette.setColor(
+                QPalette.ColorRole.Base, self.get_qcolor("background-secondary")
+            )
+            palette.setColor(
+                QPalette.ColorRole.AlternateBase, self.get_qcolor("background-tertiary")
+            )
+            palette.setColor(
+                QPalette.ColorRole.ToolTipBase, self.get_qcolor("background")
+            )
+            palette.setColor(
+                QPalette.ColorRole.ToolTipText, self.get_qcolor("foreground")
+            )
+            palette.setColor(QPalette.ColorRole.Text, self.get_qcolor("foreground"))
+            palette.setColor(
+                QPalette.ColorRole.Button, self.get_qcolor("background-secondary")
+            )
+            palette.setColor(
+                QPalette.ColorRole.ButtonText, self.get_qcolor("foreground")
+            )
+            palette.setColor(QPalette.ColorRole.Link, self.get_qcolor("primary"))
+            palette.setColor(QPalette.ColorRole.Highlight, self.get_qcolor("primary"))
+            palette.setColor(QPalette.ColorRole.HighlightedText, QColor("white"))
         else:
             # Light theme palette
-            palette.setColor(QPalette.ColorRole.Window, self.get_qcolor('background'))
-            palette.setColor(QPalette.ColorRole.WindowText, self.get_qcolor('foreground'))
-            palette.setColor(QPalette.ColorRole.Base, self.get_qcolor('background'))
-            palette.setColor(QPalette.ColorRole.AlternateBase,
-                             self.get_qcolor('background-secondary'))
-            palette.setColor(QPalette.ColorRole.ToolTipBase, self.get_qcolor('background'))
-            palette.setColor(QPalette.ColorRole.ToolTipText, self.get_qcolor('foreground'))
-            palette.setColor(QPalette.ColorRole.Text, self.get_qcolor('foreground'))
-            palette.setColor(QPalette.ColorRole.Button, self.get_qcolor('background-secondary'))
-            palette.setColor(QPalette.ColorRole.ButtonText, self.get_qcolor('foreground'))
-            palette.setColor(QPalette.ColorRole.Link, self.get_qcolor('primary'))
-            palette.setColor(QPalette.ColorRole.Highlight, self.get_qcolor('primary'))
-            palette.setColor(QPalette.ColorRole.HighlightedText, QColor('white'))
+            palette.setColor(QPalette.ColorRole.Window, self.get_qcolor("background"))
+            palette.setColor(
+                QPalette.ColorRole.WindowText, self.get_qcolor("foreground")
+            )
+            palette.setColor(QPalette.ColorRole.Base, self.get_qcolor("background"))
+            palette.setColor(
+                QPalette.ColorRole.AlternateBase,
+                self.get_qcolor("background-secondary"),
+            )
+            palette.setColor(
+                QPalette.ColorRole.ToolTipBase, self.get_qcolor("background")
+            )
+            palette.setColor(
+                QPalette.ColorRole.ToolTipText, self.get_qcolor("foreground")
+            )
+            palette.setColor(QPalette.ColorRole.Text, self.get_qcolor("foreground"))
+            palette.setColor(
+                QPalette.ColorRole.Button, self.get_qcolor("background-secondary")
+            )
+            palette.setColor(
+                QPalette.ColorRole.ButtonText, self.get_qcolor("foreground")
+            )
+            palette.setColor(QPalette.ColorRole.Link, self.get_qcolor("primary"))
+            palette.setColor(QPalette.ColorRole.Highlight, self.get_qcolor("primary"))
+            palette.setColor(QPalette.ColorRole.HighlightedText, QColor("white"))
 
         return palette

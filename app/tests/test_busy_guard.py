@@ -24,6 +24,7 @@ class TestBusyGuard(unittest.TestCase):
 
         def cancel_callback():
             self.cancel_called = True
+
         self.cancel_callback = cancel_callback
 
     def test_basic_usage(self):
@@ -32,7 +33,7 @@ class TestBusyGuard(unittest.TestCase):
             self.feedback_manager,
             "Test Operation",
             ui_elements=[self.button1, self.button2],
-            spinner="test_spinner"
+            spinner="test_spinner",
         ):
             # Verify setup actions were performed
             self.feedback_manager.set_ui_busy.assert_called_once_with(
@@ -53,7 +54,7 @@ class TestBusyGuard(unittest.TestCase):
             progress_message="Starting...",
             progress_maximum=100,
             progress_cancelable=True,
-            cancel_callback=self.cancel_callback
+            cancel_callback=self.cancel_callback,
         ) as guard:
             # Verify progress dialog was created
             self.feedback_manager.start_progress.assert_called_once()
@@ -72,7 +73,7 @@ class TestBusyGuard(unittest.TestCase):
                 self.feedback_manager,
                 "Test Exception",
                 spinner="test_spinner",
-                progress=True
+                progress=True,
             ):
                 raise ValueError("Test exception")
         except ValueError:
@@ -88,7 +89,7 @@ class TestBusyGuard(unittest.TestCase):
             self.feedback_manager,
             "Test Cancel",
             progress=True,
-            cancel_callback=self.cancel_callback
+            cancel_callback=self.cancel_callback,
         )
 
         with guard:
@@ -100,10 +101,7 @@ class TestBusyGuard(unittest.TestCase):
 
     def test_result_capture(self):
         """Test result capture functionality."""
-        with BusyGuard(
-            self.feedback_manager,
-            "Test Result"
-        ) as guard:
+        with BusyGuard(self.feedback_manager, "Test Result") as guard:
             result = guard.set_result("success")
 
         # Verify result is stored and returned
@@ -118,7 +116,7 @@ class TestBusyGuard(unittest.TestCase):
             ui_elements=[self.button1],
             spinner="test_spinner",
             progress=True,
-            status_message="Working..."
+            status_message="Working...",
         ):
             # Verify all feedback types were started
             self.feedback_manager.set_ui_busy.assert_called_once()
@@ -132,9 +130,7 @@ class TestBusyGuard(unittest.TestCase):
         self.feedback_manager.start_spinner.return_value = False
 
         with BusyGuard(
-            self.feedback_manager,
-            "Missing Spinner Test",
-            spinner="nonexistent"
+            self.feedback_manager, "Missing Spinner Test", spinner="nonexistent"
         ):
             pass
 
@@ -144,17 +140,13 @@ class TestBusyGuard(unittest.TestCase):
     def test_nested_guards(self):
         """Test nested BusyGuard instances work properly."""
         with BusyGuard(
-            self.feedback_manager,
-            "Outer Operation",
-            spinner="outer_spinner"
+            self.feedback_manager, "Outer Operation", spinner="outer_spinner"
         ):
             # Verify outer guard setup
             self.feedback_manager.start_spinner.assert_called_with("outer_spinner")
 
             with BusyGuard(
-                self.feedback_manager,
-                "Inner Operation",
-                spinner="inner_spinner"
+                self.feedback_manager, "Inner Operation", spinner="inner_spinner"
             ):
                 # Verify inner guard setup
                 self.feedback_manager.start_spinner.assert_called_with("inner_spinner")
@@ -166,5 +158,5 @@ class TestBusyGuard(unittest.TestCase):
         self.feedback_manager.stop_spinner.assert_called_with("outer_spinner")
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     unittest.main()

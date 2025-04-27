@@ -14,7 +14,7 @@ from app.ThreadManager import ThreadManager
 from app.secure import get_api_key
 from app.constants import ERROR_INVALID_FILE, SUCCESS_TRANSCRIPTION
 
-logger = logging.getLogger('transcribrr')
+logger = logging.getLogger("transcribrr")
 
 
 class TranscriptionController(QObject):
@@ -25,14 +25,21 @@ class TranscriptionController(QObject):
     transcription_process_completed = pyqtSignal(str)  # Emits final transcript text
     transcription_process_stopped = pyqtSignal()
     status_update = pyqtSignal(str)  # Generic status update signal
-    recording_status_updated = pyqtSignal(int, dict)  # Signal for recording updates (ID, data)
+    recording_status_updated = pyqtSignal(
+        int, dict
+    )  # Signal for recording updates (ID, data)
 
     def __init__(self, db_manager, parent=None):
         super().__init__(parent)
         self.db_manager = db_manager
         self.transcription_thread = None
 
-    def start(self, recording: Recording, config: Dict[str, Any], busy_guard_callback: Callable) -> bool:
+    def start(
+        self,
+        recording: Recording,
+        config: Dict[str, Any],
+        busy_guard_callback: Callable,
+    ) -> bool:
         """
         Start the transcription process.
 
@@ -62,8 +69,11 @@ class TranscriptionController(QObject):
 
         # Connect signals
         self.transcription_thread.completed.connect(
-            lambda transcript: self._on_transcription_completed(recording, transcript))
-        self.transcription_thread.update_progress.connect(self._on_transcription_progress)
+            lambda transcript: self._on_transcription_completed(recording, transcript)
+        )
+        self.transcription_thread.update_progress.connect(
+            self._on_transcription_progress
+        )
         self.transcription_thread.error.connect(self._on_transcription_error)
         self.transcription_thread.finished.connect(self._on_transcription_finished)
 
@@ -94,20 +104,26 @@ class TranscriptionController(QObject):
 
         return True
 
-    def _build_thread_args(self, recording: Recording, config: Dict[str, Any]) -> Optional[Dict[str, Any]]:
+    def _build_thread_args(
+        self, recording: Recording, config: Dict[str, Any]
+    ) -> Optional[Dict[str, Any]]:
         """Build arguments for the transcription thread."""
         # Extract config values
-        transcription_method = config.get('transcription_method', 'local')
-        transcription_quality = config.get('transcription_quality', 'openai/whisper-large-v3')
-        speaker_detection_enabled = config.get('speaker_detection_enabled', False)
-        hardware_acceleration_enabled = config.get('hardware_acceleration_enabled', True)
-        language = config.get('transcription_language', 'english')
+        transcription_method = config.get("transcription_method", "local")
+        transcription_quality = config.get(
+            "transcription_quality", "openai/whisper-large-v3"
+        )
+        speaker_detection_enabled = config.get("speaker_detection_enabled", False)
+        hardware_acceleration_enabled = config.get(
+            "hardware_acceleration_enabled", True
+        )
+        language = config.get("transcription_language", "english")
 
         # Get API keys if needed
         openai_api_key = None
         hf_auth_key = None
 
-        if transcription_method == 'api':
+        if transcription_method == "api":
             openai_api_key = get_api_key("OPENAI_API_KEY")
             if not openai_api_key:
                 logger.error("OpenAI API key missing for API transcription")
@@ -121,31 +137,35 @@ class TranscriptionController(QObject):
 
         # Build thread arguments
         return {
-            'file_path': recording.file_path,
-            'transcription_quality': transcription_quality,
-            'speaker_detection_enabled': speaker_detection_enabled,
-            'hf_auth_key': hf_auth_key,
-            'language': language,
-            'transcription_method': transcription_method,
-            'openai_api_key': openai_api_key,
-            'hardware_acceleration_enabled': hardware_acceleration_enabled,
+            "file_path": recording.file_path,
+            "transcription_quality": transcription_quality,
+            "speaker_detection_enabled": speaker_detection_enabled,
+            "hf_auth_key": hf_auth_key,
+            "language": language,
+            "transcription_method": transcription_method,
+            "openai_api_key": openai_api_key,
+            "hardware_acceleration_enabled": hardware_acceleration_enabled,
         }
 
     def _on_transcription_progress(self, message: str) -> None:
         """Handle progress updates from transcription thread."""
         self.status_update.emit(message)  # Forward to status bar
 
-    def _on_transcription_completed(self, recording: Recording, transcript: str) -> None:
+    def _on_transcription_completed(
+        self, recording: Recording, transcript: str
+    ) -> None:
         """Handle the completed transcription."""
         if not recording:
             return  # Recording deselected during process
 
         recording_id = recording.id
-        formatted_field = 'raw_transcript_formatted'
-        raw_field = 'raw_transcript'
+        formatted_field = "raw_transcript_formatted"
+        raw_field = "raw_transcript"
 
         # Check if result contains speaker labels
-        is_formatted = transcript.strip().startswith("SPEAKER_") and ":" in transcript[:20]
+        is_formatted = (
+            transcript.strip().startswith("SPEAKER_") and ":" in transcript[:20]
+        )
 
         if is_formatted:
             db_value = f"<pre>{transcript}</pre>"
@@ -162,9 +182,9 @@ class TranscriptionController(QObject):
 
             # Emit signal to update UI in other components
             status_updates = {
-                'has_transcript': True,
+                "has_transcript": True,
                 raw_field: transcript,
-                formatted_field: db_value if is_formatted else None
+                formatted_field: db_value if is_formatted else None,
             }
             self.recording_status_updated.emit(recording_id, status_updates)
 
@@ -175,7 +195,9 @@ class TranscriptionController(QObject):
         else:
             update_data[formatted_field] = None
 
-        self.db_manager.update_recording(recording_id, on_update_complete, **update_data)
+        self.db_manager.update_recording(
+            recording_id, on_update_complete, **update_data
+        )
 
     def _on_transcription_error(self, error_message: str) -> None:
         """Handle transcription errors."""

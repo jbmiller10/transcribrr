@@ -13,7 +13,7 @@ from app.ui_utils_legacy import (
     show_info_message,
     show_confirmation_dialog,
     create_progress_dialog,
-    show_status_message
+    show_status_message,
 )
 
 # Import new utilities
@@ -23,5 +23,5 @@ from app.ui_utils.busy_guard import BusyGuard
 from app.ui_utils.error_handling import (
     handle_error,
     handle_external_library_error,
-    get_common_error_messages
+    get_common_error_messages,
 )

@@ -13,7 +13,7 @@ from app.secure import redact
 from app.ui_utils_legacy import show_error_message, safe_error
 
 # Configure logging
-logger = logging.getLogger('transcribrr')
+logger = logging.getLogger("transcribrr")
 
 # Map of exception types to user-friendly error messages
 ERROR_MESSAGE_MAP: Dict[Type[Exception], str] = {
@@ -21,16 +21,13 @@ ERROR_MESSAGE_MAP: Dict[Type[Exception], str] = {
     FileNotFoundError: "The specified file could not be found.",
     PermissionError: "You don't have permission to access this file or directory.",
     IOError: "There was a problem reading or writing to a file.",
-
     # Network-related errors
     ConnectionError: "Could not connect to the server. Please check your internet connection.",
     TimeoutError: "The connection timed out. The server might be busy or unavailable.",
-
     # Database errors - add specific SQLite errors if needed
-
     # API-specific errors can be added as needed
     ValueError: "Invalid input provided.",
-    RuntimeError: "An unexpected error occurred during operation."
+    RuntimeError: "An unexpected error occurred during operation.",
 }
 
 # Map of error sources to user-friendly context
@@ -41,7 +38,7 @@ ERROR_CONTEXT_MAP: Dict[str, str] = {
     "voice_recording": "Voice recording",
     "database": "Database operation",
     "file_import": "File import",
-    "export": "File export"
+    "export": "File export",
 }
 
 
@@ -51,7 +48,7 @@ def handle_error(
     source: str = "application",
     show_dialog: bool = True,
     title_override: Optional[str] = None,
-    callback: Optional[Callable[[str], None]] = None
+    callback: Optional[Callable[[str], None]] = None,
 ) -> str:
     """Handle an error in a standardized way.
 
@@ -89,7 +86,9 @@ def handle_error(
         logger.warning(f"{context} error ({error_type.__name__}): {safe_error_message}")
     else:
         # More severe errors - log with full traceback
-        logger.error(f"{context} error ({error_type.__name__}): {error_message}\n{error_traceback}")
+        logger.error(
+            f"{context} error ({error_type.__name__}): {error_message}\n{error_traceback}"
+        )
 
     # Show error dialog if requested
     if show_dialog and parent:
@@ -106,7 +105,7 @@ def handle_external_library_error(
     error: Exception,
     library_name: str,
     parent: Optional[QWidget] = None,
-    show_dialog: bool = True
+    show_dialog: bool = True,
 ) -> str:
     """Handle errors from external libraries with specific error messages.
 
@@ -157,13 +156,17 @@ def handle_external_library_error(
 
     elif library_name.lower() == "ffmpeg":
         if "not found" in error_str:
-            user_message = "FFmpeg executable not found. Please ensure FFmpeg is installed."
+            user_message = (
+                "FFmpeg executable not found. Please ensure FFmpeg is installed."
+            )
         elif "format" in error_str:
             user_message = "Unsupported file format or corrupted file."
 
     elif library_name.lower() == "pyaudio":
         if "device" in error_str:
-            user_message = "Audio device error. The microphone might be disconnected or in use."
+            user_message = (
+                "Audio device error. The microphone might be disconnected or in use."
+            )
         elif "stream" in error_str:
             user_message = "Error with audio stream. Try restarting the application."
 
@@ -185,23 +188,45 @@ def get_common_error_messages() -> Dict[str, List[Dict[str, str]]]:
     """
     return {
         "network": [
-            {"error": "Connection refused",
-                "message": "Could not connect to the server. Please check your internet connection."},
-            {"error": "Timeout", "message": "The connection timed out. The server might be busy or unavailable."},
-            {"error": "DNS resolution",
-                "message": "Could not resolve the server's address. Check your internet connection."}
+            {
+                "error": "Connection refused",
+                "message": "Could not connect to the server. Please check your internet connection.",
+            },
+            {
+                "error": "Timeout",
+                "message": "The connection timed out. The server might be busy or unavailable.",
+            },
+            {
+                "error": "DNS resolution",
+                "message": "Could not resolve the server's address. Check your internet connection.",
+            },
         ],
         "file_system": [
-            {"error": "Permission denied",
-                "message": "You don't have permission to access this file or directory."},
-            {"error": "File not found", "message": "The specified file could not be found."},
-            {"error": "Disk full", "message": "Not enough disk space to complete this operation."}
+            {
+                "error": "Permission denied",
+                "message": "You don't have permission to access this file or directory.",
+            },
+            {
+                "error": "File not found",
+                "message": "The specified file could not be found.",
+            },
+            {
+                "error": "Disk full",
+                "message": "Not enough disk space to complete this operation.",
+            },
         ],
         "api": [
-            {"error": "Invalid API key",
-                "message": "The API key is invalid or has expired. Please update it in Settings."},
-            {"error": "Rate limit", "message": "You have reached the rate limit for this API. Please try again later."},
-            {"error": "Service unavailable",
-                "message": "The service is currently unavailable. Please try again later."}
-        ]
+            {
+                "error": "Invalid API key",
+                "message": "The API key is invalid or has expired. Please update it in Settings.",
+            },
+            {
+                "error": "Rate limit",
+                "message": "You have reached the rate limit for this API. Please try again later.",
+            },
+            {
+                "error": "Service unavailable",
+                "message": "The service is currently unavailable. Please try again later.",
+            },
+        ],
     }

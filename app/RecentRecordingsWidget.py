@@ -1,16 +1,23 @@
 import datetime
 import os
 import logging
-from PyQt6.QtCore import (
-    pyqtSignal, QSize, Qt, QTimer,
-    QThread
-)
+from PyQt6.QtCore import pyqtSignal, QSize, Qt, QTimer, QThread
 from PyQt6.QtWidgets import (
-    QVBoxLayout, QWidget, QLabel, QHBoxLayout, QLineEdit, QComboBox, QProgressDialog, QFileDialog, QToolBar, QStatusBar
+    QVBoxLayout,
+    QWidget,
+    QLabel,
+    QHBoxLayout,
+    QLineEdit,
+    QComboBox,
+    QProgressDialog,
+    QFileDialog,
+    QToolBar,
+    QStatusBar,
 )
 from PyQt6.QtGui import QIcon, QFont, QAction
 from app.RecordingListItem import RecordingListItem
 from app.path_utils import resource_path
+
 # Use ui_utils for messages
 from app.ui_utils import show_error_message, show_info_message, show_confirmation_dialog
 from app.DatabaseManager import DatabaseManager
@@ -19,11 +26,12 @@ from app.UnifiedFolderTreeView import UnifiedFolderTreeView
 
 # Configure logging
 # logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s') # Configured in main
-logger = logging.getLogger('transcribrr')
+logger = logging.getLogger("transcribrr")
 
 
 class SearchWidget(QWidget):
     """Search/filter recordings."""
+
     # (Content mostly unchanged)
     searchTextChanged = pyqtSignal(str)
     filterCriteriaChanged = pyqtSignal(str)
@@ -39,29 +47,39 @@ class SearchWidget(QWidget):
         self.search_field.setPlaceholderText("Search recordings & transcripts...")
         self.search_field.textChanged.connect(self.searchTextChanged.emit)
         self.search_field.setStyleSheet(
-            "QLineEdit { border: 1px solid #ccc; border-radius: 4px; padding: 4px 8px; }")
+            "QLineEdit { border: 1px solid #ccc; border-radius: 4px; padding: 4px 8px; }"
+        )
         self.search_field.setToolTip("Search in filenames and transcript content")
         self.filter_combo = QComboBox()
         self.filter_combo.addItems(
-            ["All", "Has Transcript", "No Transcript", "Recent (24h)", "This Week"])
+            ["All", "Has Transcript", "No Transcript", "Recent (24h)", "This Week"]
+        )
         self.filter_combo.currentTextChanged.connect(self.filterCriteriaChanged.emit)
         layout.addWidget(self.search_field, 3)
         layout.addWidget(self.filter_combo, 1)
 
-    def clear_search(self): self.search_field.clear()
-    def get_search_text(self): return self.search_field.text()
-    def get_filter_criteria(self): return self.filter_combo.currentText()
+    def clear_search(self):
+        self.search_field.clear()
+
+    def get_search_text(self):
+        return self.search_field.text()
+
+    def get_filter_criteria(self):
+        return self.filter_combo.currentText()
 
 
 class BatchProcessWorker(QThread):
     """Thread for batch processing recordings."""
+
     # TODO: Implement actual batch processing logic by integrating
     #       with TranscriptionThread and GPT4ProcessingThread.
     #       This currently only simulates progress.
     progress = pyqtSignal(int, str)
     finished = pyqtSignal(bool, str)
 
-    def __init__(self, recordings_data, process_type, parent=None):  # Pass data, not widgets
+    def __init__(
+        self, recordings_data, process_type, parent=None
+    ):  # Pass data, not widgets
         super().__init__(parent)
         self.recordings_data = recordings_data  # List of dicts or tuples
         self.process_type = process_type
@@ -77,8 +95,8 @@ class BatchProcessWorker(QThread):
                     self.finished.emit(False, "Operation canceled")
                     return
 
-                rec_id = rec_data['id']
-                rec_name = rec_data['filename']
+                rec_id = rec_data["id"]
+                rec_name = rec_data["filename"]
                 progress_val = int(((i + 1) / total) * 100)
                 status_msg = f"Processing {rec_name} ({i+1}/{total})"
                 self.progress.emit(progress_val, status_msg)
@@ -100,7 +118,9 @@ class BatchProcessWorker(QThread):
 
             if not self._is_canceled:
                 self.finished.emit(
-                    True, f"Batch '{self.process_type}' complete for {total} recordings.")
+                    True,
+                    f"Batch '{self.process_type}' complete for {total} recordings.",
+                )
                 logger.info(f"Batch '{self.process_type}' complete.")
 
         except Exception as e:
@@ -142,7 +162,9 @@ class RecentRecordingsWidget(ResponsiveWidget):
         # Header (Simplified - folder name updated by Unified view selection)
         self.header_label = QLabel("Recordings")  # Static header
         self.header_label.setObjectName("RecentRecordingHeader")
-        self.header_label.setFont(QFont("Arial", 14, QFont.Weight.Bold))  # Slightly larger
+        self.header_label.setFont(
+            QFont("Arial", 14, QFont.Weight.Bold)
+        )  # Slightly larger
         self.layout.addWidget(self.header_label)
 
         # Search and filter
@@ -155,9 +177,11 @@ class RecentRecordingsWidget(ResponsiveWidget):
         self.unified_view = UnifiedFolderTreeView(self.db_manager, self)
         self.unified_view.folderSelected.connect(self.on_folder_selected)
         self.unified_view.recordingSelected.connect(
-            self.recordingItemSelected.emit)  # Pass signal through
+            self.recordingItemSelected.emit
+        )  # Pass signal through
         self.unified_view.recordingNameChanged.connect(
-            self.handle_recording_rename)  # Connect rename handler
+            self.handle_recording_rename
+        )  # Connect rename handler
         self.layout.addWidget(self.unified_view, 1)  # Allow view to stretch
 
         # Status bar
@@ -184,17 +208,23 @@ class RecentRecordingsWidget(ResponsiveWidget):
         toolbar.setIconSize(QSize(18, 18))  # Slightly larger icons
         toolbar.setMovable(False)
 
-        new_folder_action = QAction(QIcon(resource_path('icons/folder.svg')), "New Folder", self)
+        new_folder_action = QAction(
+            QIcon(resource_path("icons/folder.svg")), "New Folder", self
+        )
         new_folder_action.triggered.connect(self.create_new_folder)
         toolbar.addAction(new_folder_action)
 
-        refresh_action = QAction(QIcon(resource_path('icons/refresh.svg')), "Refresh", self)
+        refresh_action = QAction(
+            QIcon(resource_path("icons/refresh.svg")), "Refresh", self
+        )
         refresh_action.triggered.connect(self.refresh_recordings)
         toolbar.addAction(refresh_action)
 
         toolbar.addSeparator()
 
-        import_action = QAction(QIcon(resource_path('icons/import.svg')), "Import Files", self)
+        import_action = QAction(
+            QIcon(resource_path("icons/import.svg")), "Import Files", self
+        )
         import_action.triggered.connect(self.import_recordings)
         toolbar.addAction(import_action)
 
@@ -230,7 +260,8 @@ class RecentRecordingsWidget(ResponsiveWidget):
         file_dialog.setWindowTitle("Import Audio/Video Files")
         file_dialog.setFileMode(QFileDialog.FileMode.ExistingFiles)
         file_dialog.setNameFilter(
-            "Media Files (*.mp3 *.wav *.m4a *.ogg *.mp4 *.mkv *.avi *.mov *.flac *.aac *.aiff *.wma *.webm *.flv *.wmv)")
+            "Media Files (*.mp3 *.wav *.m4a *.ogg *.mp4 *.mkv *.avi *.mov *.flac *.aac *.aiff *.wma *.webm *.flv *.wmv)"
+        )
         if file_dialog.exec() != QFileDialog.DialogCode.Accepted:
             return
 
@@ -260,6 +291,7 @@ class RecentRecordingsWidget(ResponsiveWidget):
 
                 # Copy the file
                 import shutil
+
                 shutil.copy2(file_path, dest_path)
                 logger.info(f"Copied imported file to {dest_path}")
 
@@ -273,15 +305,21 @@ class RecentRecordingsWidget(ResponsiveWidget):
             except Exception as e:
                 logger.error(f"Error importing {file_path}: {e}", exc_info=True)
                 error_count += 1
-                show_error_message(self, "Import Error",
-                                   f"Failed to import {os.path.basename(file_path)}: {e}")
+                show_error_message(
+                    self,
+                    "Import Error",
+                    f"Failed to import {os.path.basename(file_path)}: {e}",
+                )
 
         # Update status after import loop
         if error_count == 0:
-            self.show_status_message(f"Import complete: {imported_count} files added.", 5000)
+            self.show_status_message(
+                f"Import complete: {imported_count} files added.", 5000
+            )
         else:
             self.show_status_message(
-                f"Import complete: {imported_count} added, {error_count} failed.", 5000)
+                f"Import complete: {imported_count} added, {error_count} failed.", 5000
+            )
 
         self.refresh_recordings()  # Refresh list after import
 
@@ -292,6 +330,7 @@ class RecentRecordingsWidget(ResponsiveWidget):
             date_created = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
             # Calculate duration (potential performance hit for many files)
             from app.file_utils import calculate_duration
+
             duration = calculate_duration(file_path)  # Returns "HH:MM:SS" or "MM:SS"
 
             recording_data = (filename, file_path, date_created, duration, "", "")
@@ -299,15 +338,23 @@ class RecentRecordingsWidget(ResponsiveWidget):
             # Define callback (optional, can just refresh later)
             def on_import_added(recording_id):
                 if recording_id:
-                    logger.info(f"Imported file '{filename}' added to DB with ID {recording_id}")
+                    logger.info(
+                        f"Imported file '{filename}' added to DB with ID {recording_id}"
+                    )
                 else:
                     logger.error(f"Failed to add imported file '{filename}' to DB")
 
             self.db_manager.create_recording(recording_data, on_import_added)
         except Exception as e:
-            logger.error(f"Error preparing imported file '{file_path}' for DB: {e}", exc_info=True)
-            show_error_message(self, "Import DB Error",
-                               f"Could not add '{os.path.basename(file_path)}' to database: {e}")
+            logger.error(
+                f"Error preparing imported file '{file_path}' for DB: {e}",
+                exc_info=True,
+            )
+            show_error_message(
+                self,
+                "Import DB Error",
+                f"Could not add '{os.path.basename(file_path)}' to database: {e}",
+            )
 
     # --- Signal Handlers ---
     def on_folder_selected(self, folder_id, folder_name):
@@ -336,7 +383,8 @@ class RecentRecordingsWidget(ResponsiveWidget):
         widget = self.unified_view.id_to_widget.get(recording_id)
         if not widget:
             logger.error(
-                f"Cannot update status: RecordingListItem widget not found for ID {recording_id}")
+                f"Cannot update status: RecordingListItem widget not found for ID {recording_id}"
+            )
             return
 
         # Update the widget with new status
@@ -355,7 +403,9 @@ class RecentRecordingsWidget(ResponsiveWidget):
         # Construct new full filename (keep original extension)
         widget = self.unified_view.id_to_widget.get(recording_id)
         if not widget:
-            logger.error(f"Cannot rename: RecordingListItem widget not found for ID {recording_id}")
+            logger.error(
+                f"Cannot rename: RecordingListItem widget not found for ID {recording_id}"
+            )
             return
 
         _, ext = os.path.splitext(widget.get_filename())
@@ -364,9 +414,12 @@ class RecentRecordingsWidget(ResponsiveWidget):
         # Get current file path
         old_file_path = widget.file_path
         if not os.path.exists(old_file_path):
-            logger.error(f"Cannot rename: Original file does not exist at {old_file_path}")
-            show_error_message(self, "Rename Failed",
-                               "The original file could not be found on disk.")
+            logger.error(
+                f"Cannot rename: Original file does not exist at {old_file_path}"
+            )
+            show_error_message(
+                self, "Rename Failed", "The original file could not be found on disk."
+            )
             return
 
         # Generate new file path (same directory, new name)
@@ -375,8 +428,12 @@ class RecentRecordingsWidget(ResponsiveWidget):
 
         # Check if target path already exists
         if os.path.exists(new_file_path):
-            logger.error(f"Cannot rename: Target path already exists at {new_file_path}")
-            show_error_message(self, "Rename Failed", "A file with this name already exists.")
+            logger.error(
+                f"Cannot rename: Target path already exists at {new_file_path}"
+            )
+            show_error_message(
+                self, "Rename Failed", "A file with this name already exists."
+            )
             # Revert UI change
             widget.name_editable.setText(widget.filename_no_ext)
             return
@@ -385,15 +442,19 @@ class RecentRecordingsWidget(ResponsiveWidget):
         def on_db_update_success():
             logger.info(f"Successfully updated database for recording {recording_id}")
             # Update the widget's internal state and UI
-            widget.update_data({
-                'filename': new_name_no_ext,  # base name for UI
-                'file_path': new_file_path    # update file path reference
-            })
+            widget.update_data(
+                {
+                    "filename": new_name_no_ext,  # base name for UI
+                    "file_path": new_file_path,  # update file path reference
+                }
+            )
             self.show_status_message(f"Renamed to '{new_name_no_ext}'")
 
         def on_rename_error(op_name, error_msg):
             logger.error(f"Failed to rename recording {recording_id}: {error_msg}")
-            show_error_message(self, "Rename Failed", f"Could not rename recording: {error_msg}")
+            show_error_message(
+                self, "Rename Failed", f"Could not rename recording: {error_msg}"
+            )
             # Revert UI change
             widget.name_editable.setText(widget.filename_no_ext)
 
@@ -401,7 +462,8 @@ class RecentRecordingsWidget(ResponsiveWidget):
             # First attempt the filesystem rename - if this fails, no DB update needed
             os.rename(old_file_path, new_file_path)
             logger.info(
-                f"Successfully renamed file on disk from {old_file_path} to {new_file_path}")
+                f"Successfully renamed file on disk from {old_file_path} to {new_file_path}"
+            )
 
             try:
                 # Now update the database with both new filename and file path
@@ -409,7 +471,7 @@ class RecentRecordingsWidget(ResponsiveWidget):
                     recording_id,
                     on_db_update_success,
                     filename=new_full_filename,
-                    file_path=new_file_path
+                    file_path=new_file_path,
                 )
 
                 # Connect error handler for DB-related errors
@@ -417,27 +479,37 @@ class RecentRecordingsWidget(ResponsiveWidget):
 
             except Exception as db_error:
                 # If DB update fails, roll back the filesystem rename
-                logger.error(f"Database update failed, rolling back filesystem rename: {db_error}")
+                logger.error(
+                    f"Database update failed, rolling back filesystem rename: {db_error}"
+                )
                 try:
                     os.rename(new_file_path, old_file_path)
                     logger.info(
-                        f"Successfully rolled back file rename from {new_file_path} to {old_file_path}")
+                        f"Successfully rolled back file rename from {new_file_path} to {old_file_path}"
+                    )
                 except OSError as rollback_error:
                     # Critical situation - DB update failed AND filesystem rollback failed
                     logger.critical(
-                        f"CRITICAL: Failed to roll back rename after DB error. DB and filesystem out of sync: {rollback_error}")
-                    show_error_message(self, "Critical Rename Error",
-                                       "Database update failed and could not roll back filesystem change. Please restart the application.")
+                        f"CRITICAL: Failed to roll back rename after DB error. DB and filesystem out of sync: {rollback_error}"
+                    )
+                    show_error_message(
+                        self,
+                        "Critical Rename Error",
+                        "Database update failed and could not roll back filesystem change. Please restart the application.",
+                    )
 
                 # Show error and revert UI
-                show_error_message(self, "Rename Failed", f"Database error: {str(db_error)}")
+                show_error_message(
+                    self, "Rename Failed", f"Database error: {str(db_error)}"
+                )
                 widget.name_editable.setText(widget.filename_no_ext)
 
         except OSError as fs_error:
             # Filesystem rename failed - no need to update DB
             logger.error(f"Failed to rename file on disk: {fs_error}")
-            show_error_message(self, "Rename Failed",
-                               f"Could not rename file on disk: {str(fs_error)}")
+            show_error_message(
+                self, "Rename Failed", f"Could not rename file on disk: {str(fs_error)}"
+            )
             # Revert UI change
             widget.name_editable.setText(widget.filename_no_ext)
 
@@ -453,7 +525,9 @@ class RecentRecordingsWidget(ResponsiveWidget):
 
         # Quick feedback to the user that filtering is pending
         if self.pending_search_text:
-            self.show_status_message(f"Filtering for: '{self.pending_search_text}'...", 250)
+            self.show_status_message(
+                f"Filtering for: '{self.pending_search_text}'...", 250
+            )
 
     def _apply_filter(self):
         """Apply the actual filtering logic after debounce."""
@@ -463,13 +537,17 @@ class RecentRecordingsWidget(ResponsiveWidget):
 
         # Show status message based on filtering parameters
         if search_text:
-            self.show_status_message(f"Searching for: '{search_text}' in names and transcripts")
+            self.show_status_message(
+                f"Searching for: '{search_text}' in names and transcripts"
+            )
         elif filter_criteria != "All":
             self.show_status_message(f"Filtering: {filter_criteria}")
         else:
             self.show_status_message("Showing all recordings")
 
-        logger.info(f"Filtering recordings - Search: '{search_text}', Criteria: {filter_criteria}")
+        logger.info(
+            f"Filtering recordings - Search: '{search_text}', Criteria: {filter_criteria}"
+        )
 
         # Use the unified_view's set_filter method to apply filtering through the proxy model
         self.unified_view.set_filter(search_text, filter_criteria)
@@ -500,7 +578,16 @@ class RecentRecordingsWidget(ResponsiveWidget):
         """Load initial recordings."""
         self.unified_view.load_structure()
 
-    def add_recording_to_list(self, recording_id, filename, file_path, date_created, duration, raw_transcript, processed_text):
+    def add_recording_to_list(
+        self,
+        recording_id,
+        filename,
+        file_path,
+        date_created,
+        duration,
+        raw_transcript,
+        processed_text,
+    ):
         """Add a new recording to the recordings list."""
         # Find the root "All Recordings" folder - fix item_map reference
         root_item = self.unified_view.source_model.get_item_by_id(-1, "folder")
@@ -509,8 +596,15 @@ class RecentRecordingsWidget(ResponsiveWidget):
             return
 
         # Add recording to the folder directly
-        recording_data = (recording_id, filename, file_path, date_created,
-                          duration, raw_transcript, processed_text)
+        recording_data = (
+            recording_id,
+            filename,
+            file_path,
+            date_created,
+            duration,
+            raw_transcript,
+            processed_text,
+        )
         try:
             # Add recording to the tree
             self.unified_view._add_recording_item(root_item, recording_data)
@@ -541,8 +635,14 @@ class RecentRecordingsWidget(ResponsiveWidget):
         self.status_bar.showMessage(message, timeout)
         if not self.status_bar.isVisible():
             self.status_bar.show()
-            QTimer.singleShot(timeout + 100, lambda: self.status_bar.hide()
-                              if self.status_bar.currentMessage() == message else None)
+            QTimer.singleShot(
+                timeout + 100,
+                lambda: (
+                    self.status_bar.hide()
+                    if self.status_bar.currentMessage() == message
+                    else None
+                ),
+            )
 
     # --- Batch Processing Methods (Placeholders/Connections) ---
     def batch_process(self, process_type):
@@ -554,23 +654,34 @@ class RecentRecordingsWidget(ResponsiveWidget):
                 widget = data.get("widget")
                 if widget:
                     # Collect necessary data for processing
-                    selected_data.append({
-                        'id': widget.get_id(),
-                        'filename': widget.get_filename(),
-                        'file_path': widget.get_filepath(),
-                        'raw_transcript': widget.get_raw_transcript()  # Needed for GPT processing
-                    })
+                    selected_data.append(
+                        {
+                            "id": widget.get_id(),
+                            "filename": widget.get_filename(),
+                            "file_path": widget.get_filepath(),
+                            "raw_transcript": widget.get_raw_transcript(),  # Needed for GPT processing
+                        }
+                    )
 
         if not selected_data:
-            show_info_message(self, "No Selection", f"Please select recordings to {process_type}.")
+            show_info_message(
+                self, "No Selection", f"Please select recordings to {process_type}."
+            )
             return
 
-        action_text = "Transcribe" if process_type == "transcribe" else "Process with GPT"
-        if not show_confirmation_dialog(self, f"Batch {action_text}", f"{action_text} {len(selected_data)} recording(s)?"):
+        action_text = (
+            "Transcribe" if process_type == "transcribe" else "Process with GPT"
+        )
+        if not show_confirmation_dialog(
+            self,
+            f"Batch {action_text}",
+            f"{action_text} {len(selected_data)} recording(s)?",
+        ):
             return
 
         self.progress_dialog = QProgressDialog(
-            f"Starting batch {process_type}...", "Cancel", 0, 100, self)
+            f"Starting batch {process_type}...", "Cancel", 0, 100, self
+        )
         self.progress_dialog.setWindowTitle(f"Batch {action_text}")
         self.progress_dialog.setWindowModality(Qt.WindowModality.WindowModal)
         self.progress_dialog.setAutoClose(False)
@@ -616,11 +727,16 @@ class RecentRecordingsWidget(ResponsiveWidget):
             if data and data.get("type") == "recording":
                 widget = data.get("widget")
                 if widget and widget.get_filepath():
-                    files_to_export.append((widget.get_filepath(), widget.get_filename()))
+                    files_to_export.append(
+                        (widget.get_filepath(), widget.get_filename())
+                    )
 
         if not files_to_export:
-            show_info_message(self, "No Selection",
-                              "Select recordings with associated files to export.")
+            show_info_message(
+                self,
+                "No Selection",
+                "Select recordings with associated files to export.",
+            )
             return
 
         export_dir = QFileDialog.getExistingDirectory(self, "Select Export Directory")
@@ -643,6 +759,7 @@ class RecentRecordingsWidget(ResponsiveWidget):
                     counter += 1
                 # Copy
                 import shutil
+
                 shutil.copy2(source_path, target_path)
                 exported_count += 1
             except Exception as e:
@@ -659,8 +776,11 @@ class RecentRecordingsWidget(ResponsiveWidget):
 
     def sort_recordings(self, sort_by, reverse=False):
         """Placeholder for sorting logic in UnifiedFolderListWidget."""
-        show_info_message(self, "Not Implemented",
-                          "Sorting within the unified view is not yet implemented.")
+        show_info_message(
+            self,
+            "Not Implemented",
+            "Sorting within the unified view is not yet implemented.",
+        )
         # TODO: Implement sorting. This likely requires modifying how items are added
         # in `load_recordings_for_item` or using QTreeView with a sortable model.
 

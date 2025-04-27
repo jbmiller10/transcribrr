@@ -1,7 +1,19 @@
 from PyQt6.QtWidgets import (
-    QPushButton, QTableWidget, QTextEdit, QDialog, QVBoxLayout, QHBoxLayout,
-    QTableWidgetItem, QLineEdit, QLabel, QComboBox, QTabWidget, QWidget,
-    QFileDialog, QMessageBox, QHeaderView
+    QPushButton,
+    QTableWidget,
+    QTextEdit,
+    QDialog,
+    QVBoxLayout,
+    QHBoxLayout,
+    QTableWidgetItem,
+    QLineEdit,
+    QLabel,
+    QComboBox,
+    QTabWidget,
+    QWidget,
+    QFileDialog,
+    QMessageBox,
+    QHeaderView,
 )
 from PyQt6.QtCore import Qt
 from PyQt6.QtGui import QIcon
@@ -26,7 +38,15 @@ class PromptEditorWidget(QWidget):
         self.category_combo = QComboBox()
         self.category_combo.setEditable(True)
         self.category_combo.addItems(
-            ["General", "Transcription", "Summarization", "Formatting", "Translation", "Custom"])
+            [
+                "General",
+                "Transcription",
+                "Summarization",
+                "Formatting",
+                "Translation",
+                "Custom",
+            ]
+        )
         self.name_layout.addWidget(self.name_label)
         self.name_layout.addWidget(self.name_input, 1)
         self.name_layout.addWidget(self.category_label)
@@ -37,11 +57,13 @@ class PromptEditorWidget(QWidget):
         self.layout.addWidget(self.text_label)
         self.prompt_text = QTextEdit()
         self.prompt_text.setPlaceholderText(
-            "Enter the prompt template text here. Use {transcript} for the input text.")
+            "Enter the prompt template text here. Use {transcript} for the input text."
+        )
         self.layout.addWidget(self.prompt_text, 1)
 
         self.variables_hint = QLabel(
-            "Variable: {transcript} - will be replaced by the recording's transcript.")
+            "Variable: {transcript} - will be replaced by the recording's transcript."
+        )
         self.variables_hint.setStyleSheet("color: gray; font-style: italic;")
         self.layout.addWidget(self.variables_hint)
 
@@ -49,7 +71,8 @@ class PromptEditorWidget(QWidget):
         self.name_input.setText(name)
         self.prompt_text.setText(text)
         index = self.category_combo.findText(
-            category, Qt.MatchFlag.MatchFixedString | Qt.MatchFlag.MatchCaseSensitive)
+            category, Qt.MatchFlag.MatchFixedString | Qt.MatchFlag.MatchCaseSensitive
+        )
         if index >= 0:
             self.category_combo.setCurrentIndex(index)
         else:
@@ -60,21 +83,22 @@ class PromptEditorWidget(QWidget):
         return {
             "name": self.name_input.text().strip(),
             "text": self.prompt_text.toPlainText().strip(),
-            "category": self.category_combo.currentText().strip()
+            "category": self.category_combo.currentText().strip(),
         }
 
     def clear(self):
         self.name_input.clear()
         self.prompt_text.clear()
         self.category_combo.setCurrentIndex(
-            self.category_combo.findText("General"))  # Default to General
+            self.category_combo.findText("General")
+        )  # Default to General
 
 
 class PromptManagerDialog(QDialog):
 
     def __init__(self, parent=None):
         super().__init__(parent)
-        self.setWindowTitle('Prompt Template Manager')
+        self.setWindowTitle("Prompt Template Manager")
         self.resize(800, 600)
         self.prompt_manager = PromptManager.instance()  # Get singleton
 
@@ -91,10 +115,10 @@ class PromptManagerDialog(QDialog):
 
         self.button_layout = QHBoxLayout()
         self.import_button = QPushButton("Import")
-        self.import_button.setIcon(QIcon(resource_path('icons/import.svg')))
+        self.import_button.setIcon(QIcon(resource_path("icons/import.svg")))
         self.import_button.clicked.connect(self.import_prompts)
         self.export_button = QPushButton("Export")
-        self.export_button.setIcon(QIcon(resource_path('icons/export.svg')))
+        self.export_button.setIcon(QIcon(resource_path("icons/export.svg")))
         self.export_button.clicked.connect(self.export_prompts)
         self.cancel_button = QPushButton("Close")
         self.cancel_button.clicked.connect(self.reject)  # Close dialog
@@ -117,9 +141,9 @@ class PromptManagerDialog(QDialog):
             # Store the full data dict for easier access
             self.categorized_prompts[category].append({"name": name, **data})
         # Update UI elements if they exist
-        if hasattr(self, 'prompt_table'):
+        if hasattr(self, "prompt_table"):
             self.populate_prompt_table()
-        if hasattr(self, 'category_filter'):
+        if hasattr(self, "category_filter"):
             self._update_category_filter()
 
     def _update_category_filter(self):
@@ -151,25 +175,30 @@ class PromptManagerDialog(QDialog):
         browse_layout.addLayout(filter_layout)
 
         self.prompt_table = QTableWidget(0, 3)
-        self.prompt_table.setHorizontalHeaderLabels(['Name', 'Category', 'Prompt Text'])
-        self.prompt_table.horizontalHeader().setSectionResizeMode(2, QHeaderView.ResizeMode.Stretch)
-        self.prompt_table.setSelectionBehavior(QTableWidget.SelectionBehavior.SelectRows)
+        self.prompt_table.setHorizontalHeaderLabels(["Name", "Category", "Prompt Text"])
+        self.prompt_table.horizontalHeader().setSectionResizeMode(
+            2, QHeaderView.ResizeMode.Stretch
+        )
+        self.prompt_table.setSelectionBehavior(
+            QTableWidget.SelectionBehavior.SelectRows
+        )
         self.prompt_table.setSelectionMode(QTableWidget.SelectionMode.SingleSelection)
         self.prompt_table.itemSelectionChanged.connect(self.on_prompt_selection_changed)
         self.prompt_table.setEditTriggers(
-            QTableWidget.EditTrigger.NoEditTriggers)  # Not editable here
+            QTableWidget.EditTrigger.NoEditTriggers
+        )  # Not editable here
         browse_layout.addWidget(self.prompt_table)
 
         button_layout = QHBoxLayout()
         self.add_button = QPushButton("Add New")
-        self.add_button.setIcon(QIcon(resource_path('icons/add.svg')))
+        self.add_button.setIcon(QIcon(resource_path("icons/add.svg")))
         self.add_button.clicked.connect(self.add_new_prompt)
         self.edit_button = QPushButton("Edit")
-        self.edit_button.setIcon(QIcon(resource_path('icons/edit.svg')))
+        self.edit_button.setIcon(QIcon(resource_path("icons/edit.svg")))
         self.edit_button.clicked.connect(self.edit_selected_prompt)
         self.edit_button.setEnabled(False)
         self.remove_button = QPushButton("Remove")
-        self.remove_button.setIcon(QIcon(resource_path('icons/delete.svg')))
+        self.remove_button.setIcon(QIcon(resource_path("icons/delete.svg")))
         self.remove_button.clicked.connect(self.remove_selected_prompt)
         self.remove_button.setEnabled(False)
         button_layout.addWidget(self.add_button)
@@ -192,7 +221,7 @@ class PromptManagerDialog(QDialog):
         self.clear_button.clicked.connect(self.clear_editor)
         # Changed button text - action depends on context (add vs update)
         self.save_edit_button = QPushButton("Save Prompt")
-        self.save_edit_button.setIcon(QIcon(resource_path('icons/save.svg')))
+        self.save_edit_button.setIcon(QIcon(resource_path("icons/save.svg")))
         self.save_edit_button.clicked.connect(self.save_edited_prompt_from_tab)
         button_layout.addWidget(self.clear_button)
         button_layout.addStretch()
@@ -214,11 +243,15 @@ class PromptManagerDialog(QDialog):
         for category, prompts in sorted(self.categorized_prompts.items()):
             if show_all or category == selected_category:
                 # Sort prompts by name within category
-                for prompt_data in sorted(prompts, key=lambda p: p['name']):
+                for prompt_data in sorted(prompts, key=lambda p: p["name"]):
                     name = prompt_data["name"]
                     text = prompt_data["text"]
                     # Filter logic
-                    if search_text and search_text not in name.lower() and search_text not in text.lower():
+                    if (
+                        search_text
+                        and search_text not in name.lower()
+                        and search_text not in text.lower()
+                    ):
                         continue
 
                     self.prompt_table.insertRow(row)
@@ -226,12 +259,16 @@ class PromptManagerDialog(QDialog):
                     self.prompt_table.setItem(row, 1, QTableWidgetItem(category))
                     display_text = text[:100] + "..." if len(text) > 100 else text
                     table_item = QTableWidgetItem(display_text)
-                    table_item.setData(Qt.ItemDataRole.UserRole, prompt_data)  # Store full data
+                    table_item.setData(
+                        Qt.ItemDataRole.UserRole, prompt_data
+                    )  # Store full data
                     self.prompt_table.setItem(row, 2, table_item)
                     row += 1
 
         self.prompt_table.resizeColumnsToContents()
-        self.prompt_table.horizontalHeader().setSectionResizeMode(2, QHeaderView.ResizeMode.Stretch)
+        self.prompt_table.horizontalHeader().setSectionResizeMode(
+            2, QHeaderView.ResizeMode.Stretch
+        )
         self.on_prompt_selection_changed()  # Update button states
 
     def apply_filter(self):
@@ -255,9 +292,10 @@ class PromptManagerDialog(QDialog):
         row = selected_rows[0].row()
         prompt_data = self.prompt_table.item(row, 2).data(Qt.ItemDataRole.UserRole)
 
-        self._editing_prompt_name = prompt_data['name']  # Store name being edited
+        self._editing_prompt_name = prompt_data["name"]  # Store name being edited
         self.prompt_editor.set_prompt(
-            prompt_data['name'], prompt_data['text'], prompt_data['category'])
+            prompt_data["name"], prompt_data["text"], prompt_data["category"]
+        )
         self.tab_widget.setCurrentIndex(1)  # Switch to edit tab
 
     def remove_selected_prompt(self):
@@ -268,7 +306,9 @@ class PromptManagerDialog(QDialog):
         prompt_data = self.prompt_table.item(row, 2).data(Qt.ItemDataRole.UserRole)
         name = prompt_data["name"]
 
-        if show_confirmation_dialog(self, "Confirm Deletion", f"Delete the prompt '{name}'?"):
+        if show_confirmation_dialog(
+            self, "Confirm Deletion", f"Delete the prompt '{name}'?"
+        ):
             if self.prompt_manager.delete_prompt(name):
                 show_info_message(self, "Prompt Deleted", f"Prompt '{name}' deleted.")
                 self._load_and_organize_prompts()  # Reload internal state and update UI
@@ -292,20 +332,30 @@ class PromptManagerDialog(QDialog):
             data["category"] = "General"  # Ensure category is set
 
         existing_prompt = self.prompt_manager.get_prompt_text(data["name"])
-        is_update = self._editing_prompt_name is not None and self._editing_prompt_name == data["name"]
+        is_update = (
+            self._editing_prompt_name is not None
+            and self._editing_prompt_name == data["name"]
+        )
         is_new_name_conflict = existing_prompt is not None and not is_update
 
         if is_new_name_conflict:
-            if not show_confirmation_dialog(self, "Overwrite Prompt?", f"A prompt named '{data['name']}' already exists. Overwrite it?"):
+            if not show_confirmation_dialog(
+                self,
+                "Overwrite Prompt?",
+                f"A prompt named '{data['name']}' already exists. Overwrite it?",
+            ):
                 return
 
         # Use PromptManager to add or update
         success = False
         if is_update:
             success = self.prompt_manager.update_prompt(
-                data["name"], data["text"], data["category"])
+                data["name"], data["text"], data["category"]
+            )
         else:  # Add new or overwrite existing with confirmation
-            success = self.prompt_manager.add_prompt(data["name"], data["text"], data["category"])
+            success = self.prompt_manager.add_prompt(
+                data["name"], data["text"], data["category"]
+            )
 
         if success:
             action = "updated" if is_update else "saved"
@@ -314,19 +364,28 @@ class PromptManagerDialog(QDialog):
             self.clear_editor()
             self.tab_widget.setCurrentIndex(0)  # Switch back to browse tab
         else:
-            show_error_message(self, "Error", f"Failed to save prompt '{data['name']}'.")
+            show_error_message(
+                self, "Error", f"Failed to save prompt '{data['name']}'."
+            )
 
     def import_prompts(self):
         file_path, _ = QFileDialog.getOpenFileName(
-            self, "Import Prompts", "", "JSON Files (*.json)")
+            self, "Import Prompts", "", "JSON Files (*.json)"
+        )
         if not file_path:
             return
 
         # Ask merge/replace
         merge = show_confirmation_dialog(
-            self, "Import Option", "Merge imported prompts with existing ones? (No will replace all)", default_button=QMessageBox.StandardButton.Yes)
+            self,
+            "Import Option",
+            "Merge imported prompts with existing ones? (No will replace all)",
+            default_button=QMessageBox.StandardButton.Yes,
+        )
 
-        success, message = self.prompt_manager.import_prompts_from_file(file_path, merge=merge)
+        success, message = self.prompt_manager.import_prompts_from_file(
+            file_path, merge=merge
+        )
         if success:
             show_info_message(self, "Import Successful", message)
             self._load_and_organize_prompts()  # Reload internal state and update UI
@@ -335,11 +394,12 @@ class PromptManagerDialog(QDialog):
 
     def export_prompts(self):
         file_path, _ = QFileDialog.getSaveFileName(
-            self, "Export Prompts", "transcribrr_prompts.json", "JSON Files (*.json)")
+            self, "Export Prompts", "transcribrr_prompts.json", "JSON Files (*.json)"
+        )
         if not file_path:
             return
-        if not file_path.lower().endswith('.json'):
-            file_path += '.json'
+        if not file_path.lower().endswith(".json"):
+            file_path += ".json"
 
         success, message = self.prompt_manager.export_prompts_to_file(file_path)
         if success:

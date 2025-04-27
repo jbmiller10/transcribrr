@@ -12,6 +12,7 @@ import sys
 import os
 import importlib
 import unittest
+
 # Skip legacy tests in headless environment
 raise unittest.SkipTest("Skipping legacy test in headless environment")
 
@@ -56,12 +57,15 @@ class Delayed(QObject):
 class TestTree(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
-        cls.app = QApplication([]) if not QApplication.instance() else QApplication.instance()
+        cls.app = (
+            QApplication([]) if not QApplication.instance() else QApplication.instance()
+        )
 
     # ------------------------------------------------------------------
     def setUp(self):
-        self.UFTV = importlib.reload(importlib.import_module(
-            "app.UnifiedFolderTreeView")).UnifiedFolderTreeView
+        self.UFTV = importlib.reload(
+            importlib.import_module("app.UnifiedFolderTreeView")
+        ).UnifiedFolderTreeView
 
         class MockDB(QObject):
             dataChanged = pyqtSignal(str, int)
@@ -91,12 +95,48 @@ class TestTree(unittest.TestCase):
 
         self.cb = {"u": None, "f1": None, "f2": None}
 
-        self.unassigned = [[i, f"R{i}", f"/p{i}.mp3", "2023-01-01 00:00:00",
-                            "00:10", "", "", None, None] for i in range(4)]
-        self.f1 = [[i, f"R{i}", f"/p{i}.mp3", "2023-01-01 00:00:00",
-                    "00:10", "", "", None, None] for i in range(4, 7)]
-        self.f2 = [[i, f"R{i}", f"/p{i}.mp3", "2023-01-01 00:00:00",
-                    "00:10", "", "", None, None] for i in range(7, 10)]
+        self.unassigned = [
+            [
+                i,
+                f"R{i}",
+                f"/p{i}.mp3",
+                "2023-01-01 00:00:00",
+                "00:10",
+                "",
+                "",
+                None,
+                None,
+            ]
+            for i in range(4)
+        ]
+        self.f1 = [
+            [
+                i,
+                f"R{i}",
+                f"/p{i}.mp3",
+                "2023-01-01 00:00:00",
+                "00:10",
+                "",
+                "",
+                None,
+                None,
+            ]
+            for i in range(4, 7)
+        ]
+        self.f2 = [
+            [
+                i,
+                f"R{i}",
+                f"/p{i}.mp3",
+                "2023-01-01 00:00:00",
+                "00:10",
+                "",
+                "",
+                None,
+                None,
+            ]
+            for i in range(7, 10)
+        ]
 
         self.tv = self.UFTV(self.db)
 
@@ -134,8 +174,10 @@ class TestTree(unittest.TestCase):
             QApplication.processEvents()
 
         ids = {k[1] for k in self.tv.source_model.item_map if k[0] == "recording"}
-        self.assertEqual(len(ids), len(set(ids)))          # uniqueness
-        self.assertTrue(ids.issubset({r[0] for r in (self.unassigned + self.f1 + self.f2)}))
+        self.assertEqual(len(ids), len(set(ids)))  # uniqueness
+        self.assertTrue(
+            ids.issubset({r[0] for r in (self.unassigned + self.f1 + self.f2)})
+        )
 
     def test_token(self):
         # record callback from first load

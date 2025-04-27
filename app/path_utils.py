@@ -6,7 +6,7 @@ import logging
 from typing import Optional
 
 # Configure module-level logger
-logger = logging.getLogger('transcribrr')
+logger = logging.getLogger("transcribrr")
 
 
 def _get_base_resource_path() -> str:
@@ -16,17 +16,16 @@ def _get_base_resource_path() -> str:
     This is a helper function to make testing easier.
     """
     # Check if running as PyInstaller bundle
-    if hasattr(sys, '_MEIPASS'):
+    if hasattr(sys, "_MEIPASS"):
         pyinstaller_path: str = sys._MEIPASS  # Type annotation to ensure correct type
         logger.debug(f"Using PyInstaller _MEIPASS path: {pyinstaller_path}")
         return pyinstaller_path
 
     # Check if running as a py2app bundle
-    elif getattr(sys, 'frozen', False) and 'MacOS' in sys.executable:
-        bundle_dir = os.path.normpath(os.path.join(
-            os.path.dirname(sys.executable),
-            os.pardir, 'Resources'
-        ))
+    elif getattr(sys, "frozen", False) and "MacOS" in sys.executable:
+        bundle_dir = os.path.normpath(
+            os.path.join(os.path.dirname(sys.executable), os.pardir, "Resources")
+        )
         py2app_path: str = bundle_dir  # Type annotation to ensure correct type
         logger.debug(f"Using py2app bundle path: {py2app_path}")
         return py2app_path

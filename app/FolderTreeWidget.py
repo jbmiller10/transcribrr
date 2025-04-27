@@ -1,6 +1,16 @@
 from PyQt6.QtWidgets import (
-    QTreeWidget, QTreeWidgetItem, QMenu, QInputDialog, QMessageBox,
-    QWidget, QVBoxLayout, QToolBar, QLabel, QSizePolicy, QHBoxLayout, QToolButton
+    QTreeWidget,
+    QTreeWidgetItem,
+    QMenu,
+    QInputDialog,
+    QMessageBox,
+    QWidget,
+    QVBoxLayout,
+    QToolBar,
+    QLabel,
+    QSizePolicy,
+    QHBoxLayout,
+    QToolButton,
 )
 from PyQt6.QtCore import pyqtSignal, Qt, QSize
 from PyQt6.QtGui import QIcon, QFont, QColor
@@ -9,7 +19,7 @@ from app.FolderManager import FolderManager
 from app.path_utils import resource_path
 
 
-logger = logging.getLogger('transcribrr')
+logger = logging.getLogger("transcribrr")
 
 
 class FolderTreeWidget(QWidget):
@@ -40,14 +50,14 @@ class FolderTreeWidget(QWidget):
         header_layout.addWidget(header_label)
 
         self.refresh_button = QToolButton()
-        self.refresh_button.setIcon(QIcon(resource_path('icons/refresh.svg')))
+        self.refresh_button.setIcon(QIcon(resource_path("icons/refresh.svg")))
         self.refresh_button.setToolTip("Refresh Folders")
         self.refresh_button.setFixedSize(24, 24)
         self.refresh_button.clicked.connect(self.load_folders)
         header_layout.addWidget(self.refresh_button)
 
         self.add_folder_button = QToolButton()
-        self.add_folder_button.setIcon(QIcon(resource_path('icons/folder.svg')))
+        self.add_folder_button.setIcon(QIcon(resource_path("icons/folder.svg")))
         self.add_folder_button.setToolTip("Add New Folder")
         self.add_folder_button.setFixedSize(24, 24)
         self.add_folder_button.clicked.connect(self.create_folder)
@@ -65,7 +75,8 @@ class FolderTreeWidget(QWidget):
         self.folder_tree.itemExpanded.connect(self.on_item_expanded)
         self.folder_tree.itemCollapsed.connect(self.on_item_collapsed)
 
-        self.folder_tree.setStyleSheet("""
+        self.folder_tree.setStyleSheet(
+            """
             QTreeWidget {
                 background-color: transparent;
                 border: none;
@@ -81,19 +92,22 @@ class FolderTreeWidget(QWidget):
             QTreeWidget::item:hover {
                 background-color: #f0f0f0;
             }
-        """)
+        """
+        )
 
         main_layout.addWidget(self.folder_tree)
 
         root_item = QTreeWidgetItem(self.folder_tree)
         root_item.setText(0, "Unorganized Recordings")
-        root_item.setIcon(0, QIcon(resource_path('icons/folder.svg')))
-        root_item.setData(0, Qt.ItemDataRole.UserRole, {"id": -1, "name": "Unorganized Recordings"})
+        root_item.setIcon(0, QIcon(resource_path("icons/folder.svg")))
+        root_item.setData(
+            0, Qt.ItemDataRole.UserRole, {"id": -1, "name": "Unorganized Recordings"}
+        )
         root_item.setExpanded(True)
         self.folder_tree.setCurrentItem(root_item)
 
-        self.folder_icon = QIcon(resource_path('icons/folder.svg'))
-        self.folder_open_icon = QIcon(resource_path('icons/folder_open.svg'))
+        self.folder_icon = QIcon(resource_path("icons/folder.svg"))
+        self.folder_open_icon = QIcon(resource_path("icons/folder_open.svg"))
 
     def load_folders(self):
         """Load and rebuild the folder tree."""
@@ -101,8 +115,8 @@ class FolderTreeWidget(QWidget):
         current_folder_id = -1
         if current_item:
             folder_data = current_item.data(0, Qt.ItemDataRole.UserRole)
-            if isinstance(folder_data, dict) and 'id' in folder_data:
-                current_folder_id = folder_data['id']
+            if isinstance(folder_data, dict) and "id" in folder_data:
+                current_folder_id = folder_data["id"]
 
         root_item = self.folder_tree.topLevelItem(0)
         if root_item:
@@ -111,13 +125,14 @@ class FolderTreeWidget(QWidget):
 
         # Get FolderManager instance safely
         from app.FolderManager import FolderManager
+
         try:
             # Try to get instance, or initialize with db_manager if available
-            if hasattr(self, 'db_manager') and self.db_manager is not None:
+            if hasattr(self, "db_manager") and self.db_manager is not None:
                 folder_manager = FolderManager.instance(db_manager=self.db_manager)
             else:
                 # Try to initialize with db_manager if available
-                if hasattr(self, 'db_manager') and self.db_manager is not None:
+                if hasattr(self, "db_manager") and self.db_manager is not None:
                     folder_manager = FolderManager.instance(db_manager=self.db_manager)
                 else:
                     folder_manager = FolderManager.instance()
@@ -129,16 +144,19 @@ class FolderTreeWidget(QWidget):
         try:
             import sqlite3
             from app.constants import get_database_path
+
             db_path = get_database_path()
             conn = sqlite3.connect(db_path)
             cursor = conn.cursor()
-            cursor.execute("""
+            cursor.execute(
+                """
                 SELECT COUNT(*) FROM recordings
                 WHERE NOT EXISTS (
                     SELECT 1 FROM recording_folders 
                     WHERE recording_id = recordings.id
                 )
-            """)
+            """
+            )
             unorganized_count = cursor.fetchone()[0]
             conn.close()
 
@@ -163,33 +181,38 @@ class FolderTreeWidget(QWidget):
 
     def add_folder_to_tree(self, folder, parent_item):
         """Recursively add a folder and its children to the tree."""
-        recording_count = self.get_folder_recording_count(folder['id'])
+        recording_count = self.get_folder_recording_count(folder["id"])
 
         item = QTreeWidgetItem(parent_item)
         if recording_count > 0:
             item.setText(0, f"{folder['name']} ({recording_count})")
             item.setForeground(0, QColor("#000000"))
         else:
-            item.setText(0, folder['name'] + " (empty)")
+            item.setText(0, folder["name"] + " (empty)")
             item.setForeground(0, QColor("#888888"))
 
         item.setIcon(0, self.folder_icon)
-        item.setData(0, Qt.ItemDataRole.UserRole, {
-            "id": folder['id'],
-            "name": folder['name'],
-            "recording_count": recording_count
-        })
+        item.setData(
+            0,
+            Qt.ItemDataRole.UserRole,
+            {
+                "id": folder["id"],
+                "name": folder["name"],
+                "recording_count": recording_count,
+            },
+        )
 
-        for child in folder['children']:
+        for child in folder["children"]:
             self.add_folder_to_tree(child, item)
 
     def get_folder_recording_count(self, folder_id):
         """Return recording count in folder."""
         try:
             from app.FolderManager import FolderManager
+
             try:
                 # Try to initialize with db_manager if available
-                if hasattr(self, 'db_manager') and self.db_manager is not None:
+                if hasattr(self, "db_manager") and self.db_manager is not None:
                     folder_manager = FolderManager.instance(db_manager=self.db_manager)
                 else:
                     folder_manager = FolderManager.instance()
@@ -206,14 +229,14 @@ class FolderTreeWidget(QWidget):
         """Handle item expansion to update the folder icon."""
         # Skip for "All Recordings" item
         folder_data = item.data(0, Qt.ItemDataRole.UserRole)
-        if folder_data and folder_data.get('id') != -1:
+        if folder_data and folder_data.get("id") != -1:
             item.setIcon(0, self.folder_open_icon)
 
     def on_item_collapsed(self, item):
         """Handle item collapse to update the folder icon."""
         # Skip for "All Recordings" item
         folder_data = item.data(0, Qt.ItemDataRole.UserRole)
-        if folder_data and folder_data.get('id') != -1:
+        if folder_data and folder_data.get("id") != -1:
             item.setIcon(0, self.folder_icon)
 
     def select_folder_by_id(self, folder_id):
@@ -239,7 +262,7 @@ class FolderTreeWidget(QWidget):
         """Recursively search for a folder item by ID."""
         # Check parent item
         folder_data = parent_item.data(0, Qt.ItemDataRole.UserRole)
-        if isinstance(folder_data, dict) and folder_data.get('id') == folder_id:
+        if isinstance(folder_data, dict) and folder_data.get("id") == folder_id:
             return parent_item
 
         # Check children
@@ -255,8 +278,8 @@ class FolderTreeWidget(QWidget):
         """Handle folder selection."""
         folder_data = item.data(0, Qt.ItemDataRole.UserRole)
         if isinstance(folder_data, dict):
-            folder_id = folder_data.get('id', -1)
-            folder_name = folder_data.get('name', "Unknown")
+            folder_id = folder_data.get("id", -1)
+            folder_name = folder_data.get("name", "Unknown")
 
             # When emitting the signal, use the plain folder name (without the count)
             # This ensures the header in RecentRecordingsWidget shows the clean name
@@ -273,9 +296,9 @@ class FolderTreeWidget(QWidget):
         if not isinstance(folder_data, dict):
             return
 
-        folder_id = folder_data.get('id')
-        is_all_recordings = (folder_id == -1)
-        recording_count = folder_data.get('recording_count', 0)
+        folder_id = folder_data.get("id")
+        is_all_recordings = folder_id == -1
+        recording_count = folder_data.get("recording_count", 0)
 
         # Create context menu
         menu = QMenu()
@@ -301,7 +324,9 @@ class FolderTreeWidget(QWidget):
 
         # Common options for all folders
         add_subfolder_action = menu.addAction("Add Subfolder")
-        add_subfolder_action.triggered.connect(lambda: self.create_subfolder(item, folder_id))
+        add_subfolder_action.triggered.connect(
+            lambda: self.create_subfolder(item, folder_id)
+        )
 
         # Option to refresh folder count
         refresh_action = menu.addAction("Refresh")
@@ -318,16 +343,20 @@ class FolderTreeWidget(QWidget):
         if ok and folder_name:
             # Get FolderManager instance safely
             from app.FolderManager import FolderManager
+
             try:
                 # Try to initialize with db_manager if available
-                if hasattr(self, 'db_manager') and self.db_manager is not None:
+                if hasattr(self, "db_manager") and self.db_manager is not None:
                     folder_manager = FolderManager.instance(db_manager=self.db_manager)
                 else:
                     folder_manager = FolderManager.instance()
             except RuntimeError as e:
                 logger.error(f"Error accessing FolderManager: {e}")
                 QMessageBox.warning(
-                    self, "Error", "Cannot create folder: Database manager not initialized")
+                    self,
+                    "Error",
+                    "Cannot create folder: Database manager not initialized",
+                )
                 return
 
             # Define callback for when folder creation completes
@@ -337,7 +366,9 @@ class FolderTreeWidget(QWidget):
                     self.load_folders()
                     self.folderCreated.emit(folder_id, folder_name)
                 else:
-                    QMessageBox.warning(self, "Error", f"Failed to create folder: {result}")
+                    QMessageBox.warning(
+                        self, "Error", f"Failed to create folder: {result}"
+                    )
 
             folder_manager.create_folder(folder_name, None, on_folder_created)
 
@@ -350,16 +381,20 @@ class FolderTreeWidget(QWidget):
         if ok and folder_name:
             # Get FolderManager instance safely
             from app.FolderManager import FolderManager
+
             try:
                 # Try to initialize with db_manager if available
-                if hasattr(self, 'db_manager') and self.db_manager is not None:
+                if hasattr(self, "db_manager") and self.db_manager is not None:
                     folder_manager = FolderManager.instance(db_manager=self.db_manager)
                 else:
                     folder_manager = FolderManager.instance()
             except RuntimeError as e:
                 logger.error(f"Error accessing FolderManager: {e}")
                 QMessageBox.warning(
-                    self, "Error", "Cannot create folder: Database manager not initialized")
+                    self,
+                    "Error",
+                    "Cannot create folder: Database manager not initialized",
+                )
                 return
 
             # Define callback for when folder creation completes
@@ -369,7 +404,9 @@ class FolderTreeWidget(QWidget):
                     self.load_folders()
                     self.folderCreated.emit(folder_id, folder_name)
                 else:
-                    QMessageBox.warning(self, "Error", f"Failed to create subfolder: {result}")
+                    QMessageBox.warning(
+                        self, "Error", f"Failed to create subfolder: {result}"
+                    )
 
             folder_manager.create_folder(folder_name, parent_id, on_folder_created)
 
@@ -383,16 +420,20 @@ class FolderTreeWidget(QWidget):
         if ok and new_name and new_name != current_name:
             # Get FolderManager instance safely
             from app.FolderManager import FolderManager
+
             try:
                 # Try to initialize with db_manager if available
-                if hasattr(self, 'db_manager') and self.db_manager is not None:
+                if hasattr(self, "db_manager") and self.db_manager is not None:
                     folder_manager = FolderManager.instance(db_manager=self.db_manager)
                 else:
                     folder_manager = FolderManager.instance()
             except RuntimeError as e:
                 logger.error(f"Error accessing FolderManager: {e}")
                 QMessageBox.warning(
-                    self, "Error", "Cannot rename folder: Database manager not initialized")
+                    self,
+                    "Error",
+                    "Cannot rename folder: Database manager not initialized",
+                )
                 return
 
             # Define callback for when folder rename completes
@@ -401,7 +442,9 @@ class FolderTreeWidget(QWidget):
                     self.load_folders()
                     self.folderRenamed.emit(folder_id, new_name)
                 else:
-                    QMessageBox.warning(self, "Error", f"Failed to rename folder: {result}")
+                    QMessageBox.warning(
+                        self, "Error", f"Failed to rename folder: {result}"
+                    )
 
             folder_manager.rename_folder(folder_id, new_name, on_folder_renamed)
 
@@ -411,24 +454,29 @@ class FolderTreeWidget(QWidget):
 
         # Confirm deletion
         response = QMessageBox.question(
-            self, "Delete Folder",
+            self,
+            "Delete Folder",
             f"Are you sure you want to delete the folder '{folder_name}'?\n\nThis will remove all recording associations with this folder.",
-            QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No
+            QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
         )
 
         if response == QMessageBox.StandardButton.Yes:
             # Get FolderManager instance safely
             from app.FolderManager import FolderManager
+
             try:
                 # Try to initialize with db_manager if available
-                if hasattr(self, 'db_manager') and self.db_manager is not None:
+                if hasattr(self, "db_manager") and self.db_manager is not None:
                     folder_manager = FolderManager.instance(db_manager=self.db_manager)
                 else:
                     folder_manager = FolderManager.instance()
             except RuntimeError as e:
                 logger.error(f"Error accessing FolderManager: {e}")
                 QMessageBox.warning(
-                    self, "Error", "Cannot delete folder: Database manager not initialized")
+                    self,
+                    "Error",
+                    "Cannot delete folder: Database manager not initialized",
+                )
                 return
 
             # Define callback for when folder deletion completes
@@ -442,6 +490,8 @@ class FolderTreeWidget(QWidget):
                     self.load_folders()
                     self.folderDeleted.emit(folder_id)
                 else:
-                    QMessageBox.warning(self, "Error", f"Failed to delete folder: {result}")
+                    QMessageBox.warning(
+                        self, "Error", f"Failed to delete folder: {result}"
+                    )
 
             folder_manager.delete_folder(folder_id, on_folder_deleted)

@@ -13,11 +13,12 @@ from pyannote.audio import Pipeline
 
 # Filter torchaudio warning about set_audio_backend
 warnings.filterwarnings(
-    "ignore", message="torchaudio._backend.set_audio_backend has been deprecated")
+    "ignore", message="torchaudio._backend.set_audio_backend has been deprecated"
+)
 
 
 # Configure logging
-logger = logging.getLogger('transcribrr')
+logger = logging.getLogger("transcribrr")
 
 
 class ModelManager:
@@ -26,7 +27,7 @@ class ModelManager:
     _instance = None
 
     @classmethod
-    def instance(cls) -> 'ModelManager':
+    def instance(cls) -> "ModelManager":
         """Return singleton ModelManager."""
         if cls._instance is None:
             cls._instance = ModelManager()
@@ -39,8 +40,9 @@ class ModelManager:
 
         # Read config to get hardware acceleration setting
         from app.utils import ConfigManager
+
         config_manager = ConfigManager.instance()
-        hw_accel_enabled = config_manager.get('hardware_acceleration_enabled', True)
+        hw_accel_enabled = config_manager.get("hardware_acceleration_enabled", True)
 
         # Track current device
         self.device = self._get_optimal_device(hw_accel_enabled)
@@ -60,7 +62,8 @@ class ModelManager:
                 return "cuda"
             else:
                 logger.warning(
-                    f"Insufficient GPU memory. Available: {free_memory:.2f}GB. Using CPU instead.")
+                    f"Insufficient GPU memory. Available: {free_memory:.2f}GB. Using CPU instead."
+                )
                 return "cpu"
         elif torch.backends.mps.is_available():
             logger.info("MPS device selected for acceleration (Apple Silicon)")
@@ -74,9 +77,10 @@ class ModelManager:
         try:
             if torch.cuda.is_available():
                 # This is an approximate way to get free memory
-                gpu_memory = torch.cuda.get_device_properties(
-                    0).total_memory / (1024 ** 3)  # Convert to GB
-                allocated = torch.cuda.memory_allocated(0) / (1024 ** 3)  # Convert to GB
+                gpu_memory = torch.cuda.get_device_properties(0).total_memory / (
+                    1024**3
+                )  # Convert to GB
+                allocated = torch.cuda.memory_allocated(0) / (1024**3)  # Convert to GB
                 return gpu_memory - allocated
             return 0.0
         except Exception as e:
@@ -128,7 +132,7 @@ class ModelManager:
                 model_id,
                 torch_dtype=torch.float16 if self.device != "cpu" else torch.float32,
                 low_cpu_mem_usage=True,
-                use_safetensors=True
+                use_safetensors=True,
             )
             model.to(self.device)
             return model
@@ -156,8 +160,9 @@ class ModelManager:
             torch.cuda.empty_cache()
             logger.info("Cleared all models from cache")
 
-    def create_pipeline(self, model_id: str, language: str = "english",
-                        chunk_length_s: int = 30) -> Any:
+    def create_pipeline(
+        self, model_id: str, language: str = "english", chunk_length_s: int = 30
+    ) -> Any:
         """
         Create a transcription pipeline using a cached model.
 
@@ -196,6 +201,7 @@ class ModelManager:
         if self.device == "cuda":
             torch.cuda.empty_cache()
         import gc
+
         gc.collect()
         logger.info("Released memory and ran garbage collection")
 
@@ -207,15 +213,17 @@ class TranscriptionService:
         """Initialize the transcription service."""
         self.model_manager = ModelManager.instance()
 
-    def transcribe_file(self,
-                        file_path: str,
-                        model_id: str,
-                        language: str = "english",
-                        method: str = "local",
-                        openai_api_key: Optional[str] = None,
-                        hf_auth_key: Optional[str] = None,
-                        speaker_detection: bool = False,
-                        hardware_acceleration_enabled: bool = True) -> Dict[str, Any]:
+    def transcribe_file(
+        self,
+        file_path: str,
+        model_id: str,
+        language: str = "english",
+        method: str = "local",
+        openai_api_key: Optional[str] = None,
+        hf_auth_key: Optional[str] = None,
+        speaker_detection: bool = False,
+        hardware_acceleration_enabled: bool = True,
+    ) -> Dict[str, Any]:
         """
         Transcribe an audio file using the specified method.
 
@@ -242,47 +250,63 @@ class TranscriptionService:
         if method_norm == "api":
             # Speaker detection is not compatible with API method, log a warning if it was requested
             if speaker_detection:
-                logger.warning("Speaker detection requested but not available with API method")
+                logger.warning(
+                    "Speaker detection requested but not available with API method"
+                )
 
-            logger.info(f"Using API method for transcription of {os.path.basename(file_path)}")
+            logger.info(
+                f"Using API method for transcription of {os.path.basename(file_path)}"
+            )
             return self._transcribe_with_api(file_path, language, openai_api_key)
 
         # For local method, decide on hardware acceleration path
-        is_mps_device = hardware_acceleration_enabled and torch.backends.mps.is_available(
-        ) and not torch.cuda.is_available()
+        is_mps_device = (
+            hardware_acceleration_enabled
+            and torch.backends.mps.is_available()
+            and not torch.cuda.is_available()
+        )
 
         # Special case: MPS device with hardware acceleration and speaker detection
         # MPS and speaker detection don't work together, so we need to warn and choose a path
         if is_mps_device and speaker_detection:
             logger.warning(
-                "Speaker detection is not compatible with MPS acceleration. Prioritizing your choice...")
+                "Speaker detection is not compatible with MPS acceleration. Prioritizing your choice..."
+            )
 
             # If user has explicitly enabled speaker detection despite having hardware acceleration,
             # we'll assume they prioritize speaker detection over hardware acceleration
             logger.info("Using CPU transcription to support speaker detection")
-            return self._transcribe_locally(file_path, model_id, language,
-                                            speaker_detection, hf_auth_key)
+            return self._transcribe_locally(
+                file_path, model_id, language, speaker_detection, hf_auth_key
+            )
 
         # If MPS is available and hardware acceleration is enabled, use MPS path
         elif is_mps_device:
             logger.info(
-                f"Using MPS-optimized method for transcription of {os.path.basename(file_path)}")
+                f"Using MPS-optimized method for transcription of {os.path.basename(file_path)}"
+            )
             return self._transcribe_with_mps(file_path, model_id, language)
 
         # Otherwise use standard path with CUDA or CPU based on availability and settings
         else:
-            device = self.model_manager._get_optimal_device(hardware_acceleration_enabled)
+            device = self.model_manager._get_optimal_device(
+                hardware_acceleration_enabled
+            )
             logger.info(
-                f"Using standard transcription with {device} for {os.path.basename(file_path)}")
-            return self._transcribe_locally(file_path, model_id, language,
-                                            speaker_detection, hf_auth_key)
+                f"Using standard transcription with {device} for {os.path.basename(file_path)}"
+            )
+            return self._transcribe_locally(
+                file_path, model_id, language, speaker_detection, hf_auth_key
+            )
 
-    def _transcribe_locally(self,
-                            file_path: str,
-                            model_id: str,
-                            language: str,
-                            speaker_detection: bool,
-                            hf_auth_key: Optional[str]) -> Dict[str, Any]:
+    def _transcribe_locally(
+        self,
+        file_path: str,
+        model_id: str,
+        language: str,
+        speaker_detection: bool,
+        hf_auth_key: Optional[str],
+    ) -> Dict[str, Any]:
         """
         Transcribe using local models.
 
@@ -307,10 +331,13 @@ class TranscriptionService:
             if speaker_detection and hf_auth_key:
                 try:
                     result_with_speakers: Dict[str, Any] = self._add_speaker_detection(
-                        file_path, result, hf_auth_key)
+                        file_path, result, hf_auth_key
+                    )
                     return result_with_speakers
                 except Exception as e:
-                    logger.error(f"Speaker detection failed, returning normal transcript: {e}")
+                    logger.error(
+                        f"Speaker detection failed, returning normal transcript: {e}"
+                    )
                     return result
 
             # Explicitly cast to the correct return type
@@ -321,10 +348,9 @@ class TranscriptionService:
             logger.error(f"Local transcription error: {e}")
             raise RuntimeError(f"Failed to transcribe audio: {e}")
 
-    def _transcribe_with_mps(self,
-                             file_path: str,
-                             model_id: str,
-                             language: str) -> Dict[str, Any]:
+    def _transcribe_with_mps(
+        self, file_path: str, model_id: str, language: str
+    ) -> Dict[str, Any]:
         """
         Transcribe using MPS-optimized approach for Apple Silicon.
         This implementation uses the approach from the mac_support branch.
@@ -340,14 +366,16 @@ class TranscriptionService:
         try:
             # SpeechToTextPipeline MPS implementation
             if torch.backends.mps.is_available():
-                logger.info(f"Using MPS device for transcription of {os.path.basename(file_path)}")
+                logger.info(
+                    f"Using MPS device for transcription of {os.path.basename(file_path)}"
+                )
 
                 # Initialize model
                 model = AutoModelForSpeechSeq2Seq.from_pretrained(
                     model_id,
                     torch_dtype=torch.float16,
                     low_cpu_mem_usage=False,
-                    use_safetensors=True
+                    use_safetensors=True,
                 )
 
                 # Set device to MPS
@@ -383,8 +411,11 @@ class TranscriptionService:
             else:
                 # Fall back to regular transcription if MPS not available
                 logger.warning(
-                    "MPS requested but not available, falling back to standard transcription")
-                return self._transcribe_locally(file_path, model_id, language, False, None)
+                    "MPS requested but not available, falling back to standard transcription"
+                )
+                return self._transcribe_locally(
+                    file_path, model_id, language, False, None
+                )
 
         except Exception as e:
             logger.error(f"MPS transcription error: {e}", exc_info=True)
@@ -417,12 +448,13 @@ class TranscriptionService:
             return {"text": rsp.text, "method": "api"}
         except Exception as exc:
             logger.error("Whisper API error: %s", exc, exc_info=True)
-            raise RuntimeError(f"OpenAI Whisper API transcription failed: {exc}") from exc
+            raise RuntimeError(
+                f"OpenAI Whisper API transcription failed: {exc}"
+            ) from exc
 
-    def _add_speaker_detection(self,
-                               file_path: str,
-                               result: Dict[str, Any],
-                               hf_auth_key: str) -> Dict[str, Any]:
+    def _add_speaker_detection(
+        self, file_path: str, result: Dict[str, Any], hf_auth_key: str
+    ) -> Dict[str, Any]:
         """
         Add speaker detection to transcription results.
 
@@ -440,8 +472,7 @@ class TranscriptionService:
             # Initialize diarization pipeline
             logger.info("Initializing speaker diarization pipeline")
             diarization_pipeline = Pipeline.from_pretrained(
-                "pyannote/speaker-diarization",
-                use_auth_token=hf_auth_key
+                "pyannote/speaker-diarization", use_auth_token=hf_auth_key
             )
 
             # Process the audio file
@@ -451,14 +482,13 @@ class TranscriptionService:
             # Extract speaker segments
             segments = []
             for segment, track, label in diarization.itertracks(yield_label=True):
-                segments.append({
-                    'segment': {
-                        'start': segment.start,
-                        'end': segment.end
-                    },
-                    'track': track,
-                    'label': label
-                })
+                segments.append(
+                    {
+                        "segment": {"start": segment.start, "end": segment.end},
+                        "track": track,
+                        "label": label,
+                    }
+                )
 
             # Combine segments with the same speaker
             speaker_segments = []
@@ -472,29 +502,35 @@ class TranscriptionService:
                 # Check if the speaker has changed
                 if cur_segment["label"] != prev_segment["label"]:
                     # Add the previous segment
-                    speaker_segments.append({
-                        "segment": {
-                            "start": prev_segment["segment"]["start"],
-                            "end": cur_segment["segment"]["start"]
-                        },
-                        "speaker": prev_segment["label"],
-                    })
+                    speaker_segments.append(
+                        {
+                            "segment": {
+                                "start": prev_segment["segment"]["start"],
+                                "end": cur_segment["segment"]["start"],
+                            },
+                            "speaker": prev_segment["label"],
+                        }
+                    )
                     prev_segment = cur_segment
 
             # Add the last segment
-            speaker_segments.append({
-                "segment": {
-                    "start": prev_segment["segment"]["start"],
-                    "end": segments[-1]["segment"]["end"]
-                },
-                "speaker": prev_segment["label"],
-            })
+            speaker_segments.append(
+                {
+                    "segment": {
+                        "start": prev_segment["segment"]["start"],
+                        "end": segments[-1]["segment"]["end"],
+                    },
+                    "speaker": prev_segment["label"],
+                }
+            )
 
             # Align with transcription chunks
             transcript_chunks = result.get("chunks", [])
             if not transcript_chunks:
                 # Create chunks from the main text
-                transcript_chunks = [{"text": result.get("text", ""), "timestamp": (0, 0)}]
+                transcript_chunks = [
+                    {"text": result.get("text", ""), "timestamp": (0, 0)}
+                ]
 
             # Assign speakers to transcript chunks
             for chunk in transcript_chunks:
@@ -507,8 +543,9 @@ class TranscriptionService:
                     segment_end = speaker_segment["segment"]["end"]
 
                     # Check if chunk is within this speaker segment
-                    if (chunk_start >= segment_start and chunk_start < segment_end) or \
-                       (chunk_end > segment_start and chunk_end <= segment_end):
+                    if (chunk_start >= segment_start and chunk_start < segment_end) or (
+                        chunk_end > segment_start and chunk_end <= segment_end
+                    ):
                         chunk["speaker"] = speaker_segment["speaker"]
                         break
                 else:

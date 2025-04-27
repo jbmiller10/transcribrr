@@ -1,9 +1,17 @@
 """Prompt Bar widget for managing prompt selection and editing."""
 
 from PyQt6.QtWidgets import (
-    QWidget, QVBoxLayout, QHBoxLayout, QComboBox,
-    QPushButton, QTextEdit, QLabel, QSizePolicy,
-    QInputDialog, QMessageBox, QSplitter
+    QWidget,
+    QVBoxLayout,
+    QHBoxLayout,
+    QComboBox,
+    QPushButton,
+    QTextEdit,
+    QLabel,
+    QSizePolicy,
+    QInputDialog,
+    QMessageBox,
+    QSplitter,
 )
 from PyQt6.QtCore import Qt, pyqtSignal, QTimer, QSize
 from PyQt6.QtGui import QIcon
@@ -40,12 +48,14 @@ class PromptBar(QWidget):
         # Create prompt dropdown
         self.prompt_label = QLabel("Prompt:")
         self.prompt_dropdown = QComboBox()
-        self.prompt_dropdown.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed)
+        self.prompt_dropdown.setSizePolicy(
+            QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed
+        )
 
         # Create edit button
         self.edit_button = QPushButton("Edit")
         self.edit_button.setToolTip("Edit selected prompt template")
-        self.edit_button.setIcon(QIcon(resource_path('icons/edit.svg')))
+        self.edit_button.setIcon(QIcon(resource_path("icons/edit.svg")))
         self.edit_button.setIconSize(QSize(16, 16))
         self.edit_button.setFixedSize(QSize(60, 28))
 
@@ -68,7 +78,9 @@ class PromptBar(QWidget):
 
         # Create custom prompt input
         self.custom_prompt_input = QTextEdit()
-        self.custom_prompt_input.setPlaceholderText("Enter your custom prompt instructions here...")
+        self.custom_prompt_input.setPlaceholderText(
+            "Enter your custom prompt instructions here..."
+        )
         self.custom_prompt_input.setMaximumHeight(120)
         self.prompt_layout.addWidget(self.custom_prompt_input)
 
@@ -91,7 +103,9 @@ class PromptBar(QWidget):
         self.prompt_widget.setVisible(False)  # Hide custom prompt area initially
 
         # Connect signals
-        self.prompt_dropdown.currentIndexChanged.connect(self.on_prompt_selection_changed)
+        self.prompt_dropdown.currentIndexChanged.connect(
+            self.on_prompt_selection_changed
+        )
         self.edit_button.clicked.connect(self.on_edit_button_clicked)
         self.save_button.clicked.connect(self.save_custom_prompt_as_template)
 
@@ -125,7 +139,9 @@ class PromptBar(QWidget):
             for name in prompt_names_in_category:
                 # Display as "Name (Category)" for clarity, except for General
                 display_name = f"{name} ({category})" if category != "General" else name
-                self.prompt_dropdown.addItem(display_name, name)  # Store real name as user data
+                self.prompt_dropdown.addItem(
+                    display_name, name
+                )  # Store real name as user data
 
         # Add Custom Prompt option
         self.prompt_dropdown.insertSeparator(self.prompt_dropdown.count())
@@ -173,7 +189,9 @@ class PromptBar(QWidget):
     def show_custom_prompt_input(self):
         """Show the custom prompt input area."""
         self.prompt_widget.setVisible(True)
-        QTimer.singleShot(0, lambda: self.custom_prompt_input.setFocus())  # Set focus after visible
+        QTimer.singleShot(
+            0, lambda: self.custom_prompt_input.setFocus()
+        )  # Set focus after visible
 
     def hide_custom_prompt_input(self):
         """Hide the custom prompt input area."""
@@ -210,9 +228,14 @@ class PromptBar(QWidget):
                     self.save_button.clicked.connect(self.save_edited_prompt)
                 else:
                     show_error_message(
-                        self, "Error", f"Could not find prompt '{selected_prompt_name}'.")
+                        self,
+                        "Error",
+                        f"Could not find prompt '{selected_prompt_name}'.",
+                    )
             else:
-                show_info_message(self, "Edit Prompt", "Select a saved prompt template to edit it.")
+                show_info_message(
+                    self, "Edit Prompt", "Select a saved prompt template to edit it."
+                )
 
     def save_custom_prompt_as_template(self):
         """Save the custom prompt as a new template via PromptManager."""
@@ -222,32 +245,43 @@ class PromptBar(QWidget):
             return
 
         prompt_name, ok = QInputDialog.getText(
-            self, 'Save New Prompt', 'Enter a name for this new prompt template:')
+            self, "Save New Prompt", "Enter a name for this new prompt template:"
+        )
         if ok and prompt_name:
             if self.prompt_manager.get_prompt_text(prompt_name) is not None:
                 if not show_confirmation_dialog(
-                    self, "Overwrite Prompt?",
-                    f"A prompt named '{prompt_name}' already exists. Overwrite it?"
+                    self,
+                    "Overwrite Prompt?",
+                    f"A prompt named '{prompt_name}' already exists. Overwrite it?",
                 ):
                     return
 
             # Ask for category (optional)
-            categories = sorted(list(set(
-                p.get("category", "General")
-                for p in self.prompt_manager.get_prompts().values()
-            )))
+            categories = sorted(
+                list(
+                    set(
+                        p.get("category", "General")
+                        for p in self.prompt_manager.get_prompts().values()
+                    )
+                )
+            )
             if "Custom" not in categories:
                 categories.append("Custom")
 
             category, ok_cat = QInputDialog.getItem(
-                self, "Select Category",
+                self,
+                "Select Category",
                 "Choose a category (or type a new one):",
-                categories, 0, True
+                categories,
+                0,
+                True,
             )
 
             if ok_cat and category:
                 if self.prompt_manager.add_prompt(prompt_name, prompt_text, category):
-                    show_info_message(self, "Prompt Saved", f"Prompt '{prompt_name}' saved.")
+                    show_info_message(
+                        self, "Prompt Saved", f"Prompt '{prompt_name}' saved."
+                    )
 
                     # Reload dropdown and select the newly added prompt
                     self.load_prompts_to_dropdown()
@@ -259,7 +293,9 @@ class PromptBar(QWidget):
 
                     self.is_editing_existing_prompt = False  # Reset state
                 else:
-                    show_error_message(self, "Error", f"Failed to save prompt '{prompt_name}'.")
+                    show_error_message(
+                        self, "Error", f"Failed to save prompt '{prompt_name}'."
+                    )
             else:
                 show_info_message(self, "Save Cancelled", "Prompt save cancelled.")
 
@@ -275,11 +311,16 @@ class PromptBar(QWidget):
 
         if selected_prompt_name != "CUSTOM":
             # Keep existing category unless user changes it (optional enhancement)
-            current_category = self.prompt_manager.get_prompt_category(
-                selected_prompt_name) or "General"
-            if self.prompt_manager.update_prompt(selected_prompt_name, edited_text, current_category):
-                show_info_message(self, "Prompt Updated",
-                                  f"Prompt '{selected_prompt_name}' updated.")
+            current_category = (
+                self.prompt_manager.get_prompt_category(selected_prompt_name)
+                or "General"
+            )
+            if self.prompt_manager.update_prompt(
+                selected_prompt_name, edited_text, current_category
+            ):
+                show_info_message(
+                    self, "Prompt Updated", f"Prompt '{selected_prompt_name}' updated."
+                )
                 self.hide_custom_prompt_input()
                 self.edit_button.setText("Edit")
                 self.edit_button.setToolTip("Edit selected prompt template")
@@ -294,9 +335,12 @@ class PromptBar(QWidget):
                     self.prompt_dropdown.setCurrentIndex(new_index)
             else:
                 show_error_message(
-                    self, "Error", f"Failed to update prompt '{selected_prompt_name}'.")
+                    self, "Error", f"Failed to update prompt '{selected_prompt_name}'."
+                )
         else:
-            show_error_message(self, "Error", "Cannot save changes to the 'Custom Prompt' option.")
+            show_error_message(
+                self, "Error", "Cannot save changes to the 'Custom Prompt' option."
+            )
 
     def current_prompt_name(self):
         """Get the name of the currently selected prompt."""
@@ -318,8 +362,11 @@ class PromptBar(QWidget):
     def set_enabled(self, enabled):
         """Enable or disable the prompt bar."""
         self.prompt_dropdown.setEnabled(enabled)
-        self.edit_button.setEnabled(enabled and self.prompt_dropdown.itemData(
-            self.prompt_dropdown.currentIndex()) != "CUSTOM")
+        self.edit_button.setEnabled(
+            enabled
+            and self.prompt_dropdown.itemData(self.prompt_dropdown.currentIndex())
+            != "CUSTOM"
+        )
         self.custom_prompt_input.setEnabled(enabled)
         self.save_button.setEnabled(enabled)
 

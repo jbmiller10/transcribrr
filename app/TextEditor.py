@@ -2,13 +2,41 @@ import sys
 import os
 import logging
 from PyQt6.QtWidgets import (
-    QApplication, QMainWindow, QTextEdit, QToolBar, QColorDialog, QWidget,
-    QWidgetAction, QFontComboBox, QComboBox, QSizePolicy, QLabel, QToolButton, QMenu, QFileDialog,
-    QMessageBox, QPushButton, QStatusBar, QDialog, QVBoxLayout,
-    QHBoxLayout, QCheckBox, QLineEdit
+    QApplication,
+    QMainWindow,
+    QTextEdit,
+    QToolBar,
+    QColorDialog,
+    QWidget,
+    QWidgetAction,
+    QFontComboBox,
+    QComboBox,
+    QSizePolicy,
+    QLabel,
+    QToolButton,
+    QMenu,
+    QFileDialog,
+    QMessageBox,
+    QPushButton,
+    QStatusBar,
+    QDialog,
+    QVBoxLayout,
+    QHBoxLayout,
+    QCheckBox,
+    QLineEdit,
 )
 from PyQt6.QtGui import (
-    QIcon, QFont, QColor, QTextListFormat, QActionGroup, QTextCursor, QAction, QTextCharFormat, QKeySequence, QTextDocument, QShortcut
+    QIcon,
+    QFont,
+    QColor,
+    QTextListFormat,
+    QActionGroup,
+    QTextCursor,
+    QAction,
+    QTextCharFormat,
+    QKeySequence,
+    QTextDocument,
+    QShortcut,
 )
 from PyQt6.QtCore import Qt, QSize, pyqtSignal, QTimer
 from PyQt6.QtPrintSupport import QPrinter, QPrintDialog, QPrintPreviewDialog
@@ -19,7 +47,7 @@ from app.path_utils import resource_path
 
 from app.ui_utils import SpinnerManager, show_error_message, show_info_message
 
-logger = logging.getLogger('transcribrr')
+logger = logging.getLogger("transcribrr")
 
 
 class FindReplaceDialog(QDialog):
@@ -109,7 +137,8 @@ class FindReplaceDialog(QDialog):
 
         self.highlight_format = QTextCharFormat()
         self.highlight_format.setBackground(
-            QColor(255, 255, 0, 100))  # Light yellow with transparency
+            QColor(255, 255, 0, 100)
+        )  # Light yellow with transparency
 
         self.original_selection_formats = []
 
@@ -254,7 +283,9 @@ class FindReplaceDialog(QDialog):
             if count == 0:
                 self.status_label.setText(f"No occurrences of '{text}' found.")
             else:
-                self.status_label.setText(f"Replaced {count} occurrence(s) of '{text}'.")
+                self.status_label.setText(
+                    f"Replaced {count} occurrence(s) of '{text}'."
+                )
 
             # Restore position
             cursor = self.editor.editor.textCursor()
@@ -376,7 +407,8 @@ class TextEditor(QMainWindow):
 
         # Set document title for accessibility
         self.editor.document().setMetaInformation(
-            QTextDocument.MetaInformation.DocumentTitle, "Transcript Editor")
+            QTextDocument.MetaInformation.DocumentTitle, "Transcript Editor"
+        )
 
         # Enable undo/redo history
         self.editor.setUndoRedoEnabled(True)
@@ -396,12 +428,24 @@ class TextEditor(QMainWindow):
             QKeySequence.StandardKey.Bold: self.bold_text,
             QKeySequence.StandardKey.Italic: self.italic_text,
             QKeySequence.StandardKey.Underline: self.underline_text,
-            QKeySequence(Qt.Modifier.CTRL | Qt.Key.Key_L): lambda: self.set_alignment(Qt.AlignmentFlag.AlignLeft),
-            QKeySequence(Qt.Modifier.CTRL | Qt.Key.Key_E): lambda: self.set_alignment(Qt.AlignmentFlag.AlignCenter),
-            QKeySequence(Qt.Modifier.CTRL | Qt.Key.Key_R): lambda: self.set_alignment(Qt.AlignmentFlag.AlignRight),
-            QKeySequence(Qt.Modifier.CTRL | Qt.Key.Key_J): lambda: self.set_alignment(Qt.AlignmentFlag.AlignJustify),
-            QKeySequence(Qt.Modifier.CTRL | Qt.Modifier.SHIFT | Qt.Key.Key_B): self.bullet_list,
-            QKeySequence(Qt.Modifier.CTRL | Qt.Modifier.SHIFT | Qt.Key.Key_N): self.numbered_list,
+            QKeySequence(Qt.Modifier.CTRL | Qt.Key.Key_L): lambda: self.set_alignment(
+                Qt.AlignmentFlag.AlignLeft
+            ),
+            QKeySequence(Qt.Modifier.CTRL | Qt.Key.Key_E): lambda: self.set_alignment(
+                Qt.AlignmentFlag.AlignCenter
+            ),
+            QKeySequence(Qt.Modifier.CTRL | Qt.Key.Key_R): lambda: self.set_alignment(
+                Qt.AlignmentFlag.AlignRight
+            ),
+            QKeySequence(Qt.Modifier.CTRL | Qt.Key.Key_J): lambda: self.set_alignment(
+                Qt.AlignmentFlag.AlignJustify
+            ),
+            QKeySequence(
+                Qt.Modifier.CTRL | Qt.Modifier.SHIFT | Qt.Key.Key_B
+            ): self.bullet_list,
+            QKeySequence(
+                Qt.Modifier.CTRL | Qt.Modifier.SHIFT | Qt.Key.Key_N
+            ): self.numbered_list,
             QKeySequence(Qt.Modifier.CTRL | Qt.Key.Key_Greater): self.increase_indent,
             QKeySequence(Qt.Modifier.CTRL | Qt.Key.Key_Less): self.decrease_indent,
             # Find and replace
@@ -409,13 +453,17 @@ class TextEditor(QMainWindow):
             QKeySequence.StandardKey.Replace: self.show_find_dialog,
             # Print shortcuts
             QKeySequence.StandardKey.Print: self.print_document,
-            QKeySequence(Qt.Modifier.CTRL | Qt.Modifier.SHIFT | Qt.Key.Key_P): self.print_preview,
+            QKeySequence(
+                Qt.Modifier.CTRL | Qt.Modifier.SHIFT | Qt.Key.Key_P
+            ): self.print_preview,
             # Custom shortcuts for Transcribrr-specific actions
             # Ctrl+T for transcription
             QKeySequence(Qt.Modifier.CTRL | Qt.Key.Key_T): self.start_transcription,
             # Ctrl+G for GPT processing
             QKeySequence(Qt.Modifier.CTRL | Qt.Key.Key_G): self.process_with_gpt4,
-            QKeySequence(Qt.Modifier.CTRL | Qt.Modifier.SHIFT | Qt.Key.Key_F): self.smart_format_text
+            QKeySequence(
+                Qt.Modifier.CTRL | Qt.Modifier.SHIFT | Qt.Key.Key_F
+            ): self.smart_format_text,
             # Ctrl+Shift+F for smart format
         }
 
@@ -435,20 +483,29 @@ class TextEditor(QMainWindow):
 
         # Transcribe button
         self.add_toolbar_action(
-            'start_transcription', resource_path('./icons/transcribe.svg'),
-            self.start_transcription, 'Start Transcription (Ctrl+T)', checkable=False
+            "start_transcription",
+            resource_path("./icons/transcribe.svg"),
+            self.start_transcription,
+            "Start Transcription (Ctrl+T)",
+            checkable=False,
         )
 
         # GPT-4 Processing button
         self.add_toolbar_action(
-            'process_with_gpt4', resource_path('./icons/magic_wand.svg'),
-            self.process_with_gpt4, 'Process with GPT-4 (Ctrl+G)', checkable=False
+            "process_with_gpt4",
+            resource_path("./icons/magic_wand.svg"),
+            self.process_with_gpt4,
+            "Process with GPT-4 (Ctrl+G)",
+            checkable=False,
         )
 
         # Smart Format button
         self.add_toolbar_action(
-            'smart_format', resource_path('./icons/smart_format.svg'),
-            self.smart_format_text, 'Smart Format (Ctrl+Shift+F)', checkable=False
+            "smart_format",
+            resource_path("./icons/smart_format.svg"),
+            self.smart_format_text,
+            "Smart Format (Ctrl+Shift+F)",
+            checkable=False,
         )
 
         self.toolbar.addSeparator()
@@ -456,20 +513,38 @@ class TextEditor(QMainWindow):
         # Font family selector
         self.font_family_combobox = QFontComboBox()
         self.font_family_combobox.setSizePolicy(
-            QSizePolicy.Policy.Minimum, QSizePolicy.Policy.Minimum)
+            QSizePolicy.Policy.Minimum, QSizePolicy.Policy.Minimum
+        )
         self.font_family_combobox.currentFontChanged.connect(self.font_family_changed)
         self.toolbar.addWidget(self.font_family_combobox)
 
         # Font size selector
         self.font_size_combobox = QComboBox()
         self.font_size_combobox.addItems(
-            ['8', '9', '10', '11', '12', '14', '16', '18',
-                '20', '22', '24', '26', '28', '36', '48', '72']
+            [
+                "8",
+                "9",
+                "10",
+                "11",
+                "12",
+                "14",
+                "16",
+                "18",
+                "20",
+                "22",
+                "24",
+                "26",
+                "28",
+                "36",
+                "48",
+                "72",
+            ]
         )
         self.font_size_combobox.setSizePolicy(
-            QSizePolicy.Policy.Minimum, QSizePolicy.Policy.Minimum)
+            QSizePolicy.Policy.Minimum, QSizePolicy.Policy.Minimum
+        )
         self.font_size_combobox.setEditable(True)
-        self.font_size_combobox.setCurrentText('12')  # Default font size
+        self.font_size_combobox.setCurrentText("12")  # Default font size
         self.font_size_combobox.currentTextChanged.connect(self.font_size_changed)
         self.toolbar.addWidget(self.font_size_combobox)
 
@@ -487,14 +562,20 @@ class TextEditor(QMainWindow):
 
         # Find & Replace
         self.add_toolbar_action(
-            'find_replace', resource_path('./icons/TextEditor/find.svg'),
-            self.show_find_dialog, 'Find & Replace (Ctrl+F)', checkable=False
+            "find_replace",
+            resource_path("./icons/TextEditor/find.svg"),
+            self.show_find_dialog,
+            "Find & Replace (Ctrl+F)",
+            checkable=False,
         )
 
         # Print
         self.add_toolbar_action(
-            'print', resource_path('./icons/TextEditor/print.svg'),
-            self.print_document, 'Print (Ctrl+P)', checkable=False
+            "print",
+            resource_path("./icons/TextEditor/print.svg"),
+            self.print_document,
+            "Print (Ctrl+P)",
+            checkable=False,
         )
 
         # Export menu
@@ -502,9 +583,11 @@ class TextEditor(QMainWindow):
 
         # Save button
         self.add_toolbar_action(
-            'save', resource_path(
-                './icons/save.svg'), lambda: self.save_requested.emit(), 'Save (Ctrl+S)',
-            checkable=False
+            "save",
+            resource_path("./icons/save.svg"),
+            lambda: self.save_requested.emit(),
+            "Save (Ctrl+S)",
+            checkable=False,
         )
 
         # Spacer to push toolbar items to the left
@@ -521,118 +604,157 @@ class TextEditor(QMainWindow):
     def add_formatting_actions(self):
         # Bold
         bold_action = self.add_toolbar_action(
-            'bold', resource_path('./icons/TextEditor/bold.svg'), self.bold_text, 'Bold (Ctrl+B)', checkable=True
+            "bold",
+            resource_path("./icons/TextEditor/bold.svg"),
+            self.bold_text,
+            "Bold (Ctrl+B)",
+            checkable=True,
         )
         bold_action.setShortcut(QKeySequence.StandardKey.Bold)
 
         # Italic
         italic_action = self.add_toolbar_action(
-            'italic', resource_path(
-                './icons/TextEditor/italic.svg'), self.italic_text, 'Italic (Ctrl+I)',
-            checkable=True
+            "italic",
+            resource_path("./icons/TextEditor/italic.svg"),
+            self.italic_text,
+            "Italic (Ctrl+I)",
+            checkable=True,
         )
         italic_action.setShortcut(QKeySequence.StandardKey.Italic)
 
         # Underline
         underline_action = self.add_toolbar_action(
-            'underline', resource_path(
-                './icons/TextEditor/underline.svg'), self.underline_text, 'Underline (Ctrl+U)',
-            checkable=True
+            "underline",
+            resource_path("./icons/TextEditor/underline.svg"),
+            self.underline_text,
+            "Underline (Ctrl+U)",
+            checkable=True,
         )
         underline_action.setShortcut(QKeySequence.StandardKey.Underline)
 
         # Strikethrough
         self.add_toolbar_action(
-            'strikethrough', resource_path(
-                './icons/TextEditor/strikethrough.svg'), self.strikethrough_text,
-            'Strikethrough', checkable=True
+            "strikethrough",
+            resource_path("./icons/TextEditor/strikethrough.svg"),
+            self.strikethrough_text,
+            "Strikethrough",
+            checkable=True,
         )
 
         # Highlight
         self.add_toolbar_action(
-            'highlight', resource_path(
-                './icons/TextEditor/highlight.svg'), self.highlight_text, 'Highlight Text'
+            "highlight",
+            resource_path("./icons/TextEditor/highlight.svg"),
+            self.highlight_text,
+            "Highlight Text",
         )
 
         # Font color
         self.add_toolbar_action(
-            'font_color', resource_path(
-                './icons/TextEditor/font_color.svg'), self.font_color, 'Font Color'
+            "font_color",
+            resource_path("./icons/TextEditor/font_color.svg"),
+            self.font_color,
+            "Font Color",
         )
 
     def add_alignment_actions(self):
         alignment_group = QActionGroup(self)
 
         align_left_action = self.add_toolbar_action(
-            'align_left', resource_path('./icons/TextEditor/align_left.svg'),
-            lambda: self.set_alignment(Qt.AlignmentFlag.AlignLeft), 'Align Left (Ctrl+L)', checkable=True
+            "align_left",
+            resource_path("./icons/TextEditor/align_left.svg"),
+            lambda: self.set_alignment(Qt.AlignmentFlag.AlignLeft),
+            "Align Left (Ctrl+L)",
+            checkable=True,
         )
 
         align_center_action = self.add_toolbar_action(
-            'align_center', resource_path('./icons/TextEditor/align_center.svg'),
-            lambda: self.set_alignment(Qt.AlignmentFlag.AlignCenter), 'Align Center (Ctrl+E)', checkable=True
+            "align_center",
+            resource_path("./icons/TextEditor/align_center.svg"),
+            lambda: self.set_alignment(Qt.AlignmentFlag.AlignCenter),
+            "Align Center (Ctrl+E)",
+            checkable=True,
         )
 
         align_right_action = self.add_toolbar_action(
-            'align_right', resource_path('./icons/TextEditor/align_right.svg'),
-            lambda: self.set_alignment(Qt.AlignmentFlag.AlignRight), 'Align Right (Ctrl+R)', checkable=True
+            "align_right",
+            resource_path("./icons/TextEditor/align_right.svg"),
+            lambda: self.set_alignment(Qt.AlignmentFlag.AlignRight),
+            "Align Right (Ctrl+R)",
+            checkable=True,
         )
 
         justify_action = self.add_toolbar_action(
-            'justify', resource_path('./icons/TextEditor/justify.svg'),
-            lambda: self.set_alignment(Qt.AlignmentFlag.AlignJustify), 'Justify Text (Ctrl+J)', checkable=True
+            "justify",
+            resource_path("./icons/TextEditor/justify.svg"),
+            lambda: self.set_alignment(Qt.AlignmentFlag.AlignJustify),
+            "Justify Text (Ctrl+J)",
+            checkable=True,
         )
 
-        for action in [align_left_action, align_center_action, align_right_action, justify_action]:
+        for action in [
+            align_left_action,
+            align_center_action,
+            align_right_action,
+            justify_action,
+        ]:
             alignment_group.addAction(action)
 
     def add_list_actions(self):
         self.add_toolbar_action(
-            'bullet_list', resource_path('./icons/TextEditor/bullet.svg'), self.bullet_list,
-            'Bullet List (Ctrl+Shift+B)'
+            "bullet_list",
+            resource_path("./icons/TextEditor/bullet.svg"),
+            self.bullet_list,
+            "Bullet List (Ctrl+Shift+B)",
         )
         self.add_toolbar_action(
-            'numbered_list', resource_path('./icons/TextEditor/numbered.svg'), self.numbered_list,
-            'Numbered List (Ctrl+Shift+N)'
+            "numbered_list",
+            resource_path("./icons/TextEditor/numbered.svg"),
+            self.numbered_list,
+            "Numbered List (Ctrl+Shift+N)",
         )
         self.add_toolbar_action(
-            'increase_indent', resource_path(
-                './icons/TextEditor/increase_indent.svg'), self.increase_indent,
-            'Increase Indent (Ctrl+>)'
+            "increase_indent",
+            resource_path("./icons/TextEditor/increase_indent.svg"),
+            self.increase_indent,
+            "Increase Indent (Ctrl+>)",
         )
         self.add_toolbar_action(
-            'decrease_indent', resource_path(
-                './icons/TextEditor/decrease_indent.svg'), self.decrease_indent,
-            'Decrease Indent (Ctrl+<)'
+            "decrease_indent",
+            resource_path("./icons/TextEditor/decrease_indent.svg"),
+            self.decrease_indent,
+            "Decrease Indent (Ctrl+<)",
         )
 
     def add_export_menu(self):
         self.export_menu = QMenu()
-        export_pdf_action = QAction('Export to PDF', self)
+        export_pdf_action = QAction("Export to PDF", self)
         export_pdf_action.triggered.connect(self.export_to_pdf)
         self.export_menu.addAction(export_pdf_action)
 
-        export_word_action = QAction('Export to Word', self)
+        export_word_action = QAction("Export to Word", self)
         export_word_action.triggered.connect(self.export_to_word)
         self.export_menu.addAction(export_word_action)
 
-        export_text_action = QAction('Export to Plain Text', self)
+        export_text_action = QAction("Export to Plain Text", self)
         export_text_action.triggered.connect(self.export_to_text)
         self.export_menu.addAction(export_text_action)
 
-        export_html_action = QAction('Export to HTML', self)
+        export_html_action = QAction("Export to HTML", self)
         export_html_action.triggered.connect(self.export_to_html)
         self.export_menu.addAction(export_html_action)
 
         export_button = QToolButton()
-        export_button.setText('Export')
-        export_button.setIcon(QIcon(resource_path('./icons/export.svg')))
-        export_button.setToolTip('Export to different formats')
+        export_button.setText("Export")
+        export_button.setIcon(QIcon(resource_path("./icons/export.svg")))
+        export_button.setToolTip("Export to different formats")
         export_button.setMenu(self.export_menu)
         export_button.setPopupMode(QToolButton.ToolButtonPopupMode.InstantPopup)
         self.toolbar.addWidget(export_button)
 
-    def add_action_with_spinner(self, action_name, icon_path, callback, tooltip, spinner_icon, spinner_name):
+    def add_action_with_spinner(
+        self, action_name, icon_path, callback, tooltip, spinner_icon, spinner_name
+    ):
         """Legacy method - no longer used with new button design.
         Kept for compatibility with existing code."""
         # Create a QPushButton with icon and text
@@ -653,9 +775,9 @@ class TextEditor(QMainWindow):
     def toggle_spinner(self, spinner_name):
         """Toggle action state to indicate processing."""
         button_map = {
-            'transcription': 'start_transcription',
-            'gpt': 'process_with_gpt4',
-            'smart_format': 'smart_format'
+            "transcription": "start_transcription",
+            "gpt": "process_with_gpt4",
+            "smart_format": "smart_format",
         }
 
         button_name = button_map.get(spinner_name)
@@ -665,44 +787,46 @@ class TextEditor(QMainWindow):
         action = self._toolbar_actions[button_name]
 
         # Check current state
-        is_active = getattr(action, '_is_processing', False)
+        is_active = getattr(action, "_is_processing", False)
 
         if not is_active:
             # Start processing state
             original_tooltip = action.toolTip()
-            setattr(action, '_original_tooltip', original_tooltip)
+            setattr(action, "_original_tooltip", original_tooltip)
 
-            if spinner_name == 'transcription':
+            if spinner_name == "transcription":
                 action.setToolTip("Transcribing...")
-            elif spinner_name == 'gpt':
+            elif spinner_name == "gpt":
                 action.setToolTip("Processing...")
-            elif spinner_name == 'smart_format':
+            elif spinner_name == "smart_format":
                 action.setToolTip("Formatting...")
 
             action.setEnabled(False)
-            setattr(action, '_is_processing', True)
+            setattr(action, "_is_processing", True)
             self.show_status_message("Processing...")
             return True
         else:
             # End processing state
-            original_tooltip = getattr(action, '_original_tooltip', None)
+            original_tooltip = getattr(action, "_original_tooltip", None)
             if original_tooltip:
                 action.setToolTip(original_tooltip)
 
             action.setEnabled(True)
-            setattr(action, '_is_processing', False)
+            setattr(action, "_is_processing", False)
             self.hide_status_message()
             return False
 
     def toggle_gpt_spinner(self):
         """Toggle the GPT processing state."""
-        self.toggle_spinner('gpt')
+        self.toggle_spinner("gpt")
 
     def toggle_transcription_spinner(self):
         """Toggle the transcription processing state."""
-        self.toggle_spinner('transcription')
+        self.toggle_spinner("transcription")
 
-    def add_toolbar_action(self, action_name, icon_path, callback, tooltip, checkable=False):
+    def add_toolbar_action(
+        self, action_name, icon_path, callback, tooltip, checkable=False
+    ):
         # Check if icon file exists
         if icon_path and os.path.exists(icon_path):
             action = QAction(QIcon(icon_path), tooltip, self)
@@ -729,11 +853,16 @@ class TextEditor(QMainWindow):
             self.editor.setFontPointSize(size_float)
             self.show_status_message(f"Font size set to {size}")
         except ValueError:
-            show_error_message(self, "Invalid Font Size",
-                               "Please enter a valid number for font size.")
+            show_error_message(
+                self, "Invalid Font Size", "Please enter a valid number for font size."
+            )
 
     def bold_text(self):
-        weight = QFont.Weight.Bold if not self.editor.fontWeight() == QFont.Weight.Bold else QFont.Weight.Normal
+        weight = (
+            QFont.Weight.Bold
+            if not self.editor.fontWeight() == QFont.Weight.Bold
+            else QFont.Weight.Normal
+        )
         self.editor.setFontWeight(weight)
         status = "enabled" if weight == QFont.Weight.Bold else "disabled"
         self.show_status_message(f"Bold {status}")
@@ -777,7 +906,7 @@ class TextEditor(QMainWindow):
             Qt.AlignmentFlag.AlignLeft: "left",
             Qt.AlignmentFlag.AlignCenter: "center",
             Qt.AlignmentFlag.AlignRight: "right",
-            Qt.AlignmentFlag.AlignJustify: "justified"
+            Qt.AlignmentFlag.AlignJustify: "justified",
         }
         alignment_name = alignment_map.get(alignment, "unknown")
         self.show_status_message(f"Text aligned: {alignment_name}")
@@ -838,10 +967,12 @@ class TextEditor(QMainWindow):
 
     def export_to_pdf(self):
         """Export document to PDF with formatting preserved - using multiple fallback approaches."""
-        file_path, _ = QFileDialog.getSaveFileName(self, "Export to PDF", "", "PDF Files (*.pdf)")
+        file_path, _ = QFileDialog.getSaveFileName(
+            self, "Export to PDF", "", "PDF Files (*.pdf)"
+        )
         if file_path:
-            if not file_path.endswith('.pdf'):
-                file_path += '.pdf'
+            if not file_path.endswith(".pdf"):
+                file_path += ".pdf"
 
             # Try multiple PDF generation approaches in sequence
 
@@ -856,9 +987,14 @@ class TextEditor(QMainWindow):
                 success = self.editor.document().print(printer)
 
                 if success:
-                    self.show_status_message(f"Document exported to {os.path.basename(file_path)}")
-                    show_info_message(self, "Export to PDF",
-                                      f"Document successfully exported to {file_path}")
+                    self.show_status_message(
+                        f"Document exported to {os.path.basename(file_path)}"
+                    )
+                    show_info_message(
+                        self,
+                        "Export to PDF",
+                        f"Document successfully exported to {file_path}",
+                    )
                     return
 
             except Exception as e1:
@@ -869,7 +1005,8 @@ class TextEditor(QMainWindow):
             try:
                 # Export HTML to a temporary file
                 import tempfile
-                html_file = tempfile.NamedTemporaryFile(suffix='.html', delete=False)
+
+                html_file = tempfile.NamedTemporaryFile(suffix=".html", delete=False)
                 html_path = html_file.name
                 html_file.close()
 
@@ -899,7 +1036,7 @@ class TextEditor(QMainWindow):
 </html>"""
 
                 # Write the styled HTML to the temp file
-                with open(html_path, 'w', encoding='utf-8') as f:
+                with open(html_path, "w", encoding="utf-8") as f:
                     f.write(styled_html)
 
                 # Check for external PDF conversion tools - use the first available one
@@ -910,19 +1047,28 @@ class TextEditor(QMainWindow):
 
                 try:
                     # Check if wkhtmltopdf is installed
-                    if shutil.which('wkhtmltopdf'):
+                    if shutil.which("wkhtmltopdf"):
                         # Use wkhtmltopdf to convert HTML to PDF
-                        subprocess.check_call([
-                            'wkhtmltopdf',
-                            '--quiet',
-                            '--page-size', 'A4',
-                            '--margin-top', '20',
-                            '--margin-right', '20',
-                            '--margin-bottom', '20',
-                            '--margin-left', '20',
-                            '--encoding', 'UTF-8',
-                            html_path, file_path
-                        ])
+                        subprocess.check_call(
+                            [
+                                "wkhtmltopdf",
+                                "--quiet",
+                                "--page-size",
+                                "A4",
+                                "--margin-top",
+                                "20",
+                                "--margin-right",
+                                "20",
+                                "--margin-bottom",
+                                "20",
+                                "--margin-left",
+                                "20",
+                                "--encoding",
+                                "UTF-8",
+                                html_path,
+                                file_path,
+                            ]
+                        )
 
                         # Clean up temp file
                         try:
@@ -931,9 +1077,13 @@ class TextEditor(QMainWindow):
                             pass
 
                         self.show_status_message(
-                            f"Document exported to {os.path.basename(file_path)}")
-                        show_info_message(self, "Export to PDF",
-                                          f"Document successfully exported to {file_path}")
+                            f"Document exported to {os.path.basename(file_path)}"
+                        )
+                        show_info_message(
+                            self,
+                            "Export to PDF",
+                            f"Document successfully exported to {file_path}",
+                        )
                         return
                 except Exception as e2:
                     logger.debug(f"wkhtmltopdf export failed: {e2}")
@@ -941,8 +1091,10 @@ class TextEditor(QMainWindow):
                 # Try using weasyprint if available
                 try:
                     import importlib.util
+
                     if importlib.util.find_spec("weasyprint"):
                         import weasyprint
+
                         weasyprint.HTML(string=styled_html).write_pdf(file_path)
 
                         # Clean up temp file
@@ -952,9 +1104,13 @@ class TextEditor(QMainWindow):
                             pass
 
                         self.show_status_message(
-                            f"Document exported to {os.path.basename(file_path)}")
-                        show_info_message(self, "Export to PDF",
-                                          f"Document successfully exported to {file_path}")
+                            f"Document exported to {os.path.basename(file_path)}"
+                        )
+                        show_info_message(
+                            self,
+                            "Export to PDF",
+                            f"Document successfully exported to {file_path}",
+                        )
                         return
                 except Exception as e3:
                     logger.debug(f"weasyprint export failed: {e3}")
@@ -975,43 +1131,59 @@ class TextEditor(QMainWindow):
                     except:
                         pass
 
-                    self.show_status_message(f"Document exported to {os.path.basename(file_path)}")
-                    show_info_message(self, "Export to PDF",
-                                      f"Document exported with basic formatting to {file_path}")
+                    self.show_status_message(
+                        f"Document exported to {os.path.basename(file_path)}"
+                    )
+                    show_info_message(
+                        self,
+                        "Export to PDF",
+                        f"Document exported with basic formatting to {file_path}",
+                    )
                     return
                 except Exception as e4:
                     logger.debug(f"Fallback PDF export failed: {e4}")
 
                     # If we got here, all our PDF export attempts failed
                     # Let's just save the HTML file and tell the user
-                    html_output_path = file_path.replace('.pdf', '.html')
+                    html_output_path = file_path.replace(".pdf", ".html")
                     try:
                         # Move our temp HTML file to final destination
                         shutil.copy(html_path, html_output_path)
                         os.unlink(html_path)
 
-                        show_error_message(self, "PDF Export Failed",
-                                           f"Could not create PDF file. HTML file saved to {html_output_path} instead.")
+                        show_error_message(
+                            self,
+                            "PDF Export Failed",
+                            f"Could not create PDF file. HTML file saved to {html_output_path} instead.",
+                        )
                         return
                     except:
                         # Last resort - just leave the temp HTML file
-                        show_error_message(self, "PDF Export Failed",
-                                           f"Could not create PDF file. HTML file saved to {html_path} instead.")
+                        show_error_message(
+                            self,
+                            "PDF Export Failed",
+                            f"Could not create PDF file. HTML file saved to {html_path} instead.",
+                        )
                         return
 
             except Exception as e:
                 # If all approaches failed
-                show_error_message(self, "Export Error", f"Failed to export to PDF: {e}")
-                logger.error(f"PDF export error (all methods failed): {e}", exc_info=True)
+                show_error_message(
+                    self, "Export Error", f"Failed to export to PDF: {e}"
+                )
+                logger.error(
+                    f"PDF export error (all methods failed): {e}", exc_info=True
+                )
 
     def export_to_word(self):
         """Export document to Word with improved formatting preservation."""
         file_path, _ = QFileDialog.getSaveFileName(
-            self, "Export to Word", "", "Word Documents (*.docx)")
+            self, "Export to Word", "", "Word Documents (*.docx)"
+        )
         if file_path:
             try:
-                if not file_path.endswith('.docx'):
-                    file_path += '.docx'
+                if not file_path.endswith(".docx"):
+                    file_path += ".docx"
 
                 # Create a new document
                 doc = docx.Document()
@@ -1020,7 +1192,7 @@ class TextEditor(QMainWindow):
                 html = self.editor.toHtml()
 
                 # Make sure we have complete HTML with proper structure
-                if not html.startswith('<!DOCTYPE html>'):
+                if not html.startswith("<!DOCTYPE html>"):
                     # Add wrapper to ensure proper parsing
                     html = f"""<!DOCTYPE html>
                     <html>
@@ -1043,7 +1215,7 @@ class TextEditor(QMainWindow):
                 # Try to optimize conversion settings
                 try:
                     # Set the parser to use styling (if this method exists)
-                    if hasattr(new_parser, 'set_initial_style'):
+                    if hasattr(new_parser, "set_initial_style"):
                         new_parser.set_initial_style(doc)
                 except Exception as style_err:
                     logger.debug(f"Style setup for Word export: {style_err}")
@@ -1054,46 +1226,62 @@ class TextEditor(QMainWindow):
                 # Save the document
                 doc.save(file_path)
 
-                self.show_status_message(f"Document exported to {os.path.basename(file_path)}")
-                show_info_message(self, "Export to Word",
-                                  f"Document successfully exported to {file_path}")
+                self.show_status_message(
+                    f"Document exported to {os.path.basename(file_path)}"
+                )
+                show_info_message(
+                    self,
+                    "Export to Word",
+                    f"Document successfully exported to {file_path}",
+                )
             except Exception as e:
-                show_error_message(self, "Export Error", f"Failed to export to Word: {e}")
+                show_error_message(
+                    self, "Export Error", f"Failed to export to Word: {e}"
+                )
                 logger.error(f"Word export error: {e}", exc_info=True)
 
     def export_to_text(self):
         file_path, _ = QFileDialog.getSaveFileName(
-            self, "Export to Plain Text", "", "Text Files (*.txt)")
+            self, "Export to Plain Text", "", "Text Files (*.txt)"
+        )
         if file_path:
             try:
-                if not file_path.endswith('.txt'):
-                    file_path += '.txt'
+                if not file_path.endswith(".txt"):
+                    file_path += ".txt"
 
                 plain_text = self.editor.toPlainText()
-                with open(file_path, 'w', encoding='utf-8') as file:
+                with open(file_path, "w", encoding="utf-8") as file:
                     file.write(plain_text)
 
-                self.show_status_message(f"Document exported to {os.path.basename(file_path)}")
-                show_info_message(self, "Export to Text",
-                                  f"Document successfully exported to {file_path}")
+                self.show_status_message(
+                    f"Document exported to {os.path.basename(file_path)}"
+                )
+                show_info_message(
+                    self,
+                    "Export to Text",
+                    f"Document successfully exported to {file_path}",
+                )
             except Exception as e:
-                show_error_message(self, "Export Error", f"Failed to export to text: {e}")
+                show_error_message(
+                    self, "Export Error", f"Failed to export to text: {e}"
+                )
                 logger.error(f"Text export error: {e}")
 
     def export_to_html(self):
         """Export document to HTML file with better formatting and styling."""
         file_path, _ = QFileDialog.getSaveFileName(
-            self, "Export to HTML", "", "HTML Files (*.html)")
+            self, "Export to HTML", "", "HTML Files (*.html)"
+        )
         if file_path:
             try:
-                if not file_path.endswith('.html'):
-                    file_path += '.html'
+                if not file_path.endswith(".html"):
+                    file_path += ".html"
 
                 # Get the HTML content
                 html = self.editor.toHtml()
 
                 # Fix up the HTML for better standalone viewing - improve CSS and structure
-                if not html.startswith('<!DOCTYPE html>'):
+                if not html.startswith("<!DOCTYPE html>"):
                     # This is a fragment - wrap it in a proper document with styling
                     html = f"""<!DOCTYPE html>
 <html lang="en">
@@ -1181,8 +1369,9 @@ class TextEditor(QMainWindow):
                 else:
                     # Extract the HTML content between body tags and add our improved styling
                     import re
-                    head_match = re.search(r'<head>(.*?)</head>', html, re.DOTALL)
-                    body_match = re.search(r'<body.*?>(.*?)</body>', html, re.DOTALL)
+
+                    head_match = re.search(r"<head>(.*?)</head>", html, re.DOTALL)
+                    body_match = re.search(r"<body.*?>(.*?)</body>", html, re.DOTALL)
 
                     if head_match and body_match:
                         head_content = head_match.group(1)
@@ -1231,14 +1420,21 @@ class TextEditor(QMainWindow):
 </html>"""
 
                 # Write the improved HTML to file
-                with open(file_path, 'w', encoding='utf-8') as file:
+                with open(file_path, "w", encoding="utf-8") as file:
                     file.write(html)
 
-                self.show_status_message(f"Document exported to {os.path.basename(file_path)}")
-                show_info_message(self, "Export to HTML",
-                                  f"Document successfully exported to {file_path}")
+                self.show_status_message(
+                    f"Document exported to {os.path.basename(file_path)}"
+                )
+                show_info_message(
+                    self,
+                    "Export to HTML",
+                    f"Document successfully exported to {file_path}",
+                )
             except Exception as e:
-                show_error_message(self, "Export Error", f"Failed to export to HTML: {e}")
+                show_error_message(
+                    self, "Export Error", f"Failed to export to HTML: {e}"
+                )
                 logger.error(f"HTML export error: {e}", exc_info=True)
 
     def show_status_message(self, message, timeout=3000):
@@ -1283,18 +1479,22 @@ class TextEditor(QMainWindow):
         import re
 
         # Try to find body content
-        body_match = re.search(r'<body.*?>(.*?)</body>', html, re.DOTALL | re.IGNORECASE)
+        body_match = re.search(
+            r"<body.*?>(.*?)</body>", html, re.DOTALL | re.IGNORECASE
+        )
 
         if body_match:
             # Return just the content inside the body tags
             return body_match.group(1)
 
         # If we have a full HTML document but couldn't extract body for some reason
-        if html.lower().startswith('<!doctype html>') or html.lower().startswith('<html'):
+        if html.lower().startswith("<!doctype html>") or html.lower().startswith(
+            "<html"
+        ):
             # Just return everything after the head section
-            head_end = html.lower().find('</head>')
+            head_end = html.lower().find("</head>")
             if head_end > 0:
-                html_start = html.lower().find('<html', head_end)
+                html_start = html.lower().find("<html", head_end)
                 if html_start > 0:
                     return html[html_start:]
 
@@ -1316,23 +1516,27 @@ class TextEditor(QMainWindow):
             try:
                 # If it's bytes, decode to string
                 if isinstance(text_data, bytes):
-                    text_data = text_data.decode('utf-8')
+                    text_data = text_data.decode("utf-8")
 
                 # More robust HTML detection - checks for proper HTML structure
                 is_html = False
 
                 # Check if it has HTML content tag
-                if text_data.startswith('<!DOCTYPE html>') or text_data.startswith('<html'):
+                if text_data.startswith("<!DOCTYPE html>") or text_data.startswith(
+                    "<html"
+                ):
                     is_html = True
                 # Check if it has HTML body elements
-                elif '<body' in text_data and '</body>' in text_data:
+                elif "<body" in text_data and "</body>" in text_data:
                     is_html = True
                 # Check if it has style elements or other common HTML tags
-                elif ('<p>' in text_data and '</p>' in text_data) or \
-                     ('<div>' in text_data and '</div>' in text_data) or \
-                     ('<pre>' in text_data and '</pre>' in text_data) or \
-                     ('<h1>' in text_data and '</h1>' in text_data) or \
-                     ('<style>' in text_data and '</style>' in text_data):
+                elif (
+                    ("<p>" in text_data and "</p>" in text_data)
+                    or ("<div>" in text_data and "</div>" in text_data)
+                    or ("<pre>" in text_data and "</pre>" in text_data)
+                    or ("<h1>" in text_data and "</h1>" in text_data)
+                    or ("<style>" in text_data and "</style>" in text_data)
+                ):
                     is_html = True
 
                 if is_html:
@@ -1383,7 +1587,9 @@ class TextEditor(QMainWindow):
         """Emit signal to request smart formatting with the current text."""
         current_text = self.editor.toPlainText()
         if not current_text.strip():
-            show_error_message(self, "Empty Text", "Please add some text before formatting.")
+            show_error_message(
+                self, "Empty Text", "Please add some text before formatting."
+            )
             return
 
         # Confirm with user if text is long
@@ -1392,13 +1598,13 @@ class TextEditor(QMainWindow):
                 self,
                 "Format Long Text",
                 "The text is quite long, which may take some time to process. Continue?",
-                QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No
+                QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
             )
             if response == QMessageBox.StandardButton.No:
                 return
 
         # Set the smart format action to processing state
-        self.toggle_spinner('smart_format')
+        self.toggle_spinner("smart_format")
 
         self.smart_format_requested.emit(current_text)
         self.show_status_message("Smart formatting requested...")
@@ -1421,43 +1627,49 @@ class TextEditor(QMainWindow):
         if size > 0:
             self.font_size_combobox.setCurrentText(str(int(size)))
         else:
-            self.font_size_combobox.setCurrentText('')
+            self.font_size_combobox.setCurrentText("")
 
         self.font_family_combobox.blockSignals(False)
         self.font_size_combobox.blockSignals(False)
 
         # Update formatting actions
-        if 'bold' in self._toolbar_actions:
-            self._toolbar_actions['bold'].setChecked(current_font.bold())
-        if 'italic' in self._toolbar_actions:
-            self._toolbar_actions['italic'].setChecked(current_font.italic())
-        if 'underline' in self._toolbar_actions:
-            self._toolbar_actions['underline'].setChecked(current_font.underline())
-        if 'strikethrough' in self._toolbar_actions:
-            self._toolbar_actions['strikethrough'].setChecked(current_font.strikeOut())
+        if "bold" in self._toolbar_actions:
+            self._toolbar_actions["bold"].setChecked(current_font.bold())
+        if "italic" in self._toolbar_actions:
+            self._toolbar_actions["italic"].setChecked(current_font.italic())
+        if "underline" in self._toolbar_actions:
+            self._toolbar_actions["underline"].setChecked(current_font.underline())
+        if "strikethrough" in self._toolbar_actions:
+            self._toolbar_actions["strikethrough"].setChecked(current_font.strikeOut())
 
         # Update alignment actions
         alignment = self.editor.alignment()
-        if 'align_left' in self._toolbar_actions:
-            self._toolbar_actions['align_left'].setChecked(alignment == Qt.AlignmentFlag.AlignLeft)
-        if 'align_center' in self._toolbar_actions:
-            self._toolbar_actions['align_center'].setChecked(
-                alignment == Qt.AlignmentFlag.AlignCenter)
-        if 'align_right' in self._toolbar_actions:
-            self._toolbar_actions['align_right'].setChecked(
-                alignment == Qt.AlignmentFlag.AlignRight)
-        if 'justify' in self._toolbar_actions:
-            self._toolbar_actions['justify'].setChecked(alignment == Qt.AlignmentFlag.AlignJustify)
+        if "align_left" in self._toolbar_actions:
+            self._toolbar_actions["align_left"].setChecked(
+                alignment == Qt.AlignmentFlag.AlignLeft
+            )
+        if "align_center" in self._toolbar_actions:
+            self._toolbar_actions["align_center"].setChecked(
+                alignment == Qt.AlignmentFlag.AlignCenter
+            )
+        if "align_right" in self._toolbar_actions:
+            self._toolbar_actions["align_right"].setChecked(
+                alignment == Qt.AlignmentFlag.AlignRight
+            )
+        if "justify" in self._toolbar_actions:
+            self._toolbar_actions["justify"].setChecked(
+                alignment == Qt.AlignmentFlag.AlignJustify
+            )
 
     def __del__(self):
         """Clean up resources when the editor is destroyed."""
         try:
             # Cleanup timer if still active
-            if hasattr(self, 'word_count_timer') and self.word_count_timer.isActive():
+            if hasattr(self, "word_count_timer") and self.word_count_timer.isActive():
                 self.word_count_timer.stop()
 
             # Close any open dialog
-            if hasattr(self, 'find_replace_dialog') and self.find_replace_dialog:
+            if hasattr(self, "find_replace_dialog") and self.find_replace_dialog:
                 self.find_replace_dialog.close()
                 self.find_replace_dialog = None
         except Exception as e:
@@ -1514,18 +1726,27 @@ class TextEditor(QMainWindow):
             _, extension = os.path.splitext(file_path)
             extension = extension.lower()
 
-            supported_text_extensions = ['.txt', '.md', '.csv',
-                                         '.json', '.xml', '.log', '.py', '.js', '.css']
-            supported_html_extensions = ['.html', '.htm', '.xhtml']
+            supported_text_extensions = [
+                ".txt",
+                ".md",
+                ".csv",
+                ".json",
+                ".xml",
+                ".log",
+                ".py",
+                ".js",
+                ".css",
+            ]
+            supported_html_extensions = [".html", ".htm", ".xhtml"]
 
             if extension in supported_text_extensions + supported_html_extensions:
                 # Try different encodings if UTF-8 fails
-                encodings_to_try = ['utf-8', 'latin-1', 'cp1252', 'iso-8859-1']
+                encodings_to_try = ["utf-8", "latin-1", "cp1252", "iso-8859-1"]
                 text = None
 
                 for encoding in encodings_to_try:
                     try:
-                        with open(file_path, 'r', encoding=encoding) as file:
+                        with open(file_path, "r", encoding=encoding) as file:
                             text = file.read()
                         break  # Successfully read the file
                     except UnicodeDecodeError:
@@ -1533,7 +1754,8 @@ class TextEditor(QMainWindow):
 
                 if text is None:
                     raise ValueError(
-                        f"Unable to decode file with any of the attempted encodings: {', '.join(encodings_to_try)}")
+                        f"Unable to decode file with any of the attempted encodings: {', '.join(encodings_to_try)}"
+                    )
 
                 if extension in supported_html_extensions:
                     self.editor.setHtml(text)
@@ -1544,15 +1766,23 @@ class TextEditor(QMainWindow):
                 self.update_word_count()
                 self.show_status_message(f"Loaded file: {os.path.basename(file_path)}")
             else:
-                show_error_message(self, "Unsupported File",
-                                   f"The file type {extension} is not supported for direct editing.")
+                show_error_message(
+                    self,
+                    "Unsupported File",
+                    f"The file type {extension} is not supported for direct editing.",
+                )
 
         except FileNotFoundError:
-            show_error_message(self, "File Not Found", f"The file {file_path} could not be found.")
+            show_error_message(
+                self, "File Not Found", f"The file {file_path} could not be found."
+            )
             logger.error(f"File not found: {file_path}")
         except PermissionError:
-            show_error_message(self, "Permission Error",
-                               f"You do not have permission to access {file_path}.")
+            show_error_message(
+                self,
+                "Permission Error",
+                f"You do not have permission to access {file_path}.",
+            )
             logger.error(f"Permission error accessing file {file_path}")
         except ValueError as e:
             show_error_message(self, "Encoding Error", str(e))

@@ -10,6 +10,7 @@ class TestDummy(unittest.TestCase):
         try:
             from app.models.recording import Recording
             from app.models.view_mode import ViewMode
+
             self.assertTrue(True, "Successfully imported models")
         except ImportError as e:
             self.fail(f"Failed to import models: {e}")
@@ -18,12 +19,13 @@ class TestDummy(unittest.TestCase):
         """Test that Recording dataclass works."""
         try:
             from app.models.recording import Recording
+
             recording = Recording(
                 id=123,
                 filename="test.mp3",
                 file_path="/path/to/test.mp3",
                 date_created="2023-01-01",
-                duration=60.0
+                duration=60.0,
             )
             self.assertEqual(recording.id, 123)
             self.assertTrue(recording.file_path.endswith("test.mp3"))
@@ -34,11 +36,12 @@ class TestDummy(unittest.TestCase):
         """Test that ViewMode enum works."""
         try:
             from app.models.view_mode import ViewMode
+
             self.assertEqual(ViewMode.RAW, 0)
             self.assertEqual(ViewMode.PROCESSED, 1)
         except Exception as e:
             self.fail(f"Failed to use ViewMode: {e}")
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     unittest.main()

@@ -6,7 +6,7 @@ from typing import Optional
 from app.DatabaseManager import DatabaseManager
 from app.constants import get_database_path
 
-logger = logging.getLogger('transcribrr')
+logger = logging.getLogger("transcribrr")
 
 
 class FolderManager:
@@ -17,7 +17,9 @@ class FolderManager:
     _lock = threading.Lock()
 
     @classmethod
-    def instance(cls, *, db_manager: "Optional[DatabaseManager]" = None) -> "FolderManager":
+    def instance(
+        cls, *, db_manager: "Optional[DatabaseManager]" = None
+    ) -> "FolderManager":
         """
         Return singleton instance of FolderManager.
 
@@ -45,10 +47,12 @@ class FolderManager:
                     cls._instance.attach_db_manager(db_manager)
                 else:
                     raise RuntimeError(
-                        "FolderManager requires DatabaseManager to be attached. Call FolderManager.instance(db_manager=...) on first use.")
+                        "FolderManager requires DatabaseManager to be attached. Call FolderManager.instance(db_manager=...) on first use."
+                    )
             elif db_manager is not None and cls._instance.db_manager is not db_manager:
                 logger.warning(
-                    "Different DatabaseManager instance provided to FolderManager.instance() after initialization. Using original instance.")
+                    "Different DatabaseManager instance provided to FolderManager.instance() after initialization. Using original instance."
+                )
 
         return cls._instance
 
@@ -56,7 +60,8 @@ class FolderManager:
         """Init folder manager."""
         if FolderManager._instance is not None:
             raise RuntimeError(
-                "FolderManager is a singleton. Use FolderManager.instance() instead of direct instantiation.")
+                "FolderManager is a singleton. Use FolderManager.instance() instead of direct instantiation."
+            )
 
         self.folders = []
         self.db_manager = None  # Will be set by attach_db_manager
@@ -74,10 +79,14 @@ class FolderManager:
         """
         if self.db_manager is not None:
             if self.db_manager is db_manager:
-                logger.debug("Same DatabaseManager instance already attached to FolderManager.")
+                logger.debug(
+                    "Same DatabaseManager instance already attached to FolderManager."
+                )
                 return
             else:
-                logger.warning("Replacing existing DatabaseManager instance in FolderManager.")
+                logger.warning(
+                    "Replacing existing DatabaseManager instance in FolderManager."
+                )
 
         self.db_manager = db_manager
         self.__class__._db_manager_attached = True
@@ -97,22 +106,22 @@ class FolderManager:
         Args:
             callback: Optional callback to be called when folders are fully loaded
         """
-        query = '''
+        query = """
             SELECT id, name, parent_id, created_at
             FROM folders
             ORDER BY name
-        '''
+        """
 
         def on_folders_loaded(rows):
             self.folders = []
 
             for row in rows:
                 folder = {
-                    'id': row[0],
-                    'name': row[1],
-                    'parent_id': row[2],
-                    'created_at': row[3],
-                    'children': []
+                    "id": row[0],
+                    "name": row[1],
+                    "parent_id": row[2],
+                    "created_at": row[3],
+                    "children": [],
                 }
                 self.folders.append(folder)
 
@@ -129,14 +138,14 @@ class FolderManager:
     def build_folder_structure(self):
         """Build folder hierarchy."""
         # Create a temporary dictionary for quick lookup
-        folder_dict = {folder['id']: folder for folder in self.folders}
+        folder_dict = {folder["id"]: folder for folder in self.folders}
 
         # Process relationships
         for folder in self.folders:
-            if folder['parent_id'] is not None:
-                parent_folder = folder_dict.get(folder['parent_id'])
+            if folder["parent_id"] is not None:
+                parent_folder = folder_dict.get(folder["parent_id"])
                 if parent_folder:
-                    parent_folder['children'].append(folder)
+                    parent_folder["children"].append(folder)
 
     def create_folder(self, name, parent_id=None, callback=None):
         """Create a new folder in the database and in-memory list."""
@@ -149,10 +158,10 @@ class FolderManager:
         created_at = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
         # Modified to use the database connection's lastrowid property
-        query = '''
+        query = """
             INSERT INTO folders (name, parent_id, created_at)
             VALUES (?, ?, ?)
-        '''
+        """
         params = (name, parent_id, created_at)
 
         def on_folder_created(result):
@@ -163,11 +172,11 @@ class FolderManager:
             if folder_id is not None and folder_id > 0:
                 # Add new folder to memory
                 new_folder = {
-                    'id': folder_id,
-                    'name': name,
-                    'parent_id': parent_id,
-                    'created_at': created_at,
-                    'children': []
+                    "id": folder_id,
+                    "name": name,
+                    "parent_id": parent_id,
+                    "created_at": created_at,
+                    "children": [],
                 }
 
                 self.folders.append(new_folder)
@@ -175,8 +184,8 @@ class FolderManager:
                 # Update parent folder's children if applicable
                 if parent_id is not None:
                     for folder in self.folders:
-                        if folder['id'] == parent_id:
-                            folder['children'].append(new_folder)
+                        if folder["id"] == parent_id:
+                            folder["children"].append(new_folder)
                             break
 
                 logger.info(f"Created folder: {name} (ID: {folder_id})")
@@ -196,8 +205,13 @@ class FolderManager:
         operation_id = f"create_folder_{id(name)}_{id(on_folder_created)}"
 
         # Execute query with 'return_last_row_id=True' to get the ID in the same transaction
-        self.db_manager.execute_query(query, params, callback=on_folder_created,
-                                      return_last_row_id=True, operation_id=operation_id)
+        self.db_manager.execute_query(
+            query,
+            params,
+            callback=on_folder_created,
+            return_last_row_id=True,
+            operation_id=operation_id,
+        )
         return True
 
     def rename_folder(self, folder_id, new_name, callback=None):
@@ -209,25 +223,27 @@ class FolderManager:
                 callback(False, "Folder not found")
             return False
 
-        if self.folder_exists(new_name, folder['parent_id'], exclude_id=folder_id):
-            logger.warning(f"Folder with name '{new_name}' already exists at this level")
+        if self.folder_exists(new_name, folder["parent_id"], exclude_id=folder_id):
+            logger.warning(
+                f"Folder with name '{new_name}' already exists at this level"
+            )
             if callback:
                 callback(False, "A folder with this name already exists")
             return False
 
-        query = '''
+        query = """
             UPDATE folders
             SET name = ?
             WHERE id = ?
-        '''
+        """
         params = (new_name, folder_id)
 
         def on_folder_renamed(result):
             # Update in-memory structure regardless of result
             # (since we're using async, we won't have a result that indicates success/fail)
             for folder in self.folders:
-                if folder['id'] == folder_id:
-                    folder['name'] = new_name
+                if folder["id"] == folder_id:
+                    folder["name"] = new_name
                     break
 
             logger.info(f"Renamed folder ID {folder_id} to '{new_name}'")
@@ -253,37 +269,40 @@ class FolderManager:
             return False
 
         # Query to remove recording associations
-        remove_associations_query = '''
+        remove_associations_query = """
             DELETE FROM recording_folders
             WHERE folder_id = ?
-        '''
+        """
 
         # Query to delete the folder
-        delete_folder_query = '''
+        delete_folder_query = """
             DELETE FROM folders
             WHERE id = ?
-        '''
+        """
 
         def on_folder_deleted(result):
             # Update in-memory structure
             parent_folder = None
 
             # Find parent folder if it exists
-            if folder_to_delete['parent_id'] is not None:
+            if folder_to_delete["parent_id"] is not None:
                 for folder in self.folders:
-                    if folder['id'] == folder_to_delete['parent_id']:
+                    if folder["id"] == folder_to_delete["parent_id"]:
                         parent_folder = folder
                         break
 
             # Remove from parent's children if applicable
             if parent_folder:
-                parent_folder['children'] = [
-                    child for child in parent_folder['children']
-                    if child['id'] != folder_id
+                parent_folder["children"] = [
+                    child
+                    for child in parent_folder["children"]
+                    if child["id"] != folder_id
                 ]
 
             # Remove from list
-            self.folders = [folder for folder in self.folders if folder['id'] != folder_id]
+            self.folders = [
+                folder for folder in self.folders if folder["id"] != folder_id
+            ]
 
             logger.info(f"Deleted folder ID {folder_id}")
 
@@ -296,11 +315,13 @@ class FolderManager:
         def after_associations_removed(result):
             # Now delete the folder itself
             self.db_manager.execute_query(
-                delete_folder_query, (folder_id,), callback=on_folder_deleted)
+                delete_folder_query, (folder_id,), callback=on_folder_deleted
+            )
 
         # First remove associations, then delete folder
-        self.db_manager.execute_query(remove_associations_query,
-                                      (folder_id,), callback=after_associations_removed)
+        self.db_manager.execute_query(
+            remove_associations_query, (folder_id,), callback=after_associations_removed
+        )
 
         # The function returns immediately as the DB operation is async
         return True
@@ -308,10 +329,10 @@ class FolderManager:
     def add_recording_to_folder(self, recording_id, folder_id, callback=None):
         """Add recording to folder (removes from other folders)."""
         # First check if the association already exists
-        check_query = '''
+        check_query = """
             SELECT 1 FROM recording_folders
             WHERE recording_id = ? AND folder_id = ?
-        '''
+        """
 
         def on_association_added(result):
             logger.info(f"Added recording {recording_id} to folder {folder_id}")
@@ -323,44 +344,49 @@ class FolderManager:
 
         def after_remove_from_other_folders(result):
             # Now add to the target folder
-            insert_query = '''
+            insert_query = """
                 INSERT INTO recording_folders (recording_id, folder_id)
                 VALUES (?, ?)
-            '''
+            """
             self.db_manager.execute_query(
-                insert_query, (recording_id, folder_id), callback=on_association_added)
+                insert_query, (recording_id, folder_id), callback=on_association_added
+            )
 
         def on_check_completed(result):
             if result and len(result) > 0:
                 # Association already exists
-                logger.info(f"Recording {recording_id} is already in folder {folder_id}")
+                logger.info(
+                    f"Recording {recording_id} is already in folder {folder_id}"
+                )
                 if callback:
                     callback(True, None)
                 return True
 
             # First remove this recording from all other folders
-            remove_query = '''
+            remove_query = """
                 DELETE FROM recording_folders
                 WHERE recording_id = ?
-            '''
+            """
 
             # Remove from all existing folders, then add to the new one
-            self.db_manager.execute_query(remove_query, (recording_id,),
-                                          callback=after_remove_from_other_folders)
+            self.db_manager.execute_query(
+                remove_query, (recording_id,), callback=after_remove_from_other_folders
+            )
 
         # First check if the association exists
         self.db_manager.execute_query(
-            check_query, (recording_id, folder_id), callback=on_check_completed)
+            check_query, (recording_id, folder_id), callback=on_check_completed
+        )
 
         # The function returns immediately as the DB operations are async
         return True
 
     def remove_recording_from_folder(self, recording_id, folder_id, callback=None):
         """Remove recording from folder."""
-        query = '''
+        query = """
             DELETE FROM recording_folders
             WHERE recording_id = ? AND folder_id = ?
-        '''
+        """
 
         def on_association_removed(result):
             logger.info(f"Removed recording {recording_id} from folder {folder_id}")
@@ -371,36 +397,41 @@ class FolderManager:
             return True
 
         # Execute the delete query
-        self.db_manager.execute_query(query, (recording_id, folder_id),
-                                      callback=on_association_removed)
+        self.db_manager.execute_query(
+            query, (recording_id, folder_id), callback=on_association_removed
+        )
 
         # The function returns immediately as the DB operation is async
         return True
 
     def get_recordings_in_folder(self, folder_id, callback=None):
         """Return recordings in folder."""
-        query = '''
+        query = """
             SELECT r.id, r.filename, r.file_path, r.date_created, r.duration, 
                    r.raw_transcript, r.processed_text, r.raw_transcript_formatted, r.processed_text_formatted
             FROM recordings r
             JOIN recording_folders rf ON r.id = rf.recording_id
             WHERE rf.folder_id = ?
             ORDER BY r.date_created DESC
-        '''
+        """
 
         def on_recordings_fetched(result):
             logger.info(
-                f"Fetched {len(result) if result else 0} recordings from folder {folder_id}")
+                f"Fetched {len(result) if result else 0} recordings from folder {folder_id}"
+            )
             if callback:
                 callback(True, result)
             else:
                 logger.warning(
-                    f"get_recordings_in_folder called for folder {folder_id} without a callback")
+                    f"get_recordings_in_folder called for folder {folder_id} without a callback"
+                )
 
             return result
 
         # Execute the query
-        self.db_manager.execute_query(query, (folder_id,), callback=on_recordings_fetched)
+        self.db_manager.execute_query(
+            query, (folder_id,), callback=on_recordings_fetched
+        )
 
         # The function can't return the recordings directly as they're fetched asynchronously
         # The results will be passed to the callback function
@@ -408,13 +439,13 @@ class FolderManager:
 
     def get_folders_for_recording(self, recording_id, callback=None):
         """Return folders for recording."""
-        query = '''
+        query = """
             SELECT f.id, f.name, f.parent_id, f.created_at
             FROM folders f
             JOIN recording_folders rf ON f.id = rf.folder_id
             WHERE rf.recording_id = ?
             ORDER BY f.name
-        '''
+        """
 
         def on_folders_fetched(result):
             if callback:
@@ -423,7 +454,9 @@ class FolderManager:
             return result
 
         # Execute the query
-        self.db_manager.execute_query(query, (recording_id,), callback=on_folders_fetched)
+        self.db_manager.execute_query(
+            query, (recording_id,), callback=on_folders_fetched
+        )
 
         # The function can't return the folders directly as they're fetched asynchronously
         # The results will be passed to the callback function
@@ -431,11 +464,11 @@ class FolderManager:
 
     def get_all_root_folders(self):
         """Return root folders."""
-        return [folder for folder in self.folders if folder['parent_id'] is None]
+        return [folder for folder in self.folders if folder["parent_id"] is None]
 
     def get_recordings_not_in_folders(self, callback=None):
         """Return unassigned recordings."""
-        query = '''
+        query = """
             SELECT r.id, r.filename, r.file_path, r.date_created, r.duration, 
                    r.raw_transcript, r.processed_text, r.raw_transcript_formatted, r.processed_text_formatted
             FROM recordings r
@@ -444,15 +477,18 @@ class FolderManager:
                 WHERE rf.recording_id = r.id
             )
             ORDER BY r.date_created DESC
-        '''
+        """
 
         def on_recordings_fetched(result):
             logger.info(
-                f"Fetched {len(result) if result else 0} unassigned recordings from database")
+                f"Fetched {len(result) if result else 0} unassigned recordings from database"
+            )
             if callback:
                 callback(True, result)
             else:
-                logger.warning("get_recordings_not_in_folders called without a callback")
+                logger.warning(
+                    "get_recordings_not_in_folders called without a callback"
+                )
 
             return result
 
@@ -467,16 +503,16 @@ class FolderManager:
     def get_folder_by_id(self, folder_id):
         """Return folder by ID."""
         for folder in self.folders:
-            if folder['id'] == folder_id:
+            if folder["id"] == folder_id:
                 return folder
         return None
 
     def get_folder_recording_count(self, folder_id, callback=None):
         """Return recording count."""
-        query = '''
+        query = """
             SELECT COUNT(*) FROM recording_folders
             WHERE folder_id = ?
-        '''
+        """
 
         def on_count_fetched(result):
             # Extract the count from the result
@@ -500,8 +536,8 @@ class FolderManager:
     def folder_exists(self, name, parent_id=None, exclude_id=None):
         """Check if folder name exists."""
         for folder in self.folders:
-            if folder['name'] == name and folder['parent_id'] == parent_id:
-                if exclude_id and folder['id'] == exclude_id:
+            if folder["name"] == name and folder["parent_id"] == parent_id:
+                if exclude_id and folder["id"] == exclude_id:
                     continue
                 return True
         return False
@@ -525,12 +561,16 @@ class FolderManager:
             def on_cleared(result):
                 # Add all imported folders
                 for folder in folders:
-                    insert_query = '''
+                    insert_query = """
                         INSERT INTO folders (id, name, parent_id, created_at)
                         VALUES (?, ?, ?, ?)
-                    '''
-                    params = (folder['id'], folder['name'],
-                              folder['parent_id'], folder['created_at'])
+                    """
+                    params = (
+                        folder["id"],
+                        folder["name"],
+                        folder["parent_id"],
+                        folder["created_at"],
+                    )
                     self.db_manager.execute_query(insert_query, params)
 
                 # Reload folders after a short delay to allow inserts to complete
@@ -541,6 +581,7 @@ class FolderManager:
 
                 # Use QTimer to delay the reload
                 from PyQt6.QtCore import QTimer
+
                 QTimer.singleShot(500, reload_folders)
 
             # Execute clear folders after associations are cleared
@@ -548,8 +589,9 @@ class FolderManager:
                 self.db_manager.execute_query(clear_folders_query, callback=on_cleared)
 
             # First clear associations
-            self.db_manager.execute_query(clear_associations_query,
-                                          callback=on_associations_cleared)
+            self.db_manager.execute_query(
+                clear_associations_query, callback=on_associations_cleared
+            )
 
             return True
 

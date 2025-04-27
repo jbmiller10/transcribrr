@@ -1,9 +1,17 @@
 import datetime
-from PyQt6.QtWidgets import QWidget, QVBoxLayout, QLabel, QLineEdit, QHBoxLayout, QSizePolicy
+from PyQt6.QtWidgets import (
+    QWidget,
+    QVBoxLayout,
+    QLabel,
+    QLineEdit,
+    QHBoxLayout,
+    QSizePolicy,
+)
 from PyQt6.QtCore import Qt, pyqtSignal, QSize
 from PyQt6.QtGui import QIcon, QFont, QColor
 import os
 import logging
+
 # Removed direct DB import, DatabaseManager will handle updates
 # from app.database import create_connection, update_recording
 from app.path_utils import resource_path
@@ -11,7 +19,7 @@ from app.path_utils import resource_path
 from app.FolderManager import FolderManager  # Keep for folder info
 
 # logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s') # Configured in main
-logger = logging.getLogger('transcribrr')
+logger = logging.getLogger("transcribrr")
 
 
 class EditableLineEdit(QLineEdit):
@@ -30,7 +38,9 @@ class EditableLineEdit(QLineEdit):
             self.setCursor(Qt.CursorShape.IBeamCursor)
             self.selectAll()
             # Indicate editing
-            self.setStyleSheet("border: 1px solid gray; background: white; padding: 0px;")
+            self.setStyleSheet(
+                "border: 1px solid gray; background: white; padding: 0px;"
+            )
             super().mouseDoubleClickEvent(event)
 
     def focusOutEvent(self, event):
@@ -38,7 +48,8 @@ class EditableLineEdit(QLineEdit):
             self.setReadOnly(True)
             self.setCursor(Qt.CursorShape.PointingHandCursor)
             self.setStyleSheet(
-                "border: none; background: transparent; padding: 1px;")  # Restore style
+                "border: none; background: transparent; padding: 1px;"
+            )  # Restore style
             self.editingFinished.emit(self.text())  # Emit signal
         super().focusOutEvent(event)
 
@@ -49,7 +60,9 @@ class EditableLineEdit(QLineEdit):
                 self.editingFinished.emit(self.text())
                 self.clearFocus()  # This will trigger focusOutEvent to make read-only
             elif event.key() == Qt.Key.Key_Escape:
-                self.setText(self._original_text)  # Restore original text (need to store it)
+                self.setText(
+                    self._original_text
+                )  # Restore original text (need to store it)
                 self.clearFocus()
             else:
                 super().keyPressEvent(event)
@@ -104,9 +117,20 @@ class RecordingListItem(QWidget):
     # Reference to the DatabaseManager - will be set after initialization
     _db_manager = None
 
-    def __init__(self, id, filename, file_path, date_created, duration,
-                 raw_transcript, processed_text, raw_transcript_formatted=None,
-                 processed_text_formatted=None, *args, **kwargs):
+    def __init__(
+        self,
+        id,
+        filename,
+        file_path,
+        date_created,
+        duration,
+        raw_transcript,
+        processed_text,
+        raw_transcript_formatted=None,
+        processed_text_formatted=None,
+        *args,
+        **kwargs,
+    ):
         super(RecordingListItem, self).__init__(*args, **kwargs)
 
         # Store core data
@@ -117,8 +141,12 @@ class RecordingListItem(QWidget):
         self.duration = duration
         self.raw_transcript = raw_transcript or ""
         self.processed_text = processed_text or ""
-        self.raw_transcript_formatted_data = raw_transcript_formatted  # Keep potentially large data
-        self.processed_text_formatted_data = processed_text_formatted  # Keep potentially large data
+        self.raw_transcript_formatted_data = (
+            raw_transcript_formatted  # Keep potentially large data
+        )
+        self.processed_text_formatted_data = (
+            processed_text_formatted  # Keep potentially large data
+        )
 
         # Filename without extension for editing
         self.filename_no_ext = os.path.splitext(self.filename)[0]
@@ -149,9 +177,13 @@ class RecordingListItem(QWidget):
         icon_path = self.get_icon_for_file()
         icon_label.setPixmap(QIcon(resource_path(icon_path)).pixmap(QSize(24, 24)))
         self.status_indicator = StatusIndicator(self)
-        self.status_indicator.set_status(bool(self.raw_transcript), bool(self.processed_text))
+        self.status_indicator.set_status(
+            bool(self.raw_transcript), bool(self.processed_text)
+        )
         left_section.addWidget(icon_label, alignment=Qt.AlignmentFlag.AlignHCenter)
-        left_section.addWidget(self.status_indicator, alignment=Qt.AlignmentFlag.AlignHCenter)
+        left_section.addWidget(
+            self.status_indicator, alignment=Qt.AlignmentFlag.AlignHCenter
+        )
         left_section.addStretch()
 
         # Center section: Name, Date, Status, Folders
@@ -175,7 +207,9 @@ class RecordingListItem(QWidget):
 
         self.folder_label = QLabel()
         self.folder_label.setFont(QFont("Arial", 9))
-        self.folder_label.setStyleSheet("color: #666; font-style: italic;")  # Style hint
+        self.folder_label.setStyleSheet(
+            "color: #666; font-style: italic;"
+        )  # Style hint
         self.update_folder_label()
         center_section.addWidget(self.folder_label)
         center_section.addStretch()
@@ -185,7 +219,8 @@ class RecordingListItem(QWidget):
         self.duration_label = QLabel(self.duration)
         self.duration_label.setFont(QFont("Arial", 10))
         self.duration_label.setAlignment(
-            Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter)
+            Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter
+        )
         right_section.addWidget(self.duration_label)
         right_section.addStretch()
 
@@ -200,12 +235,21 @@ class RecordingListItem(QWidget):
 
     def get_icon_for_file(self):
         extension = os.path.splitext(self.file_path)[1].lower()
-        if extension in ['.mp3', '.wav', '.m4a', '.ogg', '.flac', '.aac', '.aiff', '.wma']:
-            return 'icons/status/audio.svg'
-        elif extension in ['.mp4', '.avi', '.mov', '.mkv', '.webm', '.flv', '.wmv']:
-            return 'icons/status/video.svg'
+        if extension in [
+            ".mp3",
+            ".wav",
+            ".m4a",
+            ".ogg",
+            ".flac",
+            ".aac",
+            ".aiff",
+            ".wma",
+        ]:
+            return "icons/status/audio.svg"
+        elif extension in [".mp4", ".avi", ".mov", ".mkv", ".webm", ".flv", ".wmv"]:
+            return "icons/status/video.svg"
         else:
-            return 'icons/status/file.svg'
+            return "icons/status/file.svg"
 
     def update_status_label(self):
         has_transcript = bool(self.raw_transcript and self.raw_transcript.strip())
@@ -224,7 +268,9 @@ class RecordingListItem(QWidget):
 
     def update_relative_time(self):
         try:
-            created_date = datetime.datetime.strptime(self.date_created, "%Y-%m-%d %H:%M:%S")
+            created_date = datetime.datetime.strptime(
+                self.date_created, "%Y-%m-%d %H:%M:%S"
+            )
             now = datetime.datetime.now()
             diff = now - created_date
 
@@ -244,18 +290,37 @@ class RecordingListItem(QWidget):
             self.date_label.setText(time_str)
         except Exception as e:
             logger.warning(f"Error updating relative time for {self.id}: {e}")
-            self.date_label.setText(self.date_created.split()[0])  # Fallback to date part
+            self.date_label.setText(
+                self.date_created.split()[0]
+            )  # Fallback to date part
 
     # --- Getters ---
-    def get_id(self): return self.id
-    def get_filename(self): return self.filename  # Full filename with ext
-    def get_filepath(self): return self.file_path
-    def get_raw_transcript(self): return self.raw_transcript
-    def get_processed_text(self): return self.processed_text
-    def get_raw_formatted(self): return self.raw_transcript_formatted_data
-    def get_processed_formatted(self): return self.processed_text_formatted_data
-    def has_transcript(self): return bool(self.raw_transcript and self.raw_transcript.strip())
-    def has_processed_text(self): return bool(self.processed_text and self.processed_text.strip())
+    def get_id(self):
+        return self.id
+
+    def get_filename(self):
+        return self.filename  # Full filename with ext
+
+    def get_filepath(self):
+        return self.file_path
+
+    def get_raw_transcript(self):
+        return self.raw_transcript
+
+    def get_processed_text(self):
+        return self.processed_text
+
+    def get_raw_formatted(self):
+        return self.raw_transcript_formatted_data
+
+    def get_processed_formatted(self):
+        return self.processed_text_formatted_data
+
+    def has_transcript(self):
+        return bool(self.raw_transcript and self.raw_transcript.strip())
+
+    def has_processed_text(self):
+        return bool(self.processed_text and self.processed_text.strip())
 
     # --- Folder Management ---
     def load_folders(self):
@@ -263,20 +328,21 @@ class RecordingListItem(QWidget):
             # Get folders asynchronously with a callback
             def on_folders_received(success, result):
                 if success and result:
-                    self.folders = [{'id': f[0], 'name': f[1]} for f in result]
+                    self.folders = [{"id": f[0], "name": f[1]} for f in result]
                     # Update UI after loading
-                    if hasattr(self, 'folder_label'):
+                    if hasattr(self, "folder_label"):
                         self.update_folder_label()
                 else:
                     self.folders = []
-                    if hasattr(self, 'folder_label'):
+                    if hasattr(self, "folder_label"):
                         self.update_folder_label()
 
             # Get FolderManager instance safely
             from app.FolderManager import FolderManager
+
             try:
                 # If we have access to db_manager, use it to ensure proper initialization
-                if hasattr(self, 'db_manager') and self.db_manager is not None:
+                if hasattr(self, "db_manager") and self.db_manager is not None:
                     folder_manager = FolderManager.instance(db_manager=self.db_manager)
                 else:
                     folder_manager = FolderManager.instance()
@@ -289,7 +355,7 @@ class RecordingListItem(QWidget):
             logger.error(f"Error loading folders for recording {self.id}: {e}")
             self.folders = []
             # Update UI after loading
-            if hasattr(self, 'folder_label'):
+            if hasattr(self, "folder_label"):
                 self.update_folder_label()
 
     def update_folder_label(self):
@@ -300,10 +366,10 @@ class RecordingListItem(QWidget):
         # Keep the tooltip for accessibility/additional info
         if self.folders:
             if len(self.folders) == 1:
-                folder_name = self.folders[0]['name']
+                folder_name = self.folders[0]["name"]
                 self.folder_label.setToolTip(f"In folder: {folder_name}")
             else:
-                folder_names = ", ".join(f['name'] for f in self.folders)
+                folder_names = ", ".join(f["name"] for f in self.folders)
                 self.folder_label.setToolTip(f"In folders: {folder_names}")
 
     def refresh_folders(self):
@@ -348,14 +414,16 @@ class RecordingListItem(QWidget):
 
     def load_folders(self):
         """Load folders for this recording."""
-        if not hasattr(self, '_db_manager') or self._db_manager is None:
-            logger.warning(f"Cannot load folders for recording {self.id} - no database manager")
+        if not hasattr(self, "_db_manager") or self._db_manager is None:
+            logger.warning(
+                f"Cannot load folders for recording {self.id} - no database manager"
+            )
             return
 
         # Get FolderManager instance safely
         try:
             # Try to initialize with db_manager if available
-            if hasattr(self, 'db_manager') and self.db_manager is not None:
+            if hasattr(self, "db_manager") and self.db_manager is not None:
                 folder_manager = FolderManager.instance(db_manager=self.db_manager)
             else:
                 folder_manager = FolderManager.instance()
@@ -375,10 +443,10 @@ class RecordingListItem(QWidget):
             # Process folders
             for folder_row in result:
                 folder = {
-                    'id': folder_row[0],
-                    'name': folder_row[1],
-                    'parent_id': folder_row[2],
-                    'created_at': folder_row[3]
+                    "id": folder_row[0],
+                    "name": folder_row[1],
+                    "parent_id": folder_row[2],
+                    "created_at": folder_row[3],
                 }
                 self.folders.append(folder)
 
@@ -394,21 +462,21 @@ class RecordingListItem(QWidget):
     def update_data(self, data: dict):
         """Update item's data and UI, e.g., after DB update."""
         # Check for direct status flags first
-        has_transcript_flag = data.get('has_transcript')
-        has_processed_flag = data.get('has_processed')
+        has_transcript_flag = data.get("has_transcript")
+        has_processed_flag = data.get("has_processed")
 
         # Update internal data
-        if 'raw_transcript' in data:
-            self.raw_transcript = data.get('raw_transcript', '')
-        if 'processed_text' in data:
-            self.processed_text = data.get('processed_text', '')
-        if 'raw_transcript_formatted' in data:
-            self.raw_transcript_formatted_data = data.get('raw_transcript_formatted')
-        if 'processed_text_formatted' in data:
-            self.processed_text_formatted_data = data.get('processed_text_formatted')
+        if "raw_transcript" in data:
+            self.raw_transcript = data.get("raw_transcript", "")
+        if "processed_text" in data:
+            self.processed_text = data.get("processed_text", "")
+        if "raw_transcript_formatted" in data:
+            self.raw_transcript_formatted_data = data.get("raw_transcript_formatted")
+        if "processed_text_formatted" in data:
+            self.processed_text_formatted_data = data.get("processed_text_formatted")
 
         # Update filename if changed externally
-        new_filename_no_ext = data.get('filename', self.filename_no_ext)
+        new_filename_no_ext = data.get("filename", self.filename_no_ext)
         if new_filename_no_ext != self.filename_no_ext:
             self.filename_no_ext = new_filename_no_ext
             self.filename = new_filename_no_ext + os.path.splitext(self.filename)[1]
@@ -416,10 +484,16 @@ class RecordingListItem(QWidget):
 
         # If status flags were provided, explicitly set them, otherwise infer from content
         if has_transcript_flag is not None or has_processed_flag is not None:
-            has_transcript = has_transcript_flag if has_transcript_flag is not None else bool(
-                self.raw_transcript and self.raw_transcript.strip())
-            has_processed = has_processed_flag if has_processed_flag is not None else bool(
-                self.processed_text and self.processed_text.strip())
+            has_transcript = (
+                has_transcript_flag
+                if has_transcript_flag is not None
+                else bool(self.raw_transcript and self.raw_transcript.strip())
+            )
+            has_processed = (
+                has_processed_flag
+                if has_processed_flag is not None
+                else bool(self.processed_text and self.processed_text.strip())
+            )
 
             # Update the status indicator with forced values
             self.status_indicator.set_status(has_transcript, has_processed)
@@ -443,5 +517,7 @@ class RecordingListItem(QWidget):
         self.folder_label.show()
 
         # Refresh folder display if needed
-        if data.get('refresh_folders', False) or len(data) > 4:  # Do a refresh for larger data updates
+        if (
+            data.get("refresh_folders", False) or len(data) > 4
+        ):  # Do a refresh for larger data updates
             self.refresh_folders()

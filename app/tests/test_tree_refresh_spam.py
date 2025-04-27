@@ -15,14 +15,21 @@ from app.DatabaseManager import DatabaseManager
 from app.UnifiedFolderTreeView import UnifiedFolderTreeView
 from PyQt6.QtCore import QTimer
 from PyQt6.QtWidgets import (
-    QApplication, QMainWindow, QPushButton, QVBoxLayout,
-    QHBoxLayout, QLabel, QWidget, QScrollArea
+    QApplication,
+    QMainWindow,
+    QPushButton,
+    QVBoxLayout,
+    QHBoxLayout,
+    QLabel,
+    QWidget,
+    QScrollArea,
 )
 import psutil
 import gc
 import os
 import sys
 import unittest
+
 # Skip legacy tests in headless environment
 raise unittest.SkipTest("Skipping legacy test in headless environment")
 
@@ -148,13 +155,16 @@ class RefreshSpamTester(QMainWindow):
 
         # Count model items
         recording_count = sum(
-            1 for key in self.tree_view.source_model.item_map if key[0] == "recording")
+            1 for key in self.tree_view.source_model.item_map if key[0] == "recording"
+        )
         self.recording_count_label.setText(f"Recordings: {recording_count}")
 
         # Memory usage
         current_memory = self.process.memory_info().rss / 1024 / 1024  # MB
         memory_diff = current_memory - self.start_memory
-        self.memory_label.setText(f"Memory: {current_memory:.1f} MB ({memory_diff:+.1f} MB)")
+        self.memory_label.setText(
+            f"Memory: {current_memory:.1f} MB ({memory_diff:+.1f} MB)"
+        )
 
         # Set color based on whether widget count matches recording count
         if widget_count == recording_count:

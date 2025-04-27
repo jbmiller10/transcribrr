@@ -13,7 +13,9 @@ from app.DatabaseManager import DatabaseManager
 from app.FolderManager import FolderManager
 
 # Set up logging
-logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
+logging.basicConfig(
+    level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s"
+)
 logger = logging.getLogger(__name__)
 
 
@@ -38,7 +40,9 @@ class TestWindow(QWidget):
         self.add_button.clicked.connect(self.add_test_recording)
         layout.addWidget(self.add_button)
 
-        self.add_duplicate_button = QPushButton("Add Duplicate Recording (Should Show Error)")
+        self.add_duplicate_button = QPushButton(
+            "Add Duplicate Recording (Should Show Error)"
+        )
         self.add_duplicate_button.clicked.connect(self.add_duplicate_recording)
         layout.addWidget(self.add_duplicate_button)
 
@@ -51,6 +55,7 @@ class TestWindow(QWidget):
 
         # Prepare test recording data
         import datetime
+
         filename = "test_recording.mp3"
         file_path = "/tmp/test_recording.mp3"
         date_created = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
@@ -58,7 +63,15 @@ class TestWindow(QWidget):
         original_source = file_path
 
         # Create recording in database
-        recording_data = (filename, file_path, date_created, duration, "", "", original_source)
+        recording_data = (
+            filename,
+            file_path,
+            date_created,
+            duration,
+            "",
+            "",
+            original_source,
+        )
 
         # Define callback for when the recording is created
         def on_recording_created(recording_id):
@@ -79,7 +92,9 @@ class TestWindow(QWidget):
                     pass
 
         # Connect with UniqueConnection
-        self.db_manager.error_occurred.connect(on_db_error, Qt.ConnectionType.UniqueConnection)
+        self.db_manager.error_occurred.connect(
+            on_db_error, Qt.ConnectionType.UniqueConnection
+        )
 
         # Create the recording
         self.db_manager.create_recording(recording_data, on_recording_created)
@@ -101,6 +116,7 @@ class TestWindow(QWidget):
 
         # Use the same path as the test recording
         import datetime
+
         filename = "duplicate_recording.mp3"  # Different name but same path
         file_path = "/tmp/test_recording.mp3"  # Same path as the first recording
         date_created = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
@@ -108,14 +124,24 @@ class TestWindow(QWidget):
         original_source = file_path
 
         # Create recording in database
-        recording_data = (filename, file_path, date_created, duration, "", "", original_source)
+        recording_data = (
+            filename,
+            file_path,
+            date_created,
+            duration,
+            "",
+            "",
+            original_source,
+        )
 
         # Define callback for when the recording is created (should not be called)
         def on_recording_created(recording_id):
             self.status_label.setText(
-                f"UNEXPECTED SUCCESS: Added duplicate recording with ID: {recording_id}")
+                f"UNEXPECTED SUCCESS: Added duplicate recording with ID: {recording_id}"
+            )
             logger.warning(
-                f"Duplicate recording created with ID: {recording_id} - this should not happen!")
+                f"Duplicate recording created with ID: {recording_id} - this should not happen!"
+            )
 
         # Connect to handle database errors
         def on_db_error(operation_name, error_message):
@@ -131,7 +157,9 @@ class TestWindow(QWidget):
                     pass
 
         # Connect with UniqueConnection
-        self.db_manager.error_occurred.connect(on_db_error, Qt.ConnectionType.UniqueConnection)
+        self.db_manager.error_occurred.connect(
+            on_db_error, Qt.ConnectionType.UniqueConnection
+        )
 
         # Try to create the duplicate recording
         self.db_manager.create_recording(recording_data, on_recording_created)

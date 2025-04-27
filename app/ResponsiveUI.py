@@ -3,7 +3,7 @@ from PyQt6.QtWidgets import QWidget, QSizePolicy, QVBoxLayout, QHBoxLayout, QApp
 from PyQt6.QtCore import Qt, QSize, QObject, QEvent
 
 # Configure logging
-logger = logging.getLogger('transcribrr')
+logger = logging.getLogger("transcribrr")
 
 
 class ResponsiveSizePolicy:
@@ -113,7 +113,9 @@ class ResponsiveUIManager(QObject):
 
         # Update font sizes
         font = app.font()
-        scaled_size = max(self.min_font_size, int(self.base_font_size * self.scale_factor))
+        scaled_size = max(
+            self.min_font_size, int(self.base_font_size * self.scale_factor)
+        )
         font.setPointSize(scaled_size)
         app.setFont(font)
 
@@ -121,7 +123,7 @@ class ResponsiveUIManager(QObject):
         for widget in self.responsive_widgets:
             if widget and not widget.isDestroyed():
                 # Update margins, padding, icon sizes, etc.
-                if hasattr(widget, 'apply_responsive_scaling'):
+                if hasattr(widget, "apply_responsive_scaling"):
                     widget.apply_responsive_scaling(self.scale_factor)
 
         logger.info(f"Applied scaling factor: {self.scale_factor}")
@@ -141,7 +143,9 @@ class ResponsiveUIManager(QObject):
         if new_scale != self.scale_factor:
             self.update_scale_factor(new_scale)
 
-        logger.debug(f"Window resized to {width}x{height}, scale factor: {self.scale_factor}")
+        logger.debug(
+            f"Window resized to {width}x{height}, scale factor: {self.scale_factor}"
+        )
 
 
 class ResponsiveEventFilter(QObject):
@@ -174,7 +178,7 @@ class ResponsiveEventFilter(QObject):
         """
         if event.type() == QEvent.Type.Resize:
             # Handle resize events
-            if hasattr(watched, 'handle_resize'):
+            if hasattr(watched, "handle_resize"):
                 watched.handle_resize(event.size())
 
         # Pass event to default handler

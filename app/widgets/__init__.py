@@ -3,5 +3,5 @@
 from .prompt_bar import PromptBar
 
 __all__ = [
-    'PromptBar',
+    "PromptBar",
 ]

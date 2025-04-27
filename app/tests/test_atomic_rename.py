@@ -11,6 +11,7 @@ import shutil
 import tempfile
 import os
 import unittest
+
 # Skip legacy tests in headless environment
 raise unittest.SkipTest("Skipping legacy test in headless environment")
 
@@ -58,7 +59,10 @@ class AtomicRenameTest:
                     return False, f"Database error: {str(db_error)}"
                 except OSError as rollback_error:
                     self.critical_error = True
-                    return False, f"Critical error: DB update failed AND rollback failed: {str(rollback_error)}"
+                    return (
+                        False,
+                        f"Critical error: DB update failed AND rollback failed: {str(rollback_error)}",
+                    )
 
         except OSError as fs_error:
             # Filesystem rename failed
@@ -83,8 +87,10 @@ class TestAtomicRename(unittest.TestCase):
         os.makedirs(self.readonly_dir)
 
         # Make the directory read-only on Unix systems
-        if os.name != 'nt':  # Skip on Windows as permissions work differently
-            os.chmod(self.readonly_dir, stat.S_IRUSR | stat.S_IXUSR)  # Read + execute only
+        if os.name != "nt":  # Skip on Windows as permissions work differently
+            os.chmod(
+                self.readonly_dir, stat.S_IRUSR | stat.S_IXUSR
+            )  # Read + execute only
 
         # Create a test instance of the atomic rename logic
         self.rename_test = AtomicRenameTest()
@@ -92,7 +98,7 @@ class TestAtomicRename(unittest.TestCase):
     def tearDown(self):
         """Clean up temporary files."""
         # Restore permissions to allow deletion
-        if os.name != 'nt' and os.path.exists(self.readonly_dir):
+        if os.name != "nt" and os.path.exists(self.readonly_dir):
             os.chmod(self.readonly_dir, stat.S_IRWXU)  # Read, write, execute
 
         # Remove temporary directory and all contents
@@ -105,7 +111,9 @@ class TestAtomicRename(unittest.TestCase):
         db_update_func = MagicMock()  # Mock function that succeeds
 
         # Call the function
-        success, error = self.rename_test.rename_file(self.test_file_path, new_path, db_update_func)
+        success, error = self.rename_test.rename_file(
+            self.test_file_path, new_path, db_update_func
+        )
 
         # Verify success
         self.assertTrue(success)
@@ -129,7 +137,9 @@ class TestAtomicRename(unittest.TestCase):
         db_update_func = MagicMock()  # This shouldn't be called
 
         # Call the function
-        success, error = self.rename_test.rename_file(source_path, new_path, db_update_func)
+        success, error = self.rename_test.rename_file(
+            source_path, new_path, db_update_func
+        )
 
         # Verify failure
         self.assertFalse(success)
@@ -145,7 +155,7 @@ class TestAtomicRename(unittest.TestCase):
     def test_rename_to_readonly_directory(self):
         """Test rename operation to a read-only directory - should fail atomically."""
         # Skip this test on Windows as permissions work differently
-        if os.name == 'nt':
+        if os.name == "nt":
             self.skipTest("Skipping read-only directory test on Windows")
 
         # Set up the test - target path in read-only directory
@@ -157,7 +167,9 @@ class TestAtomicRename(unittest.TestCase):
         db_update_func = MagicMock()  # This shouldn't be called
 
         # Call the function - should fail on filesystem rename
-        success, error = self.rename_test.rename_file(source_path, target_path, db_update_func)
+        success, error = self.rename_test.rename_file(
+            source_path, target_path, db_update_func
+        )
 
         # Verify failure
         self.assertFalse(success)
@@ -181,7 +193,9 @@ class TestAtomicRename(unittest.TestCase):
         db_update_func = MagicMock(side_effect=Exception("DB update failed"))
 
         # Call the function
-        success, error = self.rename_test.rename_file(self.test_file_path, new_path, db_update_func)
+        success, error = self.rename_test.rename_file(
+            self.test_file_path, new_path, db_update_func
+        )
 
         # Verify failure
         self.assertFalse(success)
@@ -219,10 +233,11 @@ class TestAtomicRename(unittest.TestCase):
                 # Second call - the rollback - should fail
                 raise OSError("Rollback failed")
 
-        with patch('os.rename', side_effect=mock_rename):
+        with patch("os.rename", side_effect=mock_rename):
             # Call the function
             success, error = self.rename_test.rename_file(
-                self.test_file_path, new_path, db_update_func)
+                self.test_file_path, new_path, db_update_func
+            )
 
         # Verify failure with critical error
         self.assertFalse(success)
@@ -251,7 +266,7 @@ class TestAtomicRename(unittest.TestCase):
         db_update_func = MagicMock()  # This shouldn't be called
 
         # Mock the os.path.exists to return True for the target path
-        with patch('os.path.exists', return_value=True):
+        with patch("os.path.exists", return_value=True):
             # Call the function - this would be inside the RecentRecordingsWidget.handle_recording_rename method
             # In the actual implementation, the check for existing files happens before the atomic rename
             # so we're skipping the actual rename call
@@ -263,5 +278,5 @@ class TestAtomicRename(unittest.TestCase):
         # In the actual code, this check would prevent the rename from happening
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     unittest.main()

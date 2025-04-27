@@ -13,7 +13,9 @@ from app.DatabaseManager import DatabaseManager
 import logging
 
 # Set up logging
-logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
+logging.basicConfig(
+    level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s"
+)
 logger = logging.getLogger(__name__)
 
 
@@ -69,7 +71,9 @@ def main():
         app.quit()
 
     logger.info("Executing test database query")
-    db_manager.execute_query("SELECT COUNT(*) FROM sqlite_master", callback=on_query_complete)
+    db_manager.execute_query(
+        "SELECT COUNT(*) FROM sqlite_master", callback=on_query_complete
+    )
 
     # Set up a timeout in case the query never completes
     def timeout_handler():

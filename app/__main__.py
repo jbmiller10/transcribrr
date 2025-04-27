@@ -4,15 +4,25 @@ from .ThreadManager import ThreadManager
 from .services.transcription_service import ModelManager
 from .ResponsiveUI import ResponsiveUIManager, ResponsiveEventFilter
 from .ThemeManager import ThemeManager
-from .utils import check_system_requirements, cleanup_temp_files, ConfigManager, ensure_ffmpeg_available
+from .utils import (
+    check_system_requirements,
+    cleanup_temp_files,
+    ConfigManager,
+    ensure_ffmpeg_available,
+)
 from .path_utils import resource_path
 from .MainWindow import MainWindow
 from PyQt6.QtSvg import QSvgRenderer
 from PyQt6.QtCore import Qt, QTimer, QThread, pyqtSignal, pyqtSlot, QRect
 from PyQt6.QtGui import QPixmap, QIcon
 from PyQt6.QtWidgets import (
-    QApplication, QMessageBox, QSplashScreen, QVBoxLayout,
-    QLabel, QProgressBar, QWidget
+    QApplication,
+    QMessageBox,
+    QSplashScreen,
+    QVBoxLayout,
+    QLabel,
+    QProgressBar,
+    QWidget,
 )
 import sys
 import os
@@ -23,7 +33,9 @@ from typing import Tuple, Dict, Any, List
 
 # Filter urllib3 LibreSSL warning
 warnings.filterwarnings(
-    "ignore", message="urllib3 v2 only supports OpenSSL 1.1.1+, currently the 'ssl' module is compiled with")
+    "ignore",
+    message="urllib3 v2 only supports OpenSSL 1.1.1+, currently the 'ssl' module is compiled with",
+)
 
 
 # Import constants for paths
@@ -61,6 +73,7 @@ startup_thread = None
 
 class StartupThread(QThread):
     """Background thread for startup operations to keep UI responsive during loading."""
+
     update_progress = pyqtSignal(int, str)
     initialization_done = pyqtSignal(dict)
     error = pyqtSignal(str)
@@ -84,7 +97,14 @@ class StartupThread(QThread):
 
             self.update_progress.emit(40, "Verifying environment...")
             # Log directory locations
-            from .constants import RESOURCE_DIR, get_user_data_dir, get_recordings_dir, get_database_dir, get_log_dir
+            from .constants import (
+                RESOURCE_DIR,
+                get_user_data_dir,
+                get_recordings_dir,
+                get_database_dir,
+                get_log_dir,
+            )
+
             logger.info(f"Resource directory: {RESOURCE_DIR}")
             logger.info(f"User data directory: {get_user_data_dir()}")
             logger.info(f"Recordings directory: {get_recordings_dir()}")
@@ -123,7 +143,7 @@ class StartupThread(QThread):
                 "dependencies": dependencies,
                 "cuda": cuda_result,
                 "system_info": system_info,
-                "config": config
+                "config": config,
             }
 
             # Complete initialization
@@ -149,14 +169,12 @@ class StartupThread(QThread):
         # Check PyAudio
         try:
             import pyaudio
+
             pyaudio_available = True
         except ImportError:
             pyaudio_available = False
 
-        return {
-            'ffmpeg': ffmpeg_available,
-            'pyaudio': pyaudio_available
-        }
+        return {"ffmpeg": ffmpeg_available, "pyaudio": pyaudio_available}
 
     def check_cuda_availability(self) -> Tuple[bool, List[str]]:
         """
@@ -167,6 +185,7 @@ class StartupThread(QThread):
         """
         try:
             import torch
+
             cuda_available = torch.cuda.is_available()
 
             if cuda_available:
@@ -175,12 +194,16 @@ class StartupThread(QThread):
 
                 for i in range(gpu_count):
                     gpu_name = torch.cuda.get_device_name(i)
-                    gpu_memory = torch.cuda.get_device_properties(i).total_memory / (1024 ** 3)
+                    gpu_memory = torch.cuda.get_device_properties(i).total_memory / (
+                        1024**3
+                    )
                     gpu_info.append(f"  • {gpu_name} ({gpu_memory:.2f} GB)")
 
                 return True, gpu_info
             else:
-                mps_available = hasattr(torch.backends, 'mps') and torch.backends.mps.is_available()
+                mps_available = (
+                    hasattr(torch.backends, "mps") and torch.backends.mps.is_available()
+                )
                 if mps_available:
                     return False, ["  • Apple MPS acceleration available"]
                 return False, []
@@ -197,17 +220,17 @@ def toggle_theme():
 def apply_high_dpi_scaling():
     """Configure high DPI scaling for the application."""
     # Enable high DPI scaling
-    if hasattr(Qt, 'AA_EnableHighDpiScaling'):
+    if hasattr(Qt, "AA_EnableHighDpiScaling"):
         QApplication.setAttribute(Qt.AA_EnableHighDpiScaling, True)
-    if hasattr(Qt, 'AA_UseHighDpiPixmaps'):
+    if hasattr(Qt, "AA_UseHighDpiPixmaps"):
         QApplication.setAttribute(Qt.AA_UseHighDpiPixmaps, True)
 
 
 def create_splash_screen():
     """Create a splash screen with progress bar."""
     # Try to use the SVG splash image if available
-    svg_path = resource_path('./icons/app/splash.svg')
-    png_path = resource_path('./icons/app/splash.png')
+    svg_path = resource_path("./icons/app/splash.svg")
+    png_path = resource_path("./icons/app/splash.png")
 
     logger.debug(f"Splash SVG path: {svg_path}")
     logger.debug(f"Splash PNG path: {png_path}")
@@ -221,6 +244,7 @@ def create_splash_screen():
             splash_pixmap.fill(Qt.GlobalColor.transparent)
             # Create a painter on the pixmap
             from PyQt6.QtGui import QPainter
+
             painter = QPainter(splash_pixmap)
             renderer.render(painter)
             painter.end()
@@ -262,7 +286,8 @@ def create_splash_screen():
     progress.setValue(0)
     progress.setTextVisible(False)
     progress.setFixedHeight(10)
-    progress.setStyleSheet("""
+    progress.setStyleSheet(
+        """
         QProgressBar {
             border: 1px solid #AAA;
             border-radius: 5px;
@@ -273,7 +298,8 @@ def create_splash_screen():
             background-color: #3366CC;
             border-radius: 4px;
         }
-    """)
+    """
+    )
     layout.addWidget(progress)
 
     # Add status label
@@ -316,7 +342,7 @@ def initialize_app():
         app = QApplication(sys.argv)
         app.setApplicationName("Transcribrr")
         app.setApplicationVersion("1.0.0")
-        app.setWindowIcon(QIcon(resource_path('./icons/app/app_icon.svg')))
+        app.setWindowIcon(QIcon(resource_path("./icons/app/app_icon.svg")))
 
         # Initialize theme manager (defer applying theme until we're signaled)
         theme_manager = ThemeManager.instance()
@@ -353,8 +379,11 @@ def initialize_app():
         # Connect signals to main thread handlers
         startup_thread.update_progress.connect(update_splash)
         startup_thread.initialization_done.connect(
-            lambda results: on_initialization_done(results, main_window, splash))
-        startup_thread.error.connect(lambda msg: on_initialization_error(msg, main_window, splash))
+            lambda results: on_initialization_done(results, main_window, splash)
+        )
+        startup_thread.error.connect(
+            lambda msg: on_initialization_error(msg, main_window, splash)
+        )
         startup_thread.apply_theme.connect(apply_theme_main_thread)
         startup_thread.apply_responsive_ui.connect(apply_responsive_ui_main_thread)
 
@@ -366,7 +395,9 @@ def initialize_app():
 
     except Exception as e:
         # Show error message in case of critical failure
-        error_message = f"Failed to initialize application: {str(e)}\n\n{traceback.format_exc()}"
+        error_message = (
+            f"Failed to initialize application: {str(e)}\n\n{traceback.format_exc()}"
+        )
         logger.critical(error_message)
 
         # Try to show error dialog, fallback to print if QApplication not initialized
@@ -383,7 +414,9 @@ def initialize_app():
 
 
 @pyqtSlot(dict)
-def on_initialization_done(results: Dict[str, Any], main_window: MainWindow, splash: QSplashScreen) -> None:
+def on_initialization_done(
+    results: Dict[str, Any], main_window: MainWindow, splash: QSplashScreen
+) -> None:
     """
     Handle successful initialization.
 
@@ -394,21 +427,29 @@ def on_initialization_done(results: Dict[str, Any], main_window: MainWindow, spl
     """
     # Check for critical dependencies
     if not results["dependencies"]["ffmpeg"]:
-        QMessageBox.warning(main_window, "Missing Dependency",
-                            "FFmpeg is not installed or not in PATH. Some features may not work properly.")
+        QMessageBox.warning(
+            main_window,
+            "Missing Dependency",
+            "FFmpeg is not installed or not in PATH. Some features may not work properly.",
+        )
 
     if not results["dependencies"]["pyaudio"]:
-        QMessageBox.warning(main_window, "Missing Dependency",
-                            "PyAudio is not properly installed. Recording functionality may not work.")
+        QMessageBox.warning(
+            main_window,
+            "Missing Dependency",
+            "PyAudio is not properly installed. Recording functionality may not work.",
+        )
 
     # Log configuration information
     if "config" in results:
         logger.info(f"Loaded configuration with {len(results['config'])} settings")
         logger.info(f"Theme: {results['config'].get('theme', 'light')}")
         logger.info(
-            f"Transcription model: {results['config'].get('transcription_quality', 'Not set')}")
+            f"Transcription model: {results['config'].get('transcription_quality', 'Not set')}"
+        )
         logger.info(
-            f"Transcription method: {results['config'].get('transcription_method', 'local')}")
+            f"Transcription method: {results['config'].get('transcription_method', 'local')}"
+        )
 
     # Apply responsive UI sizing on the main thread
     if main_window:
@@ -420,16 +461,13 @@ def on_initialization_done(results: Dict[str, Any], main_window: MainWindow, spl
     logger.info("Application started")
     logger.info(f"Python version: {sys.version}")
     logger.info(f"CUDA available: {results['cuda'][0]}")
-    if results['cuda'][1]:
+    if results["cuda"][1]:
         logger.info("GPU Information:")
-        for gpu in results['cuda'][1]:
+        for gpu in results["cuda"][1]:
             logger.info(gpu)
 
     # Show the main window and close the splash screen
-    QTimer.singleShot(800, lambda: (
-        main_window.show(),
-        splash.finish(main_window)
-    ))
+    QTimer.singleShot(800, lambda: (main_window.show(), splash.finish(main_window)))
 
 
 @pyqtSlot(str)
@@ -439,8 +477,11 @@ def on_initialization_error(error_message, main_window, splash):
     splash.close()
 
     # Show error message
-    QMessageBox.critical(main_window, "Initialization Error",
-                         f"There was a problem initializing the application:\n\n{error_message}")
+    QMessageBox.critical(
+        main_window,
+        "Initialization Error",
+        f"There was a problem initializing the application:\n\n{error_message}",
+    )
 
     # Show main window anyway
     main_window.show()
@@ -453,7 +494,7 @@ def copy_initial_data_files():
     import shutil
 
     # Check if running in a bundled app
-    is_frozen = getattr(sys, 'frozen', False)
+    is_frozen = getattr(sys, "frozen", False)
 
     if is_frozen:
         # Use resource_path to get the correct resource directory
@@ -461,7 +502,7 @@ def copy_initial_data_files():
 
         # Copy config.json if it doesn't exist in user data directory
         if not os.path.exists(get_config_path()):
-            source_config = os.path.join(resource_dir, 'config.json')
+            source_config = os.path.join(resource_dir, "config.json")
             if os.path.exists(source_config):
                 logger.info(f"Copying default config.json to {get_config_path()}")
                 shutil.copy2(source_config, get_config_path())
@@ -470,12 +511,16 @@ def copy_initial_data_files():
 
         # Copy preset_prompts.json if it doesn't exist in user data directory
         if not os.path.exists(get_prompts_path()):
-            source_prompts = os.path.join(resource_dir, 'preset_prompts.json')
+            source_prompts = os.path.join(resource_dir, "preset_prompts.json")
             if os.path.exists(source_prompts):
-                logger.info(f"Copying default preset_prompts.json to {get_prompts_path()}")
+                logger.info(
+                    f"Copying default preset_prompts.json to {get_prompts_path()}"
+                )
                 shutil.copy2(source_prompts, get_prompts_path())
             else:
-                logger.warning(f"Default preset_prompts.json not found at {source_prompts}")
+                logger.warning(
+                    f"Default preset_prompts.json not found at {source_prompts}"
+                )
 
 
 def run_application():
@@ -484,46 +529,63 @@ def run_application():
 
     try:
         # Log startup information
-        is_frozen = getattr(sys, 'frozen', False)
-        is_pyinstaller = hasattr(sys, '_MEIPASS')
-        is_py2app = is_frozen and 'MacOS' in sys.executable
+        is_frozen = getattr(sys, "frozen", False)
+        is_pyinstaller = hasattr(sys, "_MEIPASS")
+        is_py2app = is_frozen and "MacOS" in sys.executable
 
         logger.info(
-            f"Starting application: Frozen = {is_frozen}, PyInstaller = {is_pyinstaller}, py2app = {is_py2app}")
+            f"Starting application: Frozen = {is_frozen}, PyInstaller = {is_pyinstaller}, py2app = {is_py2app}"
+        )
         logger.info(f"Working directory: {os.getcwd()}")
         # Import user data and resource path functions
-        from .constants import RESOURCE_DIR, get_user_data_dir, get_recordings_dir, get_database_dir, get_log_dir
+        from .constants import (
+            RESOURCE_DIR,
+            get_user_data_dir,
+            get_recordings_dir,
+            get_database_dir,
+            get_log_dir,
+        )
+
         logger.info(f"User data directory: {get_user_data_dir()}")
         logger.info(f"Resource directory: {RESOURCE_DIR}")
 
         # --- Ensure User Directories Exist ---
         try:
-            logger.info(f"Ensuring user data directories exist in: {get_user_data_dir()}")
+            logger.info(
+                f"Ensuring user data directories exist in: {get_user_data_dir()}"
+            )
             os.makedirs(get_recordings_dir(), exist_ok=True)
             os.makedirs(get_database_dir(), exist_ok=True)
             os.makedirs(get_log_dir(), exist_ok=True)
             logger.info("User data directories checked/created successfully.")
         except OSError as e:
             logger.critical(
-                f"Could not create required user directories in {get_user_data_dir()}: {e}", exc_info=True)
+                f"Could not create required user directories in {get_user_data_dir()}: {e}",
+                exc_info=True,
+            )
             # Attempt to show a message box if possible
             try:
                 app_instance = QApplication.instance()
                 if not app_instance:
                     app_instance = QApplication(sys.argv)
-                QMessageBox.critical(None, "Fatal Error",
-                                     f"Could not create application data directories in {get_user_data_dir()}.\n"
-                                     f"Please check permissions.\nError: {e}")
+                QMessageBox.critical(
+                    None,
+                    "Fatal Error",
+                    f"Could not create application data directories in {get_user_data_dir()}.\n"
+                    f"Please check permissions.\nError: {e}",
+                )
             except Exception as mb_error:
                 # Fallback if GUI cannot be shown
                 print(
-                    f"FATAL ERROR: Could not create application data directories in {get_user_data_dir()}. Error: {e}")
+                    f"FATAL ERROR: Could not create application data directories in {get_user_data_dir()}. Error: {e}"
+                )
                 print(f"Message box error: {mb_error}")
             return 1
         # --- End of Directory Creation Block ---
 
         # Migrate API keys from old format to new format
         from app.secure import migrate_api_keys
+
         migration_results = migrate_api_keys()
         if migration_results["openai"] or migration_results["hf"]:
             logger.info("Successfully migrated API keys to new secure format")
@@ -533,6 +595,7 @@ def run_application():
 
         # Check if critical files exist after potential copying
         from .constants import get_config_path, get_prompts_path
+
         config_exists = os.path.exists(get_config_path())
         prompts_exists = os.path.exists(get_prompts_path())
         logger.info(f"Config file exists in user data dir: {config_exists}")
@@ -584,7 +647,8 @@ def cleanup_application():
     for thread in threads_to_terminate:
         try:
             logger.warning(
-                f"Terminating thread {thread.__class__.__name__} that didn't respond to cancellation...")
+                f"Terminating thread {thread.__class__.__name__} that didn't respond to cancellation..."
+            )
             thread.terminate()
             thread.wait(500)  # Brief wait after terminate
         except Exception as e:

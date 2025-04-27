@@ -37,7 +37,7 @@ class MockSignal:
 
 class MockConfigManager:
     def __init__(self):
-        self.config = {'theme': 'light'}
+        self.config = {"theme": "light"}
         self.config_updated = MockSignal()
 
     def get(self, key, default=None):
@@ -64,13 +64,13 @@ class MockApplication:
 
 
 # Setup the mock QObject and QApplication
-sys.modules['PyQt6'] = MagicMock()
-sys.modules['PyQt6.QtCore'] = MagicMock()
-sys.modules['PyQt6.QtCore'].QObject = MockQObject
-sys.modules['PyQt6.QtWidgets'] = MagicMock()
-sys.modules['PyQt6.QtWidgets'].QApplication = MagicMock()
-sys.modules['PyQt6.QtWidgets'].QApplication.instance.return_value = MockApplication()
-sys.modules['PyQt6.QtGui'] = MagicMock()
+sys.modules["PyQt6"] = MagicMock()
+sys.modules["PyQt6.QtCore"] = MagicMock()
+sys.modules["PyQt6.QtCore"].QObject = MockQObject
+sys.modules["PyQt6.QtWidgets"] = MagicMock()
+sys.modules["PyQt6.QtWidgets"].QApplication = MagicMock()
+sys.modules["PyQt6.QtWidgets"].QApplication.instance.return_value = MockApplication()
+sys.modules["PyQt6.QtGui"] = MagicMock()
 
 # Mock resource_path and os.path.exists for migration
 
@@ -84,9 +84,9 @@ def mock_exists(path):
 
 
 # Inject our mocks
-sys.modules['app.utils'] = MagicMock()
-sys.modules['app.utils'].resource_path = mock_resource_path
-sys.modules['app.utils'].ConfigManager.instance.return_value = MockConfigManager()
+sys.modules["app.utils"] = MagicMock()
+sys.modules["app.utils"].resource_path = mock_resource_path
+sys.modules["app.utils"].ConfigManager.instance.return_value = MockConfigManager()
 orig_exists = os.path.exists
 os.path.exists = mock_exists
 
@@ -109,13 +109,13 @@ def run_tests():
     # Test theme toggle
     theme_manager.toggle_theme()
     new_theme = theme_manager.current_theme
-    config_theme = config_manager.get('theme')
+    config_theme = config_manager.get("theme")
     print(f"After toggle: theme={new_theme}, config={config_theme}")
 
     # Test theme change through ConfigManager
-    target_theme = 'light' if new_theme == 'dark' else 'dark'
+    target_theme = "light" if new_theme == "dark" else "dark"
     print(f"Setting theme through ConfigManager to {target_theme}")
-    config_manager.set('theme', target_theme)
+    config_manager.set("theme", target_theme)
 
     # Theme manager should have updated its theme
     print(f"ThemeManager theme is now: {theme_manager.current_theme}")

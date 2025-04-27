@@ -12,12 +12,16 @@ from pydub import AudioSegment
 import datetime
 
 from app.constants import (
-    AUDIO_EXTENSIONS, VIDEO_EXTENSIONS, DOCUMENT_EXTENSIONS,
-    FileType, MAX_FILE_SIZE_MB, get_recordings_dir
+    AUDIO_EXTENSIONS,
+    VIDEO_EXTENSIONS,
+    DOCUMENT_EXTENSIONS,
+    FileType,
+    MAX_FILE_SIZE_MB,
+    get_recordings_dir,
 )
 
 # Configure logging
-logger = logging.getLogger('transcribrr')
+logger = logging.getLogger("transcribrr")
 
 
 def get_file_type(file_path: str) -> FileType:
@@ -44,7 +48,9 @@ def is_valid_media_file(file_path: str) -> bool:
     return file_type in (FileType.AUDIO, FileType.VIDEO)
 
 
-def check_file_size(file_path: str, max_size_mb: int = MAX_FILE_SIZE_MB) -> Tuple[bool, float]:
+def check_file_size(
+    file_path: str, max_size_mb: int = MAX_FILE_SIZE_MB
+) -> Tuple[bool, float]:
     """Check file size against max MB."""
     if not os.path.exists(file_path):
         return False, 0
@@ -136,7 +142,9 @@ def calculate_duration(file_path: str) -> str:
         return "00:00:00"
 
 
-def save_temp_recording(frames: List[bytes], channels: int, sample_width: int, rate: int) -> Optional[str]:
+def save_temp_recording(
+    frames: List[bytes], channels: int, sample_width: int, rate: int
+) -> Optional[str]:
     """Save audio frames to temp file."""
     if not frames:
         logger.error("No audio frames to save")
@@ -144,17 +152,19 @@ def save_temp_recording(frames: List[bytes], channels: int, sample_width: int, r
 
     try:
         # Write to a temporary WAV file first
-        temp_wav = tempfile.NamedTemporaryFile(suffix='.wav', delete=False).name
+        temp_wav = tempfile.NamedTemporaryFile(suffix=".wav", delete=False).name
 
-        with wave.open(temp_wav, 'wb') as wf:
+        with wave.open(temp_wav, "wb") as wf:
             wf.setnchannels(channels)
             wf.setsampwidth(sample_width)
             wf.setframerate(rate)
-            wf.writeframes(b''.join(frames))
+            wf.writeframes(b"".join(frames))
 
         # Generate a filename with timestamp in the Recordings directory
         timestamp = get_timestamp_string()
-        mp3_filename = os.path.join(ensure_recordings_dir(), f"Recording-{timestamp}.mp3")
+        mp3_filename = os.path.join(
+            ensure_recordings_dir(), f"Recording-{timestamp}.mp3"
+        )
 
         # Convert to MP3
         audio = AudioSegment.from_wav(temp_wav)

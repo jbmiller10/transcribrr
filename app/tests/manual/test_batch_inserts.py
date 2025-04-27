@@ -15,7 +15,9 @@ from app.FolderManager import FolderManager
 from app.UnifiedFolderTreeView import UnifiedFolderTreeView
 
 # Set up logging
-logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
+logging.basicConfig(
+    level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s"
+)
 logger = logging.getLogger(__name__)
 
 
@@ -74,6 +76,7 @@ class TestWindow(QWidget):
         for i in range(recordings_to_add):
             # Prepare test recording data
             import datetime
+
             filename = f"test_recording_{i+1}.mp3"
             file_path = f"/tmp/{filename}"
             date_created = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
@@ -81,7 +84,15 @@ class TestWindow(QWidget):
             original_source = file_path
 
             # Create recording in database
-            recording_data = (filename, file_path, date_created, duration, "", "", original_source)
+            recording_data = (
+                filename,
+                file_path,
+                date_created,
+                duration,
+                "",
+                "",
+                original_source,
+            )
             self.db_manager.create_recording(recording_data, on_recording_created)
 
             # Very short delay to make them distinct but still rapid

@@ -7,7 +7,9 @@ from PyQt6.QtCore import Qt, QRectF
 class SVGToggleButton(QPushButton):
     def __init__(self, svg_files, parent=None):
         super().__init__(parent)
-        self.svg_renderers = {key: QSvgRenderer(svg_path) for key, svg_path in svg_files.items()}
+        self.svg_renderers = {
+            key: QSvgRenderer(svg_path) for key, svg_path in svg_files.items()
+        }
         self.current_svg = next(iter(self.svg_renderers.keys()))
         self.pixmaps = {}
         self.render_svgs()

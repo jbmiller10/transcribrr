@@ -14,7 +14,9 @@ from app.DatabaseManager import DatabaseManager
 from app.FolderManager import FolderManager
 
 # Set up logging
-logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
+logging.basicConfig(
+    level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s"
+)
 logger = logging.getLogger(__name__)
 
 
@@ -44,7 +46,8 @@ class TestWindow(QWidget):
         layout.addWidget(self.add_button)
 
         self.add_duplicate_button = QPushButton(
-            "Add Duplicate Recording (Should Handle Gracefully)")
+            "Add Duplicate Recording (Should Handle Gracefully)"
+        )
         self.add_duplicate_button.clicked.connect(self.add_duplicate_recording)
         layout.addWidget(self.add_duplicate_button)
 
@@ -63,17 +66,25 @@ class TestWindow(QWidget):
         layout.addWidget(self.log_label)
 
         self.log_area = QLabel("")
-        self.log_area.setAlignment(Qt.AlignmentFlag.AlignTop | Qt.AlignmentFlag.AlignLeft)
+        self.log_area.setAlignment(
+            Qt.AlignmentFlag.AlignTop | Qt.AlignmentFlag.AlignLeft
+        )
         self.log_area.setWordWrap(True)
-        self.log_area.setStyleSheet("background-color: #f0f0f0; padding: 10px; border-radius: 5px;")
+        self.log_area.setStyleSheet(
+            "background-color: #f0f0f0; padding: 10px; border-radius: 5px;"
+        )
         self.log_area.setMinimumHeight(200)
         layout.addWidget(self.log_area)
 
     def on_data_changed(self, entity_type=None, entity_id=None):
         """Track dataChanged signals"""
         self.data_changed_count += 1
-        self.data_changed_label.setText(f"Data changed count: {self.data_changed_count}")
-        self.add_log(f"DATA CHANGED signal received - type: {entity_type}, id: {entity_id}")
+        self.data_changed_label.setText(
+            f"Data changed count: {self.data_changed_count}"
+        )
+        self.add_log(
+            f"DATA CHANGED signal received - type: {entity_type}, id: {entity_id}"
+        )
 
     def add_log(self, message):
         """Add message to log area"""
@@ -84,11 +95,11 @@ class TestWindow(QWidget):
 
         # Update log area (limit to last 10 entries for readability)
         if current_text:
-            log_lines = current_text.split('\n')
+            log_lines = current_text.split("\n")
             log_lines.append(new_entry)
             if len(log_lines) > 10:
                 log_lines = log_lines[-10:]  # Keep only last 10 lines
-            self.log_area.setText('\n'.join(log_lines))
+            self.log_area.setText("\n".join(log_lines))
         else:
             self.log_area.setText(new_entry)
 
@@ -99,6 +110,7 @@ class TestWindow(QWidget):
 
         # Prepare test recording data
         import datetime
+
         filename = "test_recording.mp3"
         file_path = "/tmp/test_recording_guard.mp3"  # Use a unique path for this test
         date_created = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
@@ -106,7 +118,15 @@ class TestWindow(QWidget):
         original_source = file_path
 
         # Create recording in database
-        recording_data = (filename, file_path, date_created, duration, "", "", original_source)
+        recording_data = (
+            filename,
+            file_path,
+            date_created,
+            duration,
+            "",
+            "",
+            original_source,
+        )
 
         # Define callback for when the recording is created
         def on_recording_created(recording_id):
@@ -128,7 +148,9 @@ class TestWindow(QWidget):
                     pass
 
         # Connect with UniqueConnection
-        self.db_manager.error_occurred.connect(on_db_error, Qt.ConnectionType.UniqueConnection)
+        self.db_manager.error_occurred.connect(
+            on_db_error, Qt.ConnectionType.UniqueConnection
+        )
 
         # Create the recording
         self.db_manager.create_recording(recording_data, on_recording_created)
@@ -146,14 +168,19 @@ class TestWindow(QWidget):
 
     def add_duplicate_recording(self):
         """Try to add a recording with the same file path (should trigger the error)"""
-        self.status_label.setText("Adding duplicate recording (should fail gracefully)...")
-        self.add_log("Attempting to add duplicate recording (should fail gracefully)...")
+        self.status_label.setText(
+            "Adding duplicate recording (should fail gracefully)..."
+        )
+        self.add_log(
+            "Attempting to add duplicate recording (should fail gracefully)..."
+        )
 
         # Record current data changed count to verify it doesn't increase for duplicate path
         initial_count = self.data_changed_count
 
         # Use the same path as the test recording
         import datetime
+
         filename = "duplicate_recording.mp3"  # Different name but same path
         file_path = "/tmp/test_recording_guard.mp3"  # Same path as the first recording
         date_created = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
@@ -161,13 +188,24 @@ class TestWindow(QWidget):
         original_source = file_path
 
         # Create recording in database
-        recording_data = (filename, file_path, date_created, duration, "", "", original_source)
+        recording_data = (
+            filename,
+            file_path,
+            date_created,
+            duration,
+            "",
+            "",
+            original_source,
+        )
 
         # Define callback for when the recording is created (should not be called)
         def on_recording_created(recording_id):
             self.status_label.setText(
-                f"UNEXPECTED SUCCESS: Added duplicate recording with ID: {recording_id}")
-            self.add_log(f"UNEXPECTED: Duplicate recording created with ID: {recording_id} - BUG!")
+                f"UNEXPECTED SUCCESS: Added duplicate recording with ID: {recording_id}"
+            )
+            self.add_log(
+                f"UNEXPECTED: Duplicate recording created with ID: {recording_id} - BUG!"
+            )
 
             # Check if dataChanged count increased - should NOT happen
             if self.data_changed_count > initial_count:
@@ -191,7 +229,9 @@ class TestWindow(QWidget):
                     pass
 
         # Connect with UniqueConnection
-        self.db_manager.error_occurred.connect(on_db_error, Qt.ConnectionType.UniqueConnection)
+        self.db_manager.error_occurred.connect(
+            on_db_error, Qt.ConnectionType.UniqueConnection
+        )
 
         # Try to create the duplicate recording
         self.db_manager.create_recording(recording_data, on_recording_created)
@@ -214,12 +254,15 @@ class TestWindow(QWidget):
         # Check after a brief delay to make sure all signals have been processed
         def check_data_changed_count():
             if self.data_changed_count > initial_count:
-                self.add_log("BUG: dataChanged signal was emitted after duplicate path error!")
+                self.add_log(
+                    "BUG: dataChanged signal was emitted after duplicate path error!"
+                )
                 self.error_label.setText("BUG: Phantom refresh occurred!")
             else:
                 self.add_log("SUCCESS: No phantom refresh occurred")
                 self.status_label.setText(
-                    "Test passed: Error handled correctly, no phantom refresh")
+                    "Test passed: Error handled correctly, no phantom refresh"
+                )
 
         # Check after a short delay to allow any pending signals to be processed
         QTimer.singleShot(500, check_data_changed_count)

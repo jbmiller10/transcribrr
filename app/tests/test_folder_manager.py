@@ -30,7 +30,7 @@ class TestFolderManagerSingleton(unittest.TestCase):
         # Capture log messages
         self.log_capture = []
         self.log_handler = self._create_log_handler()
-        self.logger = logging.getLogger('transcribrr')
+        self.logger = logging.getLogger("transcribrr")
         self.logger.addHandler(self.log_handler)
         self.logger.setLevel(logging.DEBUG)
 
@@ -64,8 +64,11 @@ class TestFolderManagerSingleton(unittest.TestCase):
         instance2 = FolderManager.instance()
 
         # Verify they are the same object
-        self.assertIs(instance1, instance2,
-                      "Multiple calls to instance() should return the same object")
+        self.assertIs(
+            instance1,
+            instance2,
+            "Multiple calls to instance() should return the same object",
+        )
 
     def test_successful_first_attachment(self):
         """Test successful dependency attachment on first call."""
@@ -73,12 +76,17 @@ class TestFolderManagerSingleton(unittest.TestCase):
         instance = FolderManager.instance(db_manager=self.db_manager)
 
         # Verify the db_manager is attached
-        self.assertEqual(instance.db_manager, self.db_manager,
-                         "db_manager should be attached to the instance")
+        self.assertEqual(
+            instance.db_manager,
+            self.db_manager,
+            "db_manager should be attached to the instance",
+        )
 
         # Verify the _db_manager_attached flag is set
-        self.assertTrue(FolderManager._db_manager_attached,
-                        "_db_manager_attached flag should be True after attachment")
+        self.assertTrue(
+            FolderManager._db_manager_attached,
+            "_db_manager_attached flag should be True after attachment",
+        )
 
     def test_successful_subsequent_call(self):
         """Test successful call after attachment."""
@@ -89,11 +97,14 @@ class TestFolderManagerSingleton(unittest.TestCase):
         instance2 = FolderManager.instance()
 
         # Verify they are the same object
-        self.assertIs(instance1, instance2, "Subsequent calls should return the same instance")
+        self.assertIs(
+            instance1, instance2, "Subsequent calls should return the same instance"
+        )
 
         # Verify the db_manager is still attached
-        self.assertEqual(instance2.db_manager, self.db_manager,
-                         "db_manager should remain attached")
+        self.assertEqual(
+            instance2.db_manager, self.db_manager, "db_manager should remain attached"
+        )
 
     def test_failure_before_attachment(self):
         """Test that calling instance() before attachment raises RuntimeError."""
@@ -106,8 +117,11 @@ class TestFolderManagerSingleton(unittest.TestCase):
             FolderManager.instance()
 
         # Verify the error message
-        self.assertIn("DatabaseManager", str(context.exception),
-                      "Error message should mention DatabaseManager requirement")
+        self.assertIn(
+            "DatabaseManager",
+            str(context.exception),
+            "Error message should mention DatabaseManager requirement",
+        )
 
     def test_reattachment_warning(self):
         """Test that attempting to re-attach a different db_manager logs a warning."""
@@ -122,15 +136,24 @@ class TestFolderManagerSingleton(unittest.TestCase):
         instance2 = FolderManager.instance(db_manager=different_db_manager)
 
         # Verify it's the same instance
-        self.assertIs(instance1, instance2, "Should return the same instance regardless")
+        self.assertIs(
+            instance1, instance2, "Should return the same instance regardless"
+        )
 
         # Verify the original db_manager is still attached
-        self.assertEqual(instance2.db_manager, self.db_manager,
-                         "Original db_manager should remain attached")
+        self.assertEqual(
+            instance2.db_manager,
+            self.db_manager,
+            "Original db_manager should remain attached",
+        )
 
         # Verify a warning was logged
-        warning_logged = any("Different DatabaseManager" in msg for msg in self.log_capture)
-        self.assertTrue(warning_logged, "A warning should be logged when attempting to re-attach")
+        warning_logged = any(
+            "Different DatabaseManager" in msg for msg in self.log_capture
+        )
+        self.assertTrue(
+            warning_logged, "A warning should be logged when attempting to re-attach"
+        )
 
     def test_thread_safety(self):
         """Test that the singleton initialization is thread-safe."""
@@ -139,11 +162,11 @@ class TestFolderManagerSingleton(unittest.TestCase):
         FolderManager._db_manager_attached = False
 
         # Shared results for thread operations
-        results = {'instances': []}
+        results = {"instances": []}
 
         def create_instance():
             instance = FolderManager.instance(db_manager=self.db_manager)
-            results['instances'].append(instance)
+            results["instances"].append(instance)
 
         # Create multiple threads that will all try to initialize the singleton
         threads = [threading.Thread(target=create_instance) for _ in range(5)]
@@ -157,9 +180,11 @@ class TestFolderManagerSingleton(unittest.TestCase):
             thread.join()
 
         # Check that all threads got the same instance
-        first_instance = results['instances'][0]
-        for instance in results['instances'][1:]:
-            self.assertIs(instance, first_instance, "All threads should get the same instance")
+        first_instance = results["instances"][0]
+        for instance in results["instances"][1:]:
+            self.assertIs(
+                instance, first_instance, "All threads should get the same instance"
+            )
 
     def test_direct_instantiation_prevention(self):
         """Test that direct instantiation after singleton is created raises an error."""
@@ -171,14 +196,17 @@ class TestFolderManagerSingleton(unittest.TestCase):
             FolderManager()
 
         # Verify the error message
-        self.assertIn("singleton", str(context.exception).lower(),
-                      "Error message should mention singleton")
+        self.assertIn(
+            "singleton",
+            str(context.exception).lower(),
+            "Error message should mention singleton",
+        )
 
     def test_init_database_called_on_attachment(self):
         """Test that init_database is called when db_manager is attached."""
         # Create a subclass with mocked methods for verification
-        with patch.object(FolderManager, 'init_database') as mock_init_db:
-            with patch.object(FolderManager, 'load_folders') as mock_load_folders:
+        with patch.object(FolderManager, "init_database") as mock_init_db:
+            with patch.object(FolderManager, "load_folders") as mock_load_folders:
                 # Initialize with db_manager
                 instance = FolderManager.instance(db_manager=self.db_manager)
 
@@ -189,5 +217,5 @@ class TestFolderManagerSingleton(unittest.TestCase):
                 mock_load_folders.assert_called_once()
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     unittest.main()

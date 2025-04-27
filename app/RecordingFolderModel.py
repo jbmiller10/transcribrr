@@ -3,7 +3,7 @@ from datetime import datetime, timedelta
 from PyQt6.QtCore import Qt, QSortFilterProxyModel
 from PyQt6.QtGui import QStandardItemModel, QStandardItem
 
-logger = logging.getLogger('transcribrr')
+logger = logging.getLogger("transcribrr")
 
 
 class RecordingFolderModel(QStandardItemModel):
@@ -30,7 +30,9 @@ class RecordingFolderModel(QStandardItemModel):
         # Maps to quickly look up items (for selection restoration, etc.)
         self.item_map = {}  # (type, id) -> QStandardItem
 
-    def set_icons(self, folder_icon, folder_open_icon, audio_icon, video_icon, file_icon):
+    def set_icons(
+        self, folder_icon, folder_open_icon, audio_icon, video_icon, file_icon
+    ):
         """Set model icons for different item types."""
         self.folder_icon = folder_icon
         self.folder_open_icon = folder_open_icon
@@ -42,15 +44,15 @@ class RecordingFolderModel(QStandardItemModel):
         """Add folder item to the model."""
         # Create a new item for the folder
         folder_item = QStandardItem()
-        folder_item.setText(folder_data['name'])
+        folder_item.setText(folder_data["name"])
         folder_item.setIcon(self.folder_icon)
 
         # Store folder metadata in item roles
         folder_item.setData("folder", self.ITEM_TYPE_ROLE)
-        folder_item.setData(folder_data['id'], self.ITEM_ID_ROLE)
+        folder_item.setData(folder_data["id"], self.ITEM_ID_ROLE)
 
         # Store for quick lookup
-        self.item_map[("folder", folder_data['id'])] = folder_item
+        self.item_map[("folder", folder_data["id"])] = folder_item
 
         # Add to the model
         if parent_item is None:
@@ -88,7 +90,9 @@ class RecordingFolderModel(QStandardItemModel):
         has_transcript = bool(raw_transcript.strip() or processed_transcript.strip())
 
         # Combine all text for searching
-        full_text_for_search = f"{recording_data[1]} {raw_transcript} {processed_transcript}"
+        full_text_for_search = (
+            f"{recording_data[1]} {raw_transcript} {processed_transcript}"
+        )
         recording_item.setData(full_text_for_search, self.FULL_TRANSCRIPT_ROLE)
         recording_item.setData(has_transcript, self.HAS_TRANSCRIPT_ROLE)
 
@@ -98,7 +102,9 @@ class RecordingFolderModel(QStandardItemModel):
             date_obj = datetime.strptime(date_str, "%Y-%m-%d %H:%M:%S")
             recording_item.setData(date_obj, self.DATE_CREATED_ROLE)
         except (ValueError, TypeError) as e:
-            logger.warning(f"Failed to parse date for recording {recording_data[0]}: {e}")
+            logger.warning(
+                f"Failed to parse date for recording {recording_data[0]}: {e}"
+            )
             recording_item.setData(datetime.now(), self.DATE_CREATED_ROLE)  # Fallback
 
         # Store for quick lookup
@@ -114,8 +120,8 @@ class RecordingFolderModel(QStandardItemModel):
             return "unknown"
 
         file_path = file_path.lower()
-        audio_extensions = ['.mp3', '.wav', '.m4a', '.flac', '.aac', '.ogg']
-        video_extensions = ['.mp4', '.mov', '.avi', '.mkv', '.webm']
+        audio_extensions = [".mp3", ".wav", ".m4a", ".flac", ".aac", ".ogg"]
+        video_extensions = [".mp4", ".mov", ".avi", ".mkv", ".webm"]
 
         for ext in audio_extensions:
             if file_path.endswith(ext):
@@ -198,25 +204,32 @@ class RecordingFilterProxyModel(QSortFilterProxyModel):
             # First, check text match
             if self.filter_text:
                 # Get full text (filename + transcript) for searching
-                full_text = (source_item.data(
-                    RecordingFolderModel.FULL_TRANSCRIPT_ROLE) or "").lower()
+                full_text = (
+                    source_item.data(RecordingFolderModel.FULL_TRANSCRIPT_ROLE) or ""
+                ).lower()
                 if self.filter_text not in full_text:
                     return False  # Text doesn't match
 
             # Then check criteria match
             if self.filter_criteria != "All":
                 if self.filter_criteria == "Has Transcript":
-                    has_transcript = source_item.data(RecordingFolderModel.HAS_TRANSCRIPT_ROLE)
+                    has_transcript = source_item.data(
+                        RecordingFolderModel.HAS_TRANSCRIPT_ROLE
+                    )
                     if not has_transcript:
                         return False
 
                 elif self.filter_criteria == "No Transcript":
-                    has_transcript = source_item.data(RecordingFolderModel.HAS_TRANSCRIPT_ROLE)
+                    has_transcript = source_item.data(
+                        RecordingFolderModel.HAS_TRANSCRIPT_ROLE
+                    )
                     if has_transcript:
                         return False
 
                 elif self.filter_criteria in ["Recent (24h)", "This Week"]:
-                    date_created = source_item.data(RecordingFolderModel.DATE_CREATED_ROLE)
+                    date_created = source_item.data(
+                        RecordingFolderModel.DATE_CREATED_ROLE
+                    )
                     if not date_created:
                         return False
 
@@ -229,7 +242,9 @@ class RecordingFilterProxyModel(QSortFilterProxyModel):
 
                     elif self.filter_criteria == "This Week":
                         # Get start of current week (Monday)
-                        start_of_week = now.replace(hour=0, minute=0, second=0, microsecond=0)
+                        start_of_week = now.replace(
+                            hour=0, minute=0, second=0, microsecond=0
+                        )
                         start_of_week = start_of_week - timedelta(days=now.weekday())
                         if date_created < start_of_week:
                             return False

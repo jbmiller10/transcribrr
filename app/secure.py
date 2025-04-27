@@ -3,18 +3,18 @@ import logging
 from typing import Dict, Optional
 
 # Configure logger
-logger = logging.getLogger('transcribrr')
+logger = logging.getLogger("transcribrr")
 
 # Patterns to detect sensitive API keys/tokens
-OPENAI_KEY_PATTERN = r'sk-[A-Za-z0-9_-]{10,}'
-HF_TOKEN_PATTERN = r'hf_[A-Za-z0-9]{10,}'
+OPENAI_KEY_PATTERN = r"sk-[A-Za-z0-9_-]{10,}"
+HF_TOKEN_PATTERN = r"hf_[A-Za-z0-9]{10,}"
 
 # Combined pattern for efficient scanning
-API_KEY_PATTERN = f'({OPENAI_KEY_PATTERN}|{HF_TOKEN_PATTERN})'
+API_KEY_PATTERN = f"({OPENAI_KEY_PATTERN}|{HF_TOKEN_PATTERN})"
 API_KEY_REGEX = re.compile(API_KEY_PATTERN)
 
 # Text replacement
-REDACTED_TEXT = '***-REDACTED-***'
+REDACTED_TEXT = "***-REDACTED-***"
 
 
 def redact(text: str) -> str:
@@ -48,12 +48,12 @@ class SensitiveLogFilter(logging.Filter):
             Always True (to keep the record), but modifies the record
         """
         # Redact the message
-        if hasattr(record, 'msg') and record.msg:
+        if hasattr(record, "msg") and record.msg:
             if isinstance(record.msg, str):
                 record.msg = redact(record.msg)
 
         # Redact args if they are strings
-        if hasattr(record, 'args') and record.args:
+        if hasattr(record, "args") and record.args:
             args_list = list(record.args)
             for i, arg in enumerate(args_list):
                 if isinstance(arg, str):
@@ -76,10 +76,7 @@ def migrate_api_keys() -> Dict[str, bool]:
     old_service_id = "transcription_application"
     new_service_id = f"{APP_NAME.lower()}-v{APP_VERSION}"
 
-    migration_status = {
-        "openai": False,
-        "hf": False
-    }
+    migration_status = {"openai": False, "hf": False}
 
     try:
         # Check for OPENAI_API_KEY in old location
@@ -113,6 +110,7 @@ def migrate_api_keys() -> Dict[str, bool]:
 def get_service_id() -> str:
     """Get the current keyring service ID including app version."""
     from .constants import APP_VERSION, APP_NAME
+
     return f"{APP_NAME.lower()}-v{APP_VERSION}"
 
 
@@ -127,6 +125,7 @@ def get_api_key(key_name: str) -> Optional[str]:
         The API key if found, None otherwise
     """
     import keyring
+
     return keyring.get_password(get_service_id(), key_name)
 
 
@@ -142,6 +141,7 @@ def set_api_key(key_name: str, value: str) -> bool:
         True if successful, False otherwise
     """
     import keyring
+
     try:
         if value:
             keyring.set_password(get_service_id(), key_name, value)

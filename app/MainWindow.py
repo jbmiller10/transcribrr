@@ -4,9 +4,15 @@ import sys
 import logging
 from PyQt6.QtCore import Qt
 from PyQt6.QtWidgets import (
-    QVBoxLayout, QApplication, QWidget, QHBoxLayout,
-    QSizePolicy, QMainWindow, QSplitter, QStatusBar,
-    QMessageBox
+    QVBoxLayout,
+    QApplication,
+    QWidget,
+    QHBoxLayout,
+    QSizePolicy,
+    QMainWindow,
+    QSplitter,
+    QStatusBar,
+    QMessageBox,
 )
 
 from app.MainTranscriptionWidget import MainTranscriptionWidget
@@ -18,7 +24,7 @@ from app.file_utils import calculate_duration
 from app.constants import APP_NAME
 
 
-logger = logging.getLogger('transcribrr')
+logger = logging.getLogger("transcribrr")
 
 
 class MainWindow(QMainWindow):
@@ -30,10 +36,15 @@ class MainWindow(QMainWindow):
             self.db_manager = DatabaseManager(self)
             logger.info("DatabaseManager created successfully.")
         except Exception as e:
-            logger.critical(f"CRITICAL ERROR creating DatabaseManager: {e}", exc_info=True)
+            logger.critical(
+                f"CRITICAL ERROR creating DatabaseManager: {e}", exc_info=True
+            )
             # Handle critical initialization error
-            QMessageBox.critical(self, "Initialization Error",
-                                 f"Failed to initialize Database Manager: {e}")
+            QMessageBox.critical(
+                self,
+                "Initialization Error",
+                f"Failed to initialize Database Manager: {e}",
+            )
             sys.exit(1)
 
         # 2. Initialize FolderManager and attach DB Manager in one call
@@ -42,15 +53,25 @@ class MainWindow(QMainWindow):
             FolderManager.instance(db_manager=self.db_manager)
             logger.info("FolderManager initialized and DatabaseManager attached.")
         except RuntimeError as e:
-            logger.critical(f"CRITICAL ERROR initializing FolderManager: {e}", exc_info=True)
-            QMessageBox.critical(self, "Initialization Error",
-                                 f"Failed to initialize Folder Manager: {e}")
+            logger.critical(
+                f"CRITICAL ERROR initializing FolderManager: {e}", exc_info=True
+            )
+            QMessageBox.critical(
+                self,
+                "Initialization Error",
+                f"Failed to initialize Folder Manager: {e}",
+            )
             sys.exit(1)
         except Exception as e:
             logger.critical(
-                f"CRITICAL ERROR during FolderManager initialization: {e}", exc_info=True)
-            QMessageBox.critical(self, "Initialization Error",
-                                 f"Unexpected error during Folder Manager setup: {e}")
+                f"CRITICAL ERROR during FolderManager initialization: {e}",
+                exc_info=True,
+            )
+            QMessageBox.critical(
+                self,
+                "Initialization Error",
+                f"Unexpected error during Folder Manager setup: {e}",
+            )
             sys.exit(1)
 
         # 3. Now initialize the UI
@@ -59,8 +80,12 @@ class MainWindow(QMainWindow):
             logger.info("MainWindow UI initialized successfully.")
         except Exception as e:
             logger.critical(
-                f"CRITICAL ERROR during MainWindow UI initialization: {e}", exc_info=True)
-            QMessageBox.critical(self, "Initialization Error", f"Failed during UI setup: {e}")
+                f"CRITICAL ERROR during MainWindow UI initialization: {e}",
+                exc_info=True,
+            )
+            QMessageBox.critical(
+                self, "Initialization Error", f"Failed during UI setup: {e}"
+            )
             sys.exit(1)
 
     def init_ui(self):
@@ -73,15 +98,19 @@ class MainWindow(QMainWindow):
 
         self.move(
             (screen_size.width() - window_width) // 2,
-            (screen_size.height() - window_height) // 2
+            (screen_size.height() - window_height) // 2,
         )
 
         # Database manager is initialized in __init__ method
         # and already attached to FolderManager
 
         self.control_panel = ControlPanelWidget(self)
-        self.recent_recordings_widget = RecentRecordingsWidget(db_manager=self.db_manager)
-        self.main_transcription_widget = MainTranscriptionWidget(db_manager=self.db_manager)
+        self.recent_recordings_widget = RecentRecordingsWidget(
+            db_manager=self.db_manager
+        )
+        self.main_transcription_widget = MainTranscriptionWidget(
+            db_manager=self.db_manager
+        )
 
         self.central_widget = QWidget()
         self.setCentralWidget(self.central_widget)
@@ -91,7 +120,8 @@ class MainWindow(QMainWindow):
         self.splitter.setChildrenCollapsible(False)
         self.splitter.setHandleWidth(8)
 
-        self.splitter.setStyleSheet("""
+        self.splitter.setStyleSheet(
+            """
             QSplitter::handle {
                 background-color: #D0D0D0;
                 border-radius: 2px;
@@ -99,7 +129,8 @@ class MainWindow(QMainWindow):
             QSplitter::handle:hover {
                 background-color: #808080;
             }
-        """)
+        """
+        )
 
         self.main_layout.addWidget(self.splitter)
 
@@ -108,14 +139,18 @@ class MainWindow(QMainWindow):
         self.left_layout.addWidget(self.control_panel, 0)
 
         self.recent_recordings_widget.setSizePolicy(
-            QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding)
+            QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding
+        )
         self.control_panel.setSizePolicy(
-            QSizePolicy.Policy.MinimumExpanding, QSizePolicy.Policy.MinimumExpanding)
+            QSizePolicy.Policy.MinimumExpanding, QSizePolicy.Policy.MinimumExpanding
+        )
 
         # Create a widget to hold the left_layout
         self.left_widget = QWidget()
         self.left_widget.setLayout(self.left_layout)
-        self.left_widget.setMinimumWidth(220)  # Set minimum width to prevent excessive shrinking
+        self.left_widget.setMinimumWidth(
+            220
+        )  # Set minimum width to prevent excessive shrinking
 
         self.splitter.addWidget(self.left_widget)
         self.splitter.addWidget(self.main_transcription_widget)
@@ -131,15 +166,19 @@ class MainWindow(QMainWindow):
 
         self.status_bar = QStatusBar()
         self.setStatusBar(self.status_bar)
-        self.status_bar.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Preferred)
+        self.status_bar.setSizePolicy(
+            QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Preferred
+        )
         self.status_bar.setVisible(True)
         self.status_bar.showMessage("Ready")
 
         self.recent_recordings_widget.recordingItemSelected.connect(
-            self.main_transcription_widget.on_recording_item_selected)
+            self.main_transcription_widget.on_recording_item_selected
+        )
 
         self.main_transcription_widget.recording_status_updated.connect(
-            self.recent_recordings_widget.update_recording_status)
+            self.recent_recordings_widget.update_recording_status
+        )
 
         self.main_transcription_widget.status_update.connect(self.update_status_bar)
 
@@ -150,8 +189,8 @@ class MainWindow(QMainWindow):
     def on_new_file(self, file_path):
         """Handle new file.
 
-Args:
-    file_path: path to the audio file
+        Args:
+            file_path: path to the audio file
         """
         try:
             filename = os.path.basename(file_path)
@@ -165,7 +204,15 @@ Args:
 
             # Create a new recording in the database using the DatabaseManager
             # Include original_source_identifier as the last parameter
-            recording_data = (filename, file_path, date_created, duration, "", "", original_source)
+            recording_data = (
+                filename,
+                file_path,
+                date_created,
+                duration,
+                "",
+                "",
+                original_source,
+            )
 
             # Define callback function to add the recording to UI when database operation completes
             def on_recording_created(recording_id):
@@ -177,6 +224,7 @@ Args:
                 # UnifiedFolderTreeView's helper.  Delay slightly to ensure the
                 # view has refreshed and the item has been inserted.
                 from PyQt6.QtCore import QTimer
+
                 QTimer.singleShot(
                     100,
                     lambda: self.recent_recordings_widget.unified_view.select_item_by_id(
@@ -203,7 +251,10 @@ Args:
 
             # Connect with UniqueConnection to avoid duplicates
             from PyQt6.QtCore import Qt
-            self.db_manager.error_occurred.connect(on_db_error, Qt.ConnectionType.UniqueConnection)
+
+            self.db_manager.error_occurred.connect(
+                on_db_error, Qt.ConnectionType.UniqueConnection
+            )
 
             # Execute the database operation in a background thread
             self.db_manager.create_recording(recording_data, on_recording_created)

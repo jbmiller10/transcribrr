@@ -1,6 +1,6 @@
 """BusyGuard context manager for UI operations.
 
-A context manager to handle showing/hiding spinners, progress dialogs, and 
+A context manager to handle showing/hiding spinners, progress dialogs, and
 disabling/enabling UI elements during long-running operations.
 """
 
@@ -11,10 +11,10 @@ from typing import List, Optional, Callable, Any, Dict, TypeVar, Generic
 from PyQt6.QtWidgets import QWidget
 from app.ui_utils_legacy import FeedbackManager
 
-logger = logging.getLogger('transcribrr')
+logger = logging.getLogger("transcribrr")
 
 # Generic type for operation result
-T = TypeVar('T')
+T = TypeVar("T")
 
 
 class BusyGuard(Generic[T]):
@@ -30,12 +30,12 @@ class BusyGuard(Generic[T]):
     Example:
         ```python
         # Simple usage
-        with BusyGuard(feedback_manager, "Operation", ui_elements=[button1, button2], 
+        with BusyGuard(feedback_manager, "Operation", ui_elements=[button1, button2],
                        spinner="my_spinner"):
             # Do long-running operation...
 
         # With progress dialog
-        with BusyGuard(feedback_manager, "Operation", progress=True, 
+        with BusyGuard(feedback_manager, "Operation", progress=True,
                       progress_title="Processing Data") as guard:
             # Update progress during operation
             guard.update_progress(50, "Halfway done...")
@@ -78,14 +78,18 @@ class BusyGuard(Generic[T]):
         self.spinner_name = spinner
         self.show_progress = progress
         self.progress_title = progress_title or f"{operation_name}"
-        self.progress_message = progress_message or f"Starting {operation_name.lower()}..."
+        self.progress_message = (
+            progress_message or f"Starting {operation_name.lower()}..."
+        )
         self.progress_maximum = progress_maximum
         self.progress_cancelable = progress_cancelable
         self.cancel_callback = cancel_callback
         self.status_message = status_message or f"Starting {operation_name.lower()}..."
 
         # Create unique operation ID to track this specific operation
-        self.operation_id = f"{operation_name.lower().replace(' ', '_')}_{uuid.uuid4().hex[:8]}"
+        self.operation_id = (
+            f"{operation_name.lower().replace(' ', '_')}_{uuid.uuid4().hex[:8]}"
+        )
 
         # Track started components for proper cleanup
         self.spinner_started = False
@@ -93,7 +97,7 @@ class BusyGuard(Generic[T]):
         self.ui_busy = False
         self.result = None  # Will hold operation result if any
 
-    def __enter__(self) -> 'BusyGuard[T]':
+    def __enter__(self) -> "BusyGuard[T]":
         """Start the feedback indicators when entering context.
 
         Returns:
@@ -107,10 +111,13 @@ class BusyGuard(Generic[T]):
 
             # Start spinner if requested
             if self.spinner_name:
-                self.spinner_started = self.feedback_manager.start_spinner(self.spinner_name)
+                self.spinner_started = self.feedback_manager.start_spinner(
+                    self.spinner_name
+                )
                 if not self.spinner_started:
                     logger.warning(
-                        f"Spinner '{self.spinner_name}' not found or couldn't be started")
+                        f"Spinner '{self.spinner_name}' not found or couldn't be started"
+                    )
 
             # Show progress dialog if requested
             if self.show_progress:
@@ -120,7 +127,7 @@ class BusyGuard(Generic[T]):
                     self.progress_message,
                     maximum=self.progress_maximum,
                     cancelable=self.progress_cancelable,
-                    cancel_callback=self.cancel_callback
+                    cancel_callback=self.cancel_callback,
                 )
                 self.progress_started = True
 
@@ -155,7 +162,7 @@ class BusyGuard(Generic[T]):
                     self.feedback_manager.finish_progress(
                         self.operation_id,
                         message=f"{self.operation_name} completed successfully.",
-                        auto_close=True
+                        auto_close=True,
                     )
 
             # The feedback_manager will automatically re-enable UI when operations complete

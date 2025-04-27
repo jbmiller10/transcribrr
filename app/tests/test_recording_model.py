@@ -5,6 +5,7 @@ from PyQt6.QtWidgets import QApplication
 import os
 import sys
 import unittest
+
 # Skip legacy tests in headless environment
 raise unittest.SkipTest("Skipping legacy test in headless environment")
 # Explicitly import QIcon and other necessary Qt classes here
@@ -12,7 +13,9 @@ raise unittest.SkipTest("Skipping legacy test in headless environment")
 # Add parent directory to path to import app modules
 # Ensure this path adjustment is correct for your structure
 if os.path.abspath(os.path.join(os.path.dirname(__file__), "../..")) not in sys.path:
-    sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "../..")))
+    sys.path.insert(
+        0, os.path.abspath(os.path.join(os.path.dirname(__file__), "../.."))
+    )
 
 
 class TestRecordingFolderModel(unittest.TestCase):
@@ -42,12 +45,39 @@ class TestRecordingFolderModel(unittest.TestCase):
         # Create some test recordings
         self.recordings = [
             # id, filename, file_path, date_created, duration, raw_transcript, processed_text, rt_formatted, pt_formatted
-            [1, "Recording 1", "/path/1.mp3", "2023-10-01 10:00:00",
-                "01:30", "transcript 1", "processed 1", None, None],
-            [2, "Recording 2", "/path/2.mp3", "2023-10-02 10:00:00",
-                "02:30", "transcript 2", "processed 2", None, None],
-            [3, "Recording 3", "/path/3.mp3", "2023-10-03 10:00:00",
-                "03:30", "transcript 3", "processed 3", None, None],
+            [
+                1,
+                "Recording 1",
+                "/path/1.mp3",
+                "2023-10-01 10:00:00",
+                "01:30",
+                "transcript 1",
+                "processed 1",
+                None,
+                None,
+            ],
+            [
+                2,
+                "Recording 2",
+                "/path/2.mp3",
+                "2023-10-02 10:00:00",
+                "02:30",
+                "transcript 2",
+                "processed 2",
+                None,
+                None,
+            ],
+            [
+                3,
+                "Recording 3",
+                "/path/3.mp3",
+                "2023-10-03 10:00:00",
+                "03:30",
+                "transcript 3",
+                "processed 3",
+                None,
+                None,
+            ],
         ]
 
         # Create some test folders
@@ -76,8 +106,11 @@ class TestRecordingFolderModel(unittest.TestCase):
             if item_key[0] == "recording":
                 recording_ids.add(item_key[1])
 
-        self.assertEqual(len(recording_ids), 1,
-                         "There should only be one recording in the model, not duplicates")
+        self.assertEqual(
+            len(recording_ids),
+            1,
+            "There should only be one recording in the model, not duplicates",
+        )
 
         # Try adding to a different folder (which shouldn't be allowed)
         folder1_item = self.model.add_folder_item(self.folder1, root_item)
@@ -89,8 +122,11 @@ class TestRecordingFolderModel(unittest.TestCase):
             if item_key[0] == "recording":
                 recording_ids.add(item_key[1])
 
-        self.assertEqual(len(recording_ids), 1,
-                         "After adding to another folder, there should still only be one recording")
+        self.assertEqual(
+            len(recording_ids),
+            1,
+            "After adding to another folder, there should still only be one recording",
+        )
 
     def test_get_item_by_id(self):
         """Test getting items by ID."""
@@ -106,19 +142,31 @@ class TestRecordingFolderModel(unittest.TestCase):
             item = self.model.get_item_by_id(rec[0], "recording")
             self.assertIsNotNone(item, f"Should find recording with ID {rec[0]}")
             self.assertEqual(item.data(RecordingFolderModel.ITEM_ID_ROLE), rec[0])
-            self.assertEqual(item.data(RecordingFolderModel.ITEM_TYPE_ROLE), "recording")
+            self.assertEqual(
+                item.data(RecordingFolderModel.ITEM_TYPE_ROLE), "recording"
+            )
 
         # Test getting folders
         folder_item = self.model.get_item_by_id(self.folder1["id"], "folder")
-        self.assertIsNotNone(folder_item, f"Should find folder with ID {self.folder1['id']}")
-        self.assertEqual(folder_item.data(RecordingFolderModel.ITEM_ID_ROLE), self.folder1["id"])
-        self.assertEqual(folder_item.data(RecordingFolderModel.ITEM_TYPE_ROLE), "folder")
+        self.assertIsNotNone(
+            folder_item, f"Should find folder with ID {self.folder1['id']}"
+        )
+        self.assertEqual(
+            folder_item.data(RecordingFolderModel.ITEM_ID_ROLE), self.folder1["id"]
+        )
+        self.assertEqual(
+            folder_item.data(RecordingFolderModel.ITEM_TYPE_ROLE), "folder"
+        )
 
         # Test nonexistent items
-        self.assertIsNone(self.model.get_item_by_id(999, "recording"),
-                          "Should return None for nonexistent recording")
-        self.assertIsNone(self.model.get_item_by_id(999, "folder"),
-                          "Should return None for nonexistent folder")
+        self.assertIsNone(
+            self.model.get_item_by_id(999, "recording"),
+            "Should return None for nonexistent recording",
+        )
+        self.assertIsNone(
+            self.model.get_item_by_id(999, "folder"),
+            "Should return None for nonexistent folder",
+        )
 
     def test_clear_model(self):
         """Test clearing the model."""
@@ -136,9 +184,13 @@ class TestRecordingFolderModel(unittest.TestCase):
         self.model.clear_model()
 
         # Verify items were cleared
-        self.assertEqual(len(self.model.item_map), 0, "Model map should be empty after clear")
-        self.assertEqual(self.model.rowCount(), 0, "Model should have no rows after clear")
+        self.assertEqual(
+            len(self.model.item_map), 0, "Model map should be empty after clear"
+        )
+        self.assertEqual(
+            self.model.rowCount(), 0, "Model should have no rows after clear"
+        )
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     unittest.main()

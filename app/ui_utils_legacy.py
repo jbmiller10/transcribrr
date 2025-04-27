@@ -2,8 +2,14 @@ import os
 import logging
 from typing import Optional, Callable, Dict, Any
 from PyQt6.QtWidgets import (
-    QMessageBox, QProgressDialog, QLabel, QWidget, QWidgetAction, QToolBar,
-    QPushButton, QStatusBar
+    QMessageBox,
+    QProgressDialog,
+    QLabel,
+    QWidget,
+    QWidgetAction,
+    QToolBar,
+    QPushButton,
+    QStatusBar,
 )
 from PyQt6.QtCore import Qt, QSize, QTimer
 from PyQt6.QtGui import QMovie, QIcon, QAction
@@ -11,7 +17,7 @@ from app.path_utils import resource_path
 
 
 # Configure logging (use app name)
-logger = logging.getLogger('transcribrr')  # Ensure logger name consistency
+logger = logging.getLogger("transcribrr")  # Ensure logger name consistency
 
 
 class SpinnerManager:
@@ -21,9 +27,15 @@ class SpinnerManager:
         self.parent = parent_widget
         self.spinners: Dict[str, Dict[str, Any]] = {}
 
-    def create_spinner(self, name: str, toolbar: QToolBar, action_icon: str,
-                       action_tooltip: str, callback: Callable,
-                       spinner_icon: str = './icons/spinner.gif') -> QAction:
+    def create_spinner(
+        self,
+        name: str,
+        toolbar: QToolBar,
+        action_icon: str,
+        action_tooltip: str,
+        callback: Callable,
+        spinner_icon: str = "./icons/spinner.gif",
+    ) -> QAction:
         """Create spinner for toolbar action."""
         action_icon_path = resource_path(action_icon)
         spinner_icon_path = resource_path(spinner_icon)
@@ -65,11 +77,11 @@ class SpinnerManager:
         spinner_action.setVisible(False)
 
         self.spinners[name] = {
-            'action': action,  # The logical action
-            'button_widget': action_widget,  # The visible button wrapper
-            'movie': spinner_movie,
-            'spinner_action': spinner_action,  # The spinner wrapper
-            'active': False
+            "action": action,  # The logical action
+            "button_widget": action_widget,  # The visible button wrapper
+            "movie": spinner_movie,
+            "spinner_action": spinner_action,  # The spinner wrapper
+            "active": False,
         }
         return action
 
@@ -80,12 +92,12 @@ class SpinnerManager:
             return False
 
         spinner_data = self.spinners[name]
-        button_widget = spinner_data['button_widget']
-        spinner_action = spinner_data['spinner_action']
-        spinner_movie = spinner_data['movie']
+        button_widget = spinner_data["button_widget"]
+        spinner_action = spinner_data["spinner_action"]
+        spinner_movie = spinner_data["movie"]
 
-        is_active: bool = not spinner_data['active']
-        spinner_data['active'] = is_active
+        is_active: bool = not spinner_data["active"]
+        spinner_data["active"] = is_active
 
         if is_active:
             button_widget.setVisible(False)
@@ -101,17 +113,17 @@ class SpinnerManager:
             logger.debug(f"Spinner '{name}' stopped.")
 
         # Update the logical action's enabled state
-        spinner_data['action'].setEnabled(not is_active)
+        spinner_data["action"].setEnabled(not is_active)
 
         return is_active
 
     def set_spinner_state(self, name: str, active: bool):
         """Explicitly set spinner state."""
-        if name in self.spinners and self.spinners[name]['active'] != active:
+        if name in self.spinners and self.spinners[name]["active"] != active:
             self.toggle_spinner(name)
 
     def is_active(self, name: str) -> bool:
-        active: bool = self.spinners.get(name, {}).get('active', False)
+        active: bool = self.spinners.get(name, {}).get("active", False)
         return active
 
     def stop_all_spinners(self):
@@ -120,8 +132,14 @@ class SpinnerManager:
                 self.toggle_spinner(name)
 
 
-def show_message_box(parent: Optional[QWidget], icon: QMessageBox.Icon, title: str, message: str,
-                     buttons=QMessageBox.StandardButton.Ok, default_button=QMessageBox.StandardButton.NoButton):
+def show_message_box(
+    parent: Optional[QWidget],
+    icon: QMessageBox.Icon,
+    title: str,
+    message: str,
+    buttons=QMessageBox.StandardButton.Ok,
+    default_button=QMessageBox.StandardButton.NoButton,
+):
     """Generic message box function."""
     msg_box = QMessageBox(parent)
     msg_box.setIcon(icon)
@@ -143,6 +161,7 @@ def show_error_message(parent: Optional[QWidget], title: str, message: str):
 def safe_error(parent: Optional[QWidget], title: str, message: str):
     """Show a standardized error message dialog with sensitive information redacted."""
     from app.secure import redact
+
     # Redact sensitive information from message
     safe_message = redact(message)
     # Log and show the redacted message
@@ -156,20 +175,35 @@ def show_info_message(parent: Optional[QWidget], title: str, message: str):
     show_message_box(parent, QMessageBox.Icon.Information, title, message)
 
 
-def show_confirmation_dialog(parent: Optional[QWidget], title: str, message: str,
-                             default_button: QMessageBox.StandardButton = QMessageBox.StandardButton.No) -> bool:
+def show_confirmation_dialog(
+    parent: Optional[QWidget],
+    title: str,
+    message: str,
+    default_button: QMessageBox.StandardButton = QMessageBox.StandardButton.No,
+) -> bool:
     """Show a confirmation dialog (Yes/No) and return user choice."""
     logger.debug(f"Confirmation requested: {title} - {message}")
-    result = show_message_box(parent, QMessageBox.Icon.Question, title, message,
-                              QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
-                              default_button)
+    result = show_message_box(
+        parent,
+        QMessageBox.Icon.Question,
+        title,
+        message,
+        QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
+        default_button,
+    )
     result_bool: bool = result == QMessageBox.StandardButton.Yes
     return result_bool
 
 
-def create_progress_dialog(parent: QWidget, title: str, message: str,
-                           cancelable: bool = True, maximum: int = 100,
-                           autoclose: bool = True, autoreset: bool = True) -> QProgressDialog:
+def create_progress_dialog(
+    parent: QWidget,
+    title: str,
+    message: str,
+    cancelable: bool = True,
+    maximum: int = 100,
+    autoclose: bool = True,
+    autoreset: bool = True,
+) -> QProgressDialog:
     """Create a standardized progress dialog.
 
     Args:
@@ -184,7 +218,9 @@ def create_progress_dialog(parent: QWidget, title: str, message: str,
     Returns:
         Configured QProgressDialog instance
     """
-    progress = QProgressDialog(message, "Cancel" if cancelable else None, 0, maximum, parent)
+    progress = QProgressDialog(
+        message, "Cancel" if cancelable else None, 0, maximum, parent
+    )
     progress.setWindowTitle(title)
     progress.setWindowModality(Qt.WindowModality.WindowModal)
     progress.setMinimumDuration(500)  # Only show if operation takes time
@@ -196,7 +232,7 @@ def create_progress_dialog(parent: QWidget, title: str, message: str,
 def show_status_message(parent: QWidget, message: str, timeout: int = 3000):
     """Show a temporary status message in the status bar if available."""
     status_bar = None
-    if hasattr(parent, 'statusBar') and callable(parent.statusBar):
+    if hasattr(parent, "statusBar") and callable(parent.statusBar):
         status_bar = parent.statusBar()
     elif isinstance(parent, QStatusBar):
         status_bar = parent
@@ -206,7 +242,9 @@ def show_status_message(parent: QWidget, message: str, timeout: int = 3000):
         status_bar.showMessage(message, timeout)
         logger.debug(f"Status message: {message}")
     else:
-        logger.warning(f"Cannot show status message - no statusBar found on parent: {parent}")
+        logger.warning(
+            f"Cannot show status message - no statusBar found on parent: {parent}"
+        )
 
 
 class FeedbackManager:
@@ -220,7 +258,9 @@ class FeedbackManager:
         self.parent = parent_widget
 
         # Check if parent already has a spinner manager
-        if hasattr(parent_widget, 'spinner_manager') and isinstance(parent_widget.spinner_manager, SpinnerManager):
+        if hasattr(parent_widget, "spinner_manager") and isinstance(
+            parent_widget.spinner_manager, SpinnerManager
+        ):
             # Reuse the existing spinner manager
             self.spinner_manager = parent_widget.spinner_manager
             logger.debug("FeedbackManager reusing existing SpinnerManager")
@@ -299,9 +339,15 @@ class FeedbackManager:
         self.finish_operation(spinner_name)
         return True
 
-    def start_progress(self, operation_id: str, title: str, message: str,
-                       maximum: int = 100, cancelable: bool = True,
-                       cancel_callback=None) -> QProgressDialog:
+    def start_progress(
+        self,
+        operation_id: str,
+        title: str,
+        message: str,
+        maximum: int = 100,
+        cancelable: bool = True,
+        cancel_callback=None,
+    ) -> QProgressDialog:
         """Create and show a progress dialog for determinate operations.
 
         Args:
@@ -323,8 +369,13 @@ class FeedbackManager:
                 pass
 
         progress = create_progress_dialog(
-            self.parent, title, message, cancelable, maximum,
-            autoclose=False, autoreset=False
+            self.parent,
+            title,
+            message,
+            cancelable,
+            maximum,
+            autoclose=False,
+            autoreset=False,
         )
 
         if cancelable and cancel_callback:
@@ -346,7 +397,13 @@ class FeedbackManager:
                 progress.setLabelText(message)
             progress.setValue(value)
 
-    def finish_progress(self, operation_id: str, message: str = None, auto_close: bool = True, delay: int = 1000):
+    def finish_progress(
+        self,
+        operation_id: str,
+        message: str = None,
+        auto_close: bool = True,
+        delay: int = 1000,
+    ):
         """Complete a progress operation."""
         if operation_id in self.progress_dialogs:
             progress = self.progress_dialogs[operation_id]

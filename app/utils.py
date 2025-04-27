@@ -37,7 +37,7 @@ os.makedirs(get_log_dir(), exist_ok=True)
 
 if not logging.getLogger().handlers:
     max_bytes = 5 * 1024 * 1024  # 5 MB per log file
-    backup_count = 3             # keep up to 15 MB total
+    backup_count = 3  # keep up to 15 MB total
 
     rotating_handler = RotatingFileHandler(
         get_log_file(),
@@ -67,29 +67,25 @@ def is_audio_file(file_path):
 
 
 def ensure_ffmpeg_available():
-    logger = logging.getLogger('transcribrr')
+    logger = logging.getLogger("transcribrr")
 
     # Check if we're running in a bundled app
-    is_bundled = getattr(sys, 'frozen', False) and hasattr(sys, '_MEIPASS')
+    is_bundled = getattr(sys, "frozen", False) and hasattr(sys, "_MEIPASS")
 
     # Potential locations for ffmpeg
     potential_locations = [
         # Check in PATH first
-        shutil.which('ffmpeg'),
-
+        shutil.which("ffmpeg"),
         # Check bundled binary (MacOS app)
-        os.path.join(os.path.dirname(sys.executable), 'bin', 'ffmpeg'),
-
+        os.path.join(os.path.dirname(sys.executable), "bin", "ffmpeg"),
         # Check one directory up in case we're in MacOS/bin structure
-        os.path.join(os.path.dirname(os.path.dirname(sys.executable)), 'bin', 'ffmpeg'),
-
+        os.path.join(os.path.dirname(os.path.dirname(sys.executable)), "bin", "ffmpeg"),
         # Check Resources directory for bundled app
-        resource_path('ffmpeg'),
-
+        resource_path("ffmpeg"),
         # Custom common locations
-        '/usr/local/bin/ffmpeg',
-        '/opt/homebrew/bin/ffmpeg',
-        '/usr/bin/ffmpeg',
+        "/usr/local/bin/ffmpeg",
+        "/opt/homebrew/bin/ffmpeg",
+        "/usr/bin/ffmpeg",
     ]
 
     # Log the locations we're checking
@@ -102,33 +98,42 @@ def ensure_ffmpeg_available():
 
             # Add the directory to PATH if it's not already there
             ffmpeg_dir = os.path.dirname(location)
-            if ffmpeg_dir not in os.environ.get('PATH', ''):
+            if ffmpeg_dir not in os.environ.get("PATH", ""):
                 logger.info(f"Adding {ffmpeg_dir} to PATH")
-                os.environ['PATH'] = f"{ffmpeg_dir}{os.pathsep}{os.environ.get('PATH', '')}"
+                os.environ["PATH"] = (
+                    f"{ffmpeg_dir}{os.pathsep}{os.environ.get('PATH', '')}"
+                )
 
             # Try running ffmpeg to verify it works
             try:
                 result = subprocess.run(
-                    [location, '-version'],
+                    [location, "-version"],
                     stdout=subprocess.PIPE,
                     stderr=subprocess.PIPE,
-                    timeout=5
+                    timeout=5,
                 )
                 if result.returncode == 0:
-                    logger.info(f"Successfully verified ffmpeg: {result.stdout.decode()[:100]}...")
+                    logger.info(
+                        f"Successfully verified ffmpeg: {result.stdout.decode()[:100]}..."
+                    )
                     return True, f"Found ffmpeg at {location}"
             except Exception as e:
-                logger.warning(f"Found ffmpeg at {location} but executing it failed: {e}")
+                logger.warning(
+                    f"Found ffmpeg at {location} but executing it failed: {e}"
+                )
 
     logger.error("Could not find ffmpeg in any of the expected locations")
-    return False, "FFmpeg not found. Please install FFmpeg to enable audio/video processing."
+    return (
+        False,
+        "FFmpeg not found. Please install FFmpeg to enable audio/video processing.",
+    )
 
 
 def validate_url(url):
     """Return True if YouTube URL."""
     # Modified regex pattern to handle more YouTube URL formats
     # More specific video ID
-    youtube_regex = r'(?:https?:\/\/)?(?:www\.|m\.)?(?:youtube\.com|youtu\.be)\/(?:watch\?v=|embed\/|v\/|shorts\/)?([a-zA-Z0-9_-]{11})'
+    youtube_regex = r"(?:https?:\/\/)?(?:www\.|m\.)?(?:youtube\.com|youtu\.be)\/(?:watch\?v=|embed\/|v\/|shorts\/)?([a-zA-Z0-9_-]{11})"
     # search() instead of match() so the pattern can appear anywhere in the URL
     return re.search(youtube_regex, url) is not None
 
@@ -139,33 +144,114 @@ def validate_url(url):
 def language_to_iso(language_name):
     """Convert language name to ISO code."""
     language_map = {
-        "Afrikaans": "af", "Albanian": "sq", "Amharic": "am", "Arabic": "ar",
-        "Armenian": "hy", "Azerbaijani": "az", "Basque": "eu", "Belarusian": "be",
-        "Bengali": "bn", "Bosnian": "bs", "Bulgarian": "bg", "Catalan": "ca",
-        "Cebuano": "ceb", "Chinese": "zh", "Corsican": "co", "Croatian": "hr",
-        "Czech": "cs", "Danish": "da", "Dutch": "nl", "English": "en",
-        "Esperanto": "eo", "Estonian": "et", "Finnish": "fi", "French": "fr",
-        "Frisian": "fy", "Galician": "gl", "Georgian": "ka", "German": "de",
-        "Greek": "el", "Gujarati": "gu", "Haitian Creole": "ht", "Hausa": "ha",
-        "Hawaiian": "haw", "Hebrew": "he", "Hindi": "hi", "Hmong": "hmn",
-        "Hungarian": "hu", "Icelandic": "is", "Igbo": "ig", "Indonesian": "id",
-        "Irish": "ga", "Italian": "it", "Japanese": "ja", "Javanese": "jv",
-        "Kannada": "kn", "Kazakh": "kk", "Khmer": "km", "Kinyarwanda": "rw",
-        "Korean": "ko", "Kurdish": "ku", "Kyrgyz": "ky", "Lao": "lo",
-        "Latin": "la", "Latvian": "lv", "Lithuanian": "lt", "Luxembourgish": "lb",
-        "Macedonian": "mk", "Malagasy": "mg", "Malay": "ms", "Malayalam": "ml",
-        "Maltese": "mt", "Maori": "mi", "Marathi": "mr", "Mongolian": "mn",
-        "Myanmar": "my", "Nepali": "ne", "Norwegian": "no", "Nyanja": "ny",
-        "Oriya": "or", "Pashto": "ps", "Persian": "fa", "Polish": "pl",
-        "Portuguese": "pt", "Punjabi": "pa", "Romanian": "ro", "Russian": "ru",
-        "Samoan": "sm", "Scots Gaelic": "gd", "Serbian": "sr", "Sesotho": "st",
-        "Shona": "sn", "Sindhi": "sd", "Sinhala": "si", "Slovak": "sk",
-        "Slovenian": "sl", "Somali": "so", "Spanish": "es", "Sundanese": "su",
-        "Swahili": "sw", "Swedish": "sv", "Tagalog": "tl", "Tajik": "tg",
-        "Tamil": "ta", "Tatar": "tt", "Telugu": "te", "Thai": "th",
-        "Turkish": "tr", "Turkmen": "tk", "Ukrainian": "uk", "Urdu": "ur",
-        "Uyghur": "ug", "Uzbek": "uz", "Vietnamese": "vi", "Welsh": "cy",
-        "Xhosa": "xh", "Yiddish": "yi", "Yoruba": "yo", "Zulu": "zu"
+        "Afrikaans": "af",
+        "Albanian": "sq",
+        "Amharic": "am",
+        "Arabic": "ar",
+        "Armenian": "hy",
+        "Azerbaijani": "az",
+        "Basque": "eu",
+        "Belarusian": "be",
+        "Bengali": "bn",
+        "Bosnian": "bs",
+        "Bulgarian": "bg",
+        "Catalan": "ca",
+        "Cebuano": "ceb",
+        "Chinese": "zh",
+        "Corsican": "co",
+        "Croatian": "hr",
+        "Czech": "cs",
+        "Danish": "da",
+        "Dutch": "nl",
+        "English": "en",
+        "Esperanto": "eo",
+        "Estonian": "et",
+        "Finnish": "fi",
+        "French": "fr",
+        "Frisian": "fy",
+        "Galician": "gl",
+        "Georgian": "ka",
+        "German": "de",
+        "Greek": "el",
+        "Gujarati": "gu",
+        "Haitian Creole": "ht",
+        "Hausa": "ha",
+        "Hawaiian": "haw",
+        "Hebrew": "he",
+        "Hindi": "hi",
+        "Hmong": "hmn",
+        "Hungarian": "hu",
+        "Icelandic": "is",
+        "Igbo": "ig",
+        "Indonesian": "id",
+        "Irish": "ga",
+        "Italian": "it",
+        "Japanese": "ja",
+        "Javanese": "jv",
+        "Kannada": "kn",
+        "Kazakh": "kk",
+        "Khmer": "km",
+        "Kinyarwanda": "rw",
+        "Korean": "ko",
+        "Kurdish": "ku",
+        "Kyrgyz": "ky",
+        "Lao": "lo",
+        "Latin": "la",
+        "Latvian": "lv",
+        "Lithuanian": "lt",
+        "Luxembourgish": "lb",
+        "Macedonian": "mk",
+        "Malagasy": "mg",
+        "Malay": "ms",
+        "Malayalam": "ml",
+        "Maltese": "mt",
+        "Maori": "mi",
+        "Marathi": "mr",
+        "Mongolian": "mn",
+        "Myanmar": "my",
+        "Nepali": "ne",
+        "Norwegian": "no",
+        "Nyanja": "ny",
+        "Oriya": "or",
+        "Pashto": "ps",
+        "Persian": "fa",
+        "Polish": "pl",
+        "Portuguese": "pt",
+        "Punjabi": "pa",
+        "Romanian": "ro",
+        "Russian": "ru",
+        "Samoan": "sm",
+        "Scots Gaelic": "gd",
+        "Serbian": "sr",
+        "Sesotho": "st",
+        "Shona": "sn",
+        "Sindhi": "sd",
+        "Sinhala": "si",
+        "Slovak": "sk",
+        "Slovenian": "sl",
+        "Somali": "so",
+        "Spanish": "es",
+        "Sundanese": "su",
+        "Swahili": "sw",
+        "Swedish": "sv",
+        "Tagalog": "tl",
+        "Tajik": "tg",
+        "Tamil": "ta",
+        "Tatar": "tt",
+        "Telugu": "te",
+        "Thai": "th",
+        "Turkish": "tr",
+        "Turkmen": "tk",
+        "Ukrainian": "uk",
+        "Urdu": "ur",
+        "Uyghur": "ug",
+        "Uzbek": "uz",
+        "Vietnamese": "vi",
+        "Welsh": "cy",
+        "Xhosa": "xh",
+        "Yiddish": "yi",
+        "Yoruba": "yo",
+        "Zulu": "zu",
     }
     normalized_name = language_name.strip().title()
     return language_map.get(normalized_name, "en")  # Default to English
@@ -178,7 +264,7 @@ def create_backup(file_path: str, backup_dir: Optional[str] = None) -> Optional[
         return None
 
     if backup_dir is None:
-        backup_dir = os.path.join(os.path.dirname(file_path), 'backups')
+        backup_dir = os.path.join(os.path.dirname(file_path), "backups")
 
     try:
         os.makedirs(backup_dir, exist_ok=True)
@@ -220,19 +306,23 @@ def check_ffmpeg():
 
         result = subprocess.run(
             ["ffmpeg", "-version"],
-            capture_output=True, text=True, check=False,
-            startupinfo=startupinfo  # Pass startupinfo
+            capture_output=True,
+            text=True,
+            check=False,
+            startupinfo=startupinfo,  # Pass startupinfo
         )
         if result.returncode == 0 and "ffmpeg version" in result.stdout.lower():
             logger.info("FFmpeg found and accessible.")
             return True
         else:
             logger.warning(
-                f"FFmpeg check failed. Return code: {result.returncode}. Stdout: {result.stdout[:100]}...")
+                f"FFmpeg check failed. Return code: {result.returncode}. Stdout: {result.stdout[:100]}..."
+            )
             return False
     except FileNotFoundError:
         logger.error(
-            "FFmpeg command not found. Please ensure FFmpeg is installed and in your system's PATH.")
+            "FFmpeg command not found. Please ensure FFmpeg is installed and in your system's PATH."
+        )
         return False
     except Exception as e:
         logger.error(f"Error checking FFmpeg: {e}", exc_info=True)
@@ -248,13 +338,15 @@ def check_system_requirements():
         "ffmpeg_installed": check_ffmpeg(),
         "cuda_available": torch.cuda.is_available(),
         "gpu_info": None,
-        "mps_available": hasattr(torch.backends, 'mps') and torch.backends.mps.is_available(),
-        "issues": []
+        "mps_available": hasattr(torch.backends, "mps")
+        and torch.backends.mps.is_available(),
+        "issues": [],
     }
 
     if sys.version_info < (3, 11):
         results["issues"].append(
-            "Python 3.11+ is recommended for optimal performance and compatibility.")
+            "Python 3.11+ is recommended for optimal performance and compatibility."
+        )
 
     if results["cuda_available"]:
         try:
@@ -262,8 +354,10 @@ def check_system_requirements():
             gpu_info_list = []
             for i in range(gpu_count):
                 name = torch.cuda.get_device_name(i)
-                memory = torch.cuda.get_device_properties(i).total_memory / (1024 ** 3)
-                gpu_info_list.append({"index": i, "name": name, "memory": f"{memory:.2f} GB"})
+                memory = torch.cuda.get_device_properties(i).total_memory / (1024**3)
+                gpu_info_list.append(
+                    {"index": i, "name": name, "memory": f"{memory:.2f} GB"}
+                )
             results["gpu_info"] = gpu_info_list
             logger.info(f"CUDA detected. GPU Info: {gpu_info_list}")
         except Exception as e:
@@ -273,12 +367,15 @@ def check_system_requirements():
         results["issues"].append("MPS acceleration available (Apple Silicon).")
         logger.info("MPS acceleration available.")
     else:
-        results["issues"].append("CUDA/MPS not detected. Using CPU (transcription may be slower).")
+        results["issues"].append(
+            "CUDA/MPS not detected. Using CPU (transcription may be slower)."
+        )
         logger.info("No GPU acceleration (CUDA/MPS) detected. Using CPU.")
 
     if not results["ffmpeg_installed"]:
         results["issues"].append(
-            "FFmpeg not found. Required for audio/video processing and conversion.")
+            "FFmpeg not found. Required for audio/video processing and conversion."
+        )
 
     return results
 
@@ -290,7 +387,9 @@ def format_time_duration(seconds: Union[float, int, str]) -> str:
         if secs < 0:
             secs = 0
     except (ValueError, TypeError):
-        logger.warning(f"Invalid input for format_time_duration: {seconds}. Returning 00:00.")
+        logger.warning(
+            f"Invalid input for format_time_duration: {seconds}. Returning 00:00."
+        )
         return "00:00"
 
     total_seconds = int(secs)
@@ -307,6 +406,7 @@ def format_time_duration(seconds: Union[float, int, str]) -> str:
 def show_system_info(parent=None):
     """Display system information in a message box."""
     from .ui_utils import show_info_message  # Local import to avoid circular dependency
+
     info = check_system_requirements()
 
     message = f"{APP_NAME} System Information:\n\n"
@@ -316,18 +416,18 @@ def show_system_info(parent=None):
     message += f"- CUDA Available: {'Yes' if info['cuda_available'] else 'No'}\n"
     message += f"- MPS Available (Apple Silicon): {'Yes' if info['mps_available'] else 'No'}\n\n"
 
-    if info['gpu_info']:
+    if info["gpu_info"]:
         message += "Detected GPU(s):\n"
-        for gpu in info['gpu_info']:
+        for gpu in info["gpu_info"]:
             message += f"  • GPU {gpu['index']}: {gpu['name']} ({gpu['memory']})\n"
-    elif info['cuda_available']:
+    elif info["cuda_available"]:
         message += "CUDA detected, but failed to get GPU details.\n"
     else:
         message += "No CUDA-enabled GPU detected.\n"
 
-    if info['issues']:
+    if info["issues"]:
         message += "\nNotes & Potential Issues:\n"
-        for issue in info['issues']:
+        for issue in info["issues"]:
             message += f"  • {issue}\n"
     else:
         message += "\nSystem check passed with no major issues noted."
@@ -336,7 +436,9 @@ def show_system_info(parent=None):
     return message
 
 
-def cleanup_temp_files(directory=None, file_pattern="transcribrr_temp_*", max_age_days=1):
+def cleanup_temp_files(
+    directory=None, file_pattern="transcribrr_temp_*", max_age_days=1
+):
     """Clean up temporary files created by the application."""
     import tempfile
     import glob
@@ -353,7 +455,8 @@ def cleanup_temp_files(directory=None, file_pattern="transcribrr_temp_*", max_ag
     deleted_count = 0
 
     logger.debug(
-        f"Checking for old temp files in '{directory}' matching '{file_pattern}' older than {max_age_days} day(s)...")
+        f"Checking for old temp files in '{directory}' matching '{file_pattern}' older than {max_age_days} day(s)..."
+    )
 
     for file_path in files_to_check:
         try:
@@ -364,7 +467,8 @@ def cleanup_temp_files(directory=None, file_pattern="transcribrr_temp_*", max_ag
                     os.remove(file_path)
                     deleted_count += 1
                     logger.info(
-                        f"Deleted old temp file: {file_path} (Age: {file_age/3600:.1f} hours)")
+                        f"Deleted old temp file: {file_path} (Age: {file_age/3600:.1f} hours)"
+                    )
             elif os.path.isdir(file_path):
                 # Optionally handle temporary directories later
                 pass
@@ -380,11 +484,12 @@ def cleanup_temp_files(directory=None, file_pattern="transcribrr_temp_*", max_ag
 
 class ConfigManager(QObject):
     """Singleton configuration manager."""
+
     config_updated = pyqtSignal(dict)  # Emits changes {key: new_value}
     _instance = None
 
     @classmethod
-    def instance(cls) -> 'ConfigManager':
+    def instance(cls) -> "ConfigManager":
         if cls._instance is None:
             # Ensure logs directory exists before initializing logger within instance
             os.makedirs(get_log_dir(), exist_ok=True)
@@ -394,7 +499,7 @@ class ConfigManager(QObject):
     def __init__(self):
         super().__init__()
         # Prevent re-initialization
-        if hasattr(self, '_config'):
+        if hasattr(self, "_config"):
             return
         self._config: Dict[str, Any] = {}
         self._config_path = get_config_path()
@@ -405,15 +510,19 @@ class ConfigManager(QObject):
         loaded_config = {}
         try:
             if os.path.exists(self._config_path):
-                with open(self._config_path, 'r', encoding='utf-8') as config_file:
+                with open(self._config_path, "r", encoding="utf-8") as config_file:
                     loaded_config = json.load(config_file)
                 logger.info(f"Configuration loaded from {self._config_path}")
             else:
-                logger.warning(f"Config file not found at {self._config_path}, creating default.")
+                logger.warning(
+                    f"Config file not found at {self._config_path}, creating default."
+                )
                 # Proceed to ensure defaults, which will trigger save
         except json.JSONDecodeError as e:
             logger.error(
-                f"Error decoding config file {self._config_path}: {e}. Using defaults.", exc_info=True)
+                f"Error decoding config file {self._config_path}: {e}. Using defaults.",
+                exc_info=True,
+            )
             # Proceed to ensure defaults
         except Exception as e:
             logger.error(f"Error loading config: {e}. Using defaults.", exc_info=True)
@@ -424,18 +533,22 @@ class ConfigManager(QObject):
         self._config.update(loaded_config)  # Overwrite defaults with loaded values
 
         # Save back if defaults were added or file was missing/corrupt
-        if not os.path.exists(self._config_path) or len(self._config) > len(loaded_config):
+        if not os.path.exists(self._config_path) or len(self._config) > len(
+            loaded_config
+        ):
             self._save_config()
 
     def _save_config(self) -> None:
         """Save the current configuration state."""
         try:
             os.makedirs(os.path.dirname(self._config_path), exist_ok=True)
-            with open(self._config_path, 'w', encoding='utf-8') as config_file:
+            with open(self._config_path, "w", encoding="utf-8") as config_file:
                 json.dump(self._config, config_file, indent=4, sort_keys=True)
             logger.debug(f"Configuration saved to {self._config_path}")
         except Exception as e:
-            logger.error(f"Error saving config to {self._config_path}: {e}", exc_info=True)
+            logger.error(
+                f"Error saving config to {self._config_path}: {e}", exc_info=True
+            )
 
     def get(self, key: str, default: Any = None) -> Any:
         """Get a config value, falling back to DEFAULT_CONFIG then provided default."""
@@ -475,11 +588,14 @@ class ConfigManager(QObject):
 
 class PromptManager(QObject):
     """Singleton prompt template manager."""
-    prompts_changed = pyqtSignal()  # Emitted when prompts are added, updated, deleted, or imported
+
+    prompts_changed = (
+        pyqtSignal()
+    )  # Emitted when prompts are added, updated, deleted, or imported
     _instance = None
 
     @classmethod
-    def instance(cls) -> 'PromptManager':
+    def instance(cls) -> "PromptManager":
         if cls._instance is None:
             # Ensure logs directory exists before initializing logger within instance
             os.makedirs(get_log_dir(), exist_ok=True)
@@ -489,7 +605,7 @@ class PromptManager(QObject):
     def __init__(self):
         super().__init__()
         # Prevent re-initialization
-        if hasattr(self, '_prompts'):
+        if hasattr(self, "_prompts"):
             return
         self._prompts: Dict[str, Dict[str, str]] = {}
         self._prompts_path = get_prompts_path()
@@ -500,15 +616,19 @@ class PromptManager(QObject):
         loaded_data = {}
         try:
             if os.path.exists(self._prompts_path):
-                with open(self._prompts_path, 'r', encoding='utf-8') as file:
+                with open(self._prompts_path, "r", encoding="utf-8") as file:
                     loaded_data = json.load(file)
                 logger.info(f"Prompts loaded from {self._prompts_path}")
             else:
-                logger.warning(f"Prompts file not found at {self._prompts_path}, creating default.")
+                logger.warning(
+                    f"Prompts file not found at {self._prompts_path}, creating default."
+                )
                 # Proceed to normalization which handles defaults
         except json.JSONDecodeError as e:
             logger.error(
-                f"Error decoding prompts file {self._prompts_path}: {e}. Using defaults.", exc_info=True)
+                f"Error decoding prompts file {self._prompts_path}: {e}. Using defaults.",
+                exc_info=True,
+            )
             # Proceed to normalization
         except Exception as e:
             logger.error(f"Error loading prompts: {e}. Using defaults.", exc_info=True)
@@ -517,7 +637,9 @@ class PromptManager(QObject):
         self._prompts = self._normalize_prompts(loaded_data)
 
         # Save back if defaults were added or file was missing/corrupt
-        if not os.path.exists(self._prompts_path) or len(self._prompts) > len(loaded_data):
+        if not os.path.exists(self._prompts_path) or len(self._prompts) > len(
+            loaded_data
+        ):
             self._save_prompts()
 
     def _normalize_prompts(self, loaded_data: Dict) -> Dict[str, Dict[str, str]]:
@@ -534,7 +656,9 @@ class PromptManager(QObject):
             elif isinstance(data, dict) and "text" in data:
                 normalized[name] = {
                     "text": data["text"],
-                    "category": data.get("category", "General")  # Default category if missing
+                    "category": data.get(
+                        "category", "General"
+                    ),  # Default category if missing
                 }
             else:
                 logger.warning(f"Skipping invalid prompt entry during load: '{name}'")
@@ -544,11 +668,13 @@ class PromptManager(QObject):
         """Save the current prompts state."""
         try:
             os.makedirs(os.path.dirname(self._prompts_path), exist_ok=True)
-            with open(self._prompts_path, 'w', encoding='utf-8') as file:
+            with open(self._prompts_path, "w", encoding="utf-8") as file:
                 json.dump(self._prompts, file, indent=4, sort_keys=True)
             logger.debug(f"Prompts saved to {self._prompts_path}")
         except Exception as e:
-            logger.error(f"Error saving prompts to {self._prompts_path}: {e}", exc_info=True)
+            logger.error(
+                f"Error saving prompts to {self._prompts_path}: {e}", exc_info=True
+            )
 
     def get_prompts(self) -> Dict[str, Dict[str, str]]:
         """Get a copy of all prompts."""
@@ -576,7 +702,9 @@ class PromptManager(QObject):
         logger.info(f"Added/Updated prompt: '{name}' in category '{category}'")
         return True
 
-    def update_prompt(self, name: str, text: str, category: Optional[str] = None) -> bool:
+    def update_prompt(
+        self, name: str, text: str, category: Optional[str] = None
+    ) -> bool:
         """Update an existing prompt. Category is optional."""
         name = name.strip()
         text = text.strip()
@@ -610,13 +738,17 @@ class PromptManager(QObject):
         logger.warning(f"Prompt '{name}' not found for deletion.")
         return False
 
-    def import_prompts_from_file(self, file_path: str, merge: bool = True) -> Tuple[bool, str]:
+    def import_prompts_from_file(
+        self, file_path: str, merge: bool = True
+    ) -> Tuple[bool, str]:
         """Import prompts from a JSON file."""
         try:
-            with open(file_path, 'r', encoding='utf-8') as file:
+            with open(file_path, "r", encoding="utf-8") as file:
                 imported_data = json.load(file)
 
-            new_prompts = self._normalize_prompts(imported_data)  # Normalize imported data
+            new_prompts = self._normalize_prompts(
+                imported_data
+            )  # Normalize imported data
             count = len(new_prompts)
 
             if not merge:
@@ -637,14 +769,16 @@ class PromptManager(QObject):
             logger.error(f"Error decoding JSON from {file_path}: {e}", exc_info=True)
             return False, f"Import failed: Invalid JSON file ({e})"
         except Exception as e:
-            logger.error(f"Failed to import prompts from {file_path}: {e}", exc_info=True)
+            logger.error(
+                f"Failed to import prompts from {file_path}: {e}", exc_info=True
+            )
             return False, f"Import failed: {e}"
 
     def export_prompts_to_file(self, file_path: str) -> Tuple[bool, str]:
         """Export current prompts to a JSON file."""
         try:
             os.makedirs(os.path.dirname(file_path), exist_ok=True)
-            with open(file_path, 'w', encoding='utf-8') as file:
+            with open(file_path, "w", encoding="utf-8") as file:
                 # Exclude defaults maybe? Or export all? Export all for now.
                 json.dump(self._prompts, file, indent=4, sort_keys=True)
             count = len(self._prompts)
@@ -655,7 +789,9 @@ class PromptManager(QObject):
             return False, f"Export failed: {e}"
 
 
-def estimate_transcription_time(file_path: str, model_name: str, is_gpu: bool = False) -> Optional[int]:
+def estimate_transcription_time(
+    file_path: str, model_name: str, is_gpu: bool = False
+) -> Optional[int]:
     """Estimate transcription time (very rough estimate)."""
     if not os.path.exists(file_path):
         return None
@@ -682,11 +818,14 @@ def estimate_transcription_time(file_path: str, model_name: str, is_gpu: bool = 
         if speed_factor <= 0:
             speed_factor = 0.1
         # Estimate seconds per MB
-        secs_per_mb = 3 / speed_factor  # Adjusted baseline (e.g., medium takes ~3s/MB on CPU)
+        secs_per_mb = (
+            3 / speed_factor
+        )  # Adjusted baseline (e.g., medium takes ~3s/MB on CPU)
         estimated_time = (file_size_mb * secs_per_mb) + 15  # Add fixed overhead
 
         logger.debug(
-            f"Estimated time for {os.path.basename(file_path)} ({file_size_mb:.1f}MB, model='{model_name}', gpu={is_gpu}): {estimated_time:.1f}s")
+            f"Estimated time for {os.path.basename(file_path)} ({file_size_mb:.1f}MB, model='{model_name}', gpu={is_gpu}): {estimated_time:.1f}s"
+        )
         return max(int(estimated_time), 5)  # Min 5 seconds estimate
     except Exception as e:
         logger.warning(f"Could not estimate transcription time for {file_path}: {e}")
