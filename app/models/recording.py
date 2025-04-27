@@ -17,3 +17,4 @@ class Recording:
     processed_text: Optional[str] = None
     raw_transcript_formatted: Optional[str] = None
     processed_text_formatted: Optional[str] = None
+    original_source_identifier: Optional[str] = None

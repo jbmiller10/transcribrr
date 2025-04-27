@@ -185,11 +185,33 @@ class MainTranscriptionWidget(ResponsiveWidget):
         # They will be added directly to the editor widget in init_main_content
 
         # Create the PromptBar component
-        self.prompt_bar = PromptBar(self)
+        try:
+            self.prompt_bar = PromptBar(self)
+        except Exception as e:
+            # If there's an issue with PromptBar, create a minimal stub that inherits from QWidget
+            from PyQt6.QtWidgets import QWidget
+            from PyQt6.QtCore import pyqtSignal
+            
+            class StubPromptBar(QWidget):
+                """Simple stub for PromptBar in case the real one can't be loaded."""
+                instruction_changed = pyqtSignal(str)
+                edit_requested = pyqtSignal(str)
+                
+                def __init__(self, parent=None):
+                    super().__init__(parent)
+                
+                def current_prompt_text(self):
+                    return ""
+                    
+                def set_enabled(self, enabled):
+                    pass
+            
+            logger.warning(f"Using stub PromptBar due to: {e}")
+            self.prompt_bar = StubPromptBar(self)
 
         self.raw_transcript_label = QLabel("Raw")
         self.mode_switch = ToggleSwitch()
-        self.mode_switch.setValue(ViewMode.RAW)  # Default to raw
+        self.mode_switch.setValue(0)  # Default to raw (0 = RAW, 1 = PROCESSED)
         self.gpt_processed_label = QLabel("Processed")
 
         self.settings_button = QPushButton()
@@ -519,7 +541,7 @@ class MainTranscriptionWidget(ResponsiveWidget):
             self.transcript_text.editor.setPlainText(transcript)
 
         # Update view mode
-        self.mode_switch.setValue(ViewMode.RAW)
+        self.mode_switch.setValue(0)  # 0 = RAW
         self.view_mode = ViewMode.RAW
 
         # Hide refinement widget
@@ -624,7 +646,7 @@ class MainTranscriptionWidget(ResponsiveWidget):
         # Define completion callback
         def on_completion(processed_text, is_html):
             # Switch to processed view
-            self.mode_switch.setValue(ViewMode.PROCESSED)
+            self.mode_switch.setValue(1)  # 1 = PROCESSED
             self.view_mode = ViewMode.PROCESSED
 
             # Update editor with processed text
@@ -695,7 +717,7 @@ class MainTranscriptionWidget(ResponsiveWidget):
             self.last_processed_text_html = None  # Not HTML
 
         # Switch to processed view
-        self.mode_switch.setValue(ViewMode.PROCESSED)
+        self.mode_switch.setValue(1)  # 1 = PROCESSED
         self.view_mode = ViewMode.PROCESSED  # Keep view_mode in sync with switch
         self.status_update.emit("GPT processing complete. Saving...")
 

@@ -21,6 +21,7 @@ class GPTController(QObject):
     gpt_process_completed = pyqtSignal(str)  # Emits processed text
     gpt_process_stopped = pyqtSignal()
     status_update = pyqtSignal(str)  # Generic status update signal
+    recording_status_updated = pyqtSignal(int, dict)  # Signal for recording updates (ID, data)
 
     def __init__(self, db_manager, parent=None):
         super().__init__(parent)

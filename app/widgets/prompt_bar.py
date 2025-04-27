@@ -394,3 +394,8 @@ class PromptBar(QWidget):
                 self.is_editing_existing_prompt = False
                 self.edit_button.setText("Edit")
                 self.edit_button.setToolTip("Edit selected prompt template")
+                
+    def setEnabled(self, enabled):
+        """Override QWidget.setEnabled."""
+        super().setEnabled(enabled)
+        self.set_enabled(enabled)

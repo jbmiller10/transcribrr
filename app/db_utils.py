@@ -210,8 +210,9 @@ def get_recording_by_id(
             filename=record[1],
             file_path=record[2],
             date_created=(
-                datetime.fromisoformat(
-                    record[3]) if record[3] else datetime.now()
+                # Handle various date formats and invalid values safely
+                record[3] if isinstance(record[3], str) and record[3] not in ('pending', 'None', '') 
+                else datetime.now().isoformat()
             ),
             duration=record[4],
             raw_transcript=record[5],

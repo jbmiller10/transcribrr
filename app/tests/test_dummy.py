@@ -36,9 +36,10 @@ class TestDummy(unittest.TestCase):
         """Test that ViewMode enum works."""
         try:
             from app.models.view_mode import ViewMode
-
-            self.assertEqual(ViewMode.RAW, 0)
-            self.assertEqual(ViewMode.PROCESSED, 1)
+            
+            # ViewMode explicitly uses 0 and 1 to match toggle switch values
+            self.assertEqual(ViewMode.RAW.value, 0)
+            self.assertEqual(ViewMode.PROCESSED.value, 1)
         except Exception as e:
             self.fail(f"Failed to use ViewMode: {e}")
 
