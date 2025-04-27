@@ -76,9 +76,9 @@ class TestGPTController(unittest.TestCase):
         self.recording = Recording(
             id=123,
             filename="test_recording.mp3",
-            file_path="/path/to/test_recording.mp3",
+            file_path="app/tests/resources/test.mp3",
             date_created="2023-01-01 12:00:00",
-            duration=60.0,
+            duration=3.0,
             raw_transcript="This is a test transcript for GPT processing.",
             processed_text=None,
         )
@@ -157,9 +157,9 @@ class TestGPTController(unittest.TestCase):
         recording_no_transcript = Recording(
             id=124,
             filename="no_transcript.mp3",
-            file_path="/path/to/no_transcript.mp3",
+            file_path="app/tests/resources/test.mp3",
             date_created="2023-01-01 12:00:00",
-            duration=60.0,
+            duration=3.0,
             raw_transcript=None,
             processed_text=None,
         )
@@ -234,9 +234,9 @@ class TestGPTController(unittest.TestCase):
         processed_recording = Recording(
             id=125,
             filename="processed.mp3",
-            file_path="/path/to/processed.mp3",
+            file_path="app/tests/resources/test.mp3",
             date_created="2023-01-01 12:00:00",
-            duration=60.0,
+            duration=3.0,
             raw_transcript="Raw transcript for refinement.",
             processed_text="Processed text for refinement.",
         )

@@ -8,7 +8,6 @@ from PyQt6.QtCore import QObject, pyqtSignal
 
 from app.models.recording import Recording
 from app.models.view_mode import ViewMode
-from app.ui_utils.busy_guard import BusyGuard
 from app.threads.TranscriptionThread import TranscriptionThread
 from app.ThreadManager import ThreadManager
 from app.secure import get_api_key

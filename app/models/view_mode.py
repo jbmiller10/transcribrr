@@ -1,6 +1,10 @@
-from enum import IntEnum
+"""View mode enum for transcript view."""
+
+from enum import Enum, auto
 
 
-class ViewMode(IntEnum):
-    RAW = 0
-    PROCESSED = 1
+class ViewMode(Enum):
+    """Enum for different transcript view modes."""
+
+    RAW = auto()
+    PROCESSED = auto()
