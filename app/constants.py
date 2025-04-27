@@ -1,7 +1,7 @@
 """Application constants."""
 
 import os
-from typing import Dict, Set
+from typing import Dict, Set, Any
 from enum import Enum, auto
 from .path_utils import resource_path
 
@@ -96,7 +96,7 @@ DOCUMENT_EXTENSIONS: Set[str] = {
     '.txt', '.md', '.doc', '.docx', '.pdf', '.odt'
 }
 
-FILE_TYPES: Dict[str, Dict[str, str]] = {
+FILE_TYPES: Dict[str, Dict[str, Any]] = {
     # Audio formats
     '.mp3': {'name': 'MPEG Audio Layer III', 'type': FileType.AUDIO},
     '.wav': {'name': 'Waveform Audio File Format', 'type': FileType.AUDIO},

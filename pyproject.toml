@@ -89,3 +89,20 @@ strict_optional = false
 [[tool.mypy.overrides]]
 module = "app.*.__init__"
 ignore_errors = true
+
+# Ignore missing type stubs for third-party libraries
+[[tool.mypy.overrides]]
+module = "appdirs"
+ignore_missing_imports = true
+
+[[tool.mypy.overrides]]
+module = "pyannote.audio"
+ignore_missing_imports = true
+
+[[tool.mypy.overrides]]
+module = "torchaudio"
+ignore_missing_imports = true
+
+[[tool.mypy.overrides]]
+module = "pydub"
+ignore_missing_imports = true

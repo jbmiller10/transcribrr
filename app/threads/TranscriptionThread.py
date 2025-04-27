@@ -1,11 +1,13 @@
 from PyQt6.QtCore import QThread, pyqtSignal
-from typing import List, Optional
+from typing import List, Optional, Any, Dict
 import os
 import time
 import logging
 import torch
 import requests
 from threading import Lock # Import Lock
+import tempfile
+from pydub import AudioSegment  # Import at the top to avoid runtime import
 from app.services.transcription_service import TranscriptionService, ModelManager
 
 # Configure logging
@@ -52,7 +54,7 @@ class TranscriptionThread(QThread):
         self.transcription_service = TranscriptionService()
         
         # Temporary files that may be created during processing
-        self.temp_files = []
+        self.temp_files: List[str] = []
 
         # Initial validation
         try:
@@ -165,8 +167,7 @@ class TranscriptionThread(QThread):
 
     def _create_temporary_chunks(self, file_path: str) -> List[str]:
         """Create temporary chunks for API-based transcription of large files."""
-        from pydub import AudioSegment
-        import tempfile
+        # AudioSegment and tempfile are already imported at the top
         
         self.update_progress.emit("File exceeds API size limit. Creating temporary chunks...")
         
@@ -332,7 +333,7 @@ class TranscriptionThread(QThread):
 
         try:
             # Process file with normal transcription
-            result = self.transcription_service.transcribe_file(
+            result: Dict[str, Any] = self.transcription_service.transcribe_file(
                 file_path=file_path,
                 model_id=self.transcription_quality,
                 language=self.language,
@@ -352,11 +353,13 @@ class TranscriptionThread(QThread):
 
             # Return formatted text if speaker detection was successful, otherwise plain text
             if self.speaker_detection_enabled and 'formatted_text' in result:
+                formatted_text: str = result.get('formatted_text', '')
                 self.update_progress.emit(f"Finished {task_label} with speakers in {runtime:.2f}s")
-                return result['formatted_text']
+                return formatted_text
             elif 'text' in result:
+                text: str = result.get('text', '')
                 self.update_progress.emit(f"Finished {task_label} in {runtime:.2f}s")
-                return result['text']
+                return text
             else:
                 logger.warning(f"Transcription for {task_label} returned no text.")
                 return "[No transcription generated]"

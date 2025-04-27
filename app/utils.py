@@ -170,7 +170,7 @@ def language_to_iso(language_name):
     return language_map.get(normalized_name, "en") # Default to English
 
 
-def create_backup(file_path, backup_dir=None):
+def create_backup(file_path: str, backup_dir: Optional[str] = None) -> Optional[str]:
     """Create a timestamped backup of a file."""
     if not os.path.exists(file_path):
         logger.warning(f"Cannot backup non-existent file: {file_path}")
@@ -204,9 +204,11 @@ def check_ffmpeg():
         # Use startupinfo for cleaner execution on Windows
         startupinfo = None
         if platform.system() == "Windows":
-            startupinfo = subprocess.STARTUPINFO()
-            startupinfo.dwFlags |= subprocess.STARTF_USESHOWWINDOW
-            startupinfo.wShowWindow = subprocess.SW_HIDE
+            # Import these only on Windows to avoid errors on other platforms
+            from subprocess import STARTUPINFO, STARTF_USESHOWWINDOW, SW_HIDE
+            startupinfo = STARTUPINFO()
+            startupinfo.dwFlags |= STARTF_USESHOWWINDOW
+            startupinfo.wShowWindow = SW_HIDE
 
         result = subprocess.run(
             ["ffmpeg", "-version"],

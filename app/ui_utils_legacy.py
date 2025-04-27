@@ -82,7 +82,7 @@ class SpinnerManager:
         spinner_action = spinner_data['spinner_action']
         spinner_movie = spinner_data['movie']
 
-        is_active = not spinner_data['active']
+        is_active: bool = not spinner_data['active']
         spinner_data['active'] = is_active
 
         if is_active:
@@ -107,7 +107,8 @@ class SpinnerManager:
               self.toggle_spinner(name)
 
     def is_active(self, name: str) -> bool:
-        return self.spinners.get(name, {}).get('active', False)
+        active: bool = self.spinners.get(name, {}).get('active', False)
+        return active
 
     def stop_all_spinners(self):
         for name in list(self.spinners.keys()): # Iterate over keys copy
@@ -221,10 +222,10 @@ class FeedbackManager:
             self.spinner_manager = SpinnerManager(parent_widget)
             logger.debug("FeedbackManager created new SpinnerManager")
             
-        self.progress_dialogs = {}  # Store references to active progress dialogs
-        self.ui_state = {}  # Track UI elements disabled state
+        self.progress_dialogs: Dict[str, QProgressDialog] = {}  # Store references to active progress dialogs
+        self.ui_state: Dict[QWidget, bool] = {}  # Track UI elements disabled state
         # Track active operation IDs for robust UI enable/disable
-        self.active_operations = set()
+        self.active_operations: set[str] = set()
         
     def start_operation(self, operation_id: str):
         """Start tracking an operation and disable UI elements if this is the first."""

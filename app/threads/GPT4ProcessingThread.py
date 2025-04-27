@@ -1,8 +1,9 @@
 from PyQt6.QtCore import QThread, pyqtSignal
 import requests
+from requests.exceptions import RequestException, Timeout, ConnectionError
 import json
 from threading import Lock # Import Lock
-from typing import List, Dict, Optional
+from typing import List, Dict, Optional, Any, Union
 import logging # Use logging
 
 logger = logging.getLogger('transcribrr')
@@ -215,8 +216,8 @@ class GPT4ProcessingThread(QThread):
 
     def _send_api_request(self, messages: List[Dict[str, str]]) -> str:
         retry_count = 0
-        last_error = None
-        session = None
+        last_error: Optional[Exception] = None
+        session: Optional[requests.Session] = None
 
         while retry_count < self.MAX_RETRY_ATTEMPTS:
             if self.isInterruptionRequested() or self.is_canceled(): return "[Cancelled]"
@@ -250,21 +251,21 @@ class GPT4ProcessingThread(QThread):
                 self._response.raise_for_status() # Raise HTTPError for bad responses (4xx or 5xx)
 
                 response_data = self._response.json()
-                content = response_data.get('choices', [{}])[0].get('message', {}).get('content', '')
+                content: str = response_data.get('choices', [{}])[0].get('message', {}).get('content', '')
                 logger.info(f"Received successful response from OpenAI API. Choice 0 content length: {len(content)}")
                 return content
 
-            except requests.exceptions.Timeout as e:
+            except Timeout as e:
                  last_error = e
                  logger.warning(f"Request timed out (Attempt {retry_count + 1}): {e}")
                  # Fall through to retry logic
 
-            except requests.exceptions.ConnectionError as e:
+            except ConnectionError as e:
                  # Don't retry connection errors usually
                  logger.error(f"Connection error: {e}")
                  raise Exception(f"Unable to connect to OpenAI API: {e}") from e
 
-            except requests.exceptions.RequestException as e: # Catches HTTPError, etc.
+            except RequestException as e: # Catches HTTPError, etc.
                  last_error = e
                  logger.warning(f"RequestException (Attempt {retry_count + 1}): {e}. Status: {e.response.status_code if e.response else 'N/A'}")
                  error_info = self._parse_error_response(e.response) if e.response else str(e)

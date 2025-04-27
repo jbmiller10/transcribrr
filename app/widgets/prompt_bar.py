@@ -7,6 +7,7 @@ from PyQt6.QtWidgets import (
 )
 from PyQt6.QtCore import Qt, pyqtSignal, QTimer, QSize
 from PyQt6.QtGui import QIcon
+from typing import Dict, List, Any
 
 from app.path_utils import resource_path
 from app.utils import PromptManager
@@ -109,7 +110,7 @@ class PromptBar(QWidget):
         self.prompt_dropdown.clear()
         
         # Group by category
-        categorized_prompts = {}
+        categorized_prompts: Dict[str, list[str]] = {}
         for name, data in prompts.items():
             category = data.get("category", "General")
             if category not in categorized_prompts:
