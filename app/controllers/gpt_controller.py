@@ -216,6 +216,8 @@ class GPTController(QObject):
 
         # Create thread
         thread = GPT4ProcessingThread(
+            transcript=recording.raw_transcript,
+            prompt_instructions=refinement_instructions,
             messages=messages,
             gpt_model=gpt_model,
             max_tokens=max_tokens,
