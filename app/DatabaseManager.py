@@ -162,27 +162,76 @@ class DatabaseWorker(QThread):
     def run(self):
         """Process queued operations."""
         try:
-            while self.running:
+            logger.info("DatabaseWorker thread started")
+            if not hasattr(self, 'conn') or self.conn is None:
                 try:
-                    operation = self.operations_queue.get(timeout=0.5)
-                    if operation is None:  # Sentinel value to exit
+                    # Ensure we have a valid connection
+                    self.conn = get_connection()
+                    # Ensure foreign keys are enabled
+                    self.conn.execute("PRAGMA foreign_keys = ON;")
+                    logger.info("Database connection successfully established")
+                except Exception as conn_error:
+                    logger.critical(f"Failed to establish database connection: {conn_error}", exc_info=True)
+                    self.error_occurred.emit("database_connection", f"Failed to connect to database: {conn_error}")
+                    return  # Exit thread if we can't establish a connection
+            
+            while self.running:
+                operation = None
+                try:
+                    # Queue.get with timeout to allow for thread interruption
+                    try:
+                        operation = self.operations_queue.get(timeout=0.5)
+                    except queue.Empty:
+                        continue  # No operation available, continue the loop
+                    
+                    # Check for sentinel value indicating thread should exit
+                    if operation is None:
+                        logger.debug("Received sentinel value, exiting worker thread")
                         break
 
+                    # Extract operation details with validation
                     op_type = operation.get('type')
                     op_id = operation.get('id')
                     op_args = operation.get('args', [])
                     op_kwargs = operation.get('kwargs', {})
-                    result = None
                     
-                    # Flag to track if data was modified (for dataChanged signal)
+                    if not op_type:
+                        logger.error("Invalid operation received: missing 'type'")
+                        self.error_occurred.emit("invalid_operation", "Invalid operation format: missing type")
+                        continue
+                        
+                    # Initialize result and modification flag
+                    result = None
                     data_modified = False
                     
+                    # Log the operation being processed
+                    logger.debug(f"Processing database operation: {op_type} (id: {op_id})")
+                    
                     try:
+                        # Check database connection health before processing
+                        try:
+                            self.conn.execute("SELECT 1")
+                        except Exception as health_error:
+                            logger.warning(f"Database connection issue detected: {health_error}")
+                            # Try to reconnect
+                            try:
+                                self.conn = get_connection()
+                                self.conn.execute("PRAGMA foreign_keys = ON;")
+                                logger.info("Database connection successfully re-established")
+                            except Exception as reconnect_error:
+                                logger.error(f"Failed to reconnect to database: {reconnect_error}", exc_info=True)
+                                raise RuntimeError(f"Database connection lost and reconnection failed: {reconnect_error}")
+                        
                         # Determine if operation is a write operation that requires a transaction
                         is_write_operation = op_type in ('execute_query', 'create_table', 'create_recording', 
                                                         'update_recording', 'delete_recording')
                         
+                        # Process operation based on type
                         if op_type == 'execute_query':
+                            # Validate arguments
+                            if not op_args or len(op_args) < 1:
+                                raise ValueError("Missing query string for execute_query operation")
+                                
                             query = op_args[0]
                             params = op_args[1] if len(op_args) > 1 else []
                             return_last_row_id = op_kwargs.get('return_last_row_id', False)
@@ -204,54 +253,118 @@ class DatabaseWorker(QThread):
                                 elif 'folders' in query_lower:
                                     logger.info("Folder data modified by query")
                             
-                            # Use transaction for write operations
+                            # Use transaction for write operations with proper error handling
                             if is_modifying_query:
-                                with self.conn:  # This automatically handles commit/rollback
+                                try:
+                                    with self.conn:  # This automatically handles commit/rollback
+                                        cursor = self.conn.cursor()
+                                        cursor.execute(query, params)
+                                        
+                                        # If we need to return the last inserted ID directly
+                                        if return_last_row_id and query_lower.startswith('insert'):
+                                            result = cursor.lastrowid
+                                        else:
+                                            result = cursor.fetchall()
+                                except Exception as sql_error:
+                                    logger.error(f"SQL error in modifying query: {sql_error}", exc_info=True)
+                                    raise RuntimeError(f"Database error executing query: {sql_error}")
+                            else:
+                                # Read-only query with proper error handling
+                                try:
                                     cursor = self.conn.cursor()
                                     cursor.execute(query, params)
-                                    
-                                    # If we need to return the last inserted ID directly
-                                    if return_last_row_id and query_lower.startswith('insert'):
-                                        result = cursor.lastrowid
-                                        # Return the last insert ID directly
-                                    else:
-                                        result = cursor.fetchall()
-                                        # Return the query results
-                            else:
-                                cursor = self.conn.cursor()
-                                cursor.execute(query, params)
-                                result = cursor.fetchall()
+                                    result = cursor.fetchall()
+                                except Exception as sql_error:
+                                    logger.error(f"SQL error in read query: {sql_error}", exc_info=True)
+                                    raise RuntimeError(f"Database error executing query: {sql_error}")
                                 
                         elif op_type == 'create_table':
-                            with self.conn:  # Auto commit/rollback
-                                create_recordings_table(self.conn)
+                            try:
+                                with self.conn:  # Auto commit/rollback
+                                    create_recordings_table(self.conn)
+                                    data_modified = True
+                            except Exception as table_error:
+                                logger.error(f"Error creating table: {table_error}", exc_info=True)
+                                raise RuntimeError(f"Failed to create database table: {table_error}")
                                 
                         elif op_type == 'create_recording':
-                            with self.conn:  # Auto commit/rollback
-                                result = create_recording(self.conn, op_args[0])
-                                data_modified = True
-                                logger.info(f"Recording created with ID: {result}")
+                            # Validate arguments
+                            if not op_args or len(op_args) < 1:
+                                raise ValueError("Missing recording data for create_recording operation")
+                                
+                            try:
+                                with self.conn:  # Auto commit/rollback
+                                    result = create_recording(self.conn, op_args[0])
+                                    data_modified = True
+                                    logger.info(f"Recording created with ID: {result}")
+                            except DuplicatePathError as dupe_error:
+                                # Special handling for duplicate path errors (don't log as error)
+                                logger.warning(f"Duplicate path detected: {dupe_error}")
+                                raise  # Re-raise for special handling in the exception block
+                            except Exception as create_error:
+                                logger.error(f"Error creating recording: {create_error}", exc_info=True)
+                                raise RuntimeError(f"Failed to create recording: {create_error}")
                                 
                         elif op_type == 'get_all_recordings':
-                            result = get_all_recordings(self.conn)
+                            try:
+                                result = get_all_recordings(self.conn)
+                            except Exception as get_error:
+                                logger.error(f"Error getting all recordings: {get_error}", exc_info=True)
+                                raise RuntimeError(f"Failed to retrieve recordings: {get_error}")
                             
                         elif op_type == 'get_recording_by_id':
-                            result = get_recording_by_id(self.conn, op_args[0])
+                            # Validate arguments
+                            if not op_args or len(op_args) < 1:
+                                raise ValueError("Missing recording ID for get_recording_by_id operation")
+                                
+                            try:
+                                result = get_recording_by_id(self.conn, op_args[0])
+                            except Exception as get_error:
+                                logger.error(f"Error getting recording by ID {op_args[0]}: {get_error}", exc_info=True)
+                                raise RuntimeError(f"Failed to retrieve recording: {get_error}")
                             
                         elif op_type == 'update_recording':
-                            with self.conn:  # Auto commit/rollback
-                                update_recording(self.conn, op_args[0], **op_kwargs)
-                                data_modified = True
-                                logger.info(f"Recording updated with ID: {op_args[0]}")
+                            # Validate arguments
+                            if not op_args or len(op_args) < 1:
+                                raise ValueError("Missing recording ID for update_recording operation")
+                                
+                            try:
+                                with self.conn:  # Auto commit/rollback
+                                    update_recording(self.conn, op_args[0], **op_kwargs)
+                                    data_modified = True
+                                    logger.info(f"Recording updated with ID: {op_args[0]}")
+                            except Exception as update_error:
+                                logger.error(f"Error updating recording {op_args[0]}: {update_error}", exc_info=True)
+                                raise RuntimeError(f"Failed to update recording: {update_error}")
                                 
                         elif op_type == 'delete_recording':
-                            with self.conn:  # Auto commit/rollback
-                                delete_recording(self.conn, op_args[0])
-                                data_modified = True
-                                logger.info(f"Recording deleted with ID: {op_args[0]}")
+                            # Validate arguments
+                            if not op_args or len(op_args) < 1:
+                                raise ValueError("Missing recording ID for delete_recording operation")
+                                
+                            try:
+                                with self.conn:  # Auto commit/rollback
+                                    delete_recording(self.conn, op_args[0])
+                                    data_modified = True
+                                    logger.info(f"Recording deleted with ID: {op_args[0]}")
+                            except Exception as delete_error:
+                                logger.error(f"Error deleting recording {op_args[0]}: {delete_error}", exc_info=True)
+                                raise RuntimeError(f"Failed to delete recording: {delete_error}")
                                 
                         elif op_type == 'search_recordings':
-                            result = search_recordings(self.conn, op_args[0])
+                            # Validate arguments
+                            if not op_args or len(op_args) < 1:
+                                raise ValueError("Missing search term for search_recordings operation")
+                                
+                            try:
+                                result = search_recordings(self.conn, op_args[0])
+                            except Exception as search_error:
+                                logger.error(f"Error searching recordings: {search_error}", exc_info=True)
+                                raise RuntimeError(f"Failed to search recordings: {search_error}")
+                        else:
+                            logger.warning(f"Unknown operation type: {op_type}")
+                            self.error_occurred.emit(op_type, f"Unknown operation type: {op_type}")
+                            continue
                                 
                         # Operation complete, emit signal
                         self.operation_complete.emit({
@@ -267,39 +380,72 @@ class DatabaseWorker(QThread):
                         
                     except DuplicatePathError as e:
                         # Special handling for duplicate path errors
-                        logger.error(f"Duplicate path error in {op_type}: {e}", exc_info=True)
+                        logger.warning(f"Duplicate path error in {op_type}: {e}")
                         # Emit error but DO NOT set data_modified to prevent phantom refresh
                         self.error_occurred.emit(op_type, str(e))
                         # Explicitly set data_modified to False to be safe
                         data_modified = False
-                    except Exception as e:
-                        logger.error(f"Database operation error in {op_type}: {e}", exc_info=True)
+                    except ValueError as e:
+                        # Input validation errors
+                        logger.warning(f"Validation error in {op_type}: {e}")
+                        self.error_occurred.emit(op_type, f"Invalid input: {e}")
+                    except RuntimeError as e:
+                        # Operation execution errors
+                        logger.error(f"Runtime error in {op_type}: {e}")
                         self.error_occurred.emit(op_type, str(e))
+                    except Exception as e:
+                        # Catch all other exceptions
+                        logger.error(f"Unexpected database operation error in {op_type}: {e}", exc_info=True)
+                        from app.secure import redact
+                        safe_msg = redact(str(e))
+                        self.error_occurred.emit(op_type, f"Database error: {safe_msg}")
                     finally:
-                        self.operations_queue.task_done()
+                        # Always mark the task as done, regardless of success or failure
+                        if operation is not None:
+                            try:
+                                self.operations_queue.task_done()
+                            except Exception as task_done_error:
+                                logger.warning(f"Error marking queue task as done: {task_done_error}")
 
                 except queue.Empty:
+                    # This shouldn't happen since we already handle it above, but just in case
                     continue
                 except Exception as e:
+                    # Error in the outer try block (queue operations)
                     logger.error(f"Operation queue error: {e}", exc_info=True)
-                    self.error_occurred.emit("operation_queue", str(e))
-                    try:
-                        self.operations_queue.task_done()
-                    except:
-                        pass
+                    from app.secure import redact
+                    safe_msg = redact(str(e))
+                    self.error_occurred.emit("operation_queue", f"Queue operation error: {safe_msg}")
+                    
+                    # Try to mark the task as done if we have an operation
+                    if operation is not None:
+                        try:
+                            self.operations_queue.task_done()
+                        except Exception:
+                            pass
+                    
+                    # Short sleep to prevent CPU spinning in case of persistent errors
+                    time.sleep(0.1)
 
         except Exception as e:
-            logger.error(f"Database worker error: {e}", exc_info=True)
-            self.error_occurred.emit("worker_init", str(e))
+            # Error in the outermost try block (worker thread itself)
+            logger.critical(f"Critical database worker error: {e}", exc_info=True)
+            from app.secure import redact
+            safe_msg = redact(str(e))
+            self.error_occurred.emit("worker_thread", f"Database worker error: {safe_msg}")
         finally:
             # Ensure connection is closed when worker is finished
             try:
                 if hasattr(self, 'conn') and self.conn:
                     self.conn.close()
-                    logger.debug("Database worker connection closed")
+                    logger.info("Database worker connection closed")
             except Exception as e:
-                logger.error(f"Error closing database connection: {e}")
-                self.error_occurred.emit("connection_close", str(e))
+                logger.error(f"Error closing database connection: {e}", exc_info=True)
+                from app.secure import redact
+                safe_msg = redact(str(e))
+                self.error_occurred.emit("connection_close", f"Error closing database connection: {safe_msg}")
+            
+            logger.info("Database worker thread finished execution")
 
     def add_operation(self, operation_type, operation_id=None, *args, **kwargs):
         """Enqueue operation."""

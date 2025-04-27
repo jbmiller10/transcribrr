@@ -475,7 +475,6 @@ def copy_initial_data_files():
 def run_application():
     """Main application entry point."""
     # Keep a reference to the startup thread to prevent early destruction
-    global startup_thread
     
     try:
         # Log startup information
@@ -498,18 +497,18 @@ def run_application():
             os.makedirs(get_log_dir(), exist_ok=True)
             logger.info("User data directories checked/created successfully.")
         except OSError as e:
-            logger.critical(f"Could not create required user directories in {USER_DATA_DIR}: {e}", exc_info=True)
+            logger.critical(f"Could not create required user directories in {get_user_data_dir()}: {e}", exc_info=True)
             # Attempt to show a message box if possible
             try:
                 app_instance = QApplication.instance()
                 if not app_instance:
                     app_instance = QApplication(sys.argv)
                 QMessageBox.critical(None, "Fatal Error",
-                                     f"Could not create application data directories in {USER_DATA_DIR}.\n"
+                                     f"Could not create application data directories in {get_user_data_dir()}.\n"
                                      f"Please check permissions.\nError: {e}")
             except Exception as mb_error:
                 # Fallback if GUI cannot be shown
-                print(f"FATAL ERROR: Could not create application data directories in {USER_DATA_DIR}. Error: {e}")
+                print(f"FATAL ERROR: Could not create application data directories in {get_user_data_dir()}. Error: {e}")
                 print(f"Message box error: {mb_error}")
             return 1
         # --- End of Directory Creation Block ---
@@ -588,7 +587,6 @@ def cleanup_application():
         logger.error(f"Error releasing model resources: {e}")
     
     # Wait for the startup thread to finish if it's still running
-    global startup_thread
     if startup_thread and startup_thread.isRunning():
         logger.info("Waiting for startup thread to finish...")
         startup_thread.wait(2000)  # Wait up to 2 seconds

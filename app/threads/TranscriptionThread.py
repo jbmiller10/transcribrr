@@ -3,6 +3,8 @@ from typing import List, Optional
 import os
 import time
 import logging
+import torch
+import requests
 from threading import Lock # Import Lock
 from app.services.transcription_service import TranscriptionService, ModelManager
 
@@ -106,17 +108,47 @@ class TranscriptionThread(QThread):
                 self.update_progress.emit('Transcription finished successfully.')
 
         except FileNotFoundError as e:
-            if not self.is_canceled(): self.error.emit(f"File error: {e}")
+            if not self.is_canceled(): 
+                from app.secure import redact
+                safe_msg = redact(str(e))
+                self.error.emit(f"File error: {safe_msg}")
+                logger.error(f"Transcription file error: {safe_msg}")
             self.update_progress.emit('Transcription failed: File not found')
         except ValueError as e:
-             if not self.is_canceled(): self.error.emit(f"Configuration error: {e}")
+             if not self.is_canceled(): 
+                from app.secure import redact
+                safe_msg = redact(str(e))
+                self.error.emit(f"Configuration error: {safe_msg}")
+                logger.error(f"Transcription configuration error: {safe_msg}")
              self.update_progress.emit('Transcription failed: Configuration issue')
         except RuntimeError as e:
-            if not self.is_canceled(): self.error.emit(f"Processing error: {e}")
+            if not self.is_canceled(): 
+                from app.secure import redact
+                safe_msg = redact(str(e))
+                self.error.emit(f"Processing error: {safe_msg}")
+                logger.error(f"Transcription processing error: {safe_msg}")
             self.update_progress.emit('Transcription failed: Processing issue')
+        except requests.exceptions.RequestException as e:
+            if not self.is_canceled():
+                from app.secure import redact
+                safe_msg = redact(str(e))
+                self.error.emit(f"Network error during transcription: {safe_msg}")
+                logger.error(f"Transcription network error: {safe_msg}", exc_info=True)
+            self.update_progress.emit('Transcription failed: Network error')
+        except (torch.cuda.OutOfMemoryError, RuntimeError) as e:
+            if not self.is_canceled():
+                err_str = str(e)
+                if "CUDA out of memory" in err_str or "MPS out of memory" in err_str:
+                    self.error.emit("Not enough GPU memory. Try disabling hardware acceleration in settings.")
+                    logger.error(f"Transcription memory error: {err_str}", exc_info=True)
+                    self.update_progress.emit('Transcription failed: Out of memory')
+                else:
+                    raise  # Re-raise if it's not a memory error
         except Exception as e:
             if not self.is_canceled():
-                self.error.emit(f"Unexpected error: {e}")
+                from app.secure import redact
+                safe_msg = redact(str(e))
+                self.error.emit(f"Unexpected error: {safe_msg}")
                 logger.error(f"Transcription error: {e}", exc_info=True)
             self.update_progress.emit('Transcription failed: Unexpected error')
         finally:
@@ -124,6 +156,9 @@ class TranscriptionThread(QThread):
                 # Always attempt to release resources regardless of cancellation state
                 self.update_progress.emit('Cleaning up transcription resources...')
                 ModelManager.instance().release_memory()
+                
+                # Clean up any temporary files that might still exist
+                self._cleanup_temp_files()
             except Exception as cleanup_error:
                 logger.error(f"Error during transcription resource cleanup: {cleanup_error}", exc_info=True)
             logger.info("Transcription thread finished execution.")

@@ -89,6 +89,10 @@ class GPT4ProcessingThread(QThread):
         try:
             self.update_progress.emit('GPT processing started...')
 
+            # Validate API key before proceeding
+            if not self.openai_api_key:
+                raise ValueError("OpenAI API key is missing. Please add your API key in Settings.")
+
             # Construct messages if not provided
             if not self.messages:
                 messages_to_send = [
@@ -110,23 +114,70 @@ class GPT4ProcessingThread(QThread):
                 self.completed.emit(result)
                 self.update_progress.emit('GPT processing finished.')
 
+        except requests.exceptions.Timeout as e:
+            if not self.is_canceled():
+                error_message = "Request timed out. Check your internet connection or try again later."
+                self.error.emit(error_message)
+                from app.secure import redact
+                logger.error(f"GPT Processing timeout: {redact(str(e))}", exc_info=True)
+            else:
+                self.update_progress.emit("GPT processing cancelled during timeout.")
+                
+        except requests.exceptions.ConnectionError as e:
+            if not self.is_canceled():
+                error_message = "Connection error. Check your internet connection or OpenAI service status."
+                self.error.emit(error_message)
+                from app.secure import redact
+                logger.error(f"GPT Processing connection error: {redact(str(e))}", exc_info=True)
+            else:
+                self.update_progress.emit("GPT processing cancelled during connection error.")
+                
+        except requests.exceptions.RequestException as e:
+            if not self.is_canceled():
+                from app.secure import redact
+                safe_msg = redact(str(e))
+                error_message = f"Network request error: {safe_msg}"
+                self.error.emit(error_message)
+                logger.error(f"GPT Processing request error: {safe_msg}", exc_info=True)
+            else:
+                self.update_progress.emit("GPT processing cancelled during request error.")
+                
+        except ValueError as e:
+            if not self.is_canceled():
+                # API key or configuration error
+                error_message = str(e)
+                self.error.emit(error_message)
+                logger.error(f"GPT Processing configuration error: {error_message}")
+            else:
+                self.update_progress.emit("GPT processing cancelled during configuration error.")
+                
         except Exception as e:
             if not self.is_canceled():
+                from app.secure import redact
                 error_message = str(e)
+                safe_msg = redact(error_message)
+                
                 # Refine error messages
                 if "rate limit" in error_message.lower():
                     error_message = "Rate limit exceeded. Please wait or check your OpenAI plan limits."
                 elif "invalid_api_key" in error_message.lower() or "Incorrect API key" in error_message:
                     error_message = "Invalid API key. Please check your OpenAI API key in Settings."
-                elif "context_length_exceeded" in error_message.lower():
+                elif "context_length_exceeded" in error_message.lower() or "maximum context length" in error_message.lower():
                     error_message = "Input is too long for this model. Try a different model or shorten the text."
-                elif isinstance(e, requests.exceptions.Timeout):
-                     error_message = "Request timed out. Check connection or try again."
-                elif isinstance(e, requests.exceptions.ConnectionError):
-                     error_message = "Connection Error. Check internet or OpenAI service status."
+                elif "no api key" in error_message.lower() or "api key not found" in error_message.lower():
+                    error_message = "API key is missing. Please add your OpenAI API key in Settings."
+                elif "authentication" in error_message.lower():
+                    error_message = "Authentication failed. Please check your OpenAI API key in Settings."
+                elif "insufficient_quota" in error_message.lower():
+                    error_message = "Your OpenAI API quota has been exceeded. Please check your billing status."
+                elif "not_found" in error_message.lower() and "model" in error_message.lower():
+                    error_message = "The requested model was not found. It may be deprecated or unavailable in your account."
+                else:
+                    # For all other errors, use a general message but log the full error
+                    error_message = f"An error occurred: {safe_msg}"
 
                 self.error.emit(error_message)
-                logger.error(f"GPT Processing error: {e}", exc_info=True) # Log full traceback
+                logger.error(f"GPT Processing error: {safe_msg}", exc_info=True)
             else:
                  self.update_progress.emit("GPT processing cancelled during error handling.")
         finally:

@@ -106,29 +106,47 @@ class RecordingThread(QThread):
 
     def run(self):
         try:
-            self.stream = self.audio.open(
-                format=self.format,
-                channels=self.channels,
-                rate=self.rate,
-                input=True,
-                frames_per_buffer=self.frames_per_buffer
-            )
+            # Initialize audio stream with proper error handling
+            try:
+                self.stream = self.audio.open(
+                    format=self.format,
+                    channels=self.channels,
+                    rate=self.rate,
+                    input=True,
+                    frames_per_buffer=self.frames_per_buffer
+                )
+            except (KeyError, ValueError) as e:
+                raise RuntimeError(f"Failed to initialize audio stream with current settings: {e}")
+            except IOError as e:
+                raise RuntimeError(f"Audio device error: {e}")
+            except Exception as e:
+                raise RuntimeError(f"Unexpected error initializing audio stream: {e}")
 
             self.elapsed_time = 0
             last_time_update = time.time()
 
+            # Main recording loop with robust error handling
             while self.is_recording:
                 if not self.is_paused:
                     try:
+                        # Read audio data with timeout protection
                         data = self.stream.read(self.frames_per_buffer, exception_on_overflow=False)
+                        if not data:
+                            logger.warning("Empty audio data received, possible device disconnection")
+                            continue
+                            
                         self.frames.append(data)
 
                         # Calculate audio level for visualization
                         if len(data) > 0:
-                            audio_array = np.frombuffer(data, dtype=np.int16)
-                            max_amplitude = np.max(np.abs(audio_array))
-                            normalized_level = max_amplitude / 32768.0  # Normalize to 0.0-1.0
-                            self.update_level.emit(normalized_level)
+                            try:
+                                audio_array = np.frombuffer(data, dtype=np.int16)
+                                max_amplitude = np.max(np.abs(audio_array)) if len(audio_array) > 0 else 0
+                                normalized_level = max_amplitude / 32768.0  # Normalize to 0.0-1.0
+                                self.update_level.emit(normalized_level)
+                            except Exception as viz_error:
+                                # Non-critical error, just log it
+                                logger.warning(f"Error calculating audio level: {viz_error}")
                         
                         # Check if we need to update elapsed time (every second)
                         current_time = time.time()
@@ -137,20 +155,57 @@ class RecordingThread(QThread):
                             self.update_time.emit(self.elapsed_time)
                             last_time_update = current_time
                             
+                    except IOError as e:
+                        if "Input overflowed" in str(e):
+                            # This is a non-critical error, just log and continue
+                            logger.warning("Audio input overflow detected")
+                            continue
+                        elif "Device unavailable" in str(e) or "Input underflowed" in str(e):
+                            # Device might be temporarily unavailable
+                            logger.warning(f"Audio device issue: {e}")
+                            # Short sleep to avoid CPU spinning
+                            time.sleep(0.1)
+                            continue
+                        else:
+                            # Other IO errors might be more serious
+                            self.error.emit(f"Audio device error: {e}")
+                            logger.error(f"Audio IO error: {e}", exc_info=True)
+                            # Short sleep before retrying
+                            time.sleep(0.5)
                     except Exception as e:
                         self.error.emit(f"Error reading audio: {e}")
+                        logger.error(f"Audio processing error: {e}", exc_info=True)
+                        # Short sleep before retrying
+                        time.sleep(0.5)
                 else:
                     # When paused, sleep to prevent high CPU usage
                     time.sleep(0.1)
 
-            if self.stream:
-                self.stream.stop_stream()
-                self.stream.close()
-                self.stream = None
-
         except Exception as e:
-            self.error.emit(f"Recording error: {e}")
-            logger.error(f"Recording error: {e}", exc_info=True)
+            from app.secure import redact
+            safe_msg = redact(str(e))
+            self.error.emit(f"Recording error: {safe_msg}")
+            logger.error(f"Recording thread error: {e}", exc_info=True)
+        finally:
+            # Clean up resources properly in all cases
+            try:
+                if hasattr(self, 'stream') and self.stream:
+                    try:
+                        self.stream.stop_stream()
+                    except Exception as stop_error:
+                        logger.warning(f"Error stopping audio stream: {stop_error}")
+                    
+                    try:
+                        self.stream.close()
+                    except Exception as close_error:
+                        logger.warning(f"Error closing audio stream: {close_error}")
+                    
+                    self.stream = None
+                    logger.debug("Audio stream properly closed")
+            except Exception as cleanup_error:
+                logger.error(f"Error during audio stream cleanup: {cleanup_error}", exc_info=True)
+            
+            logger.info("Recording thread finished execution")
 
     # Time updates are now handled directly in the run method
 

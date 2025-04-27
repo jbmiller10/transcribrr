@@ -48,13 +48,32 @@ class YouTubeDownloadThread(QThread):
         info_dict = None
         try:
             self.update_progress.emit('Preparing YouTube download...')
+            
+            # Validate YouTube URL format
+            if not self.youtube_url or not self.youtube_url.strip():
+                raise ValueError("YouTube URL is empty or invalid")
+                
+            if not (self.youtube_url.startswith('http://') or self.youtube_url.startswith('https://')):
+                raise ValueError("Invalid URL format. URL must start with http:// or https://")
+                
+            if 'youtube.com' not in self.youtube_url and 'youtu.be' not in self.youtube_url:
+                raise ValueError("URL doesn't appear to be a YouTube URL")
+            
             # Ensure recordings directory exists
-            os.makedirs(get_recordings_dir(), exist_ok=True)
+            recordings_dir = get_recordings_dir()
+            try:
+                os.makedirs(recordings_dir, exist_ok=True)
+            except (PermissionError, OSError) as e:
+                raise RuntimeError(f"Cannot create recordings directory: {e}")
+                
+            # Ensure we have write permission to the directory
+            if not os.access(recordings_dir, os.W_OK):
+                raise PermissionError(f"No write permission to recordings directory: {recordings_dir}")
 
             # Define output template - use title and timestamp for uniqueness
             # Use a temporary placeholder name first
             temp_output_template = os.path.join(
-                get_recordings_dir(),
+                recordings_dir,
                 f'youtube_temp_{datetime.now().strftime("%Y%m%d%H%M%S%f")}.%(ext)s'
             )
 
@@ -76,8 +95,10 @@ class YouTubeDownloadThread(QThread):
                 'progress_hooks': [self.ydl_progress_hook],
                 'logger': logger, # Use our logger
                 # 'verbose': True, # Enable for debugging download issues
-                 'noplaylist': True, # Ensure only single video is downloaded
-                 'socket_timeout': 30, # Add a socket timeout
+                'noplaylist': True, # Ensure only single video is downloaded
+                'socket_timeout': 30, # Add a socket timeout
+                'retries': 5,  # Add retry mechanism for transient network issues
+                'ignoreerrors': False,  # Don't ignore errors
             }
 
             if self.is_canceled(): 
@@ -97,6 +118,9 @@ class YouTubeDownloadThread(QThread):
                 info_dict = ydl.extract_info(self.youtube_url, download=True)
                 self.ydl_instance = None # Clear instance after use
 
+                if not info_dict:
+                    raise ValueError("No information returned from YouTube. The video might be unavailable.")
+
                 if self.is_canceled():
                      # Attempt to clean up partially downloaded file
                      self.cleanup_temp_file(temp_output_template, info_dict)
@@ -105,17 +129,26 @@ class YouTubeDownloadThread(QThread):
 
                 # Construct final filename based on video title (sanitize it)
                 video_title = info_dict.get('title', 'youtube_video')
+                if not video_title or video_title.strip() == '':
+                    video_title = 'youtube_video'  # Fallback
+                    
                 sanitized_title = "".join([c for c in video_title if c.isalnum() or c in (' ', '_', '-')]).rstrip()
                 sanitized_title = sanitized_title[:100] # Limit length
                 timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
                 final_filename_base = f'{sanitized_title}_{timestamp}'
-                final_wav_path = os.path.join(get_recordings_dir(), f"{final_filename_base}.wav")
+                final_wav_path = os.path.join(recordings_dir, f"{final_filename_base}.wav")
 
                 # Find the actual downloaded/processed file (yt-dlp might change extension)
                 # The actual output path after postprocessing is tricky to get directly.
                 # We know the *base* temp name and the final extension is wav.
                 expected_temp_wav = temp_output_template.rsplit('.', 1)[0] + '.wav'
                 temp_files.append(expected_temp_wav) # Track for cleanup
+
+                # Check if we have the renamed file from the extractor
+                if 'filepath' in info_dict and os.path.exists(info_dict['filepath']):
+                    expected_temp_wav = info_dict['filepath']
+                    temp_files.append(expected_temp_wav)
+                    logger.info(f"Using filepath from info_dict: {expected_temp_wav}")
 
                 # One final check before renaming and finishing
                 if self.is_canceled():
@@ -125,39 +158,105 @@ class YouTubeDownloadThread(QThread):
 
                 if os.path.exists(expected_temp_wav):
                      logger.info(f"Renaming temporary file '{expected_temp_wav}' to '{final_wav_path}'")
-                     os.rename(expected_temp_wav, final_wav_path)
-                     # No longer need to clean up temp file since it was renamed
-                     temp_files.clear()
-                     self.completed.emit(final_wav_path)
-                     self.update_progress.emit(f"Audio extracted: {os.path.basename(final_wav_path)}")
+                     try:
+                         os.rename(expected_temp_wav, final_wav_path)
+                         # No longer need to clean up temp file since it was renamed
+                         temp_files.clear()
+                         self.completed.emit(final_wav_path)
+                         self.update_progress.emit(f"Audio extracted: {os.path.basename(final_wav_path)}")
+                     except (PermissionError, OSError) as e:
+                         raise RuntimeError(f"Failed to rename temporary file: {e}")
                 else:
-                     # Fallback if the exact temp wav name isn't found (shouldn't happen often)
-                     logger.warning(f"Expected temp file '{expected_temp_wav}' not found after download. Emitting template path.")
-                     # This might be incorrect if yt-dlp used a different name
-                     self.error.emit("Failed to find downloaded audio file.")
+                     # Try to find the file using more aggressive search
+                     logger.warning(f"Expected temp file '{expected_temp_wav}' not found. Searching for alternatives.")
+                     found_file = self._find_downloaded_file(temp_output_template, info_dict)
+                     
+                     if found_file and os.path.exists(found_file):
+                         logger.info(f"Found alternative file: {found_file}")
+                         try:
+                             os.rename(found_file, final_wav_path)
+                             self.completed.emit(final_wav_path)
+                             self.update_progress.emit(f"Audio extracted: {os.path.basename(final_wav_path)}")
+                         except (PermissionError, OSError) as e:
+                             raise RuntimeError(f"Failed to rename found file: {e}")
+                     else:
+                         # Fall back to reporting error
+                         logger.error("Could not find any downloaded audio file")
+                         self.error.emit("Failed to find downloaded audio file. The file may not have been downloaded correctly.")
 
 
         except yt_dlp.utils.DownloadError as e:
+             error_str = str(e).lower()
+             from app.secure import redact
+             safe_err = redact(error_str)
+             
              # Handle common yt-dlp errors more specifically
-             if "confirm your age" in str(e):
+             if "confirm your age" in error_str:
                   self.error.emit("Age-restricted video requires login (not supported).")
-             elif "video is unavailable" in str(e).lower():
-                  self.error.emit("Video is unavailable.")
-             elif "private video" in str(e).lower():
-                   self.error.emit("Cannot download private videos.")
+             elif "video is unavailable" in error_str:
+                  self.error.emit("Video is unavailable or has been removed.")
+             elif "private video" in error_str:
+                  self.error.emit("Cannot download private videos.")
+             elif "copyright" in error_str:
+                  self.error.emit("Video unavailable due to copyright restrictions.")
+             elif "blocked" in error_str and "your country" in error_str:
+                  self.error.emit("This video is not available in your country.")
+             elif "sign in" in error_str or "log in" in error_str:
+                  self.error.emit("This video requires a YouTube account to access.")
+             elif "ffmpeg" in error_str:
+                  self.error.emit("Audio conversion failed. FFmpeg might be missing or misconfigured.")
+             elif "unsupported url" in error_str:
+                  self.error.emit("The URL format is not supported.")
+             elif "network" in error_str or "connection" in error_str or "timeout" in error_str:
+                  self.error.emit("Network error while downloading. Check your internet connection.")
              else:
-                   self.error.emit(f"YouTube download failed: {e}")
-             logger.error(f"yt-dlp DownloadError: {e}", exc_info=True)
+                  self.error.emit(f"YouTube download failed: {safe_err}")
+                  
+             logger.error(f"yt-dlp DownloadError: {safe_err}", exc_info=True)
+             
+        except requests.exceptions.RequestException as e:
+            if not self.is_canceled():
+                from app.secure import redact
+                safe_err = redact(str(e))
+                self.error.emit(f"Network error: {safe_err}")
+                logger.error(f"YouTube download network error: {safe_err}", exc_info=True)
+            else:
+                self.update_progress.emit("YouTube download cancelled during network operation.")
+                
+        except ValueError as e:
+            if not self.is_canceled():
+                self.error.emit(f"Invalid input: {e}")
+                logger.error(f"YouTube download value error: {e}", exc_info=True)
+            else:
+                self.update_progress.emit("YouTube download cancelled during validation.")
+                
+        except (PermissionError, OSError) as e:
+            if not self.is_canceled():
+                self.error.emit(f"File system error: {e}")
+                logger.error(f"YouTube download file system error: {e}", exc_info=True)
+            else:
+                self.update_progress.emit("YouTube download cancelled during file operation.")
+                
+        except RuntimeError as e:
+            if not self.is_canceled():
+                self.error.emit(f"Processing error: {e}")
+                logger.error(f"YouTube download runtime error: {e}", exc_info=True)
+            else:
+                self.update_progress.emit("YouTube download cancelled during processing.")
+                
         except Exception as e:
             if not self.is_canceled():
-                self.error.emit(f"An error occurred: {e}")
+                from app.secure import redact
+                safe_err = redact(str(e))
+                self.error.emit(f"An unexpected error occurred: {safe_err}")
                 logger.error(f"YouTubeDownloadThread error: {e}", exc_info=True)
             else:
                  self.update_progress.emit("YouTube download cancelled during error.")
         finally:
             # Clean up resources
             try:
-                self.ydl_instance = None # Ensure the instance is cleared
+                # Ensure the instance is cleared
+                self.ydl_instance = None
                 
                 # Clean up any temporary files if they still exist and weren't renamed
                 for temp_file in temp_files:
@@ -169,10 +268,58 @@ class YouTubeDownloadThread(QThread):
                             logger.warning(f"Failed to clean up temporary file: {cleanup_error}")
                 
                 # Also try the cleanup method with our template and info
-                if self.is_canceled() and temp_output_template and info_dict:
+                if temp_output_template:
                     self.cleanup_temp_file(temp_output_template, info_dict)
+                    
+                # Clean any tracked temporary files
+                if hasattr(self, '_temp_files') and self._temp_files:
+                    for temp_file in self._temp_files:
+                        if temp_file and os.path.exists(temp_file):
+                            try:
+                                os.remove(temp_file)
+                                logger.info(f"Cleaned up tracked temporary file: {temp_file}")
+                            except Exception as cleanup_error:
+                                logger.warning(f"Failed to clean up tracked temporary file: {cleanup_error}")
+                    self._temp_files.clear()
             except Exception as cleanup_e:
                 logger.error(f"Error during cleanup in finally block: {cleanup_e}", exc_info=True)
+                
+            # Log completion
+            logger.info("YouTube download thread finished execution.")
+            
+    def _find_downloaded_file(self, template_base, info_dict):
+        """Try to find the downloaded file using various strategies."""
+        # Extract the base part of the template without the extension
+        if template_base:
+            base_dir = os.path.dirname(template_base)
+            base_name = os.path.basename(template_base.rsplit('.', 1)[0])
+            
+            # Look for files with this base name and any extension
+            try:
+                for filename in os.listdir(base_dir):
+                    if filename.startswith(base_name):
+                        full_path = os.path.join(base_dir, filename)
+                        logger.info(f"Found potential download file: {full_path}")
+                        return full_path
+            except Exception as e:
+                logger.error(f"Error while searching for downloaded file: {e}")
+                
+        # If info_dict is available, try to use information from it
+        if info_dict and 'id' in info_dict:
+            video_id = info_dict['id']
+            base_dir = os.path.dirname(template_base) if template_base else get_recordings_dir()
+            
+            try:
+                for filename in os.listdir(base_dir):
+                    # Look for files containing the video ID
+                    if video_id in filename:
+                        full_path = os.path.join(base_dir, filename)
+                        logger.info(f"Found file with video ID: {full_path}")
+                        return full_path
+            except Exception as e:
+                logger.error(f"Error while searching for file with video ID: {e}")
+                
+        return None
 
 
     def ydl_progress_hook(self, d):

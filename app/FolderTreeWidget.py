@@ -191,10 +191,6 @@ class FolderTreeWidget(QWidget):
                 if hasattr(self, 'db_manager') and self.db_manager is not None:
                     folder_manager = FolderManager.instance(db_manager=self.db_manager)
                 else:
-                    # Try to initialize with db_manager if available
-                if hasattr(self, 'db_manager') and self.db_manager is not None:
-                    folder_manager = FolderManager.instance(db_manager=self.db_manager)
-                else:
                     folder_manager = FolderManager.instance()
                 recordings = folder_manager.get_recordings_in_folder(folder_id)
                 return len(recordings) if recordings else 0
@@ -412,10 +408,7 @@ class FolderTreeWidget(QWidget):
         # Confirm deletion
         response = QMessageBox.question(
             self, "Delete Folder",
-            f"Are you sure you want to delete the folder '{folder_name}'?
-
-"
-            "This will remove all recording associations with this folder.",
+            f"Are you sure you want to delete the folder '{folder_name}'?\n\nThis will remove all recording associations with this folder.",
             QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No
         )
         
