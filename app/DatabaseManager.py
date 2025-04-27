@@ -1,4 +1,5 @@
 import os
+import time
 import logging
 import queue
 # ---------------------------------------------------------------------------
@@ -159,6 +160,40 @@ class DatabaseWorker(QThread):
         # Ensure foreign keys are enabled
         self.conn.execute("PRAGMA foreign_keys = ON;")
 
+    def _log_error(self, error_type, error, operation=None, level="error", exc_info=True, emit_signal=True):
+        """
+        Centralized error handling helper to reduce code duplication.
+        
+        Args:
+            error_type: Type of error (for signal and logging)
+            error: The exception or error message
+            operation: Optional operation type for context
+            level: Logging level (debug, info, warning, error, critical)
+            exc_info: Whether to include exception info in log
+            emit_signal: Whether to emit the error_occurred signal
+        """
+        # Format operation context if provided
+        op_context = f" in {operation}" if operation else ""
+        
+        # Get the logging function based on level
+        log_func = getattr(logger, level)
+        
+        # Log the error
+        error_msg = f"{error_type}{op_context}: {error}"
+        log_func(error_msg, exc_info=exc_info)
+        
+        # Emit signal if requested
+        if emit_signal:
+            # For user-facing messages, we may want to redact sensitive info
+            if level in ("error", "critical"):
+                from app.secure import redact
+                safe_msg = redact(str(error))
+                self.error_occurred.emit(operation or error_type, f"{error_type}: {safe_msg}")
+            else:
+                self.error_occurred.emit(operation or error_type, str(error))
+                
+        return error_msg
+        
     def run(self):
         """Process queued operations."""
         try:
@@ -171,8 +206,7 @@ class DatabaseWorker(QThread):
                     self.conn.execute("PRAGMA foreign_keys = ON;")
                     logger.info("Database connection successfully established")
                 except Exception as conn_error:
-                    logger.critical(f"Failed to establish database connection: {conn_error}", exc_info=True)
-                    self.error_occurred.emit("database_connection", f"Failed to connect to database: {conn_error}")
+                    self._log_error("Database connection failure", conn_error, level="critical")
                     return  # Exit thread if we can't establish a connection
             
             while self.running:
@@ -212,14 +246,14 @@ class DatabaseWorker(QThread):
                         try:
                             self.conn.execute("SELECT 1")
                         except Exception as health_error:
-                            logger.warning(f"Database connection issue detected: {health_error}")
+                            self._log_error("Database connection issue", health_error, level="warning")
                             # Try to reconnect
                             try:
                                 self.conn = get_connection()
                                 self.conn.execute("PRAGMA foreign_keys = ON;")
                                 logger.info("Database connection successfully re-established")
                             except Exception as reconnect_error:
-                                logger.error(f"Failed to reconnect to database: {reconnect_error}", exc_info=True)
+                                error_msg = self._log_error("Database reconnection failure", reconnect_error)
                                 raise RuntimeError(f"Database connection lost and reconnection failed: {reconnect_error}")
                         
                         # Determine if operation is a write operation that requires a transaction
@@ -266,7 +300,7 @@ class DatabaseWorker(QThread):
                                         else:
                                             result = cursor.fetchall()
                                 except Exception as sql_error:
-                                    logger.error(f"SQL error in modifying query: {sql_error}", exc_info=True)
+                                    self._log_error("SQL error", sql_error, "modifying query", emit_signal=False)
                                     raise RuntimeError(f"Database error executing query: {sql_error}")
                             else:
                                 # Read-only query with proper error handling
@@ -275,7 +309,7 @@ class DatabaseWorker(QThread):
                                     cursor.execute(query, params)
                                     result = cursor.fetchall()
                                 except Exception as sql_error:
-                                    logger.error(f"SQL error in read query: {sql_error}", exc_info=True)
+                                    self._log_error("SQL error", sql_error, "read query", emit_signal=False)
                                     raise RuntimeError(f"Database error executing query: {sql_error}")
                                 
                         elif op_type == 'create_table':
@@ -284,7 +318,7 @@ class DatabaseWorker(QThread):
                                     create_recordings_table(self.conn)
                                     data_modified = True
                             except Exception as table_error:
-                                logger.error(f"Error creating table: {table_error}", exc_info=True)
+                                self._log_error("Error creating table", table_error, op_type, emit_signal=False)
                                 raise RuntimeError(f"Failed to create database table: {table_error}")
                                 
                         elif op_type == 'create_recording':
@@ -299,17 +333,17 @@ class DatabaseWorker(QThread):
                                     logger.info(f"Recording created with ID: {result}")
                             except DuplicatePathError as dupe_error:
                                 # Special handling for duplicate path errors (don't log as error)
-                                logger.warning(f"Duplicate path detected: {dupe_error}")
+                                self._log_error("Duplicate path", dupe_error, op_type, level="warning")
                                 raise  # Re-raise for special handling in the exception block
                             except Exception as create_error:
-                                logger.error(f"Error creating recording: {create_error}", exc_info=True)
+                                self._log_error("Error creating recording", create_error, op_type, emit_signal=False)
                                 raise RuntimeError(f"Failed to create recording: {create_error}")
                                 
                         elif op_type == 'get_all_recordings':
                             try:
                                 result = get_all_recordings(self.conn)
                             except Exception as get_error:
-                                logger.error(f"Error getting all recordings: {get_error}", exc_info=True)
+                                self._log_error("Error getting recordings", get_error, op_type, emit_signal=False)
                                 raise RuntimeError(f"Failed to retrieve recordings: {get_error}")
                             
                         elif op_type == 'get_recording_by_id':
@@ -320,7 +354,7 @@ class DatabaseWorker(QThread):
                             try:
                                 result = get_recording_by_id(self.conn, op_args[0])
                             except Exception as get_error:
-                                logger.error(f"Error getting recording by ID {op_args[0]}: {get_error}", exc_info=True)
+                                self._log_error(f"Error getting recording by ID {op_args[0]}", get_error, op_type, emit_signal=False)
                                 raise RuntimeError(f"Failed to retrieve recording: {get_error}")
                             
                         elif op_type == 'update_recording':
@@ -334,7 +368,7 @@ class DatabaseWorker(QThread):
                                     data_modified = True
                                     logger.info(f"Recording updated with ID: {op_args[0]}")
                             except Exception as update_error:
-                                logger.error(f"Error updating recording {op_args[0]}: {update_error}", exc_info=True)
+                                self._log_error(f"Error updating recording {op_args[0]}", update_error, op_type, emit_signal=False)
                                 raise RuntimeError(f"Failed to update recording: {update_error}")
                                 
                         elif op_type == 'delete_recording':
@@ -348,7 +382,7 @@ class DatabaseWorker(QThread):
                                     data_modified = True
                                     logger.info(f"Recording deleted with ID: {op_args[0]}")
                             except Exception as delete_error:
-                                logger.error(f"Error deleting recording {op_args[0]}: {delete_error}", exc_info=True)
+                                self._log_error(f"Error deleting recording {op_args[0]}", delete_error, op_type, emit_signal=False)
                                 raise RuntimeError(f"Failed to delete recording: {delete_error}")
                                 
                         elif op_type == 'search_recordings':
@@ -359,7 +393,7 @@ class DatabaseWorker(QThread):
                             try:
                                 result = search_recordings(self.conn, op_args[0])
                             except Exception as search_error:
-                                logger.error(f"Error searching recordings: {search_error}", exc_info=True)
+                                self._log_error("Error searching recordings", search_error, op_type, emit_signal=False)
                                 raise RuntimeError(f"Failed to search recordings: {search_error}")
                         else:
                             logger.warning(f"Unknown operation type: {op_type}")
@@ -380,25 +414,18 @@ class DatabaseWorker(QThread):
                         
                     except DuplicatePathError as e:
                         # Special handling for duplicate path errors
-                        logger.warning(f"Duplicate path error in {op_type}: {e}")
-                        # Emit error but DO NOT set data_modified to prevent phantom refresh
-                        self.error_occurred.emit(op_type, str(e))
+                        self._log_error("Duplicate path error", e, op_type, level="warning")
                         # Explicitly set data_modified to False to be safe
                         data_modified = False
                     except ValueError as e:
                         # Input validation errors
-                        logger.warning(f"Validation error in {op_type}: {e}")
-                        self.error_occurred.emit(op_type, f"Invalid input: {e}")
+                        self._log_error("Validation error", e, op_type, level="warning")
                     except RuntimeError as e:
                         # Operation execution errors
-                        logger.error(f"Runtime error in {op_type}: {e}")
-                        self.error_occurred.emit(op_type, str(e))
+                        self._log_error("Runtime error", e, op_type)
                     except Exception as e:
                         # Catch all other exceptions
-                        logger.error(f"Unexpected database operation error in {op_type}: {e}", exc_info=True)
-                        from app.secure import redact
-                        safe_msg = redact(str(e))
-                        self.error_occurred.emit(op_type, f"Database error: {safe_msg}")
+                        self._log_error("Unexpected database operation error", e, op_type)
                     finally:
                         # Always mark the task as done, regardless of success or failure
                         if operation is not None:
@@ -412,10 +439,7 @@ class DatabaseWorker(QThread):
                     continue
                 except Exception as e:
                     # Error in the outer try block (queue operations)
-                    logger.error(f"Operation queue error: {e}", exc_info=True)
-                    from app.secure import redact
-                    safe_msg = redact(str(e))
-                    self.error_occurred.emit("operation_queue", f"Queue operation error: {safe_msg}")
+                    self._log_error("Operation queue error", e, "operation_queue")
                     
                     # Try to mark the task as done if we have an operation
                     if operation is not None:
@@ -429,10 +453,7 @@ class DatabaseWorker(QThread):
 
         except Exception as e:
             # Error in the outermost try block (worker thread itself)
-            logger.critical(f"Critical database worker error: {e}", exc_info=True)
-            from app.secure import redact
-            safe_msg = redact(str(e))
-            self.error_occurred.emit("worker_thread", f"Database worker error: {safe_msg}")
+            self._log_error("Critical database worker error", e, "worker_thread", level="critical")
         finally:
             # Ensure connection is closed when worker is finished
             try:
@@ -440,10 +461,7 @@ class DatabaseWorker(QThread):
                     self.conn.close()
                     logger.info("Database worker connection closed")
             except Exception as e:
-                logger.error(f"Error closing database connection: {e}", exc_info=True)
-                from app.secure import redact
-                safe_msg = redact(str(e))
-                self.error_occurred.emit("connection_close", f"Error closing database connection: {safe_msg}")
+                self._log_error("Error closing database connection", e, "connection_close")
             
             logger.info("Database worker thread finished execution")
 
