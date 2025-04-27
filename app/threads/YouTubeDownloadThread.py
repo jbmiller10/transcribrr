@@ -2,6 +2,7 @@ import yt_dlp
 from PyQt6.QtCore import QThread, pyqtSignal
 from datetime import datetime
 import os
+import requests
 from app.constants import get_recordings_dir
 import logging # Use logging
 from threading import Lock
