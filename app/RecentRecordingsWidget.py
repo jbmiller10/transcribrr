@@ -324,7 +324,7 @@ class RecentRecordingsWidget(ResponsiveWidget):
         logger.info(f"Updating recording status for ID {recording_id}")
         
         # Find the recording widget in our map
-        widget = self.unified_view.recordings_map.get(recording_id)
+        widget = self.unified_view.id_to_widget.get(recording_id)
         if not widget:
             logger.error(f"Cannot update status: RecordingListItem widget not found for ID {recording_id}")
             return
@@ -343,7 +343,7 @@ class RecentRecordingsWidget(ResponsiveWidget):
          logger.info(f"Handling rename for ID {recording_id} to '{new_name_no_ext}'")
 
          # Construct new full filename (keep original extension)
-         widget = self.unified_view.recordings_map.get(recording_id)
+         widget = self.unified_view.id_to_widget.get(recording_id)
          if not widget:
               logger.error(f"Cannot rename: RecordingListItem widget not found for ID {recording_id}")
               return
