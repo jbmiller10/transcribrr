@@ -1,7 +1,6 @@
 import os
 import logging
 import queue
-import sqlite3
 # ---------------------------------------------------------------------------
 # Optional PyQt6 Dependency Handling
 # ---------------------------------------------------------------------------

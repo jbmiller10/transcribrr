@@ -3,8 +3,6 @@ from pydub import AudioSegment
 import os
 from app.constants import get_recordings_dir
 from moviepy.editor import VideoFileClip
-import traceback
-import math
 import logging
 from threading import Lock
 from app.utils import is_video_file, is_audio_file
@@ -85,7 +83,7 @@ class TranscodingThread(QThread):
         if os.path.exists(target_file_path):
             os.remove(source_path)
             
-        self.update_progress.emit(f'Audio transcoding completed successfully.')
+        self.update_progress.emit('Audio transcoding completed successfully.')
         self.completed.emit(target_file_path)
 
     def extract_audio_from_video(self, video_path, target_dir):

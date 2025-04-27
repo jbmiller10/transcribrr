@@ -64,7 +64,7 @@ class TestSpinnerFunctionality(unittest.TestCase):
     @patch('app.ui_utils.QPushButton')
     def test_feedback_manager(self, mock_button, mock_label, mock_action, mock_widget_action, mock_movie):
         """Test FeedbackManager integration with SpinnerManager."""
-        from app.ui_utils import SpinnerManager, FeedbackManager
+        from app.ui_utils import FeedbackManager
 
         # Set up mocks
         mock_parent = MagicMock()

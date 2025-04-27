@@ -1,15 +1,12 @@
-import json
 import os
-import traceback
-import keyring
 import torch
 import logging
 from PyQt6.QtWidgets import (
-    QWidget, QVBoxLayout, QMessageBox, QComboBox, QHBoxLayout, QLabel,
-    QSizePolicy, QTextEdit, QDoubleSpinBox, QSpinBox, QSplitter, QPushButton,
-    QLineEdit, QFileDialog, QInputDialog, QColorDialog
+    QWidget, QVBoxLayout, QComboBox, QHBoxLayout, QLabel,
+    QTextEdit, QSplitter, QPushButton,
+    QLineEdit, QInputDialog
 )
-from PyQt6.QtGui import QIcon, QFont, QTextCharFormat, QTextListFormat, QFontDatabase
+from PyQt6.QtGui import QIcon
 from PyQt6.QtCore import pyqtSignal, QSize, Qt, QTimer
 
 from app.TextEditor import TextEditor
@@ -20,14 +17,13 @@ from app.ToggleSwitch import ToggleSwitch
 from app.DatabaseManager import DatabaseManager
 from app.ResponsiveUI import ResponsiveWidget, ResponsiveSizePolicy
 from app.ui_utils import SpinnerManager, FeedbackManager, show_error_message, show_info_message, show_confirmation_dialog
-from app.file_utils import calculate_duration, is_valid_media_file, check_file_size
-from app.path_utils import resource_path
+from app.file_utils import is_valid_media_file, check_file_size
 from app.path_utils import resource_path
 from app.utils import ConfigManager, PromptManager
 from app.ThreadManager import ThreadManager
 from app.constants import (
-     ERROR_INVALID_FILE, ERROR_FILE_TOO_LARGE, ERROR_API_KEY_MISSING,
-    SUCCESS_TRANSCRIPTION, SUCCESS_GPT_PROCESSING, SUCCESS_SAVE
+     ERROR_INVALID_FILE, ERROR_API_KEY_MISSING,
+    SUCCESS_TRANSCRIPTION, SUCCESS_GPT_PROCESSING
 )
 
 logger = logging.getLogger('transcribrr')

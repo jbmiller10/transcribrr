@@ -5,14 +5,12 @@ with clear error messages in the status bar.
 """
 
 import sys
-import time
 import logging
 from PyQt6.QtWidgets import QApplication, QWidget, QVBoxLayout, QPushButton, QLabel
 from PyQt6.QtCore import Qt, QTimer
 
 from app.DatabaseManager import DatabaseManager
 from app.FolderManager import FolderManager
-from app.MainWindow import MainWindow
 
 # Set up logging
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')

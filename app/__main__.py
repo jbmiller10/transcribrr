@@ -1,20 +1,19 @@
 import sys
 import os
 import logging
-import json
 import traceback
 import warnings
-from typing import Tuple, Dict, Any, List, Optional
+from typing import Tuple, Dict, Any, List
 
 # Filter urllib3 LibreSSL warning
 warnings.filterwarnings("ignore", message="urllib3 v2 only supports OpenSSL 1.1.1+, currently the 'ssl' module is compiled with")
 
 from PyQt6.QtWidgets import (
-    QApplication, QMainWindow, QMessageBox, QSplashScreen, QVBoxLayout,
-    QLabel, QProgressBar, QWidget, QStyleFactory
+    QApplication, QMessageBox, QSplashScreen, QVBoxLayout,
+    QLabel, QProgressBar, QWidget
 )
-from PyQt6.QtGui import QPixmap, QFont, QIcon, QColor
-from PyQt6.QtCore import Qt, QTimer, QSize, QThread, pyqtSignal, pyqtSlot, QRect
+from PyQt6.QtGui import QPixmap, QIcon
+from PyQt6.QtCore import Qt, QTimer, QThread, pyqtSignal, pyqtSlot, QRect
 from PyQt6.QtSvg import QSvgRenderer
 from .MainWindow import MainWindow
 from .path_utils import resource_path
@@ -25,7 +24,7 @@ from .services.transcription_service import ModelManager
 from .ThreadManager import ThreadManager
 
 # Import constants for paths
-from .constants import LOG_FORMAT, APP_NAME, get_user_data_dir, get_recordings_dir, get_database_dir, get_log_dir, get_log_file
+from .constants import LOG_FORMAT, APP_NAME, get_user_data_dir, get_log_file
 
 # Configure logging - now all paths come from constants
 # Root logging may have been configured by app.utils already (imported by
@@ -47,7 +46,7 @@ from app.secure import SensitiveLogFilter
 root_logger = logging.getLogger()
 root_logger.addFilter(SensitiveLogFilter())
 logger = logging.getLogger(APP_NAME)
-logger.info(f"Secure logging filter initialized")
+logger.info("Secure logging filter initialized")
 
 # Now get the application‑level logger
 logger = logging.getLogger(APP_NAME)
@@ -412,7 +411,7 @@ def on_initialization_done(results: Dict[str, Any], main_window: MainWindow, spl
         responsive_manager.update_size(main_window.width(), main_window.height())
 
     # Log system information
-    logger.info(f"Application started")
+    logger.info("Application started")
     logger.info(f"Python version: {sys.version}")
     logger.info(f"CUDA available: {results['cuda'][0]}")
     if results['cuda'][1]:
@@ -443,7 +442,7 @@ def on_initialization_error(error_message, main_window, splash):
 
 def copy_initial_data_files():
     """Copy default configuration and preset files to user data directory on first run"""
-    from .constants import RESOURCE_DIR, get_user_data_dir, get_config_path, get_prompts_path
+    from .constants import get_config_path, get_prompts_path
     from .path_utils import resource_path
     import shutil
     

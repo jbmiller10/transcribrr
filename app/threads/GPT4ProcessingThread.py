@@ -1,10 +1,8 @@
 from PyQt6.QtCore import QThread, pyqtSignal
 import requests
-import traceback
 import json
-import time
 from threading import Lock # Import Lock
-from typing import List, Dict, Any, Optional, Union
+from typing import List, Dict, Optional
 import logging # Use logging
 
 logger = logging.getLogger('transcribrr')

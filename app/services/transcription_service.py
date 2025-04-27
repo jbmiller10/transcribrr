@@ -7,12 +7,9 @@ from __future__ import annotations
 # ───────────────────────── imports ──────────────────────────
 import gc
 import logging
-import os
 import warnings
 from typing import Any, Dict, Optional
 
-import numpy as np
-import requests
 import torch
 from openai import OpenAI
 from transformers import (

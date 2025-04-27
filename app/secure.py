@@ -1,6 +1,6 @@
 import re
 import logging
-from typing import Dict, Optional, Any, Union
+from typing import Dict, Optional
 
 # Configure logger
 logger = logging.getLogger('transcribrr')

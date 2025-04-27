@@ -14,9 +14,7 @@ from app.ControlPanelWidget import ControlPanelWidget
 from app.DatabaseManager import DatabaseManager
 from app.FolderManager import FolderManager
 from app.RecentRecordingsWidget import RecentRecordingsWidget
-from app.path_utils import resource_path
 from app.file_utils import calculate_duration
-from app.ui_utils import show_status_message
 from app.constants import APP_NAME
 
  
@@ -168,7 +166,7 @@ Args:
                 )
                 
                 # Select the newly added recording automatically
-                widget = self.recent_recordings_widget.unified_view.recordings_map.get(recording_id)
+                widget = self.recent_recordings_widget.unified_view.id_to_widget.get(recording_id)                
                 if widget:
                     for i in range(self.recent_recordings_widget.unified_view.topLevelItemCount()):
                         parent_item = self.recent_recordings_widget.unified_view.topLevelItem(i)

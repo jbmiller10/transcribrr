@@ -1,7 +1,7 @@
 """Application constants."""
 
 import os
-from typing import Dict, List, Set
+from typing import Dict, Set
 from enum import Enum, auto
 from .path_utils import resource_path
 

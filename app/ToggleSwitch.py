@@ -1,4 +1,4 @@
-from PyQt6.QtWidgets import QApplication, QMainWindow, QSlider, QVBoxLayout, QWidget
+from PyQt6.QtWidgets import QSlider
 from PyQt6.QtCore import Qt
 
 class ToggleSwitch(QSlider):

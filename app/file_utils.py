@@ -5,7 +5,7 @@ import shutil
 import tempfile
 from datetime import datetime
 import logging
-from typing import Optional, Tuple, List, Union
+from typing import Optional, Tuple, List
 from moviepy.editor import VideoFileClip, AudioFileClip
 import wave
 from pydub import AudioSegment
@@ -13,7 +13,7 @@ import datetime
 
 from app.constants import (
     AUDIO_EXTENSIONS, VIDEO_EXTENSIONS, DOCUMENT_EXTENSIONS,
-    FileType, FILE_TYPES, MAX_FILE_SIZE_MB, get_recordings_dir
+    FileType, MAX_FILE_SIZE_MB, get_recordings_dir
 )
 
 # Configure logging

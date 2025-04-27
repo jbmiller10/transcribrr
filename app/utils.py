@@ -7,15 +7,13 @@ import subprocess
 import torch
 import shutil
 import json
-from typing import Dict, Any, Optional, List, Union, Tuple
-from PyQt6.QtWidgets import QMessageBox
+from typing import Dict, Any, Optional, Union, Tuple
 from PyQt6.QtCore import QObject, pyqtSignal
 import datetime
 
 # Assuming constants.py is in the same directory or accessible via path
 from .constants import (
     APP_NAME,
-    APP_VERSION,
     DEFAULT_CONFIG,
     DEFAULT_PROMPTS,
     AUDIO_EXTENSIONS,
@@ -241,8 +239,8 @@ def check_system_requirements():
         "issues": []
     }
 
-    if sys.version_info < (3, 10):
-        results["issues"].append("Python 3.10+ is recommended for optimal performance and compatibility.")
+    if sys.version_info < (3, 11):
+        results["issues"].append("Python 3.11+ is recommended for optimal performance and compatibility.")
 
     if results["cuda_available"]:
         try:

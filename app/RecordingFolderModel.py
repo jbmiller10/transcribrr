@@ -1,8 +1,7 @@
 import logging
 from datetime import datetime, timedelta
-from PyQt6.QtCore import Qt, QModelIndex, QSortFilterProxyModel
-from PyQt6.QtGui import QStandardItemModel, QStandardItem, QIcon, QColor
-from PyQt6.QtWidgets import QTreeView
+from PyQt6.QtCore import Qt, QSortFilterProxyModel
+from PyQt6.QtGui import QStandardItemModel, QStandardItem
 
 logger = logging.getLogger('transcribrr')
 
@@ -199,7 +198,7 @@ class RecordingFilterProxyModel(QSortFilterProxyModel):
             if self.filter_text:
                 # Get full text (filename + transcript) for searching
                 full_text = (source_item.data(RecordingFolderModel.FULL_TRANSCRIPT_ROLE) or "").lower()
-                if not self.filter_text in full_text:
+                if self.filter_text not in full_text:
                     return False  # Text doesn't match
                     
             # Then check criteria match

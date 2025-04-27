@@ -1,5 +1,5 @@
 import datetime
-from PyQt6.QtWidgets import QWidget, QVBoxLayout, QLabel, QLineEdit, QHBoxLayout, QProgressBar, QSizePolicy
+from PyQt6.QtWidgets import QWidget, QVBoxLayout, QLabel, QLineEdit, QHBoxLayout, QSizePolicy
 from PyQt6.QtCore import Qt, pyqtSignal, QSize
 from PyQt6.QtGui import QIcon, QFont, QColor
 import os
@@ -74,7 +74,7 @@ class StatusIndicator(QWidget):
         self.update()
 
     def paintEvent(self, event):
-        from PyQt6.QtGui import QPainter, QPen, QBrush # Local import fine here
+        from PyQt6.QtGui import QPainter, QBrush # Local import fine here
 
         painter = QPainter(self)
         painter.setRenderHint(QPainter.RenderHint.Antialiasing)
@@ -314,7 +314,7 @@ class RecordingListItem(QWidget):
         if not new_name_no_ext:
             # Restore original name if edited to empty
             self.name_editable.setText(self.filename_no_ext)
-            logger.warning(f"Recording rename cancelled: Name cannot be empty.")
+            logger.warning("Recording rename cancelled: Name cannot be empty.")
             return
 
         # Check if the name actually changed
@@ -350,7 +350,6 @@ class RecordingListItem(QWidget):
             return
             
         # Get FolderManager instance safely
-        from app.FolderManager import FolderManager
         try:
             # Try to initialize with db_manager if available
             if hasattr(self, 'db_manager') and self.db_manager is not None:

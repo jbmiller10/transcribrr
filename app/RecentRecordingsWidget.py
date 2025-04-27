@@ -1,28 +1,20 @@
-import traceback
 import datetime
 import os
 import logging
 from PyQt6.QtCore import (
-    pyqtSignal, QSize, Qt, QPropertyAnimation, QEasingCurve, QSortFilterProxyModel, QTimer,
-    QThread, QUrl, QMimeData, QPoint
+    pyqtSignal, QSize, Qt, QTimer,
+    QThread
 )
 from PyQt6.QtWidgets import (
-    QDialog, QVBoxLayout, QMessageBox, QWidget, QLabel, QListWidget, QMenu, QListWidgetItem,
-    QHBoxLayout, QPushButton, QLineEdit, QComboBox, QInputDialog, QApplication, QSplitter,
-    QFrame, QProgressDialog, QFileDialog, QToolButton, QToolBar, QStatusBar, QSizePolicy,
-    QTreeWidget, QTreeWidgetItem, QAbstractItemView
+    QVBoxLayout, QWidget, QLabel, QHBoxLayout, QLineEdit, QComboBox, QProgressDialog, QFileDialog, QToolBar, QStatusBar
 )
-from PyQt6.QtGui import QIcon, QFont, QColor, QDesktopServices, QAction, QDrag
+from PyQt6.QtGui import QIcon, QFont, QAction
 from app.RecordingListItem import RecordingListItem
 from app.path_utils import resource_path
-from app.path_utils import resource_path
-from app.utils import create_backup, format_time_duration, PromptManager # Added PromptManager
 # Use ui_utils for messages
 from app.ui_utils import show_error_message, show_info_message, show_confirmation_dialog
 from app.DatabaseManager import DatabaseManager
 from app.ResponsiveUI import ResponsiveWidget, ResponsiveSizePolicy
-from app.FolderManager import FolderManager
-from app.file_utils import calculate_duration
 from app.UnifiedFolderTreeView import UnifiedFolderTreeView
 
 # Configure logging

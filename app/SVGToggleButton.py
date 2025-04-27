@@ -1,7 +1,7 @@
 from PyQt6.QtWidgets import QPushButton
 from PyQt6.QtGui import QPainter, QPixmap
 from PyQt6.QtSvg import QSvgRenderer
-from PyQt6.QtCore import QSize, Qt, QRectF
+from PyQt6.QtCore import Qt, QRectF
 
 class SVGToggleButton(QPushButton):
     def __init__(self, svg_files, parent=None):
