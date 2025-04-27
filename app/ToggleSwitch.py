@@ -1,6 +1,7 @@
 from PyQt6.QtWidgets import QSlider
 from PyQt6.QtCore import Qt
 
+
 class ToggleSwitch(QSlider):
     def __init__(self, parent=None):
         super().__init__(Qt.Orientation.Horizontal, parent)
@@ -8,7 +9,8 @@ class ToggleSwitch(QSlider):
         self.setMinimum(0)
         self.setMaximum(1)
         self.setValue(0)
-        self.setStyleSheet("""
+        self.setStyleSheet(
+            """
             QSlider::groove:horizontal {
                 border: 1px solid #999999;
                 height: 20px;
@@ -30,7 +32,8 @@ class ToggleSwitch(QSlider):
             QSlider::sub-page:horizontal {
                 border-radius: 10px;
             }
-        """)
+        """
+        )
         self.setTickPosition(QSlider.TickPosition.NoTicks)
 
     def mousePressEvent(self, event):
