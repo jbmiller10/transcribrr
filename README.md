@@ -4,9 +4,9 @@
   <img src="https://github.com/user-attachments/assets/b8336779-a554-424b-97ff-53e617bf7823" alt="Transcribrr Screenshot" width="75%">
 </p>
 
-This is Transcribrr, a desktop tool I've been building for myself to turn audio into text and then clean it up using OpenAI's GPT models. It handles local audio/video files, YouTube links, and direct recordings from the microphone. I mostly use it for braindump-style brainstorming that I then have an LLM structure/organize so I'm able to refer back to it later.
+This is Transcribrr, a desktop tool I've been building for myself to turn audio into text and then clean it up using OpenAI's GPT models. It handles local audio/video files, YouTube links, and direct recordings from the microphone. I mostly use it for braindump-style brainstorming that I then have an LLM structure/organize so I'm able to refer back to it later. 
 
-It's primarily a **personal project** that I tinker with in my free time. If you happen to find it useful too, that's awesome! Just keep in mind it's developed by one person and might have rough edges.
+It's primarily a **personal project** that I tinker with in my free time. If you happen to find it useful too, that's awesome! Just keep in mind it's developed by one person and might have rough edges. It is provided as-is.
 
 ## What it Can Do
 
