@@ -18,34 +18,6 @@ It's primarily a **personal project** that I tinker with in my free time. If you
 
 ## Getting Started
 
-**1. Installation (The Easy Way)**
-
-The best way to try it out is using the pre-built installers. Grab the latest release from the [GitHub Releases](https://github.com/jbmiller10/transcribrr/releases) page:
-
-*   **Windows:**
-    *   `Transcribrr-windows-cpu-setup.exe` (CPU-only version)
-    *   `Transcribrr-windows-cuda-setup.exe` (Needs an NVIDIA GPU for *much* faster local transcription. Bundled with CUDA Toolkit.)
-*   **macOS:**
-    *   `Transcribrr-macOS-*.dmg` (Download the DMG file)
-
-**Important:** You'll likely still need **FFmpeg** installed on your system separately, as the app uses it for audio processing. You can usually get it from [ffmpeg.org/download.html](https://ffmpeg.org/download.html).
-
-**2. API Key (Important!)**
-
-To use the GPT processing features or the OpenAI Whisper API for transcription (if you opt to use the API for transcription rather than a local model,) you *need* an OpenAI API key.
-*   Go to **Settings** within the app.
-*   Enter your key in the "API Keys" tab. It's stored securely in your system's keychain/credential manager.
-*   You can optionally add a HuggingFace token if you want to use speaker detection with local transcription.
-
-**3. Using the App**
-
-*   Choose your input method: File Upload, YouTube URL, or Direct Recording.
-*   Once you have audio loaded (or recorded), hit "Start Transcription".
-*   After transcription, you can use the "Process with GPT-4" button (or the other AI tools in the editor toolbar) to refine the text using the selected prompt.
-*   Your recordings/transcripts show up in the left panel. Click one to load it into the editor.
-*   Use the editor to make manual changes, format text, and save your progress.
-
-## Manual Installation (If You Prefer)
 
 If you want to run it from source:
 
