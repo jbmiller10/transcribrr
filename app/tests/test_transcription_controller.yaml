@@ -1,0 +1,403 @@
+target_file: "app/controllers/transcription_controller.py"
+test_file: "app/tests/test_transcription_controller.py"
+dependencies_to_mock:
+  - "app.models.recording.Recording"
+  - "app.models.view_mode.ViewMode"
+  - "app.threads.TranscriptionThread.TranscriptionThread"
+  - "app.ThreadManager.ThreadManager"
+  - "app.secure.get_api_key"
+  - "os.path.exists"
+  - "os.path.getsize"
+  - "logging.getLogger"
+  - "PyQt6.QtCore.QObject"
+  - "PyQt6.QtCore.pyqtSignal"
+
+test_cases:
+  # Constructor Tests
+  - function_to_test: "TranscriptionController.__init__"
+    description: "Test successful initialization with db_manager"
+    scenario: "Initialize controller with valid db_manager and parent"
+    mocks:
+      - target: "QObject.__init__"
+        return_value: "None"
+    expected_behavior:
+      - "Controller initializes with db_manager attribute set"
+      - "transcription_thread is initialized to None"
+      - "Parent is passed to QObject constructor"
+
+  # Start Method - Happy Path
+  - function_to_test: "TranscriptionController.start"
+    description: "Test successful transcription start with local method"
+    scenario: "Valid recording with local transcription, all validations pass"
+    mocks:
+      - target: "os.path.exists"
+        return_value: "True"
+      - target: "os.path.getsize"
+        return_value: "10485760"  # 10MB file
+      - target: "get_api_key"
+        return_value: "None"
+      - target: "TranscriptionThread"
+        return_value: "mock_thread_instance"
+      - target: "ThreadManager.instance"
+        return_value: "mock_thread_manager"
+    expected_behavior:
+      - "Returns True indicating success"
+      - "status_update signal emitted with 'Starting transcription...'"
+      - "transcription_process_started signal emitted"
+      - "TranscriptionThread created with correct arguments"
+      - "Thread signals connected to controller methods"
+      - "Thread registered with ThreadManager"
+      - "Thread start() method called"
+
+  - function_to_test: "TranscriptionController.start"
+    description: "Test successful transcription start with API method"
+    scenario: "Valid recording with API transcription method and OpenAI key available"
+    mocks:
+      - target: "os.path.exists"
+        return_value: "True"
+      - target: "os.path.getsize"
+        return_value: "10485760"
+      - target: "get_api_key"
+        side_effect: "returns 'sk-test-key' for OPENAI_API_KEY"
+      - target: "TranscriptionThread"
+        return_value: "mock_thread_instance"
+      - target: "ThreadManager.instance"
+        return_value: "mock_thread_manager"
+    expected_behavior:
+      - "Returns True"
+      - "TranscriptionThread created with openai_api_key parameter"
+      - "Thread started successfully"
+
+  - function_to_test: "TranscriptionController.start"
+    description: "Test transcription with speaker detection enabled"
+    scenario: "Valid recording with speaker detection requiring HF key"
+    mocks:
+      - target: "os.path.exists"
+        return_value: "True"
+      - target: "os.path.getsize"
+        return_value: "10485760"
+      - target: "get_api_key"
+        side_effect: "returns 'hf_test_key' for HF_API_KEY"
+      - target: "TranscriptionThread"
+        return_value: "mock_thread_instance"
+      - target: "ThreadManager.instance"
+        return_value: "mock_thread_manager"
+    expected_behavior:
+      - "Returns True"
+      - "TranscriptionThread created with hf_auth_key parameter"
+      - "speaker_detection_enabled set to True in thread args"
+
+  # Start Method - Error Cases
+  - function_to_test: "TranscriptionController.start"
+    description: "Test start fails with null recording"
+    scenario: "Null recording object passed to start method"
+    mocks: []
+    expected_behavior:
+      - "Returns False immediately"
+      - "No signals emitted"
+      - "No thread created"
+
+  - function_to_test: "TranscriptionController.start"
+    description: "Test start fails with missing file"
+    scenario: "Recording has file_path that doesn't exist on filesystem"
+    mocks:
+      - target: "os.path.exists"
+        return_value: "False"
+      - target: "logger.error"
+        return_value: "None"
+    expected_behavior:
+      - "Returns False"
+      - "Error logged with 'File not found' message"
+      - "No thread created"
+
+  - function_to_test: "TranscriptionController.start"
+    description: "Test start fails with oversized file"
+    scenario: "Recording file exceeds 300MB size limit"
+    mocks:
+      - target: "os.path.exists"
+        return_value: "True"
+      - target: "os.path.getsize"
+        return_value: "314572800"  # 300MB + 1 byte
+      - target: "logger.error"
+        return_value: "None"
+    expected_behavior:
+      - "Returns False"
+      - "Error logged with 'File too large' message"
+      - "No thread created"
+
+  - function_to_test: "TranscriptionController.start"
+    description: "Test start fails with missing OpenAI API key for API method"
+    scenario: "API transcription method selected but no OpenAI key available"
+    mocks:
+      - target: "os.path.exists"
+        return_value: "True"
+      - target: "os.path.getsize"
+        return_value: "10485760"
+      - target: "get_api_key"
+        side_effect: "returns None for OPENAI_API_KEY"
+      - target: "logger.error"
+        return_value: "None"
+    expected_behavior:
+      - "Returns False"
+      - "Error logged with 'OpenAI API key missing' message"
+      - "No thread created"
+
+  - function_to_test: "TranscriptionController.start"
+    description: "Test start fails with missing HF key for speaker detection"
+    scenario: "Speaker detection enabled but no HF API key available"
+    mocks:
+      - target: "os.path.exists"
+        return_value: "True"
+      - target: "os.path.getsize"
+        return_value: "10485760"
+      - target: "get_api_key"
+        side_effect: "returns None for HF_API_KEY"
+      - target: "logger.error"
+        return_value: "None"
+    expected_behavior:
+      - "Returns False"
+      - "Error logged with 'Hugging Face API key missing' message"
+      - "No thread created"
+
+  # Validate Inputs Method Tests
+  - function_to_test: "TranscriptionController._validate_inputs"
+    description: "Test validation passes with valid recording"
+    scenario: "Recording with valid file path and acceptable size"
+    mocks:
+      - target: "os.path.exists"
+        return_value: "True"
+      - target: "os.path.getsize"
+        return_value: "52428800"  # 50MB
+    expected_behavior:
+      - "Returns True"
+      - "No errors logged"
+
+  - function_to_test: "TranscriptionController._validate_inputs"
+    description: "Test validation fails with None recording"
+    scenario: "None passed as recording parameter"
+    mocks: []
+    expected_behavior:
+      - "Returns False immediately"
+      - "No file system checks performed"
+
+  - function_to_test: "TranscriptionController._validate_inputs"
+    description: "Test validation fails with empty file path"
+    scenario: "Recording has empty string as file_path"
+    mocks: []
+    expected_behavior:
+      - "Returns False"
+      - "Error logged about missing file"
+
+  - function_to_test: "TranscriptionController._validate_inputs"
+    description: "Test validation fails at size boundary"
+    scenario: "File is exactly 300MB (boundary test)"
+    mocks:
+      - target: "os.path.exists"
+        return_value: "True"
+      - target: "os.path.getsize"
+        return_value: "314572800"  # Exactly 300MB
+    expected_behavior:
+      - "Returns True (300MB is still valid)"
+
+  # Build Thread Args Method Tests
+  - function_to_test: "TranscriptionController._build_thread_args"
+    description: "Test building args for local transcription"
+    scenario: "Config specifies local method with default settings"
+    mocks:
+      - target: "get_api_key"
+        return_value: "None"
+    expected_behavior:
+      - "Returns dictionary with correct structure"
+      - "transcription_method set to 'local'"
+      - "openai_api_key is None"
+      - "hf_auth_key is None"
+      - "hardware_acceleration_enabled from config"
+      - "language set from config or default 'english'"
+
+  - function_to_test: "TranscriptionController._build_thread_args"
+    description: "Test building args with all features enabled"
+    scenario: "API method with speaker detection, all keys available"
+    mocks:
+      - target: "get_api_key"
+        side_effect: "returns appropriate keys for each call"
+    expected_behavior:
+      - "Returns complete dictionary"
+      - "Both openai_api_key and hf_auth_key populated"
+      - "All config values correctly mapped"
+
+  - function_to_test: "TranscriptionController._build_thread_args"
+    description: "Test returns None when required API key missing"
+    scenario: "API method selected but OpenAI key unavailable"
+    mocks:
+      - target: "get_api_key"
+        return_value: "None"
+      - target: "logger.error"
+        return_value: "None"
+    expected_behavior:
+      - "Returns None"
+      - "Error logged about missing API key"
+
+  # Progress Handler Tests
+  - function_to_test: "TranscriptionController._on_transcription_progress"
+    description: "Test progress message forwarding"
+    scenario: "Progress update received from transcription thread"
+    mocks: []
+    expected_behavior:
+      - "status_update signal emitted with the message"
+      - "Message passed through unchanged"
+
+  # Completion Handler Tests
+  - function_to_test: "TranscriptionController._on_transcription_completed"
+    description: "Test handling formatted transcript with speaker labels"
+    scenario: "Transcript starts with SPEAKER_ and contains colon in first 20 chars"
+    mocks:
+      - target: "db_manager.update_recording"
+        return_value: "None"
+    expected_behavior:
+      - "status_update emitted with 'Transcription complete. Saving...'"
+      - "Transcript wrapped in <pre> tags for formatted field"
+      - "Both raw_transcript and raw_transcript_formatted updated in DB"
+      - "recording_status_updated signal emitted after DB update"
+      - "transcription_process_completed signal emitted"
+
+  - function_to_test: "TranscriptionController._on_transcription_completed"
+    description: "Test handling plain transcript without speaker labels"
+    scenario: "Transcript is plain text without SPEAKER_ prefix"
+    mocks:
+      - target: "db_manager.update_recording"
+        return_value: "None"
+    expected_behavior:
+      - "Raw transcript saved to raw_transcript field"
+      - "raw_transcript_formatted set to None"
+      - "Signals emitted correctly"
+
+  - function_to_test: "TranscriptionController._on_transcription_completed"
+    description: "Test completion with null recording"
+    scenario: "Recording is None when completion handler called"
+    mocks: []
+    expected_behavior:
+      - "Method returns immediately"
+      - "No database updates attempted"
+      - "No signals emitted"
+
+  - function_to_test: "TranscriptionController._on_transcription_completed"
+    description: "Test DB update callback execution"
+    scenario: "Database update completes and triggers callback"
+    mocks:
+      - target: "db_manager.update_recording"
+        side_effect: "calls provided callback immediately"
+    expected_behavior:
+      - "SUCCESS_TRANSCRIPTION message emitted to status_update"
+      - "transcription_process_completed signal emitted with transcript"
+      - "recording_status_updated signal emitted with correct data"
+
+  # Error Handler Tests
+  - function_to_test: "TranscriptionController._on_transcription_error"
+    description: "Test error message handling"
+    scenario: "Transcription thread reports an error"
+    mocks: []
+    expected_behavior:
+      - "status_update signal emitted with 'Transcription failed:' prefix"
+      - "Error message included in status update"
+
+  # Finished Handler Tests
+  - function_to_test: "TranscriptionController._on_transcription_finished"
+    description: "Test cleanup when transcription finishes"
+    scenario: "Thread finishes execution (success or failure)"
+    mocks:
+      - target: "logger.info"
+        return_value: "None"
+    expected_behavior:
+      - "transcription_thread attribute set to None"
+      - "Info logged about thread finishing"
+      - "status_update signal emitted with 'Ready'"
+
+  # Cancel Method Tests
+  - function_to_test: "TranscriptionController.cancel"
+    description: "Test canceling running transcription"
+    scenario: "Transcription thread is running and needs to be stopped"
+    mocks:
+      - target: "transcription_thread.isRunning"
+        return_value: "True"
+      - target: "transcription_thread.cancel"
+        return_value: "None"
+      - target: "logger.info"
+        return_value: "None"
+    expected_behavior:
+      - "Thread's cancel method called"
+      - "Info logged about cancellation"
+      - "status_update signal emitted with 'Canceling transcription...'"
+
+  - function_to_test: "TranscriptionController.cancel"
+    description: "Test cancel with no running thread"
+    scenario: "Cancel called when transcription_thread is None"
+    mocks: []
+    expected_behavior:
+      - "Method completes without error"
+      - "No signals emitted"
+      - "No logging performed"
+
+  - function_to_test: "TranscriptionController.cancel"
+    description: "Test cancel with stopped thread"
+    scenario: "Thread exists but isRunning returns False"
+    mocks:
+      - target: "transcription_thread.isRunning"
+        return_value: "False"
+    expected_behavior:
+      - "Thread's cancel method not called"
+      - "No status update emitted"
+
+  # Edge Cases and Integration Tests
+  - function_to_test: "TranscriptionController.start"
+    description: "Test with custom language setting"
+    scenario: "Config specifies non-default language like 'spanish'"
+    mocks:
+      - target: "os.path.exists"
+        return_value: "True"
+      - target: "os.path.getsize"
+        return_value: "10485760"
+      - target: "TranscriptionThread"
+        return_value: "mock_thread_instance"
+      - target: "ThreadManager.instance"
+        return_value: "mock_thread_manager"
+    expected_behavior:
+      - "Thread args include correct language setting"
+      - "Language parameter passed to TranscriptionThread"
+
+  - function_to_test: "TranscriptionController.start"
+    description: "Test with hardware acceleration disabled"
+    scenario: "Config explicitly disables hardware acceleration"
+    mocks:
+      - target: "os.path.exists"
+        return_value: "True"
+      - target: "os.path.getsize"
+        return_value: "10485760"
+      - target: "TranscriptionThread"
+        return_value: "mock_thread_instance"
+      - target: "ThreadManager.instance"
+        return_value: "mock_thread_manager"
+    expected_behavior:
+      - "hardware_acceleration_enabled set to False in thread args"
+      - "Thread created with correct acceleration setting"
+
+  - function_to_test: "TranscriptionController._on_transcription_completed"
+    description: "Test transcript edge case with SPEAKER_ but no colon"
+    scenario: "Transcript starts with SPEAKER_ but lacks colon in first 20 chars"
+    mocks:
+      - target: "db_manager.update_recording"
+        return_value: "None"
+    expected_behavior:
+      - "Treated as unformatted transcript"
+      - "raw_transcript_formatted set to None"
+      - "Raw text saved without <pre> tags"
+
+  - function_to_test: "TranscriptionController._on_transcription_completed"
+    description: "Test with whitespace-only transcript"
+    scenario: "Transcript contains only whitespace characters"
+    mocks:
+      - target: "db_manager.update_recording"
+        return_value: "None"
+    expected_behavior:
+      - "Treated as unformatted transcript"
+      - "Whitespace saved as-is to raw_transcript"
+      - "Signals still emitted normally"

@@ -1,0 +1,942 @@
+target_file: "app/DatabaseManager.py"
+test_file: "app/tests/test_database_manager.py"
+dependencies_to_mock:
+  - "PyQt6.QtCore.QObject"
+  - "PyQt6.QtCore.QThread"
+  - "PyQt6.QtCore.pyqtSignal"
+  - "PyQt6.QtCore.QMutex"
+  - "PyQt6.QtCore.Qt"
+  - "app.constants.get_database_path"
+  - "app.db_utils.ensure_database_exists"
+  - "app.db_utils.get_connection"
+  - "app.db_utils.create_recordings_table"
+  - "app.db_utils.get_all_recordings"
+  - "app.db_utils.get_recording_by_id"
+  - "app.db_utils.create_recording"
+  - "app.db_utils.update_recording"
+  - "app.db_utils.delete_recording"
+  - "app.db_utils.search_recordings"
+  - "app.secure.redact"
+  - "os.makedirs"
+  - "os.path.exists"
+  - "os.path.dirname"
+  - "logging.getLogger"
+  - "queue.Queue"
+  - "time.sleep"
+
+test_cases:
+  # DatabaseWorker.__init__ tests
+  - function_to_test: "DatabaseWorker.__init__"
+    description: "Tests successful initialization of DatabaseWorker with all required attributes"
+    scenario: "When DatabaseWorker is instantiated with a parent, it should initialize queue, running flag, mutex, and establish database connection with foreign keys enabled"
+    mocks:
+      - target: "get_connection"
+        return_value: "mock_connection_object"
+      - target: "mock_connection.execute"
+        return_value: "None"
+    expected_behavior:
+      - "DatabaseWorker instance created with operations_queue as queue.Queue()"
+      - "running attribute set to True"
+      - "mutex is instance of QMutex"
+      - "conn attribute set to mock connection"
+      - "Foreign keys enabled via PRAGMA statement"
+
+  - function_to_test: "DatabaseWorker.__init__"
+    description: "Tests DatabaseWorker initialization when get_connection fails"
+    scenario: "When get_connection raises an exception during initialization"
+    mocks:
+      - target: "get_connection"
+        side_effect: "raises RuntimeError('Database unavailable')"
+    expected_behavior:
+      - "Exception is propagated up"
+      - "DatabaseWorker initialization fails"
+
+  # DatabaseWorker._log_error tests
+  - function_to_test: "DatabaseWorker._log_error"
+    description: "Tests error logging with signal emission for error level"
+    scenario: "When _log_error is called with error level and emit_signal=True"
+    mocks:
+      - target: "logger.error"
+        return_value: "None"
+      - target: "redact"
+        return_value: "redacted_error_message"
+      - target: "error_occurred.emit"
+        return_value: "None"
+    expected_behavior:
+      - "Logger.error called with formatted error message and exc_info=True"
+      - "redact function called to sanitize error message"
+      - "error_occurred signal emitted with operation and redacted message"
+      - "Returns formatted error message string"
+
+  - function_to_test: "DatabaseWorker._log_error"
+    description: "Tests error logging with warning level without signal emission"
+    scenario: "When _log_error is called with warning level and emit_signal=False"
+    mocks:
+      - target: "logger.warning"
+        return_value: "None"
+    expected_behavior:
+      - "Logger.warning called with formatted error message"
+      - "error_occurred signal NOT emitted"
+      - "redact function NOT called"
+      - "Returns formatted error message string"
+
+  - function_to_test: "DatabaseWorker._log_error"
+    description: "Tests error logging with operation context"
+    scenario: "When _log_error is called with an operation parameter"
+    mocks:
+      - target: "logger.error"
+        return_value: "None"
+      - target: "redact"
+        return_value: "safe_message"
+      - target: "error_occurred.emit"
+        return_value: "None"
+    expected_behavior:
+      - "Error message includes operation context"
+      - "Signal emitted with operation name as first parameter"
+
+  # DatabaseWorker.run tests - Main loop
+  - function_to_test: "DatabaseWorker.run"
+    description: "Tests worker thread main loop processing queue operations"
+    scenario: "When run method executes with valid operations in queue followed by sentinel"
+    mocks:
+      - target: "operations_queue.get"
+        side_effect: "returns operation dict then None sentinel"
+      - target: "get_all_recordings"
+        return_value: "[recording1, recording2]"
+      - target: "operation_complete.emit"
+        return_value: "None"
+    expected_behavior:
+      - "Worker enters main loop while running=True"
+      - "Operations retrieved from queue with timeout"
+      - "Operation processed based on type"
+      - "operation_complete signal emitted with result"
+      - "Loop exits on None sentinel"
+      - "Database connection closed in finally block"
+
+  - function_to_test: "DatabaseWorker.run"
+    description: "Tests worker thread with queue timeout"
+    scenario: "When queue.get times out (no operations available)"
+    mocks:
+      - target: "operations_queue.get"
+        side_effect: "raises queue.Empty"
+      - target: "running"
+        side_effect: "returns False on second check"
+    expected_behavior:
+      - "queue.Empty exception caught"
+      - "Loop continues without error"
+      - "No operations processed"
+      - "Worker continues checking queue until running=False"
+
+  - function_to_test: "DatabaseWorker.run"
+    description: "Tests worker thread database connection recovery"
+    scenario: "When database health check fails and reconnection is needed"
+    mocks:
+      - target: "conn.execute"
+        side_effect: "raises sqlite3.Error on first call (SELECT 1)"
+      - target: "get_connection"
+        return_value: "new_mock_connection"
+      - target: "new_mock_connection.execute"
+        return_value: "None"
+    expected_behavior:
+      - "Health check failure detected"
+      - "_log_error called with warning level"
+      - "Reconnection attempted via get_connection"
+      - "Foreign keys re-enabled on new connection"
+      - "Operation proceeds with new connection"
+
+  - function_to_test: "DatabaseWorker.run"
+    description: "Tests worker thread when reconnection fails"
+    scenario: "When database health check fails and reconnection also fails"
+    mocks:
+      - target: "conn.execute"
+        side_effect: "raises sqlite3.Error"
+      - target: "get_connection"
+        side_effect: "raises RuntimeError('Cannot connect')"
+      - target: "_log_error"
+        return_value: "error_message"
+    expected_behavior:
+      - "Health check failure detected"
+      - "Reconnection attempted and fails"
+      - "_log_error called for reconnection failure"
+      - "RuntimeError raised with connection lost message"
+      - "Operation marked as done in finally block"
+
+  # DatabaseWorker.run - execute_query operation tests
+  - function_to_test: "DatabaseWorker.run"
+    description: "Tests execute_query operation for SELECT query"
+    scenario: "When processing execute_query operation with SELECT statement"
+    mocks:
+      - target: "operations_queue.get"
+        return_value: "{'type': 'execute_query', 'id': 'query_1', 'args': ['SELECT * FROM recordings'], 'kwargs': {}}"
+      - target: "conn.cursor"
+        return_value: "mock_cursor"
+      - target: "mock_cursor.execute"
+        return_value: "None"
+      - target: "mock_cursor.fetchall"
+        return_value: "[(1, 'file1'), (2, 'file2')]"
+    expected_behavior:
+      - "Query identified as read-only (not modifying)"
+      - "Cursor created and query executed"
+      - "fetchall() called to retrieve results"
+      - "operation_complete emitted with results"
+      - "dataChanged signal NOT emitted"
+
+  - function_to_test: "DatabaseWorker.run"
+    description: "Tests execute_query operation for INSERT with return_last_row_id"
+    scenario: "When processing execute_query with INSERT and return_last_row_id=True"
+    mocks:
+      - target: "operations_queue.get"
+        return_value: "{'type': 'execute_query', 'id': 'query_2', 'args': ['INSERT INTO recordings VALUES (?)', [data]], 'kwargs': {'return_last_row_id': True}}"
+      - target: "conn.__enter__"
+        return_value: "conn"
+      - target: "conn.cursor"
+        return_value: "mock_cursor"
+      - target: "mock_cursor.execute"
+        return_value: "None"
+      - target: "mock_cursor.lastrowid"
+        return_value: "42"
+    expected_behavior:
+      - "Query identified as modifying (INSERT)"
+      - "Transaction context manager used"
+      - "lastrowid retrieved and returned as result"
+      - "operation_complete emitted with lastrowid"
+      - "dataChanged signal emitted"
+
+  - function_to_test: "DatabaseWorker.run"
+    description: "Tests execute_query operation with SQL error"
+    scenario: "When execute_query encounters SQL error during execution"
+    mocks:
+      - target: "operations_queue.get"
+        return_value: "{'type': 'execute_query', 'id': 'query_3', 'args': ['INVALID SQL'], 'kwargs': {}}"
+      - target: "conn.cursor"
+        return_value: "mock_cursor"
+      - target: "mock_cursor.execute"
+        side_effect: "raises sqlite3.Error('Syntax error')"
+      - target: "_log_error"
+        return_value: "error_message"
+    expected_behavior:
+      - "_log_error called with SQL error"
+      - "RuntimeError raised with database error message"
+      - "error_occurred signal emitted"
+      - "task marked as done in finally block"
+
+  - function_to_test: "DatabaseWorker.run"
+    description: "Tests execute_query with missing query argument"
+    scenario: "When execute_query operation has no query string"
+    mocks:
+      - target: "operations_queue.get"
+        return_value: "{'type': 'execute_query', 'id': 'query_4', 'args': [], 'kwargs': {}}"
+    expected_behavior:
+      - "ValueError raised for missing query string"
+      - "_log_error called with validation error"
+      - "error_occurred signal emitted"
+      - "Operation marked as done"
+
+  # DatabaseWorker.run - create_recording operation tests
+  - function_to_test: "DatabaseWorker.run"
+    description: "Tests create_recording operation success"
+    scenario: "When processing create_recording operation with valid data"
+    mocks:
+      - target: "operations_queue.get"
+        return_value: "{'type': 'create_recording', 'id': 'create_1', 'args': [recording_data], 'kwargs': {}}"
+      - target: "create_recording"
+        return_value: "123"
+      - target: "conn.__enter__"
+        return_value: "conn"
+    expected_behavior:
+      - "create_recording called with connection and data"
+      - "Transaction context manager used"
+      - "operation_complete emitted with recording ID"
+      - "dataChanged signal emitted"
+      - "Info logged with created recording ID"
+
+  - function_to_test: "DatabaseWorker.run"
+    description: "Tests create_recording with duplicate path error"
+    scenario: "When create_recording raises DuplicatePathError"
+    mocks:
+      - target: "operations_queue.get"
+        return_value: "{'type': 'create_recording', 'id': 'create_2', 'args': [recording_data], 'kwargs': {}}"
+      - target: "create_recording"
+        side_effect: "raises DuplicatePathError('/path/to/file')"
+      - target: "_log_error"
+        return_value: "error_message"
+    expected_behavior:
+      - "DuplicatePathError caught and handled specially"
+      - "_log_error called with warning level (not error)"
+      - "error_occurred signal emitted with duplicate path message"
+      - "dataChanged signal NOT emitted"
+      - "data_modified explicitly set to False"
+
+  - function_to_test: "DatabaseWorker.run"
+    description: "Tests create_recording with missing recording data"
+    scenario: "When create_recording operation has no recording data argument"
+    mocks:
+      - target: "operations_queue.get"
+        return_value: "{'type': 'create_recording', 'id': 'create_3', 'args': [], 'kwargs': {}}"
+    expected_behavior:
+      - "ValueError raised for missing recording data"
+      - "_log_error called with validation error"
+      - "Operation marked as done"
+
+  # DatabaseWorker.run - get_all_recordings operation tests
+  - function_to_test: "DatabaseWorker.run"
+    description: "Tests get_all_recordings operation success"
+    scenario: "When processing get_all_recordings operation"
+    mocks:
+      - target: "operations_queue.get"
+        return_value: "{'type': 'get_all_recordings', 'id': 'get_all_1', 'args': [], 'kwargs': {}}"
+      - target: "get_all_recordings"
+        return_value: "[rec1, rec2, rec3]"
+    expected_behavior:
+      - "get_all_recordings called with connection"
+      - "operation_complete emitted with recordings list"
+      - "dataChanged signal NOT emitted (read operation)"
+
+  - function_to_test: "DatabaseWorker.run"
+    description: "Tests get_all_recordings with database error"
+    scenario: "When get_all_recordings raises exception"
+    mocks:
+      - target: "operations_queue.get"
+        return_value: "{'type': 'get_all_recordings', 'id': 'get_all_2', 'args': [], 'kwargs': {}}"
+      - target: "get_all_recordings"
+        side_effect: "raises sqlite3.Error('Table not found')"
+    expected_behavior:
+      - "_log_error called with get error"
+      - "RuntimeError raised with retrieval failure message"
+      - "error_occurred signal emitted"
+
+  # DatabaseWorker.run - get_recording_by_id operation tests
+  - function_to_test: "DatabaseWorker.run"
+    description: "Tests get_recording_by_id operation success"
+    scenario: "When processing get_recording_by_id with valid ID"
+    mocks:
+      - target: "operations_queue.get"
+        return_value: "{'type': 'get_recording_by_id', 'id': 'get_by_id_1', 'args': [42], 'kwargs': {}}"
+      - target: "get_recording_by_id"
+        return_value: "{'id': 42, 'filename': 'test.mp3'}"
+    expected_behavior:
+      - "get_recording_by_id called with connection and ID"
+      - "operation_complete emitted with recording data"
+      - "dataChanged signal NOT emitted"
+
+  - function_to_test: "DatabaseWorker.run"
+    description: "Tests get_recording_by_id with missing ID"
+    scenario: "When get_recording_by_id operation has no ID argument"
+    mocks:
+      - target: "operations_queue.get"
+        return_value: "{'type': 'get_recording_by_id', 'id': 'get_by_id_2', 'args': [], 'kwargs': {}}"
+    expected_behavior:
+      - "ValueError raised for missing recording ID"
+      - "_log_error called with validation error"
+
+  # DatabaseWorker.run - update_recording operation tests
+  - function_to_test: "DatabaseWorker.run"
+    description: "Tests update_recording operation success"
+    scenario: "When processing update_recording with valid ID and kwargs"
+    mocks:
+      - target: "operations_queue.get"
+        return_value: "{'type': 'update_recording', 'id': 'update_1', 'args': [42], 'kwargs': {'transcript': 'new text'}}"
+      - target: "update_recording"
+        return_value: "None"
+      - target: "conn.__enter__"
+        return_value: "conn"
+    expected_behavior:
+      - "update_recording called with connection, ID, and kwargs"
+      - "Transaction context manager used"
+      - "operation_complete emitted"
+      - "dataChanged signal emitted"
+      - "Info logged with updated recording ID"
+
+  - function_to_test: "DatabaseWorker.run"
+    description: "Tests update_recording with database error"
+    scenario: "When update_recording raises exception"
+    mocks:
+      - target: "operations_queue.get"
+        return_value: "{'type': 'update_recording', 'id': 'update_2', 'args': [42], 'kwargs': {'transcript': 'text'}}"
+      - target: "update_recording"
+        side_effect: "raises sqlite3.Error('Constraint violation')"
+    expected_behavior:
+      - "_log_error called with update error"
+      - "RuntimeError raised with update failure message"
+      - "error_occurred signal emitted"
+
+  # DatabaseWorker.run - delete_recording operation tests
+  - function_to_test: "DatabaseWorker.run"
+    description: "Tests delete_recording operation success"
+    scenario: "When processing delete_recording with valid ID"
+    mocks:
+      - target: "operations_queue.get"
+        return_value: "{'type': 'delete_recording', 'id': 'delete_1', 'args': [42], 'kwargs': {}}"
+      - target: "delete_recording"
+        return_value: "None"
+      - target: "conn.__enter__"
+        return_value: "conn"
+    expected_behavior:
+      - "delete_recording called with connection and ID"
+      - "Transaction context manager used"
+      - "operation_complete emitted"
+      - "dataChanged signal emitted"
+      - "Info logged with deleted recording ID"
+
+  - function_to_test: "DatabaseWorker.run"
+    description: "Tests delete_recording with missing ID"
+    scenario: "When delete_recording operation has no ID argument"
+    mocks:
+      - target: "operations_queue.get"
+        return_value: "{'type': 'delete_recording', 'id': 'delete_2', 'args': [], 'kwargs': {}}"
+    expected_behavior:
+      - "ValueError raised for missing recording ID"
+      - "_log_error called with validation error"
+
+  # DatabaseWorker.run - search_recordings operation tests
+  - function_to_test: "DatabaseWorker.run"
+    description: "Tests search_recordings operation success"
+    scenario: "When processing search_recordings with search term"
+    mocks:
+      - target: "operations_queue.get"
+        return_value: "{'type': 'search_recordings', 'id': 'search_1', 'args': ['keyword'], 'kwargs': {}}"
+      - target: "search_recordings"
+        return_value: "[rec1, rec2]"
+    expected_behavior:
+      - "search_recordings called with connection and search term"
+      - "operation_complete emitted with search results"
+      - "dataChanged signal NOT emitted"
+
+  - function_to_test: "DatabaseWorker.run"
+    description: "Tests search_recordings with missing search term"
+    scenario: "When search_recordings operation has no search term"
+    mocks:
+      - target: "operations_queue.get"
+        return_value: "{'type': 'search_recordings', 'id': 'search_2', 'args': [], 'kwargs': {}}"
+    expected_behavior:
+      - "ValueError raised for missing search term"
+      - "_log_error called with validation error"
+
+  # DatabaseWorker.run - create_table operation tests
+  - function_to_test: "DatabaseWorker.run"
+    description: "Tests create_table operation success"
+    scenario: "When processing create_table operation"
+    mocks:
+      - target: "operations_queue.get"
+        return_value: "{'type': 'create_table', 'id': 'table_1', 'args': [], 'kwargs': {}}"
+      - target: "create_recordings_table"
+        return_value: "None"
+      - target: "conn.__enter__"
+        return_value: "conn"
+    expected_behavior:
+      - "create_recordings_table called with connection"
+      - "Transaction context manager used"
+      - "operation_complete emitted"
+      - "dataChanged signal emitted"
+
+  - function_to_test: "DatabaseWorker.run"
+    description: "Tests unknown operation type handling"
+    scenario: "When processing an unknown operation type"
+    mocks:
+      - target: "operations_queue.get"
+        return_value: "{'type': 'unknown_op', 'id': 'unknown_1', 'args': [], 'kwargs': {}}"
+    expected_behavior:
+      - "Warning logged for unknown operation type"
+      - "error_occurred signal emitted with unknown operation message"
+      - "Loop continues without crashing"
+      - "Task marked as done"
+
+  - function_to_test: "DatabaseWorker.run"
+    description: "Tests operation with missing type field"
+    scenario: "When operation dict has no 'type' field"
+    mocks:
+      - target: "operations_queue.get"
+        return_value: "{'id': 'no_type_1', 'args': []}"
+    expected_behavior:
+      - "Error logged for missing type"
+      - "error_occurred signal emitted with invalid operation message"
+      - "Loop continues"
+      - "Operation not processed"
+
+  # DatabaseWorker.run - Exception handling tests
+  - function_to_test: "DatabaseWorker.run"
+    description: "Tests critical worker thread error handling"
+    scenario: "When unexpected exception occurs in main worker loop"
+    mocks:
+      - target: "operations_queue.get"
+        side_effect: "raises RuntimeError('Unexpected error')"
+      - target: "_log_error"
+        return_value: "error_message"
+    expected_behavior:
+      - "_log_error called with critical level"
+      - "Connection closed in finally block"
+      - "Worker thread exits gracefully"
+
+  - function_to_test: "DatabaseWorker.run"
+    description: "Tests connection close error handling"
+    scenario: "When error occurs while closing database connection"
+    mocks:
+      - target: "running"
+        return_value: "False"
+      - target: "conn.close"
+        side_effect: "raises sqlite3.Error('Close failed')"
+      - target: "_log_error"
+        return_value: "error_message"
+    expected_behavior:
+      - "_log_error called for connection close error"
+      - "Worker thread still completes execution"
+      - "Info logged for worker thread finished"
+
+  # DatabaseWorker.add_operation tests
+  - function_to_test: "DatabaseWorker.add_operation"
+    description: "Tests adding operation to queue"
+    scenario: "When add_operation is called with all parameters"
+    mocks:
+      - target: "operations_queue.put"
+        return_value: "None"
+    expected_behavior:
+      - "Operation dict created with type, id, args, and kwargs"
+      - "operations_queue.put called with operation dict"
+
+  - function_to_test: "DatabaseWorker.add_operation"
+    description: "Tests adding operation without optional parameters"
+    scenario: "When add_operation is called with only operation_type"
+    mocks:
+      - target: "operations_queue.put"
+        return_value: "None"
+    expected_behavior:
+      - "Operation dict created with type, None id, empty args and kwargs"
+      - "operations_queue.put called with operation dict"
+
+  # DatabaseWorker.stop tests
+  - function_to_test: "DatabaseWorker.stop"
+    description: "Tests stopping worker thread"
+    scenario: "When stop method is called while worker is running"
+    mocks:
+      - target: "mutex.lock"
+        return_value: "None"
+      - target: "mutex.unlock"
+        return_value: "None"
+      - target: "operations_queue.put"
+        return_value: "None"
+      - target: "wait"
+        return_value: "None"
+    expected_behavior:
+      - "Mutex locked before modifying running flag"
+      - "running flag set to False"
+      - "Mutex unlocked"
+      - "Sentinel value (None) added to queue"
+      - "wait() called to join thread"
+
+  # DatabaseManager.__init__ tests
+  - function_to_test: "DatabaseManager.__init__"
+    description: "Tests DatabaseManager initialization when database exists"
+    scenario: "When DatabaseManager is instantiated and database file already exists"
+    mocks:
+      - target: "get_database_path"
+        return_value: "/path/to/db.sqlite"
+      - target: "os.path.dirname"
+        return_value: "/path/to"
+      - target: "os.makedirs"
+        return_value: "None"
+      - target: "os.path.exists"
+        return_value: "True"
+      - target: "DatabaseWorker"
+        return_value: "mock_worker"
+      - target: "mock_worker.start"
+        return_value: "None"
+      - target: "mock_worker.isRunning"
+        return_value: "True"
+    expected_behavior:
+      - "Database directory created with exist_ok=True"
+      - "ensure_database_exists NOT called (database exists)"
+      - "DatabaseWorker instantiated"
+      - "Worker signals connected to manager signals"
+      - "Worker thread started"
+      - "Info logged for worker thread status"
+
+  - function_to_test: "DatabaseManager.__init__"
+    description: "Tests DatabaseManager initialization when database doesn't exist"
+    scenario: "When DatabaseManager is instantiated and database file needs creation"
+    mocks:
+      - target: "get_database_path"
+        return_value: "/path/to/db.sqlite"
+      - target: "os.path.exists"
+        return_value: "False"
+      - target: "ensure_database_exists"
+        return_value: "None"
+      - target: "DatabaseWorker"
+        return_value: "mock_worker"
+    expected_behavior:
+      - "Database directory created"
+      - "ensure_database_exists called to create database"
+      - "DatabaseWorker instantiated and started"
+
+  # DatabaseManager._on_data_changed tests
+  - function_to_test: "DatabaseManager._on_data_changed"
+    description: "Tests data change signal propagation"
+    scenario: "When _on_data_changed is called from worker signal"
+    mocks:
+      - target: "dataChanged.emit"
+        return_value: "None"
+    expected_behavior:
+      - "Info logged for data change received"
+      - "dataChanged signal emitted with 'recording' and -1 parameters"
+
+  # DatabaseManager.create_recording tests
+  - function_to_test: "DatabaseManager.create_recording"
+    description: "Tests create_recording with callback"
+    scenario: "When create_recording is called with recording data and callback function"
+    mocks:
+      - target: "worker.add_operation"
+        return_value: "None"
+      - target: "operation_complete.connect"
+        return_value: "None"
+      - target: "error_occurred.connect"
+        return_value: "None"
+    expected_behavior:
+      - "Operation ID generated with callback ID"
+      - "worker.add_operation called with create_recording type"
+      - "Handler functions created and connected with UniqueConnection"
+      - "Both operation_complete and error_occurred signals connected"
+
+  - function_to_test: "DatabaseManager.create_recording"
+    description: "Tests create_recording without callback"
+    scenario: "When create_recording is called without callback"
+    mocks:
+      - target: "worker.add_operation"
+        return_value: "None"
+    expected_behavior:
+      - "Operation ID generated with 'no_callback'"
+      - "worker.add_operation called"
+      - "No signal handlers connected"
+
+  - function_to_test: "DatabaseManager.create_recording"
+    description: "Tests create_recording callback execution on success"
+    scenario: "When create_recording operation completes successfully"
+    mocks:
+      - target: "worker.add_operation"
+        return_value: "None"
+      - target: "callback"
+        return_value: "None"
+      - target: "operation_complete.disconnect"
+        return_value: "None"
+      - target: "error_occurred.disconnect"
+        return_value: "None"
+    expected_behavior:
+      - "Callback called with operation result"
+      - "Both signal handlers disconnected"
+      - "Handlers only respond to matching operation ID"
+
+  - function_to_test: "DatabaseManager.create_recording"
+    description: "Tests create_recording callback cleanup on error"
+    scenario: "When create_recording operation fails with error"
+    mocks:
+      - target: "worker.add_operation"
+        return_value: "None"
+      - target: "operation_complete.disconnect"
+        return_value: "None"
+      - target: "error_occurred.disconnect"
+        return_value: "None"
+    expected_behavior:
+      - "Error handler triggered on matching operation name"
+      - "Both signal handlers disconnected"
+      - "Callback NOT called with result"
+
+  # DatabaseManager.get_all_recordings tests
+  - function_to_test: "DatabaseManager.get_all_recordings"
+    description: "Tests get_all_recordings with valid callback"
+    scenario: "When get_all_recordings is called with callable callback"
+    mocks:
+      - target: "worker.add_operation"
+        return_value: "None"
+      - target: "operation_complete.connect"
+        return_value: "None"
+    expected_behavior:
+      - "Operation ID generated with callback ID"
+      - "worker.add_operation called with get_all_recordings type"
+      - "Handler connected with UniqueConnection"
+
+  - function_to_test: "DatabaseManager.get_all_recordings"
+    description: "Tests get_all_recordings without valid callback"
+    scenario: "When get_all_recordings is called without callback or non-callable"
+    mocks:
+      - target: "logger.warning"
+        return_value: "None"
+    expected_behavior:
+      - "Warning logged about missing callback"
+      - "Method returns early without adding operation"
+      - "No operation added to worker queue"
+
+  - function_to_test: "DatabaseManager.get_all_recordings"
+    description: "Tests get_all_recordings callback execution and cleanup"
+    scenario: "When get_all_recordings operation completes and handler is triggered"
+    mocks:
+      - target: "callback"
+        return_value: "None"
+      - target: "operation_complete.disconnect"
+        return_value: "None"
+    expected_behavior:
+      - "Callback called with result data"
+      - "Handler disconnected after execution"
+      - "Handler only responds to matching operation ID"
+
+  # DatabaseManager.get_recording_by_id tests
+  - function_to_test: "DatabaseManager.get_recording_by_id"
+    description: "Tests get_recording_by_id with valid parameters"
+    scenario: "When get_recording_by_id is called with ID and callback"
+    mocks:
+      - target: "worker.add_operation"
+        return_value: "None"
+      - target: "operation_complete.connect"
+        return_value: "None"
+    expected_behavior:
+      - "Operation ID includes recording ID and callback ID"
+      - "worker.add_operation called with recording ID as argument"
+      - "Handler connected with UniqueConnection"
+
+  - function_to_test: "DatabaseManager.get_recording_by_id"
+    description: "Tests get_recording_by_id without callback"
+    scenario: "When get_recording_by_id is called without valid callback"
+    mocks:
+      - target: "logger.warning"
+        return_value: "None"
+    expected_behavior:
+      - "Warning logged with recording ID"
+      - "Method returns early"
+      - "No operation added to queue"
+
+  # DatabaseManager.update_recording tests
+  - function_to_test: "DatabaseManager.update_recording"
+    description: "Tests update_recording with callback and kwargs"
+    scenario: "When update_recording is called with ID, callback, and field updates"
+    mocks:
+      - target: "worker.add_operation"
+        return_value: "None"
+      - target: "operation_complete.connect"
+        return_value: "None"
+      - target: "error_occurred.connect"
+        return_value: "None"
+    expected_behavior:
+      - "Operation ID includes recording ID"
+      - "worker.add_operation called with recording ID and kwargs"
+      - "Both success and error handlers connected"
+
+  - function_to_test: "DatabaseManager.update_recording"
+    description: "Tests update_recording without callback"
+    scenario: "When update_recording is called without callback"
+    mocks:
+      - target: "worker.add_operation"
+        return_value: "None"
+    expected_behavior:
+      - "Operation ID includes 'no_callback'"
+      - "worker.add_operation called"
+      - "No signal handlers connected"
+
+  - function_to_test: "DatabaseManager.update_recording"
+    description: "Tests update_recording callback execution and cleanup"
+    scenario: "When update_recording completes successfully"
+    mocks:
+      - target: "callback"
+        return_value: "None"
+      - target: "operation_complete.disconnect"
+        return_value: "None"
+      - target: "error_occurred.disconnect"
+        return_value: "None"
+    expected_behavior:
+      - "Callback called without arguments"
+      - "Both handlers disconnected via _finalise"
+
+  # DatabaseManager.delete_recording tests
+  - function_to_test: "DatabaseManager.delete_recording"
+    description: "Tests delete_recording with callback"
+    scenario: "When delete_recording is called with ID and callback"
+    mocks:
+      - target: "worker.add_operation"
+        return_value: "None"
+      - target: "operation_complete.connect"
+        return_value: "None"
+      - target: "error_occurred.connect"
+        return_value: "None"
+    expected_behavior:
+      - "Operation ID includes recording ID"
+      - "worker.add_operation called with delete_recording type"
+      - "Both handlers connected"
+
+  - function_to_test: "DatabaseManager.delete_recording"
+    description: "Tests delete_recording error handling"
+    scenario: "When delete_recording operation fails"
+    mocks:
+      - target: "operation_complete.disconnect"
+        return_value: "None"
+      - target: "error_occurred.disconnect"
+        return_value: "None"
+    expected_behavior:
+      - "Error handler triggered on matching operation name"
+      - "Both handlers disconnected"
+      - "Callback NOT called"
+
+  # DatabaseManager.execute_query tests
+  - function_to_test: "DatabaseManager.execute_query"
+    description: "Tests execute_query with all parameters"
+    scenario: "When execute_query is called with query, params, callback, and custom operation_id"
+    mocks:
+      - target: "worker.add_operation"
+        return_value: "None"
+      - target: "operation_complete.connect"
+        return_value: "None"
+    expected_behavior:
+      - "Custom operation_id used if provided"
+      - "worker.add_operation called with query and params"
+      - "return_last_row_id passed to worker"
+      - "Handler connected if callback provided"
+
+  - function_to_test: "DatabaseManager.execute_query"
+    description: "Tests execute_query with default parameters"
+    scenario: "When execute_query is called with only query"
+    mocks:
+      - target: "worker.add_operation"
+        return_value: "None"
+    expected_behavior:
+      - "Default operation_id generated"
+      - "Empty params list used"
+      - "return_last_row_id defaults to False"
+      - "No handler connected (no callback)"
+
+  - function_to_test: "DatabaseManager.execute_query"
+    description: "Tests execute_query callback execution"
+    scenario: "When execute_query operation completes"
+    mocks:
+      - target: "callback"
+        return_value: "None"
+      - target: "operation_complete.disconnect"
+        return_value: "None"
+    expected_behavior:
+      - "Callback called with query result"
+      - "Handler disconnected after execution"
+
+  # DatabaseManager.search_recordings tests
+  - function_to_test: "DatabaseManager.search_recordings"
+    description: "Tests search_recordings with valid parameters"
+    scenario: "When search_recordings is called with search term and callback"
+    mocks:
+      - target: "worker.add_operation"
+        return_value: "None"
+      - target: "operation_complete.connect"
+        return_value: "None"
+    expected_behavior:
+      - "Operation ID generated with callback ID"
+      - "worker.add_operation called with search term"
+      - "Handler connected"
+
+  - function_to_test: "DatabaseManager.search_recordings"
+    description: "Tests search_recordings without callback"
+    scenario: "When search_recordings is called without valid callback"
+    mocks:
+      - target: "logger.warning"
+        return_value: "None"
+    expected_behavior:
+      - "Warning logged"
+      - "Method returns early"
+      - "No operation added"
+
+  # DatabaseManager.shutdown tests
+  - function_to_test: "DatabaseManager.shutdown"
+    description: "Tests shutdown when worker is running"
+    scenario: "When shutdown is called with active worker thread"
+    mocks:
+      - target: "worker.isRunning"
+        return_value: "True"
+      - target: "worker.stop"
+        return_value: "None"
+    expected_behavior:
+      - "Worker running status checked"
+      - "worker.stop() called"
+      - "Info logged for worker stopped"
+
+  - function_to_test: "DatabaseManager.shutdown"
+    description: "Tests shutdown when worker is not running"
+    scenario: "When shutdown is called but worker is already stopped"
+    mocks:
+      - target: "worker.isRunning"
+        return_value: "False"
+    expected_behavior:
+      - "Worker running status checked"
+      - "worker.stop() NOT called"
+      - "No logging for stop"
+
+  - function_to_test: "DatabaseManager.shutdown"
+    description: "Tests shutdown when worker is None"
+    scenario: "When shutdown is called but worker was never initialized"
+    mocks:
+      - target: "worker"
+        return_value: "None"
+    expected_behavior:
+      - "No exception raised"
+      - "Method completes safely"
+
+  # DatabaseManager.get_signal_receiver_count tests
+  - function_to_test: "DatabaseManager.get_signal_receiver_count"
+    description: "Tests getting signal receiver counts"
+    scenario: "When get_signal_receiver_count is called"
+    mocks:
+      - target: "operation_complete.receivers"
+        return_value: "[receiver1, receiver2]"
+      - target: "error_occurred.receivers"
+        return_value: "[receiver1]"
+    expected_behavior:
+      - "Returns dictionary with signal names as keys"
+      - "Values are counts of connected receivers"
+      - "Includes both operation_complete and error_occurred"
+
+  # Edge cases and error conditions
+  - function_to_test: "DatabaseWorker.run"
+    description: "Tests handling of operation queue task_done error"
+    scenario: "When task_done() raises exception in finally block"
+    mocks:
+      - target: "operations_queue.get"
+        return_value: "{'type': 'get_all_recordings', 'id': 'test', 'args': []}"
+      - target: "operations_queue.task_done"
+        side_effect: "raises ValueError('Queue empty')"
+      - target: "logger.warning"
+        return_value: "None"
+    expected_behavior:
+      - "Warning logged for task_done error"
+      - "Worker continues execution"
+      - "Exception doesn't propagate"
+
+  - function_to_test: "DatabaseWorker.run"
+    description: "Tests persistent queue error handling with sleep"
+    scenario: "When exception occurs in outer queue operation block"
+    mocks:
+      - target: "operations_queue.get"
+        side_effect: "raises RuntimeError('Queue corrupted')"
+      - target: "_log_error"
+        return_value: "error_message"
+      - target: "time.sleep"
+        return_value: "None"
+    expected_behavior:
+      - "_log_error called for queue error"
+      - "time.sleep(0.1) called to prevent CPU spinning"
+      - "Worker continues or exits based on running flag"
+
+  - function_to_test: "DatabaseWorker.run"
+    description: "Tests handling of disconnection errors in callback cleanup"
+    scenario: "When disconnect() raises TypeError for already disconnected signal"
+    mocks:
+      - target: "operation_complete.disconnect"
+        side_effect: "raises TypeError('Not connected')"
+    expected_behavior:
+      - "TypeError caught and ignored"
+      - "Method continues execution"
+      - "No error propagated"
+
+  - function_to_test: "DatabaseWorker.run"
+    description: "Tests database connection initialization failure on thread start"
+    scenario: "When worker thread starts but cannot establish initial connection"
+    mocks:
+      - target: "hasattr"
+        return_value: "False"
+      - target: "get_connection"
+        side_effect: "raises RuntimeError('Database locked')"
+      - target: "_log_error"
+        return_value: "error_message"
+    expected_behavior:
+      - "_log_error called with critical level"
+      - "Worker thread returns early"
+      - "Main loop never entered"

@@ -1,0 +1,32 @@
+2025-08-30 15:55:26,512 - transcribrr - WARNING - [busy_guard.py:118] - Spinner 'nonexistent' not found or couldn't be started
+2025-08-30 15:55:26,562 - transcribrr - DEBUG - [FolderManager.py:100] - Folder tables are initialized during database creation
+2025-08-30 15:55:26,564 - transcribrr - DEBUG - [FolderManager.py:100] - Folder tables are initialized during database creation
+2025-08-30 15:55:26,564 - transcribrr - WARNING - [FolderManager.py:53] - Different DatabaseManager instance provided to FolderManager.instance() after initialization. Using original instance.
+2025-08-30 15:55:26,564 - transcribrr - DEBUG - [FolderManager.py:100] - Folder tables are initialized during database creation
+2025-08-30 15:55:26,565 - transcribrr - DEBUG - [FolderManager.py:100] - Folder tables are initialized during database creation
+2025-08-30 15:55:26,565 - transcribrr - DEBUG - [FolderManager.py:100] - Folder tables are initialized during database creation
+2025-08-30 15:55:26,566 - transcribrr - DEBUG - [FolderManager.py:100] - Folder tables are initialized during database creation
+2025-08-30 15:55:26,567 - transcribrr - INFO - [gpt_controller.py:336] - Canceling smart_format thread...
+2025-08-30 15:55:26,569 - transcribrr - INFO - [gpt_controller.py:336] - Canceling process thread...
+2025-08-30 15:55:26,574 - transcribrr - INFO - [gpt_controller.py:328] - GPT thread (process) finished.
+2025-08-30 15:55:26,575 - transcribrr - INFO - [gpt_controller.py:328] - GPT thread (non_existent) finished.
+2025-08-30 15:55:26,577 - transcribrr - ERROR - [gpt_controller.py:46] - No prompt provided for GPT processing
+2025-08-30 15:55:26,577 - transcribrr - ERROR - [gpt_controller.py:42] - No transcript available for GPT processing
+2025-08-30 15:55:26,578 - transcribrr - ERROR - [gpt_controller.py:42] - No transcript available for GPT processing
+2025-08-30 15:55:26,583 - transcribrr - ERROR - [gpt_controller.py:184] - No current text provided for refinement
+2025-08-30 15:55:26,584 - transcribrr - ERROR - [gpt_controller.py:180] - No refinement instructions provided
+2025-08-30 15:55:26,585 - transcribrr - ERROR - [gpt_controller.py:176] - No transcript available for refinement
+2025-08-30 15:55:26,588 - transcribrr - ERROR - [gpt_controller.py:107] - No text provided for smart formatting
+2025-08-30 15:55:26,614 - transcribrr - DEBUG - [ui_utils_legacy.py:272] - FeedbackManager created new SpinnerManager
+2025-08-30 15:55:26,614 - transcribrr - DEBUG - [path_utils.py:37] - Using development path: /home/john/transcribrr
+2025-08-30 15:55:26,614 - transcribrr - DEBUG - [path_utils.py:37] - Using development path: /home/john/transcribrr
+2025-08-30 15:55:26,614 - transcribrr - DEBUG - [path_utils.py:67] - Resource path for './icons/spinner.gif': /home/john/transcribrr/./icons/spinner.gif
+2025-08-30 15:55:26,633 - transcribrr - DEBUG - [ui_utils_legacy.py:109] - Spinner 'test_spinner' started.
+2025-08-30 15:55:26,634 - transcribrr - DEBUG - [ui_utils_legacy.py:115] - Spinner 'test_spinner' stopped.
+2025-08-30 15:55:26,634 - transcribrr - ERROR - [ui_utils_legacy.py:309] - Spinner 'nonexistent' not found
+2025-08-30 15:55:26,635 - transcribrr - DEBUG - [path_utils.py:37] - Using development path: /home/john/transcribrr
+2025-08-30 15:55:26,635 - transcribrr - DEBUG - [path_utils.py:37] - Using development path: /home/john/transcribrr
+2025-08-30 15:55:26,635 - transcribrr - DEBUG - [path_utils.py:67] - Resource path for './icons/spinner.gif': /home/john/transcribrr/./icons/spinner.gif
+2025-08-30 15:55:26,637 - transcribrr - DEBUG - [ui_utils_legacy.py:109] - Spinner 'test_spinner' started.
+2025-08-30 15:55:26,638 - transcribrr - DEBUG - [ui_utils_legacy.py:115] - Spinner 'test_spinner' stopped.
+2025-08-30 16:38:24,663 - transcribrr - WARNING - [busy_guard.py:118] - Spinner 'nonexistent' not found or couldn't be started

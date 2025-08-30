@@ -1,0 +1,507 @@
+target_file: "app/VoiceRecorderWidget.py"
+test_file: "tests/test_VoiceRecorderWidget.py"
+dependencies_to_mock:
+  - "pyaudio.PyAudio"
+  - "wave.open"
+  - "pydub.AudioSegment"
+  - "PyQt6.QtWidgets.QFileDialog"
+  - "PyQt6.QtWidgets.QMessageBox"
+  - "PyQt6.QtWidgets.QProgressDialog"
+  - "PyQt6.QtWidgets.QApplication"
+  - "PyQt6.QtCore.QTimer"
+  - "PyQt6.QtCore.QThread"
+  - "app.SVGToggleButton.SVGToggleButton"
+  - "app.path_utils.resource_path"
+  - "app.utils.format_time_duration"
+  - "app.ThreadManager.ThreadManager"
+  - "app.constants.get_recordings_dir"
+  - "app.secure.redact"
+  - "os.makedirs"
+  - "os.path.exists"
+  - "os.remove"
+  - "shutil.move"
+  - "tempfile.NamedTemporaryFile"
+  - "datetime.datetime.now"
+  - "time.time"
+  - "time.sleep"
+  - "numpy.frombuffer"
+  - "numpy.max"
+  - "numpy.abs"
+  - "logging.getLogger"
+
+test_cases:
+  # AudioLevelMeter Tests
+  - function_to_test: "AudioLevelMeter.__init__"
+    description: "Test AudioLevelMeter initialization with default values"
+    scenario: "Create AudioLevelMeter instance and verify initial state"
+    mocks:
+      - target: "QTimer"
+        return_value: "mock timer object"
+    expected_behavior:
+      - "Instance created with level = 0"
+      - "peak_level = 0"
+      - "decay_rate = 0.05"
+      - "Minimum height set to 40"
+      - "Decay timer started with 50ms interval"
+      - "Timer timeout connected to decay_levels method"
+
+  - function_to_test: "AudioLevelMeter.set_level"
+    description: "Test setting audio level within valid range"
+    scenario: "Set level to various values and verify clamping between 0.0 and 1.0"
+    mocks: []
+    expected_behavior:
+      - "Level clamped to 0.0 when negative value provided"
+      - "Level clamped to 1.0 when value > 1.0 provided"
+      - "Level set correctly for valid values between 0.0 and 1.0"
+      - "Peak level updated when new level exceeds current peak"
+      - "update() method called to trigger repaint"
+
+  - function_to_test: "AudioLevelMeter.decay_levels"
+    description: "Test level decay over time"
+    scenario: "Call decay_levels when levels are set and verify gradual decay"
+    mocks: []
+    expected_behavior:
+      - "Level decreases by decay_rate (0.05) each call"
+      - "Peak level decreases by decay_rate/4 (0.0125) each call"
+      - "Levels never go below 0"
+      - "update() method called to trigger repaint"
+
+  # RecordingThread Tests
+  - function_to_test: "RecordingThread.__init__"
+    description: "Test RecordingThread initialization"
+    scenario: "Create RecordingThread with audio parameters"
+    mocks:
+      - target: "pyaudio.PyAudio"
+        return_value: "mock audio instance"
+    expected_behavior:
+      - "Thread initialized with provided audio parameters"
+      - "frames deque initialized empty"
+      - "is_recording flag set to False"
+      - "is_paused flag set to False"
+      - "elapsed_time set to 0"
+      - "stream set to None"
+
+  - function_to_test: "RecordingThread.run"
+    description: "Test main recording loop with successful audio capture"
+    scenario: "Start recording thread and simulate successful audio data capture"
+    mocks:
+      - target: "pyaudio.PyAudio.open"
+        return_value: "mock stream object"
+      - target: "mock_stream.read"
+        return_value: "audio data bytes"
+      - target: "numpy.frombuffer"
+        return_value: "numpy array of audio samples"
+      - target: "numpy.max"
+        return_value: "1000"
+      - target: "time.time"
+        return_value: "incrementing time values"
+    expected_behavior:
+      - "Audio stream opened with correct parameters"
+      - "Audio data read in loop while is_recording is True"
+      - "Frames appended to deque"
+      - "Audio level calculated and update_level signal emitted"
+      - "Timer updated every second via update_time signal"
+      - "Stream properly closed when recording stops"
+
+  - function_to_test: "RecordingThread.run"
+    description: "Test recording with audio device initialization error"
+    scenario: "Audio stream fails to open due to device error"
+    mocks:
+      - target: "pyaudio.PyAudio.open"
+        side_effect: "raises IOError('Audio device error')"
+    expected_behavior:
+      - "RuntimeError raised with descriptive message"
+      - "Error signal emitted with error message"
+      - "Stream cleanup attempted even after error"
+      - "Error logged with full traceback"
+
+  - function_to_test: "RecordingThread.run"
+    description: "Test recording with input overflow error"
+    scenario: "Audio stream read encounters input overflow"
+    mocks:
+      - target: "pyaudio.PyAudio.open"
+        return_value: "mock stream"
+      - target: "mock_stream.read"
+        side_effect: "raises IOError('Input overflowed')"
+    expected_behavior:
+      - "Warning logged for overflow"
+      - "Recording continues without stopping"
+      - "No error signal emitted for overflow"
+      - "Thread continues to next iteration"
+
+  - function_to_test: "RecordingThread.pauseRecording"
+    description: "Test pausing an active recording"
+    scenario: "Pause recording while thread is running"
+    mocks: []
+    expected_behavior:
+      - "is_paused flag set to True when is_recording is True"
+      - "No change if is_recording is False"
+      - "Audio reading stopped while paused"
+
+  - function_to_test: "RecordingThread.resumeRecording"
+    description: "Test resuming a paused recording"
+    scenario: "Resume recording after pause"
+    mocks: []
+    expected_behavior:
+      - "is_paused flag set to False when is_recording is True"
+      - "No change if is_recording is False"
+      - "Audio reading resumes"
+
+  - function_to_test: "RecordingThread.saveRecording"
+    description: "Test saving recorded audio to MP3 file"
+    scenario: "Save accumulated audio frames to MP3 file with default filename"
+    mocks:
+      - target: "datetime.datetime.now"
+        return_value: "mock datetime with strftime returning '20240101-120000'"
+      - target: "os.makedirs"
+        return_value: "None"
+      - target: "tempfile.NamedTemporaryFile"
+        return_value: "mock temp file with name attribute"
+      - target: "wave.open"
+        return_value: "mock wave writer"
+      - target: "AudioSegment.from_wav"
+        return_value: "mock audio segment"
+      - target: "mock_audio_segment.export"
+        return_value: "None"
+      - target: "shutil.move"
+        return_value: "None"
+      - target: "os.remove"
+        return_value: "None"
+    expected_behavior:
+      - "Recordings directory created if not exists"
+      - "Temporary WAV file created and written"
+      - "WAV converted to MP3 using AudioSegment"
+      - "MP3 moved to final destination"
+      - "Temporary files cleaned up"
+      - "Frames cleared after successful save"
+      - "Final file path returned"
+
+  - function_to_test: "RecordingThread.saveRecording"
+    description: "Test save recording with no audio data"
+    scenario: "Attempt to save when frames deque is empty"
+    mocks: []
+    expected_behavior:
+      - "Error signal emitted with 'No audio data to save' message"
+      - "None returned"
+      - "No file operations performed"
+
+  - function_to_test: "RecordingThread.saveRecording"
+    description: "Test save recording with conversion error"
+    scenario: "AudioSegment conversion fails"
+    mocks:
+      - target: "tempfile.NamedTemporaryFile"
+        return_value: "mock temp file"
+      - target: "wave.open"
+        return_value: "mock wave writer"
+      - target: "AudioSegment.from_wav"
+        side_effect: "raises Exception('Conversion failed')"
+      - target: "os.path.exists"
+        return_value: "True"
+      - target: "os.remove"
+        return_value: "None"
+    expected_behavior:
+      - "Error signal emitted with conversion error"
+      - "Error logged with traceback"
+      - "Temporary files cleaned up"
+      - "None returned"
+
+  # VoiceRecorderWidget Tests
+  - function_to_test: "VoiceRecorderWidget.__init__"
+    description: "Test VoiceRecorderWidget initialization"
+    scenario: "Create widget and verify initial state"
+    mocks:
+      - target: "pyaudio.PyAudio"
+        return_value: "mock audio with get_host_api_info_by_index method"
+      - target: "QTimer"
+        return_value: "mock timer"
+    expected_behavior:
+      - "UI components initialized"
+      - "Audio system initialized"
+      - "recording_thread set to None"
+      - "is_recording and is_paused flags set to False"
+      - "elapsed_time set to 0"
+      - "UI timer created and connected to updateUI"
+
+  - function_to_test: "VoiceRecorderWidget.initAudio"
+    description: "Test audio system initialization success"
+    scenario: "Initialize PyAudio and enumerate input devices"
+    mocks:
+      - target: "pyaudio.PyAudio"
+        return_value: "mock audio object"
+      - target: "mock_audio.get_host_api_info_by_index"
+        return_value: "{'deviceCount': 2}"
+      - target: "mock_audio.get_device_info_by_host_api_device_index"
+        return_value: "{'name': 'Test Mic', 'maxInputChannels': 2}"
+    expected_behavior:
+      - "PyAudio instance created"
+      - "Audio format set to paInt16"
+      - "Channels set to 1 (mono)"
+      - "Sample rate set to 44100"
+      - "Frames per buffer set to 4096"
+      - "Available input devices logged"
+
+  - function_to_test: "VoiceRecorderWidget.initAudio"
+    description: "Test audio initialization failure"
+    scenario: "PyAudio initialization fails"
+    mocks:
+      - target: "pyaudio.PyAudio"
+        side_effect: "raises Exception('No audio devices')"
+    expected_behavior:
+      - "Error logged with traceback"
+      - "Status label shows error message"
+      - "Record button disabled"
+
+  - function_to_test: "VoiceRecorderWidget.toggleRecording"
+    description: "Test toggle recording state transitions"
+    scenario: "Toggle through recording states: not recording -> recording -> paused -> recording"
+    mocks: []
+    expected_behavior:
+      - "startRecording called when not recording"
+      - "pauseRecording called when recording and not paused"
+      - "resumeRecording called when paused"
+
+  - function_to_test: "VoiceRecorderWidget.startRecording"
+    description: "Test starting a new recording"
+    scenario: "Start recording with successful thread creation"
+    mocks:
+      - target: "RecordingThread"
+        return_value: "mock recording thread"
+      - target: "ThreadManager.instance"
+        return_value: "mock thread manager"
+      - target: "format_time_duration"
+        return_value: "00:00:00"
+    expected_behavior:
+      - "is_recording flag set to True"
+      - "is_paused flag set to False"
+      - "elapsed_time reset to 0"
+      - "Record button shows pause icon"
+      - "Status label shows 'Recording...'"
+      - "Save and delete buttons enabled"
+      - "Recording thread created and started"
+      - "Thread registered with ThreadManager"
+      - "UI timer started with 100ms interval"
+      - "recordingStarted signal emitted"
+
+  - function_to_test: "VoiceRecorderWidget.startRecording"
+    description: "Test start recording with thread creation failure"
+    scenario: "RecordingThread creation fails"
+    mocks:
+      - target: "RecordingThread"
+        side_effect: "raises Exception('Thread creation failed')"
+    expected_behavior:
+      - "handleRecordingError called with error message"
+      - "Error logged"
+      - "UI reset to initial state"
+
+  - function_to_test: "VoiceRecorderWidget.pauseRecording"
+    description: "Test pausing active recording"
+    scenario: "Pause recording while thread is active"
+    mocks:
+      - target: "recording_thread.pauseRecording"
+        return_value: "None"
+    expected_behavior:
+      - "is_paused flag set to True"
+      - "Record button shows record icon"
+      - "Status label shows 'Recording paused'"
+      - "Thread pauseRecording method called"
+      - "UI timer stopped"
+
+  - function_to_test: "VoiceRecorderWidget.resumeRecording"
+    description: "Test resuming paused recording"
+    scenario: "Resume recording from paused state"
+    mocks:
+      - target: "recording_thread.resumeRecording"
+        return_value: "None"
+    expected_behavior:
+      - "is_paused flag set to False"
+      - "Record button shows pause icon"
+      - "Status label shows 'Recording...'"
+      - "Thread resumeRecording method called"
+      - "UI timer restarted with 100ms interval"
+
+  - function_to_test: "VoiceRecorderWidget.saveRecording"
+    description: "Test saving recording with user file selection"
+    scenario: "User selects file location and recording saves successfully"
+    mocks:
+      - target: "get_recordings_dir"
+        return_value: "/recordings"
+      - target: "os.makedirs"
+        return_value: "None"
+      - target: "datetime.datetime.now"
+        return_value: "mock datetime"
+      - target: "QFileDialog.getSaveFileName"
+        return_value: "('/recordings/test.mp3', 'MP3 Files (*.mp3)')"
+      - target: "recording_thread.saveRecording"
+        return_value: "/recordings/test.mp3"
+      - target: "QProgressDialog"
+        return_value: "mock progress dialog"
+    expected_behavior:
+      - "Recording stopped if still active"
+      - "File dialog shown with default filename"
+      - "Progress dialog shown for recordings > 10 seconds"
+      - "Recording saved to selected file"
+      - "Status label shows 'Recording saved'"
+      - "UI reset to initial state"
+      - "recordingCompleted signal emitted with file path"
+
+  - function_to_test: "VoiceRecorderWidget.saveRecording"
+    description: "Test save recording cancelled by user"
+    scenario: "User cancels file save dialog"
+    mocks:
+      - target: "QFileDialog.getSaveFileName"
+        return_value: "('', '')"
+    expected_behavior:
+      - "Recording stopped if still active"
+      - "Status label shows 'Save cancelled'"
+      - "No file save attempted"
+      - "Recording data remains in memory"
+
+  - function_to_test: "VoiceRecorderWidget.saveRecording"
+    description: "Test save recording with .mp3 extension added"
+    scenario: "User enters filename without .mp3 extension"
+    mocks:
+      - target: "QFileDialog.getSaveFileName"
+        return_value: "('/recordings/test', 'MP3 Files (*.mp3)')"
+      - target: "recording_thread.saveRecording"
+        return_value: "/recordings/test.mp3"
+    expected_behavior:
+      - ".mp3 extension added to filename"
+      - "File saved with correct extension"
+      - "recordingCompleted signal emitted with corrected path"
+
+  - function_to_test: "VoiceRecorderWidget.deleteRecording"
+    description: "Test discarding recorded audio"
+    scenario: "User clicks delete to discard recording"
+    mocks:
+      - target: "recording_thread.frames.clear"
+        return_value: "None"
+    expected_behavior:
+      - "Recording stopped if still active"
+      - "Thread frames cleared"
+      - "Status label shows 'Recording discarded'"
+      - "UI reset to initial state"
+      - "No file saved"
+
+  - function_to_test: "VoiceRecorderWidget.resetUI"
+    description: "Test UI reset to initial state"
+    scenario: "Reset all UI components to default values"
+    mocks: []
+    expected_behavior:
+      - "elapsed_time set to 0"
+      - "Timer label shows '00:00:00'"
+      - "Record button shows record icon"
+      - "Save button disabled"
+      - "Delete button disabled"
+      - "is_recording flag set to False"
+      - "is_paused flag set to False"
+      - "Level meter set to 0"
+
+  - function_to_test: "VoiceRecorderWidget.updateUI"
+    description: "Test UI timer update during recording"
+    scenario: "UI timer fires while recording is active"
+    mocks:
+      - target: "format_time_duration"
+        return_value: "00:01:23"
+    expected_behavior:
+      - "Timer label updated with formatted time when is_recording is True"
+      - "No update when is_recording is False"
+
+  - function_to_test: "VoiceRecorderWidget.updateTimerValue"
+    description: "Test timer value update from recording thread"
+    scenario: "Recording thread emits time update signal"
+    mocks: []
+    expected_behavior:
+      - "elapsed_time updated with new value"
+      - "Debug log message written"
+      - "UI will be updated on next timer tick"
+
+  - function_to_test: "VoiceRecorderWidget.handleRecordingError"
+    description: "Test error handling during recording"
+    scenario: "Recording thread encounters error and emits error signal"
+    mocks:
+      - target: "QMessageBox.critical"
+        return_value: "None"
+    expected_behavior:
+      - "Error logged"
+      - "Status label shows error message"
+      - "recordingError signal emitted"
+      - "UI reset to initial state"
+      - "Critical message box shown to user"
+
+  # Edge Cases and Error Paths
+  - function_to_test: "RecordingThread.run"
+    description: "Test recording with device disconnection"
+    scenario: "Audio device becomes unavailable during recording"
+    mocks:
+      - target: "mock_stream.read"
+        side_effect: "raises IOError('Device unavailable')"
+      - target: "time.sleep"
+        return_value: "None"
+    expected_behavior:
+      - "Warning logged for device issue"
+      - "Thread sleeps for 0.1 seconds"
+      - "Recording continues attempting to reconnect"
+      - "No error signal emitted immediately"
+
+  - function_to_test: "RecordingThread.run"
+    description: "Test recording with empty audio data"
+    scenario: "Audio stream returns empty data"
+    mocks:
+      - target: "mock_stream.read"
+        return_value: "b''"
+    expected_behavior:
+      - "Warning logged for empty data"
+      - "Continue to next iteration without processing"
+      - "No frames appended to deque"
+
+  - function_to_test: "RecordingThread.run"
+    description: "Test cleanup on thread termination"
+    scenario: "Thread terminated with active stream"
+    mocks:
+      - target: "mock_stream.stop_stream"
+        side_effect: "raises Exception('Stop failed')"
+      - target: "mock_stream.close"
+        side_effect: "raises Exception('Close failed')"
+    expected_behavior:
+      - "Warning logged for stop_stream error"
+      - "Warning logged for close error"
+      - "Stream set to None despite errors"
+      - "Cleanup errors logged but not propagated"
+
+  - function_to_test: "AudioLevelMeter.paintEvent"
+    description: "Test level meter painting with various levels"
+    scenario: "Paint event triggered with different audio levels"
+    mocks:
+      - target: "QPainter"
+        return_value: "mock painter"
+    expected_behavior:
+      - "Background rectangle drawn"
+      - "Gradient fill drawn proportional to level"
+      - "Peak indicator line drawn at peak position"
+      - "No fill drawn when level is 0"
+
+  - function_to_test: "VoiceRecorderWidget.saveRecording"
+    description: "Test save recording error handling"
+    scenario: "Recording thread saveRecording method fails"
+    mocks:
+      - target: "QFileDialog.getSaveFileName"
+        return_value: "('/recordings/test.mp3', 'MP3 Files (*.mp3)')"
+      - target: "recording_thread.saveRecording"
+        side_effect: "raises Exception('Save failed')"
+    expected_behavior:
+      - "handleRecordingError called with error message"
+      - "Error message shown to user"
+      - "UI state properly reset"
+
+  - function_to_test: "RecordingThread.saveRecording"
+    description: "Test cleanup failure during save"
+    scenario: "Temporary file cleanup fails after successful save"
+    mocks:
+      - target: "shutil.move"
+        return_value: "None"
+      - target: "os.remove"
+        side_effect: "raises Exception('Permission denied')"
+    expected_behavior:
+      - "Warning logged for cleanup failure"
+      - "Save still succeeds"
+      - "File path returned despite cleanup error"

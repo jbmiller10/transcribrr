@@ -1,0 +1,504 @@
+target_file: "app/controllers/gpt_controller.py"
+test_file: "app/tests/test_gpt_controller.py"
+dependencies_to_mock:
+  - "app.models.recording.Recording"
+  - "app.threads.GPT4ProcessingThread.GPT4ProcessingThread"
+  - "app.ThreadManager.ThreadManager"
+  - "app.secure.get_api_key"
+  - "PyQt6.QtCore.QObject"
+  - "PyQt6.QtCore.pyqtSignal"
+  - "logging.getLogger"
+
+test_cases:
+  # __init__ tests
+  - function_to_test: "GPTController.__init__"
+    description: "Tests successful initialization of GPTController"
+    scenario: "Initialize controller with db_manager and optional parent"
+    mocks:
+      - target: "db_manager"
+        return_value: "Mock database manager object"
+    expected_behavior:
+      - "Controller inherits from QObject"
+      - "db_manager is stored as instance attribute"
+      - "threads dictionary is initialized as empty dict"
+
+  # process() method tests - Happy path
+  - function_to_test: "GPTController.process"
+    description: "Tests successful GPT processing with valid inputs"
+    scenario: "Process recording with valid transcript, prompt, and config"
+    mocks:
+      - target: "recording"
+        return_value: "Mock Recording with id=1 and raw_transcript='test transcript'"
+      - target: "get_api_key"
+        return_value: "test-api-key"
+      - target: "GPT4ProcessingThread"
+        return_value: "Mock thread instance"
+      - target: "busy_guard_callback"
+        return_value: "Mock busy guard"
+    expected_behavior:
+      - "Method returns True"
+      - "GPT4ProcessingThread instantiated with correct parameters"
+      - "Thread signals are connected to handler methods"
+      - "Thread is stored in self.threads dictionary"
+      - "status_update signal emitted with 'Starting GPT processing...'"
+      - "gpt_process_started signal emitted"
+      - "Thread.start() is called"
+
+  # process() method tests - Validation failures
+  - function_to_test: "GPTController.process"
+    description: "Tests process fails when recording is None"
+    scenario: "Attempt to process with None recording"
+    mocks:
+      - target: "recording"
+        return_value: "None"
+    expected_behavior:
+      - "Method returns False"
+      - "Error logged: 'No transcript available for GPT processing'"
+      - "No thread is created"
+
+  - function_to_test: "GPTController.process"
+    description: "Tests process fails when recording has no transcript"
+    scenario: "Attempt to process recording with empty raw_transcript"
+    mocks:
+      - target: "recording"
+        return_value: "Mock Recording with raw_transcript=''"
+    expected_behavior:
+      - "Method returns False"
+      - "Error logged: 'No transcript available for GPT processing'"
+      - "No thread is created"
+
+  - function_to_test: "GPTController.process"
+    description: "Tests process fails when prompt is empty"
+    scenario: "Attempt to process with empty prompt string"
+    mocks:
+      - target: "recording"
+        return_value: "Mock Recording with raw_transcript='test'"
+      - target: "prompt"
+        return_value: "''"
+    expected_behavior:
+      - "Method returns False"
+      - "Error logged: 'No prompt provided for GPT processing'"
+      - "No thread is created"
+
+  - function_to_test: "GPTController.process"
+    description: "Tests process fails when API key is missing"
+    scenario: "Attempt to process when get_api_key returns None"
+    mocks:
+      - target: "recording"
+        return_value: "Mock Recording with raw_transcript='test'"
+      - target: "prompt"
+        return_value: "'test prompt'"
+      - target: "get_api_key"
+        return_value: "None"
+    expected_behavior:
+      - "Method returns False"
+      - "Error logged: 'OpenAI API key missing for GPT processing'"
+      - "No thread is created"
+
+  # process() method tests - Config variations
+  - function_to_test: "GPTController.process"
+    description: "Tests process with custom config values"
+    scenario: "Process with custom model, max_tokens, and temperature"
+    mocks:
+      - target: "recording"
+        return_value: "Mock Recording"
+      - target: "get_api_key"
+        return_value: "test-key"
+      - target: "config"
+        return_value: "{'gpt_model': 'gpt-3.5-turbo', 'max_tokens': 8000, 'temperature': 0.5}"
+      - target: "GPT4ProcessingThread"
+        return_value: "Mock thread"
+    expected_behavior:
+      - "GPT4ProcessingThread called with gpt_model='gpt-3.5-turbo'"
+      - "GPT4ProcessingThread called with max_tokens=8000"
+      - "GPT4ProcessingThread called with temperature=0.5"
+
+  - function_to_test: "GPTController.process"
+    description: "Tests process with default config values"
+    scenario: "Process when config dict is empty, using defaults"
+    mocks:
+      - target: "recording"
+        return_value: "Mock Recording"
+      - target: "get_api_key"
+        return_value: "test-key"
+      - target: "config"
+        return_value: "{}"
+      - target: "GPT4ProcessingThread"
+        return_value: "Mock thread"
+    expected_behavior:
+      - "GPT4ProcessingThread called with gpt_model='gpt-4o'"
+      - "GPT4ProcessingThread called with max_tokens=16000"
+      - "GPT4ProcessingThread called with temperature=1.0"
+
+  # smart_format() method tests - Happy path
+  - function_to_test: "GPTController.smart_format"
+    description: "Tests successful smart formatting with valid text"
+    scenario: "Format text with valid input and API key"
+    mocks:
+      - target: "text"
+        return_value: "'Test text to format'"
+      - target: "get_api_key"
+        return_value: "test-api-key"
+      - target: "GPT4ProcessingThread"
+        return_value: "Mock thread instance"
+      - target: "busy_guard_callback"
+        return_value: "Mock busy guard"
+    expected_behavior:
+      - "Method returns True"
+      - "GPT4ProcessingThread instantiated with gpt_model='gpt-4o-mini'"
+      - "GPT4ProcessingThread instantiated with temperature=0.3"
+      - "Thread signals connected to format-specific handlers"
+      - "Thread stored in self.threads['smart_format']"
+      - "status_update signal emitted with 'Formatting text...'"
+      - "Thread.start() is called"
+
+  # smart_format() method tests - Validation failures
+  - function_to_test: "GPTController.smart_format"
+    description: "Tests smart_format fails with empty text"
+    scenario: "Attempt to format empty text string"
+    mocks:
+      - target: "text"
+        return_value: "''"
+    expected_behavior:
+      - "Method returns False"
+      - "Error logged: 'No text provided for smart formatting'"
+      - "No thread is created"
+
+  - function_to_test: "GPTController.smart_format"
+    description: "Tests smart_format fails without API key"
+    scenario: "Attempt to format when API key is missing"
+    mocks:
+      - target: "text"
+        return_value: "'Test text'"
+      - target: "get_api_key"
+        return_value: "None"
+    expected_behavior:
+      - "Method returns False"
+      - "Error logged: 'OpenAI API key missing for smart formatting'"
+      - "No thread is created"
+
+  # refine() method tests - Happy path
+  - function_to_test: "GPTController.refine"
+    description: "Tests successful text refinement with all valid inputs"
+    scenario: "Refine text with valid recording, instructions, and current text"
+    mocks:
+      - target: "recording"
+        return_value: "Mock Recording with raw_transcript='original'"
+      - target: "refinement_instructions"
+        return_value: "'Make it shorter'"
+      - target: "initial_prompt"
+        return_value: "'Summarize this'"
+      - target: "current_text"
+        return_value: "'Current processed text'"
+      - target: "get_api_key"
+        return_value: "test-api-key"
+      - target: "GPT4ProcessingThread"
+        return_value: "Mock thread"
+      - target: "busy_guard_callback"
+        return_value: "Mock busy guard"
+    expected_behavior:
+      - "Method returns True"
+      - "GPT4ProcessingThread instantiated with messages list"
+      - "Messages list contains system, user, assistant, and user roles"
+      - "Thread signals connected to refinement-specific handlers"
+      - "Thread stored in self.threads['refinement']"
+      - "status_update signal emitted with 'Refining text...'"
+      - "Thread.start() is called"
+
+  # refine() method tests - Validation failures
+  - function_to_test: "GPTController.refine"
+    description: "Tests refine fails when recording is None"
+    scenario: "Attempt to refine with None recording"
+    mocks:
+      - target: "recording"
+        return_value: "None"
+    expected_behavior:
+      - "Method returns False"
+      - "Error logged: 'No transcript available for refinement'"
+      - "No thread is created"
+
+  - function_to_test: "GPTController.refine"
+    description: "Tests refine fails with empty refinement instructions"
+    scenario: "Attempt to refine without instructions"
+    mocks:
+      - target: "recording"
+        return_value: "Mock Recording with raw_transcript='test'"
+      - target: "refinement_instructions"
+        return_value: "''"
+    expected_behavior:
+      - "Method returns False"
+      - "Error logged: 'No refinement instructions provided'"
+      - "No thread is created"
+
+  - function_to_test: "GPTController.refine"
+    description: "Tests refine fails with empty current text"
+    scenario: "Attempt to refine when current_text is empty"
+    mocks:
+      - target: "recording"
+        return_value: "Mock Recording with raw_transcript='test'"
+      - target: "refinement_instructions"
+        return_value: "'Make shorter'"
+      - target: "current_text"
+        return_value: "''"
+    expected_behavior:
+      - "Method returns False"
+      - "Error logged: 'No current text provided for refinement'"
+      - "No thread is created"
+
+  - function_to_test: "GPTController.refine"
+    description: "Tests refine fails without API key"
+    scenario: "Attempt to refine when API key is missing"
+    mocks:
+      - target: "recording"
+        return_value: "Mock Recording"
+      - target: "refinement_instructions"
+        return_value: "'instructions'"
+      - target: "current_text"
+        return_value: "'text'"
+      - target: "get_api_key"
+        return_value: "None"
+    expected_behavior:
+      - "Method returns False"
+      - "Error logged: 'OpenAI API key missing for refinement'"
+      - "No thread is created"
+
+  # Callback handler tests
+  - function_to_test: "GPTController._on_process_completed"
+    description: "Tests process completion handler with recording"
+    scenario: "Handle successful GPT processing completion"
+    mocks:
+      - target: "recording"
+        return_value: "Mock Recording with id=123"
+      - target: "result"
+        return_value: "'Processed text result'"
+      - target: "db_manager.update_recording"
+        return_value: "Mock update call"
+      - target: "completion_callback"
+        return_value: "Mock callback function"
+    expected_behavior:
+      - "db_manager.update_recording called with recording_id=123"
+      - "Database update includes processed_text=result"
+      - "On database update complete: status_update signal emitted with 'GPT processing complete'"
+      - "On database update complete: gpt_process_completed signal emitted with result"
+      - "On database update complete: completion_callback called with result"
+
+  - function_to_test: "GPTController._on_process_completed"
+    description: "Tests process completion handler when recording is None"
+    scenario: "Handle completion when recording is None (early return)"
+    mocks:
+      - target: "recording"
+        return_value: "None"
+    expected_behavior:
+      - "Method returns immediately"
+      - "No database update attempted"
+      - "No signals emitted"
+      - "No callback invoked"
+
+  - function_to_test: "GPTController._on_process_completed"
+    description: "Tests process completion without callback"
+    scenario: "Handle completion when no completion_callback provided"
+    mocks:
+      - target: "recording"
+        return_value: "Mock Recording with id=456"
+      - target: "result"
+        return_value: "'Result text'"
+      - target: "completion_callback"
+        return_value: "None"
+    expected_behavior:
+      - "db_manager.update_recording called normally"
+      - "Signals emitted normally"
+      - "No completion_callback invoked (None check passes)"
+
+  - function_to_test: "GPTController._on_format_completed"
+    description: "Tests format completion handler with callback"
+    scenario: "Handle successful smart format completion"
+    mocks:
+      - target: "result"
+        return_value: "'Formatted HTML text'"
+      - target: "completion_callback"
+        return_value: "Mock callback"
+    expected_behavior:
+      - "status_update signal emitted with 'Formatting complete'"
+      - "completion_callback called with result"
+
+  - function_to_test: "GPTController._on_format_completed"
+    description: "Tests format completion without callback"
+    scenario: "Handle format completion when no callback provided"
+    mocks:
+      - target: "result"
+        return_value: "'Formatted text'"
+      - target: "completion_callback"
+        return_value: "None"
+    expected_behavior:
+      - "status_update signal emitted with 'Formatting complete'"
+      - "No callback invoked"
+
+  - function_to_test: "GPTController._on_refinement_completed"
+    description: "Tests refinement completion handler with recording"
+    scenario: "Handle successful refinement completion"
+    mocks:
+      - target: "recording"
+        return_value: "Mock Recording with id=789"
+      - target: "result"
+        return_value: "'Refined text'"
+      - target: "db_manager.update_recording"
+        return_value: "Mock update"
+      - target: "completion_callback"
+        return_value: "Mock callback"
+    expected_behavior:
+      - "db_manager.update_recording called with recording_id=789"
+      - "Only processed_text updated (raw transcript preserved)"
+      - "On database update: status_update signal emitted with 'Refinement complete'"
+      - "On database update: completion_callback called with result"
+
+  - function_to_test: "GPTController._on_refinement_completed"
+    description: "Tests refinement completion when recording is None"
+    scenario: "Handle refinement completion with None recording"
+    mocks:
+      - target: "recording"
+        return_value: "None"
+    expected_behavior:
+      - "Method returns immediately"
+      - "No database update attempted"
+      - "No signals emitted"
+
+  - function_to_test: "GPTController._on_process_progress"
+    description: "Tests progress update handler"
+    scenario: "Handle progress message from GPT thread"
+    mocks:
+      - target: "message"
+        return_value: "'Processing: 50% complete'"
+    expected_behavior:
+      - "status_update signal emitted with message"
+
+  - function_to_test: "GPTController._on_process_error"
+    description: "Tests error handler"
+    scenario: "Handle error message from GPT thread"
+    mocks:
+      - target: "error_message"
+        return_value: "'API rate limit exceeded'"
+    expected_behavior:
+      - "status_update signal emitted with 'GPT processing failed: API rate limit exceeded'"
+
+  - function_to_test: "GPTController._on_process_finished"
+    description: "Tests thread cleanup on finish"
+    scenario: "Clean up thread reference when thread finishes"
+    mocks:
+      - target: "thread_key"
+        return_value: "'process'"
+      - target: "self.threads"
+        return_value: "{'process': {'thread': Mock, 'busy_guard': Mock}}"
+    expected_behavior:
+      - "Thread entry removed from self.threads dictionary"
+      - "Logger info message: 'GPT thread (process) finished.'"
+
+  - function_to_test: "GPTController._on_process_finished"
+    description: "Tests thread cleanup when key doesn't exist"
+    scenario: "Handle finish for non-existent thread key"
+    mocks:
+      - target: "thread_key"
+        return_value: "'non_existent'"
+      - target: "self.threads"
+        return_value: "{}"
+    expected_behavior:
+      - "No error raised"
+      - "Logger info message: 'GPT thread (non_existent) finished.'"
+
+  # cancel() method tests
+  - function_to_test: "GPTController.cancel"
+    description: "Tests cancelling a running thread"
+    scenario: "Cancel an active GPT processing thread"
+    mocks:
+      - target: "thread_key"
+        return_value: "'process'"
+      - target: "self.threads"
+        return_value: "{'process': {'thread': Mock running thread, 'busy_guard': Mock}}"
+      - target: "thread.isRunning"
+        return_value: "True"
+    expected_behavior:
+      - "thread.cancel() is called"
+      - "status_update signal emitted with 'Canceling process...'"
+      - "Logger info: 'Canceling process thread...'"
+
+  - function_to_test: "GPTController.cancel"
+    description: "Tests cancel with non-running thread"
+    scenario: "Attempt to cancel a thread that's not running"
+    mocks:
+      - target: "thread_key"
+        return_value: "'process'"
+      - target: "self.threads"
+        return_value: "{'process': {'thread': Mock stopped thread, 'busy_guard': Mock}}"
+      - target: "thread.isRunning"
+        return_value: "False"
+    expected_behavior:
+      - "thread.cancel() is not called"
+      - "No status update emitted"
+      - "No log message"
+
+  - function_to_test: "GPTController.cancel"
+    description: "Tests cancel with non-existent thread key"
+    scenario: "Attempt to cancel with invalid thread key"
+    mocks:
+      - target: "thread_key"
+        return_value: "'invalid_key'"
+      - target: "self.threads"
+        return_value: "{}"
+    expected_behavior:
+      - "No error raised"
+      - "No action taken"
+
+  - function_to_test: "GPTController.cancel"
+    description: "Tests cancel with custom thread key"
+    scenario: "Cancel a specific thread type (smart_format or refinement)"
+    mocks:
+      - target: "thread_key"
+        return_value: "'smart_format'"
+      - target: "self.threads"
+        return_value: "{'smart_format': {'thread': Mock running thread, 'busy_guard': Mock}}"
+      - target: "thread.isRunning"
+        return_value: "True"
+    expected_behavior:
+      - "thread.cancel() is called"
+      - "status_update signal emitted with 'Canceling smart_format...'"
+      - "Logger info: 'Canceling smart_format thread...'"
+
+  # Edge cases and integration tests
+  - function_to_test: "GPTController.process"
+    description: "Tests process with completion callback that raises exception"
+    scenario: "Completion callback throws exception during processing"
+    mocks:
+      - target: "recording"
+        return_value: "Mock Recording"
+      - target: "get_api_key"
+        return_value: "test-key"
+      - target: "completion_callback"
+        side_effect: "raises ValueError('Callback error')"
+    expected_behavior:
+      - "Thread creation and start proceed normally"
+      - "Exception is not propagated (handled gracefully)"
+      - "Other signals still emitted"
+
+  - function_to_test: "GPTController"
+    description: "Tests multiple concurrent thread operations"
+    scenario: "Run process, smart_format, and refinement simultaneously"
+    mocks:
+      - target: "self.threads"
+        return_value: "{'process': thread1, 'smart_format': thread2, 'refinement': thread3}"
+    expected_behavior:
+      - "All three threads can exist in self.threads simultaneously"
+      - "Each thread has unique key"
+      - "Threads don't interfere with each other"
+
+  - function_to_test: "GPTController"
+    description: "Tests signal emission order"
+    scenario: "Verify correct order of signal emissions during process"
+    mocks:
+      - target: "recording"
+        return_value: "Mock Recording"
+      - target: "get_api_key"
+        return_value: "test-key"
+    expected_behavior:
+      - "First: status_update emitted with 'Starting GPT processing...'"
+      - "Second: gpt_process_started emitted"
+      - "Third: thread.start() called"
+      - "On completion: status_update then gpt_process_completed"

@@ -1,0 +1,1031 @@
+target_file: "app/TextEditor.py"
+test_file: "tests/test_text_editor.py"
+dependencies_to_mock:
+  - "PyQt6.QtWidgets.QApplication"
+  - "PyQt6.QtWidgets.QFileDialog"
+  - "PyQt6.QtWidgets.QColorDialog"
+  - "PyQt6.QtWidgets.QMessageBox"
+  - "PyQt6.QtPrintSupport.QPrinter"
+  - "PyQt6.QtPrintSupport.QPrintDialog"
+  - "PyQt6.QtPrintSupport.QPrintPreviewDialog"
+  - "docx.Document"
+  - "htmldocx.HtmlToDocx"
+  - "app.path_utils.resource_path"
+  - "app.ui_utils.SpinnerManager"
+  - "app.ui_utils.show_error_message"
+  - "app.ui_utils.show_info_message"
+  - "logging.getLogger"
+  - "os.path.exists"
+  - "os.path.basename"
+  - "os.path.splitext"
+  - "subprocess.check_call"
+  - "shutil.which"
+  - "shutil.copy"
+  - "weasyprint"
+  - "tempfile.NamedTemporaryFile"
+
+test_cases:
+  # FindReplaceDialog Tests
+  - function_to_test: "FindReplaceDialog.__init__"
+    description: "Tests initialization of find/replace dialog with proper UI setup"
+    scenario: "When FindReplaceDialog is created with an editor"
+    mocks:
+      - target: "PyQt6.QtWidgets.QDialog.__init__"
+        return_value: "None"
+    expected_behavior:
+      - "Dialog window title is set to 'Find and Replace'"
+      - "Dialog is non-modal"
+      - "All UI components are initialized (find_text, replace_text, checkboxes, buttons)"
+      - "Signal connections are established"
+      - "Initial button states are correct"
+
+  - function_to_test: "FindReplaceDialog.find_next"
+    description: "Tests finding next occurrence of search text"
+    scenario: "When searching forward for text that exists in document"
+    mocks:
+      - target: "editor.find"
+        return_value: "True"
+    expected_behavior:
+      - "_is_find_previous flag is set to False"
+      - "Search is performed with forward flag"
+      - "Status label shows 'Found [text]'"
+      - "Cursor position is updated to match location"
+
+  - function_to_test: "FindReplaceDialog.find_next"
+    description: "Tests search wrapping when reaching end of document"
+    scenario: "When searching forward and text not found, should wrap to beginning"
+    mocks:
+      - target: "editor.find"
+        side_effect: "Returns False on first call, True on second call after wrap"
+    expected_behavior:
+      - "Cursor moves to document start when search fails"
+      - "Search is retried from beginning"
+      - "Status label shows 'Search wrapped to the beginning/end'"
+      - "search_wrapped flag is set to True"
+
+  - function_to_test: "FindReplaceDialog.find_previous"
+    description: "Tests finding previous occurrence with backward search"
+    scenario: "When searching backward for text"
+    mocks:
+      - target: "editor.find"
+        return_value: "True"
+    expected_behavior:
+      - "_is_find_previous flag is set to True"
+      - "Search flags include FindBackward"
+      - "Cursor moves to previous match"
+      - "Status label updates appropriately"
+
+  - function_to_test: "FindReplaceDialog.replace"
+    description: "Tests replacing current selection"
+    scenario: "When text is selected and replace is triggered"
+    mocks:
+      - target: "editor.textCursor"
+        return_value: "mock cursor with selection"
+      - target: "cursor.hasSelection"
+        return_value: "True"
+      - target: "cursor.insertText"
+        return_value: "None"
+    expected_behavior:
+      - "Selected text is replaced with replacement text"
+      - "Status shows 'Replaced one occurrence'"
+      - "Search automatically finds next occurrence"
+
+  - function_to_test: "FindReplaceDialog.replace_all"
+    description: "Tests replacing all occurrences in document"
+    scenario: "When replace all is triggered with valid search and replace text"
+    mocks:
+      - target: "editor.document.beginEditBlock"
+        return_value: "None"
+      - target: "editor.find"
+        side_effect: "Returns True 3 times, then False"
+      - target: "cursor.insertText"
+        return_value: "None"
+      - target: "editor.document.endEditBlock"
+        return_value: "None"
+    expected_behavior:
+      - "Document edit block is started"
+      - "All occurrences are replaced"
+      - "Status shows 'Replaced 3 occurrence(s)'"
+      - "Cursor position is restored"
+      - "Document edit block is ended"
+
+  - function_to_test: "FindReplaceDialog.toggle_highlight_all"
+    description: "Tests highlighting all matches in document"
+    scenario: "When highlight all checkbox is checked"
+    mocks:
+      - target: "editor.find"
+        side_effect: "Returns True 5 times, then False"
+      - target: "editor.setExtraSelections"
+        return_value: "None"
+    expected_behavior:
+      - "All matches are found from document start"
+      - "Extra selections are created for each match"
+      - "Highlight format is applied with yellow background"
+      - "Status shows 'Highlighted 5 matches'"
+      - "Original cursor position is restored"
+
+  - function_to_test: "FindReplaceDialog.get_search_flags"
+    description: "Tests search flag generation based on options"
+    scenario: "When case sensitive and whole words options are checked"
+    mocks: []
+    expected_behavior:
+      - "FindCaseSensitively flag is set when case_sensitive is checked"
+      - "FindWholeWords flag is set when whole_words is checked"
+      - "FindBackward flag is set when search_backwards is checked"
+      - "Flags are combined correctly using bitwise OR"
+
+  # TextEditor Tests
+  - function_to_test: "TextEditor.__init__"
+    description: "Tests TextEditor initialization and setup"
+    scenario: "When TextEditor is created"
+    mocks:
+      - target: "QMainWindow.__init__"
+        return_value: "None"
+      - target: "SpinnerManager"
+        return_value: "mock spinner manager"
+      - target: "QFont"
+        return_value: "mock font"
+    expected_behavior:
+      - "QTextEdit is set as central widget"
+      - "Toolbar is created with all actions"
+      - "Keyboard shortcuts are registered"
+      - "Signal connections are established"
+      - "Default font is set to Arial 12pt"
+      - "Word count timer is started"
+      - "Document accepts drag and drop"
+
+  - function_to_test: "TextEditor.bold_text"
+    description: "Tests toggling bold formatting"
+    scenario: "When bold action is triggered on normal text"
+    mocks:
+      - target: "editor.fontWeight"
+        return_value: "QFont.Weight.Normal"
+      - target: "editor.setFontWeight"
+        return_value: "None"
+    expected_behavior:
+      - "Font weight is checked"
+      - "Weight is set to Bold"
+      - "Status message shows 'Bold enabled'"
+      - "Toolbar action is updated to reflect state"
+
+  - function_to_test: "TextEditor.italic_text"
+    description: "Tests toggling italic formatting"
+    scenario: "When italic formatting is applied to selected text"
+    mocks:
+      - target: "editor.fontItalic"
+        return_value: "False"
+      - target: "editor.setFontItalic"
+        return_value: "None"
+    expected_behavior:
+      - "Current italic state is checked"
+      - "Italic is toggled to opposite state"
+      - "Status message reflects new state"
+      - "Toolbar action checkbox is updated"
+
+  - function_to_test: "TextEditor.underline_text"
+    description: "Tests toggling underline formatting"
+    scenario: "When underline is toggled on selected text"
+    mocks:
+      - target: "editor.fontUnderline"
+        return_value: "False"
+      - target: "editor.setFontUnderline"
+        return_value: "None"
+    expected_behavior:
+      - "Current underline state is checked"
+      - "Underline is toggled"
+      - "Status message shows state change"
+      - "Toolbar action reflects new state"
+
+  - function_to_test: "TextEditor.strikethrough_text"
+    description: "Tests applying strikethrough formatting"
+    scenario: "When strikethrough is toggled"
+    mocks:
+      - target: "editor.currentCharFormat"
+        return_value: "mock format object"
+      - target: "fmt.fontStrikeOut"
+        return_value: "False"
+      - target: "editor.mergeCurrentCharFormat"
+        return_value: "None"
+    expected_behavior:
+      - "Current character format is retrieved"
+      - "Strikethrough state is toggled"
+      - "Format is merged back to editor"
+      - "Status message shows state change"
+
+  - function_to_test: "TextEditor.highlight_text"
+    description: "Tests applying background highlight color"
+    scenario: "When user selects a highlight color from color dialog"
+    mocks:
+      - target: "QColorDialog.getColor"
+        return_value: "mock valid color"
+      - target: "color.isValid"
+        return_value: "True"
+      - target: "editor.mergeCurrentCharFormat"
+        return_value: "None"
+    expected_behavior:
+      - "Color dialog is shown"
+      - "Valid color is applied as background"
+      - "Format is merged to current selection"
+      - "Status shows selected color name"
+
+  - function_to_test: "TextEditor.font_color"
+    description: "Tests changing text color"
+    scenario: "When user selects a text color"
+    mocks:
+      - target: "QColorDialog.getColor"
+        return_value: "mock valid color"
+      - target: "color.isValid"
+        return_value: "True"
+      - target: "editor.setTextColor"
+        return_value: "None"
+    expected_behavior:
+      - "Color dialog is shown"
+      - "Text color is set to selected color"
+      - "Status message shows color name"
+
+  - function_to_test: "TextEditor.set_alignment"
+    description: "Tests setting text alignment"
+    scenario: "When alignment is changed to center"
+    mocks:
+      - target: "editor.setAlignment"
+        return_value: "None"
+    expected_behavior:
+      - "Alignment is set to specified value"
+      - "Status message shows alignment type"
+      - "Corresponding toolbar action is checked"
+      - "Other alignment actions are unchecked"
+
+  - function_to_test: "TextEditor.bullet_list"
+    description: "Tests creating bullet list"
+    scenario: "When bullet list is applied to current paragraph"
+    mocks:
+      - target: "editor.textCursor"
+        return_value: "mock cursor"
+      - target: "cursor.createList"
+        return_value: "None"
+    expected_behavior:
+      - "Text cursor is retrieved"
+      - "List format is created with ListDisc style"
+      - "List is created at cursor position"
+      - "Status shows 'Bullet list created'"
+
+  - function_to_test: "TextEditor.numbered_list"
+    description: "Tests creating numbered list"
+    scenario: "When numbered list is applied"
+    mocks:
+      - target: "editor.textCursor"
+        return_value: "mock cursor"
+      - target: "cursor.createList"
+        return_value: "None"
+    expected_behavior:
+      - "Text cursor is retrieved"
+      - "List format is created with ListDecimal style"
+      - "List is created at cursor position"
+      - "Status shows 'Numbered list created'"
+
+  - function_to_test: "TextEditor.increase_indent"
+    description: "Tests increasing paragraph indentation"
+    scenario: "When indent is increased and current indent is less than 15"
+    mocks:
+      - target: "cursor.blockFormat"
+        return_value: "mock block format with indent 2"
+      - target: "cursor.setBlockFormat"
+        return_value: "None"
+    expected_behavior:
+      - "Current indent level is checked"
+      - "Indent is increased by 1"
+      - "New block format is applied"
+      - "Status shows 'Indent increased'"
+
+  - function_to_test: "TextEditor.decrease_indent"
+    description: "Tests decreasing paragraph indentation"
+    scenario: "When indent is decreased and current indent is greater than 0"
+    mocks:
+      - target: "cursor.blockFormat"
+        return_value: "mock block format with indent 3"
+      - target: "cursor.setBlockFormat"
+        return_value: "None"
+    expected_behavior:
+      - "Current indent level is checked"
+      - "Indent is decreased by 1"
+      - "New block format is applied"
+      - "Status shows 'Indent decreased'"
+
+  - function_to_test: "TextEditor.font_family_changed"
+    description: "Tests changing font family"
+    scenario: "When font family is selected from dropdown"
+    mocks:
+      - target: "editor.setCurrentFont"
+        return_value: "None"
+    expected_behavior:
+      - "Font is set to selected family"
+      - "Status message shows font name"
+      - "Document is updated with new font"
+
+  - function_to_test: "TextEditor.font_size_changed"
+    description: "Tests changing font size with valid input"
+    scenario: "When valid font size is entered"
+    mocks:
+      - target: "editor.setFontPointSize"
+        return_value: "None"
+    expected_behavior:
+      - "Size string is converted to float"
+      - "Font point size is set"
+      - "Status message shows new size"
+
+  - function_to_test: "TextEditor.font_size_changed"
+    description: "Tests handling invalid font size input"
+    scenario: "When invalid font size is entered"
+    mocks:
+      - target: "show_error_message"
+        return_value: "None"
+    expected_behavior:
+      - "ValueError is caught"
+      - "Error message is shown to user"
+      - "Font size remains unchanged"
+
+  - function_to_test: "TextEditor.update_word_count"
+    description: "Tests word and character count calculation"
+    scenario: "When text content changes"
+    mocks:
+      - target: "editor.toPlainText"
+        return_value: "This is a test document with multiple words"
+    expected_behavior:
+      - "Text is split on whitespace"
+      - "Empty strings are filtered out"
+      - "Word count shows 8"
+      - "Character count shows total length"
+      - "Label is updated with counts"
+
+  - function_to_test: "TextEditor.export_to_pdf"
+    description: "Tests PDF export with QPrinter"
+    scenario: "When exporting document to PDF and user selects file"
+    mocks:
+      - target: "QFileDialog.getSaveFileName"
+        return_value: "('/path/to/file.pdf', 'PDF Files (*.pdf)')"
+      - target: "QPrinter"
+        return_value: "mock printer"
+      - target: "editor.document.print"
+        return_value: "True"
+      - target: "show_info_message"
+        return_value: "None"
+    expected_behavior:
+      - "File dialog is shown for PDF save"
+      - "Printer is configured for PDF output"
+      - "Document is printed to PDF"
+      - "Success message is shown"
+      - "Status bar shows export completion"
+
+  - function_to_test: "TextEditor.export_to_word"
+    description: "Tests Word document export"
+    scenario: "When exporting to DOCX format"
+    mocks:
+      - target: "QFileDialog.getSaveFileName"
+        return_value: "('/path/to/file.docx', 'Word Documents (*.docx)')"
+      - target: "docx.Document"
+        return_value: "mock document"
+      - target: "HtmlToDocx"
+        return_value: "mock converter"
+      - target: "editor.toHtml"
+        return_value: "<p>Test content</p>"
+      - target: "doc.save"
+        return_value: "None"
+      - target: "show_info_message"
+        return_value: "None"
+    expected_behavior:
+      - "File dialog is shown"
+      - "New Word document is created"
+      - "HTML content is converted to Word format"
+      - "Document is saved to specified path"
+      - "Success message is shown"
+
+  - function_to_test: "TextEditor.export_to_text"
+    description: "Tests plain text export"
+    scenario: "When exporting to plain text file"
+    mocks:
+      - target: "QFileDialog.getSaveFileName"
+        return_value: "('/path/to/file.txt', 'Text Files (*.txt)')"
+      - target: "editor.toPlainText"
+        return_value: "Plain text content"
+      - target: "open"
+        return_value: "mock file handle"
+      - target: "show_info_message"
+        return_value: "None"
+    expected_behavior:
+      - "File dialog is shown"
+      - "Plain text is extracted from editor"
+      - "Text is written to file with UTF-8 encoding"
+      - "Success message is shown"
+
+  - function_to_test: "TextEditor.export_to_html"
+    description: "Tests HTML export with styling"
+    scenario: "When exporting to HTML file"
+    mocks:
+      - target: "QFileDialog.getSaveFileName"
+        return_value: "('/path/to/file.html', 'HTML Files (*.html)')"
+      - target: "editor.toHtml"
+        return_value: "<p>HTML content</p>"
+      - target: "open"
+        return_value: "mock file handle"
+      - target: "show_info_message"
+        return_value: "None"
+    expected_behavior:
+      - "File dialog is shown"
+      - "HTML is extracted from editor"
+      - "HTML is wrapped with proper DOCTYPE and styling"
+      - "File is written with UTF-8 encoding"
+      - "Success message is shown"
+
+  - function_to_test: "TextEditor.print_document"
+    description: "Tests printing document"
+    scenario: "When print dialog is accepted"
+    mocks:
+      - target: "QPrinter"
+        return_value: "mock printer"
+      - target: "QPrintDialog"
+        return_value: "mock dialog"
+      - target: "dialog.exec"
+        return_value: "QPrintDialog.DialogCode.Accepted"
+      - target: "editor.document.print"
+        return_value: "None"
+    expected_behavior:
+      - "Print dialog is shown"
+      - "Document is sent to printer"
+      - "Status message confirms printing"
+
+  - function_to_test: "TextEditor.print_preview"
+    description: "Tests print preview functionality"
+    scenario: "When print preview is requested"
+    mocks:
+      - target: "QPrinter"
+        return_value: "mock printer"
+      - target: "QPrintPreviewDialog"
+        return_value: "mock preview dialog"
+      - target: "preview.paintRequested.connect"
+        return_value: "None"
+      - target: "preview.exec"
+        return_value: "None"
+    expected_behavior:
+      - "Print preview dialog is created"
+      - "Paint request signal is connected"
+      - "Preview dialog is shown"
+
+  - function_to_test: "TextEditor.show_find_dialog"
+    description: "Tests showing find/replace dialog"
+    scenario: "When find dialog is requested for first time"
+    mocks:
+      - target: "FindReplaceDialog"
+        return_value: "mock dialog"
+    expected_behavior:
+      - "FindReplaceDialog is created if not exists"
+      - "Dialog is shown"
+      - "Dialog is raised to front"
+      - "Dialog is activated"
+
+  - function_to_test: "TextEditor.smart_format_text"
+    description: "Tests smart formatting request with text"
+    scenario: "When smart format is triggered with content"
+    mocks:
+      - target: "editor.toPlainText"
+        return_value: "Text to format"
+      - target: "toggle_spinner"
+        return_value: "None"
+    expected_behavior:
+      - "Current text is retrieved"
+      - "Text emptiness is checked"
+      - "Spinner is activated"
+      - "smart_format_requested signal is emitted with text"
+      - "Status message is shown"
+
+  - function_to_test: "TextEditor.smart_format_text"
+    description: "Tests smart formatting with empty text"
+    scenario: "When smart format is triggered with no content"
+    mocks:
+      - target: "editor.toPlainText"
+        return_value: ""
+      - target: "show_error_message"
+        return_value: "None"
+    expected_behavior:
+      - "Text is checked for emptiness"
+      - "Error message is shown"
+      - "No signal is emitted"
+      - "Function returns early"
+
+  - function_to_test: "TextEditor.smart_format_text"
+    description: "Tests smart formatting with long text confirmation"
+    scenario: "When text is over 10000 characters and user confirms"
+    mocks:
+      - target: "editor.toPlainText"
+        return_value: "x" * 10001
+      - target: "QMessageBox.question"
+        return_value: "QMessageBox.StandardButton.Yes"
+      - target: "toggle_spinner"
+        return_value: "None"
+    expected_behavior:
+      - "Text length is checked"
+      - "Confirmation dialog is shown"
+      - "User confirms processing"
+      - "Smart format proceeds"
+      - "Signal is emitted"
+
+  - function_to_test: "TextEditor.start_transcription"
+    description: "Tests transcription request signal"
+    scenario: "When transcription button is clicked"
+    mocks: []
+    expected_behavior:
+      - "transcription_requested signal is emitted"
+      - "No parameters are passed with signal"
+
+  - function_to_test: "TextEditor.process_with_gpt4"
+    description: "Tests GPT-4 processing request"
+    scenario: "When GPT-4 processing is triggered"
+    mocks: []
+    expected_behavior:
+      - "gpt4_processing_requested signal is emitted"
+      - "No parameters are passed with signal"
+
+  - function_to_test: "TextEditor.save_editor_state"
+    description: "Tests save request signal"
+    scenario: "When save is triggered via shortcut or button"
+    mocks: []
+    expected_behavior:
+      - "save_requested signal is emitted"
+      - "No parameters are passed with signal"
+
+  - function_to_test: "TextEditor.toggle_spinner"
+    description: "Tests spinner state management for processing actions"
+    scenario: "When starting a processing action like transcription"
+    mocks:
+      - target: "action.setEnabled"
+        return_value: "None"
+      - target: "action.setToolTip"
+        return_value: "None"
+      - target: "show_status_message"
+        return_value: "None"
+    expected_behavior:
+      - "Action is located in toolbar actions"
+      - "Action is disabled during processing"
+      - "Tooltip is updated to show processing state"
+      - "Status message shows 'Processing...'"
+      - "Processing flag is set on action"
+
+  - function_to_test: "TextEditor.update_formatting"
+    description: "Tests updating toolbar to reflect current text formatting"
+    scenario: "When cursor position changes or selection changes"
+    mocks:
+      - target: "editor.currentCharFormat"
+        return_value: "mock format"
+      - target: "fmt.font"
+        return_value: "mock font with bold, italic properties"
+      - target: "editor.alignment"
+        return_value: "Qt.AlignmentFlag.AlignLeft"
+    expected_behavior:
+      - "Current character format is retrieved"
+      - "Font family combo is updated"
+      - "Font size combo is updated"
+      - "Bold, italic, underline actions are checked/unchecked"
+      - "Alignment actions are updated"
+      - "Signals are blocked during update to prevent recursion"
+
+  - function_to_test: "TextEditor.serialize_text_document"
+    description: "Tests serializing editor content to HTML"
+    scenario: "When saving document state"
+    mocks:
+      - target: "editor.toHtml"
+        return_value: "<html>Document content</html>"
+    expected_behavior:
+      - "HTML content is extracted from editor"
+      - "Content is returned as string"
+      - "Formatting is preserved in HTML"
+
+  - function_to_test: "TextEditor.deserialize_text_document"
+    description: "Tests loading HTML content into editor"
+    scenario: "When loading saved HTML document"
+    mocks:
+      - target: "editor.setHtml"
+        return_value: "None"
+      - target: "update_word_count"
+        return_value: "None"
+    expected_behavior:
+      - "Content type is detected (HTML vs plain text)"
+      - "HTML content is loaded with setHtml"
+      - "Word count is updated after loading"
+
+  - function_to_test: "TextEditor.deserialize_text_document"
+    description: "Tests loading plain text content"
+    scenario: "When loading plain text without HTML tags"
+    mocks:
+      - target: "editor.setPlainText"
+        return_value: "None"
+      - target: "update_word_count"
+        return_value: "None"
+    expected_behavior:
+      - "Content is detected as plain text"
+      - "Plain text is loaded with setPlainText"
+      - "Word count is updated"
+
+  - function_to_test: "TextEditor.deserialize_text_document"
+    description: "Tests error handling during deserialization"
+    scenario: "When deserialization fails with exception"
+    mocks:
+      - target: "editor.setHtml"
+        side_effect: "raises Exception"
+      - target: "logger.error"
+        return_value: "None"
+      - target: "editor.clear"
+        return_value: "None"
+      - target: "editor.setPlainText"
+        return_value: "None"
+    expected_behavior:
+      - "Exception is caught"
+      - "Error is logged"
+      - "Editor is cleared"
+      - "Error message is displayed in editor"
+
+  - function_to_test: "TextEditor.dragEnterEvent"
+    description: "Tests drag enter event for file drops"
+    scenario: "When file is dragged over editor"
+    mocks:
+      - target: "event.mimeData"
+        return_value: "mock mime data"
+      - target: "mime_data.hasUrls"
+        return_value: "True"
+      - target: "event.acceptProposedAction"
+        return_value: "None"
+    expected_behavior:
+      - "Mime data is checked for content types"
+      - "URLs are detected"
+      - "Drag event is accepted"
+
+  - function_to_test: "TextEditor.dropEvent"
+    description: "Tests dropping file onto editor"
+    scenario: "When local file is dropped onto editor"
+    mocks:
+      - target: "mime_data.hasUrls"
+        return_value: "True"
+      - target: "mime_data.urls"
+        return_value: "[mock_url]"
+      - target: "url.isLocalFile"
+        return_value: "True"
+      - target: "url.toLocalFile"
+        return_value: "/path/to/file.txt"
+      - target: "load_file"
+        return_value: "None"
+    expected_behavior:
+      - "URLs are extracted from mime data"
+      - "Local file path is obtained"
+      - "load_file is called with path"
+      - "Event is accepted"
+
+  - function_to_test: "TextEditor.dropEvent"
+    description: "Tests dropping HTML content"
+    scenario: "When HTML content is dropped"
+    mocks:
+      - target: "mime_data.hasHtml"
+        return_value: "True"
+      - target: "mime_data.html"
+        return_value: "<p>Dropped HTML</p>"
+      - target: "editor.cursorForPosition"
+        return_value: "mock cursor"
+      - target: "cursor.insertHtml"
+        return_value: "None"
+    expected_behavior:
+      - "HTML content is detected"
+      - "Cursor position is determined from drop location"
+      - "HTML is inserted at cursor"
+      - "Event is accepted"
+
+  - function_to_test: "TextEditor.dropEvent"
+    description: "Tests dropping plain text"
+    scenario: "When plain text is dropped"
+    mocks:
+      - target: "mime_data.hasText"
+        return_value: "True"
+      - target: "mime_data.text"
+        return_value: "Dropped text"
+      - target: "editor.cursorForPosition"
+        return_value: "mock cursor"
+      - target: "cursor.insertText"
+        return_value: "None"
+    expected_behavior:
+      - "Plain text is detected"
+      - "Cursor position is determined"
+      - "Text is inserted at cursor"
+      - "Event is accepted"
+
+  - function_to_test: "TextEditor.load_file"
+    description: "Tests loading text file with UTF-8 encoding"
+    scenario: "When loading a supported text file"
+    mocks:
+      - target: "os.path.splitext"
+        return_value: "('/path/file', '.txt')"
+      - target: "open"
+        return_value: "mock file handle"
+      - target: "file.read"
+        return_value: "File contents"
+      - target: "editor.setPlainText"
+        return_value: "None"
+      - target: "update_word_count"
+        return_value: "None"
+    expected_behavior:
+      - "File extension is checked"
+      - "File is opened with UTF-8 encoding"
+      - "Content is read"
+      - "Plain text is set in editor"
+      - "Word count is updated"
+      - "Status message shows file name"
+
+  - function_to_test: "TextEditor.load_file"
+    description: "Tests loading HTML file"
+    scenario: "When loading an HTML file"
+    mocks:
+      - target: "os.path.splitext"
+        return_value: "('/path/file', '.html')"
+      - target: "open"
+        return_value: "mock file handle"
+      - target: "file.read"
+        return_value: "<html>Content</html>"
+      - target: "editor.setHtml"
+        return_value: "None"
+    expected_behavior:
+      - "HTML extension is detected"
+      - "File is opened and read"
+      - "Content is set as HTML"
+      - "Word count is updated"
+
+  - function_to_test: "TextEditor.load_file"
+    description: "Tests handling encoding errors with fallback encodings"
+    scenario: "When UTF-8 decoding fails, fallback to other encodings"
+    mocks:
+      - target: "open"
+        side_effect: "UnicodeDecodeError on UTF-8, success on latin-1"
+      - target: "editor.setPlainText"
+        return_value: "None"
+    expected_behavior:
+      - "UTF-8 encoding is tried first"
+      - "On failure, latin-1 is tried"
+      - "File is successfully loaded with working encoding"
+      - "Content is displayed"
+
+  - function_to_test: "TextEditor.load_file"
+    description: "Tests handling unsupported file types"
+    scenario: "When attempting to load unsupported file type"
+    mocks:
+      - target: "os.path.splitext"
+        return_value: "('/path/file', '.exe')"
+      - target: "show_error_message"
+        return_value: "None"
+    expected_behavior:
+      - "File extension is checked against supported list"
+      - "Error message is shown for unsupported type"
+      - "File is not loaded"
+
+  - function_to_test: "TextEditor.load_file"
+    description: "Tests handling file not found error"
+    scenario: "When file does not exist"
+    mocks:
+      - target: "open"
+        side_effect: "raises FileNotFoundError"
+      - target: "show_error_message"
+        return_value: "None"
+      - target: "logger.error"
+        return_value: "None"
+    expected_behavior:
+      - "FileNotFoundError is caught"
+      - "Error message is shown to user"
+      - "Error is logged"
+
+  - function_to_test: "TextEditor.load_file"
+    description: "Tests handling permission error"
+    scenario: "When user lacks permission to read file"
+    mocks:
+      - target: "open"
+        side_effect: "raises PermissionError"
+      - target: "show_error_message"
+        return_value: "None"
+      - target: "logger.error"
+        return_value: "None"
+    expected_behavior:
+      - "PermissionError is caught"
+      - "Permission error message is shown"
+      - "Error is logged"
+
+  - function_to_test: "TextEditor.on_text_changed"
+    description: "Tests text change event handling"
+    scenario: "When text is modified in editor"
+    mocks:
+      - target: "QTimer.singleShot"
+        return_value: "None"
+    expected_behavior:
+      - "_word_count_dirty flag is set to True"
+      - "Single-shot timer is started if not pending"
+      - "Word count update is scheduled after 300ms delay"
+
+  - function_to_test: "TextEditor.setup_keyboard_shortcuts"
+    description: "Tests keyboard shortcut registration"
+    scenario: "When editor is initialized"
+    mocks:
+      - target: "QShortcut"
+        return_value: "mock shortcut"
+      - target: "shortcut.activated.connect"
+        return_value: "None"
+    expected_behavior:
+      - "All standard shortcuts are registered (Save, Bold, Italic, etc.)"
+      - "Custom shortcuts are registered (Ctrl+T, Ctrl+G, Ctrl+Shift+F)"
+      - "Alignment shortcuts are registered"
+      - "List formatting shortcuts are registered"
+      - "Each shortcut is connected to appropriate callback"
+
+  - function_to_test: "TextEditor.create_toolbar"
+    description: "Tests toolbar creation and action setup"
+    scenario: "When editor toolbar is created"
+    mocks:
+      - target: "QToolBar"
+        return_value: "mock toolbar"
+      - target: "resource_path"
+        return_value: "/path/to/icon.svg"
+      - target: "QFontComboBox"
+        return_value: "mock font combo"
+      - target: "QComboBox"
+        return_value: "mock size combo"
+    expected_behavior:
+      - "Toolbar is created and added to main window"
+      - "Transcription, GPT-4, and Smart Format actions are added"
+      - "Font family and size selectors are added"
+      - "Formatting actions are added (bold, italic, underline, etc.)"
+      - "Alignment actions are added as group"
+      - "List actions are added"
+      - "Export menu is created"
+      - "Word count label is added"
+      - "All actions are stored in _toolbar_actions dict"
+
+  - function_to_test: "TextEditor.add_toolbar_action"
+    description: "Tests adding individual toolbar action"
+    scenario: "When new action is added to toolbar with icon"
+    mocks:
+      - target: "os.path.exists"
+        return_value: "True"
+      - target: "QIcon"
+        return_value: "mock icon"
+      - target: "QAction"
+        return_value: "mock action"
+    expected_behavior:
+      - "Icon file existence is checked"
+      - "QAction is created with icon and tooltip"
+      - "Action checkable state is set"
+      - "Callback is connected if provided"
+      - "Action is added to toolbar"
+      - "Action is stored in _toolbar_actions dict"
+
+  - function_to_test: "TextEditor.add_toolbar_action"
+    description: "Tests adding toolbar action when icon is missing"
+    scenario: "When icon file does not exist"
+    mocks:
+      - target: "os.path.exists"
+        return_value: "False"
+      - target: "QAction"
+        return_value: "mock action"
+      - target: "logger.warning"
+        return_value: "None"
+    expected_behavior:
+      - "Text-only action is created"
+      - "Warning is logged about missing icon"
+      - "Action is still added to toolbar"
+      - "Action functions normally without icon"
+
+  - function_to_test: "TextEditor.__del__"
+    description: "Tests cleanup when editor is destroyed"
+    scenario: "When TextEditor instance is garbage collected"
+    mocks:
+      - target: "word_count_timer.isActive"
+        return_value: "True"
+      - target: "word_count_timer.stop"
+        return_value: "None"
+      - target: "find_replace_dialog.close"
+        return_value: "None"
+    expected_behavior:
+      - "Word count timer is stopped if active"
+      - "Find/replace dialog is closed if open"
+      - "Exceptions during cleanup are caught and logged"
+
+  - function_to_test: "TextEditor.setHtml"
+    description: "Tests setting HTML content programmatically"
+    scenario: "When HTML content is set from external source"
+    mocks:
+      - target: "editor.setHtml"
+        return_value: "None"
+      - target: "update_word_count"
+        return_value: "None"
+    expected_behavior:
+      - "HTML is set in editor"
+      - "Word count is updated"
+
+  - function_to_test: "TextEditor.toHtml"
+    description: "Tests getting HTML content"
+    scenario: "When HTML content is requested"
+    mocks:
+      - target: "editor.toHtml"
+        return_value: "<html>content</html>"
+    expected_behavior:
+      - "HTML is retrieved from editor"
+      - "Formatted HTML string is returned"
+
+  - function_to_test: "TextEditor.toPlainText"
+    description: "Tests getting plain text content"
+    scenario: "When plain text is requested"
+    mocks:
+      - target: "editor.toPlainText"
+        return_value: "Plain text content"
+    expected_behavior:
+      - "Plain text is extracted from editor"
+      - "Text string is returned without formatting"
+
+  - function_to_test: "TextEditor.clear"
+    description: "Tests clearing editor content"
+    scenario: "When editor content is cleared"
+    mocks:
+      - target: "editor.clear"
+        return_value: "None"
+      - target: "update_word_count"
+        return_value: "None"
+    expected_behavior:
+      - "Editor content is cleared"
+      - "Word count is reset to 0"
+
+  - function_to_test: "TextEditor.show_status_message"
+    description: "Tests showing temporary status messages"
+    scenario: "When status message needs to be displayed"
+    mocks:
+      - target: "statusBar"
+        return_value: "mock status bar"
+      - target: "statusBar.showMessage"
+        return_value: "None"
+      - target: "statusBar.isVisible"
+        return_value: "False"
+      - target: "statusBar.show"
+        return_value: "None"
+    expected_behavior:
+      - "Message is shown in status bar"
+      - "Timeout is set (default 3000ms)"
+      - "Status bar is made visible if hidden"
+
+  - function_to_test: "TextEditor.hide_status_message"
+    description: "Tests hiding status bar"
+    scenario: "When status message should be cleared"
+    mocks:
+      - target: "statusBar.clearMessage"
+        return_value: "None"
+      - target: "statusBar.hide"
+        return_value: "None"
+    expected_behavior:
+      - "Status message is cleared"
+      - "Status bar is hidden"
+
+  - function_to_test: "TextEditor._extract_body_content"
+    description: "Tests extracting body content from HTML"
+    scenario: "When processing HTML with body tags"
+    mocks: []
+    expected_behavior:
+      - "Body tags are found using regex"
+      - "Content between body tags is extracted"
+      - "Only inner content is returned"
+
+  - function_to_test: "TextEditor._extract_body_content"
+    description: "Tests handling HTML without body tags"
+    scenario: "When HTML fragment lacks body tags"
+    mocks: []
+    expected_behavior:
+      - "Regex search finds no body tags"
+      - "Original HTML is returned as fallback"
+
+  - function_to_test: "TextEditor.delayed_word_count_update"
+    description: "Tests periodic word count update backup"
+    scenario: "When timer triggers and word count is dirty"
+    mocks:
+      - target: "update_word_count"
+        return_value: "None"
+    expected_behavior:
+      - "_word_count_dirty flag is checked"
+      - "update_word_count is called if dirty"
+      - "Provides backup for missed updates"
+
+  - function_to_test: "TextEditor.export_to_pdf"
+    description: "Tests PDF export fallback to HTML when PDF generation fails"
+    scenario: "When all PDF export methods fail"
+    mocks:
+      - target: "QFileDialog.getSaveFileName"
+        return_value: "('/path/to/file.pdf', 'PDF Files (*.pdf)')"
+      - target: "editor.document.print"
+        side_effect: "raises Exception"
+      - target: "shutil.which"
+        return_value: "None"
+      - target: "shutil.copy"
+        return_value: "None"
+      - target: "show_error_message"
+        return_value: "None"
+    expected_behavior:
+      - "Primary PDF export is attempted"
+      - "Fallback to wkhtmltopdf is attempted"
+      - "Fallback to weasyprint is attempted"
+      - "HTML file is saved as last resort"
+      - "Error message explains fallback to HTML"

@@ -1,0 +1,353 @@
+target_file: "app/secure.py"
+test_file: "app/tests/test_secure_comprehensive.py"
+dependencies_to_mock:
+  - "keyring"
+  - "keyring.get_password"
+  - "keyring.set_password"
+  - "keyring.delete_password"
+  - "keyring.errors.PasswordDeleteError"
+  - "logging.getLogger"
+  - "app.constants.APP_VERSION"
+  - "app.constants.APP_NAME"
+
+test_cases:
+  # redact() function tests
+  - function_to_test: "redact"
+    description: "Tests redaction of OpenAI API key pattern"
+    scenario: "When text contains OpenAI API key pattern (sk-xxxxx)"
+    mocks: []
+    expected_behavior:
+      - "Returns text with OpenAI key replaced by ***-REDACTED-***"
+      - "Original key pattern is not present in output"
+
+  - function_to_test: "redact"
+    description: "Tests redaction of HuggingFace token pattern"
+    scenario: "When text contains HuggingFace token pattern (hf_xxxxx)"
+    mocks: []
+    expected_behavior:
+      - "Returns text with HF token replaced by ***-REDACTED-***"
+      - "Original token pattern is not present in output"
+
+  - function_to_test: "redact"
+    description: "Tests redaction of multiple API keys in same text"
+    scenario: "When text contains both OpenAI and HuggingFace tokens"
+    mocks: []
+    expected_behavior:
+      - "All API keys are replaced with ***-REDACTED-***"
+      - "Count of redactions matches count of sensitive patterns"
+
+  - function_to_test: "redact"
+    description: "Tests handling of empty string input"
+    scenario: "When input text is empty string"
+    mocks: []
+    expected_behavior:
+      - "Returns empty string"
+      - "No exceptions raised"
+
+  - function_to_test: "redact"
+    description: "Tests handling of None input"
+    scenario: "When input text is None"
+    mocks: []
+    expected_behavior:
+      - "Returns empty string"
+      - "No exceptions raised"
+
+  - function_to_test: "redact"
+    description: "Tests preservation of non-sensitive text"
+    scenario: "When text contains no API keys or tokens"
+    mocks: []
+    expected_behavior:
+      - "Returns original text unchanged"
+      - "No redaction markers added"
+
+  - function_to_test: "redact"
+    description: "Tests edge case with partial API key patterns"
+    scenario: "When text contains partial patterns like 'sk-' or 'hf_' without enough characters"
+    mocks: []
+    expected_behavior:
+      - "Does not redact partial patterns that don't match full regex"
+      - "Only complete API key patterns are redacted"
+
+  # SensitiveLogFilter class tests
+  - function_to_test: "SensitiveLogFilter.filter"
+    description: "Tests filtering of log record with sensitive message"
+    scenario: "When log record contains API key in msg attribute"
+    mocks:
+      - target: "redact"
+        return_value: "redacted message"
+    expected_behavior:
+      - "record.msg is updated with redacted version"
+      - "Method returns True to keep the record"
+      - "redact() is called with original message"
+
+  - function_to_test: "SensitiveLogFilter.filter"
+    description: "Tests filtering of log record with sensitive args"
+    scenario: "When log record contains API keys in args tuple"
+    mocks:
+      - target: "redact"
+        return_value: "redacted arg"
+    expected_behavior:
+      - "String args are redacted"
+      - "Non-string args remain unchanged"
+      - "Args tuple is properly reconstructed"
+      - "Method returns True"
+
+  - function_to_test: "SensitiveLogFilter.filter"
+    description: "Tests handling of log record without msg attribute"
+    scenario: "When log record lacks msg attribute"
+    mocks: []
+    expected_behavior:
+      - "No AttributeError raised"
+      - "Method returns True"
+      - "Record passes through without modification"
+
+  - function_to_test: "SensitiveLogFilter.filter"
+    description: "Tests handling of log record with None msg"
+    scenario: "When log record has msg attribute set to None"
+    mocks: []
+    expected_behavior:
+      - "No exceptions raised"
+      - "Method returns True"
+      - "msg remains None"
+
+  - function_to_test: "SensitiveLogFilter.filter"
+    description: "Tests handling of non-string msg attribute"
+    scenario: "When log record msg is an integer or other non-string type"
+    mocks: []
+    expected_behavior:
+      - "Non-string msg is not processed"
+      - "No type errors raised"
+      - "Method returns True"
+
+  # migrate_api_keys() function tests
+  - function_to_test: "migrate_api_keys"
+    description: "Tests successful migration of both API keys"
+    scenario: "When both OpenAI and HuggingFace keys exist in old location"
+    mocks:
+      - target: "keyring.get_password"
+        return_value: "test-api-key"
+      - target: "keyring.set_password"
+        return_value: None
+      - target: "keyring.delete_password"
+        return_value: None
+      - target: "logging.getLogger"
+        return_value: "mock_logger"
+    expected_behavior:
+      - "Returns {'openai': True, 'hf': True}"
+      - "get_password called twice with old_service_id"
+      - "set_password called twice with new_service_id"
+      - "delete_password called twice to remove old keys"
+      - "Info messages logged for successful migrations"
+
+  - function_to_test: "migrate_api_keys"
+    description: "Tests migration when no keys exist in old location"
+    scenario: "When old location has no API keys"
+    mocks:
+      - target: "keyring.get_password"
+        return_value: None
+      - target: "logging.getLogger"
+        return_value: "mock_logger"
+    expected_behavior:
+      - "Returns {'openai': False, 'hf': False}"
+      - "No set_password calls made"
+      - "No delete_password calls made"
+      - "No migration messages logged"
+
+  - function_to_test: "migrate_api_keys"
+    description: "Tests partial migration with only OpenAI key"
+    scenario: "When only OpenAI key exists in old location"
+    mocks:
+      - target: "keyring.get_password"
+        side_effect: "returns 'openai-key' for first call, None for second"
+      - target: "keyring.set_password"
+        return_value: None
+      - target: "keyring.delete_password"
+        return_value: None
+      - target: "logging.getLogger"
+        return_value: "mock_logger"
+    expected_behavior:
+      - "Returns {'openai': True, 'hf': False}"
+      - "Only OpenAI key is migrated"
+      - "Info message logged for OpenAI migration only"
+
+  - function_to_test: "migrate_api_keys"
+    description: "Tests error handling during OpenAI key migration"
+    scenario: "When keyring operations fail for OpenAI key"
+    mocks:
+      - target: "keyring.get_password"
+        side_effect: "raises Exception for OpenAI, returns None for HF"
+      - target: "logging.getLogger"
+        return_value: "mock_logger"
+      - target: "redact"
+        return_value: "redacted error message"
+    expected_behavior:
+      - "Exception is caught and logged"
+      - "Error message is redacted before logging"
+      - "Migration continues for HuggingFace token"
+      - "Returns {'openai': False, 'hf': False}"
+
+  - function_to_test: "migrate_api_keys"
+    description: "Tests error handling during key deletion"
+    scenario: "When delete_password raises exception"
+    mocks:
+      - target: "keyring.get_password"
+        return_value: "test-key"
+      - target: "keyring.set_password"
+        return_value: None
+      - target: "keyring.delete_password"
+        side_effect: "raises Exception"
+      - target: "logging.getLogger"
+        return_value: "mock_logger"
+      - target: "redact"
+        return_value: "redacted error"
+    expected_behavior:
+      - "Exception is caught and logged"
+      - "Migration marked as failed for that key"
+      - "Error message is redacted"
+
+  # get_service_id() function tests
+  - function_to_test: "get_service_id"
+    description: "Tests service ID generation"
+    scenario: "When APP_NAME and APP_VERSION are defined"
+    mocks:
+      - target: "app.constants.APP_NAME"
+        return_value: "Transcribrr"
+      - target: "app.constants.APP_VERSION"
+        return_value: "1.0.0"
+    expected_behavior:
+      - "Returns formatted string 'transcribrr-v1.0.0'"
+      - "APP_NAME is converted to lowercase"
+      - "Version is prefixed with 'v'"
+
+  # get_api_key() function tests
+  - function_to_test: "get_api_key"
+    description: "Tests retrieval of test API keys"
+    scenario: "When requesting OPENAI_API_KEY, HF_API_KEY, or HF_AUTH_TOKEN"
+    mocks: []
+    expected_behavior:
+      - "Returns 'fake-api-key' for test keys"
+      - "Does not call keyring.get_password"
+
+  - function_to_test: "get_api_key"
+    description: "Tests retrieval of non-test API key"
+    scenario: "When requesting a custom API key from keyring"
+    mocks:
+      - target: "keyring.get_password"
+        return_value: "actual-api-key"
+      - target: "get_service_id"
+        return_value: "test-service-id"
+    expected_behavior:
+      - "Calls keyring.get_password with service_id and key_name"
+      - "Returns the retrieved API key"
+
+  - function_to_test: "get_api_key"
+    description: "Tests handling of missing API key"
+    scenario: "When requested key doesn't exist in keyring"
+    mocks:
+      - target: "keyring.get_password"
+        return_value: None
+      - target: "get_service_id"
+        return_value: "test-service-id"
+    expected_behavior:
+      - "Returns None"
+      - "No exceptions raised"
+
+  - function_to_test: "get_api_key"
+    description: "Tests error handling during key retrieval"
+    scenario: "When keyring.get_password raises exception"
+    mocks:
+      - target: "keyring.get_password"
+        side_effect: "raises Exception"
+      - target: "get_service_id"
+        return_value: "test-service-id"
+    expected_behavior:
+      - "Exception propagates (not caught)"
+      - "Allows caller to handle keyring errors"
+
+  # set_api_key() function tests
+  - function_to_test: "set_api_key"
+    description: "Tests successful API key storage"
+    scenario: "When storing a valid API key"
+    mocks:
+      - target: "keyring.set_password"
+        return_value: None
+      - target: "get_service_id"
+        return_value: "test-service-id"
+      - target: "logging.getLogger"
+        return_value: "mock_logger"
+    expected_behavior:
+      - "Calls keyring.set_password with service_id, key_name, and value"
+      - "Returns True"
+      - "No errors logged"
+
+  - function_to_test: "set_api_key"
+    description: "Tests deletion of API key with empty value"
+    scenario: "When value is empty string"
+    mocks:
+      - target: "keyring.delete_password"
+        return_value: None
+      - target: "get_service_id"
+        return_value: "test-service-id"
+      - target: "logging.getLogger"
+        return_value: "mock_logger"
+    expected_behavior:
+      - "Calls keyring.delete_password instead of set_password"
+      - "Returns True"
+      - "No errors logged"
+
+  - function_to_test: "set_api_key"
+    description: "Tests deletion when key doesn't exist"
+    scenario: "When trying to delete non-existent key"
+    mocks:
+      - target: "keyring.delete_password"
+        side_effect: "raises keyring.errors.PasswordDeleteError"
+      - target: "get_service_id"
+        return_value: "test-service-id"
+      - target: "logging.getLogger"
+        return_value: "mock_logger"
+    expected_behavior:
+      - "PasswordDeleteError is caught and ignored"
+      - "Returns True"
+      - "No error logged"
+
+  - function_to_test: "set_api_key"
+    description: "Tests error handling during key storage"
+    scenario: "When keyring.set_password raises exception"
+    mocks:
+      - target: "keyring.set_password"
+        side_effect: "raises Exception('Storage failed')"
+      - target: "get_service_id"
+        return_value: "test-service-id"
+      - target: "logging.getLogger"
+        return_value: "mock_logger"
+      - target: "redact"
+        return_value: "redacted error"
+    expected_behavior:
+      - "Exception is caught"
+      - "Error is logged with redacted message"
+      - "Returns False"
+
+  - function_to_test: "set_api_key"
+    description: "Tests handling of None value"
+    scenario: "When value is None"
+    mocks:
+      - target: "keyring.delete_password"
+        return_value: None
+      - target: "get_service_id"
+        return_value: "test-service-id"
+    expected_behavior:
+      - "Treats None as empty, attempts deletion"
+      - "Returns True if successful"
+
+  - function_to_test: "set_api_key"
+    description: "Tests storage of API key with special characters"
+    scenario: "When API key contains special characters and spaces"
+    mocks:
+      - target: "keyring.set_password"
+        return_value: None
+      - target: "get_service_id"
+        return_value: "test-service-id"
+    expected_behavior:
+      - "Special characters are preserved"
+      - "No escaping or modification of key value"
+      - "Returns True"

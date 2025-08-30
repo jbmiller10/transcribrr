@@ -1,0 +1,387 @@
+name: Code Quality & Performance
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+  push:
+    branches: [ main ]
+  workflow_dispatch:
+
+env:
+  PYTHON_VERSION: '3.11'
+
+jobs:
+  code-quality:
+    name: Code Quality Analysis
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      with:
+        fetch-depth: 0  # Full history for better analysis
+    
+    - name: Set up Python
+      uses: actions/setup-python@v5
+      with:
+        python-version: ${{ env.PYTHON_VERSION }}
+    
+    - name: Cache analysis tools
+      uses: actions/cache@v4
+      with:
+        path: ~/.cache/pip
+        key: ${{ runner.os }}-pip-quality-${{ hashFiles('.github/workflows/quality.yml') }}
+        restore-keys: |
+          ${{ runner.os }}-pip-quality-
+    
+    - name: Install analysis tools
+      run: |
+        python -m pip install --upgrade pip
+        pip install \
+          pylint \
+          flake8 \
+          flake8-docstrings \
+          flake8-bugbear \
+          flake8-comprehensions \
+          flake8-simplify \
+          radon \
+          xenon \
+          vulture \
+          mccabe \
+          pydocstyle \
+          pycodestyle
+    
+    - name: Run Pylint
+      run: |
+        echo "## Pylint Analysis" > quality_report.md
+        echo '```' >> quality_report.md
+        pylint app --output-format=text --score=y >> quality_report.md 2>&1 || true
+        echo '```' >> quality_report.md
+      continue-on-error: true
+    
+    - name: Run Flake8
+      run: |
+        echo "" >> quality_report.md
+        echo "## Flake8 Analysis" >> quality_report.md
+        echo '```' >> quality_report.md
+        flake8 app --count --statistics --show-source >> quality_report.md 2>&1 || true
+        echo '```' >> quality_report.md
+      continue-on-error: true
+    
+    - name: Cyclomatic Complexity Analysis
+      run: |
+        echo "" >> quality_report.md
+        echo "## Complexity Analysis" >> quality_report.md
+        echo "" >> quality_report.md
+        echo "### Cyclomatic Complexity" >> quality_report.md
+        echo '```' >> quality_report.md
+        radon cc app -s -a >> quality_report.md 2>&1 || true
+        echo '```' >> quality_report.md
+        
+        echo "" >> quality_report.md
+        echo "### Maintainability Index" >> quality_report.md
+        echo '```' >> quality_report.md
+        radon mi app -s >> quality_report.md 2>&1 || true
+        echo '```' >> quality_report.md
+    
+    - name: Check for code smells
+      run: |
+        echo "" >> quality_report.md
+        echo "## Code Smells Detection" >> quality_report.md
+        echo '```' >> quality_report.md
+        
+        # Check for overly complex functions (cyclomatic complexity > 10)
+        xenon app --max-absolute B --max-modules B --max-average A >> quality_report.md 2>&1 || true
+        
+        echo '```' >> quality_report.md
+    
+    - name: Dead code detection
+      run: |
+        echo "" >> quality_report.md
+        echo "## Dead Code Analysis" >> quality_report.md
+        echo '```' >> quality_report.md
+        vulture app --min-confidence 80 >> quality_report.md 2>&1 || true
+        echo '```' >> quality_report.md
+      continue-on-error: true
+    
+    - name: Documentation coverage
+      run: |
+        echo "" >> quality_report.md
+        echo "## Documentation Coverage" >> quality_report.md
+        echo '```' >> quality_report.md
+        pydocstyle app --count >> quality_report.md 2>&1 || true
+        echo '```' >> quality_report.md
+      continue-on-error: true
+    
+    - name: Generate quality score
+      id: quality_score
+      run: |
+        python -c "
+        import re
+        
+        # Read the quality report
+        with open('quality_report.md', 'r') as f:
+            content = f.read()
+        
+        # Extract Pylint score if available
+        pylint_match = re.search(r'Your code has been rated at ([\d.]+)/10', content)
+        pylint_score = float(pylint_match.group(1)) if pylint_match else 0
+        
+        # Count various issues
+        error_count = content.count('error:') + content.count('E:')
+        warning_count = content.count('warning:') + content.count('W:')
+        
+        # Calculate overall score (0-100)
+        base_score = pylint_score * 10
+        penalty = min(30, (error_count * 2) + warning_count)
+        final_score = max(0, base_score - penalty)
+        
+        print(f'Quality Score: {final_score:.1f}/100')
+        print(f'Pylint Score: {pylint_score}/10')
+        print(f'Errors: {error_count}')
+        print(f'Warnings: {warning_count}')
+        
+        # Set output
+        print(f'score={final_score:.1f}')
+        " | tee -a quality_summary.txt
+    
+    - name: Upload quality report
+      uses: actions/upload-artifact@v4
+      with:
+        name: quality-report
+        path: |
+          quality_report.md
+          quality_summary.txt
+
+  performance-profiling:
+    name: Performance Profiling
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    if: github.event_name == 'push' || github.event_name == 'workflow_dispatch'
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+    
+    - name: Set up Python
+      uses: actions/setup-python@v5
+      with:
+        python-version: ${{ env.PYTHON_VERSION }}
+    
+    - name: Install profiling tools
+      run: |
+        python -m pip install --upgrade pip
+        pip install \
+          memory_profiler \
+          line_profiler \
+          py-spy \
+          scalene \
+          guppy3 \
+          tracemalloc-ng
+    
+    - name: Create profiling script
+      run: |
+        cat > profile_app.py << 'EOF'
+        import sys
+        import os
+        import time
+        import tracemalloc
+        from memory_profiler import profile
+        
+        # Add app to path
+        sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+        
+        # Start memory tracking
+        tracemalloc.start()
+        
+        @profile
+        def profile_imports():
+            """Profile memory usage during imports."""
+            try:
+                from app.models.recording import Recording
+                from app.controllers.database_manager import DatabaseManager
+                from app.models.folder_structure import FolderStructure
+                print("✓ Core imports successful")
+                return True
+            except ImportError as e:
+                print(f"✗ Import failed: {e}")
+                return False
+        
+        @profile
+        def profile_initialization():
+            """Profile memory usage during initialization."""
+            try:
+                from app.models.recording import Recording
+                # Create some test objects
+                recordings = []
+                for i in range(100):
+                    rec = Recording(
+                        id=f"test_{i}",
+                        name=f"Recording {i}",
+                        date="2024-01-01",
+                        duration=60.0,
+                        sample_rate=16000,
+                        transcription=f"Test transcription {i}" * 100
+                    )
+                    recordings.append(rec)
+                print(f"✓ Created {len(recordings)} test recordings")
+                return recordings
+            except Exception as e:
+                print(f"✗ Initialization failed: {e}")
+                return []
+        
+        def main():
+            print("Starting performance profiling...")
+            
+            # Profile imports
+            start_time = time.time()
+            import_success = profile_imports()
+            import_time = time.time() - start_time
+            print(f"Import time: {import_time:.3f} seconds")
+            
+            # Profile initialization
+            start_time = time.time()
+            recordings = profile_initialization()
+            init_time = time.time() - start_time
+            print(f"Initialization time: {init_time:.3f} seconds")
+            
+            # Get memory snapshot
+            snapshot = tracemalloc.take_snapshot()
+            top_stats = snapshot.statistics('lineno')
+            
+            print("\nTop 10 memory allocations:")
+            for stat in top_stats[:10]:
+                print(stat)
+            
+            # Calculate memory usage
+            current, peak = tracemalloc.get_traced_memory()
+            print(f"\nCurrent memory usage: {current / 1024 / 1024:.2f} MB")
+            print(f"Peak memory usage: {peak / 1024 / 1024:.2f} MB")
+            
+            tracemalloc.stop()
+            
+            # Generate performance summary
+            with open('performance_summary.txt', 'w') as f:
+                f.write(f"Import Time: {import_time:.3f}s\n")
+                f.write(f"Initialization Time: {init_time:.3f}s\n")
+                f.write(f"Peak Memory: {peak / 1024 / 1024:.2f} MB\n")
+                f.write(f"Objects Created: {len(recordings)}\n")
+        
+        if __name__ == "__main__":
+            main()
+        EOF
+    
+    - name: Run performance profiling
+      run: |
+        # Run the profiling script
+        python profile_app.py > performance_output.txt 2>&1 || true
+        
+        # Display results
+        cat performance_output.txt
+        
+        # Create performance report
+        echo "## Performance Profile Report" > performance_report.md
+        echo "" >> performance_report.md
+        echo '```' >> performance_report.md
+        cat performance_output.txt >> performance_report.md
+        echo '```' >> performance_report.md
+      continue-on-error: true
+    
+    - name: Upload performance report
+      uses: actions/upload-artifact@v4
+      with:
+        name: performance-report
+        path: |
+          performance_report.md
+          performance_summary.txt
+          performance_output.txt
+
+  type-checking:
+    name: Advanced Type Checking
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+    
+    - name: Set up Python
+      uses: actions/setup-python@v5
+      with:
+        python-version: ${{ env.PYTHON_VERSION }}
+    
+    - name: Install type checking tools
+      run: |
+        python -m pip install --upgrade pip
+        pip install \
+          mypy \
+          pyright \
+          pyre-check \
+          pytype \
+          types-requests \
+          types-PyYAML \
+          types-python-dateutil
+    
+    - name: Run MyPy strict mode
+      run: |
+        echo "## Type Checking Report" > type_report.md
+        echo "" >> type_report.md
+        echo "### MyPy (Strict Mode)" >> type_report.md
+        echo '```' >> type_report.md
+        mypy app --strict --ignore-missing-imports >> type_report.md 2>&1 || true
+        echo '```' >> type_report.md
+      continue-on-error: true
+    
+    - name: Run Pyright
+      run: |
+        echo "" >> type_report.md
+        echo "### Pyright" >> type_report.md
+        echo '```' >> type_report.md
+        pyright app >> type_report.md 2>&1 || true
+        echo '```' >> type_report.md
+      continue-on-error: true
+    
+    - name: Upload type checking report
+      uses: actions/upload-artifact@v4
+      with:
+        name: type-report
+        path: type_report.md
+
+  create-summary:
+    name: Quality Summary
+    runs-on: ubuntu-latest
+    needs: [code-quality, performance-profiling, type-checking]
+    if: always()
+    
+    steps:
+    - name: Download all reports
+      uses: actions/download-artifact@v4
+      with:
+        path: reports/
+    
+    - name: Create combined summary
+      run: |
+        echo "# Code Quality & Performance Summary" > $GITHUB_STEP_SUMMARY
+        echo "" >> $GITHUB_STEP_SUMMARY
+        
+        # Add quality report summary if exists
+        if [ -f "reports/quality-report/quality_summary.txt" ]; then
+          echo "## Quality Metrics" >> $GITHUB_STEP_SUMMARY
+          echo '```' >> $GITHUB_STEP_SUMMARY
+          cat reports/quality-report/quality_summary.txt >> $GITHUB_STEP_SUMMARY
+          echo '```' >> $GITHUB_STEP_SUMMARY
+        fi
+        
+        # Add performance summary if exists
+        if [ -f "reports/performance-report/performance_summary.txt" ]; then
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "## Performance Metrics" >> $GITHUB_STEP_SUMMARY
+          echo '```' >> $GITHUB_STEP_SUMMARY
+          cat reports/performance-report/performance_summary.txt >> $GITHUB_STEP_SUMMARY
+          echo '```' >> $GITHUB_STEP_SUMMARY
+        fi
+        
+        echo "" >> $GITHUB_STEP_SUMMARY
+        echo "---" >> $GITHUB_STEP_SUMMARY
+        echo "*Full reports available in workflow artifacts*" >> $GITHUB_STEP_SUMMARY
