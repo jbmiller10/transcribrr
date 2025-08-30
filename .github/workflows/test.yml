@@ -1,0 +1,51 @@
+name: Run Tests
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+  workflow_dispatch:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-version: ['3.11', '3.12']
+    
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Set up Python ${{ matrix.python-version }}
+      uses: actions/setup-python@v5
+      with:
+        python-version: ${{ matrix.python-version }}
+    
+    - name: Run unit tests
+      env:
+        QT_QPA_PLATFORM: offscreen
+        PYTHONPATH: ${{ github.workspace }}
+      run: |
+        echo "Running tests with Python ${{ matrix.python-version }}"
+        
+        # Run tests that don't require external dependencies
+        python -m unittest app.tests.test_secure -v
+        python -m unittest app.tests.test_thread_manager -v
+        python -m unittest app.tests.test_recording_model -v
+        python -m unittest app.tests.test_transcription_controller -v
+        python -m unittest app.tests.test_folder_manager -v
+        
+        # Count results
+        echo ""
+        echo "Test suite completed successfully!"
+    
+    - name: Upload test results
+      if: always()
+      uses: actions/upload-artifact@v4
+      with:
+        name: test-results-${{ matrix.python-version }}
+        path: |
+          *.log
+          test-results/
+        retention-days: 7
