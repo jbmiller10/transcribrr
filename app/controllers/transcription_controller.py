@@ -1,14 +1,43 @@
-"""Transcription controller for handling transcription process."""
+"""Transcription controller for handling transcription process.
+
+Import-safe for headless CI: gracefully handles missing Qt and thread deps.
+"""
 
 import logging
 import os
 from typing import Dict, Any, Optional, Callable
 
-from PyQt6.QtCore import QObject, pyqtSignal
+# Qt shims: prefer PyQt6, then PySide6, then minimal stubs
+try:
+    from PyQt6.QtCore import QObject, pyqtSignal  # type: ignore
+except Exception:  # pragma: no cover - exercised in CI without Qt
+    try:
+        from PySide6.QtCore import QObject, Signal as pyqtSignal  # type: ignore
+    except Exception:
+        class QObject:  # type: ignore
+            def __init__(self, parent=None) -> None:
+                pass
+
+        def pyqtSignal(*_args, **_kwargs):  # type: ignore
+            class _Signal:
+                def connect(self, *_a, **_k):
+                    pass
+
+                def emit(self, *_a, **_k):
+                    pass
+
+            return _Signal()
 
 from app.models.recording import Recording
 from app.models.view_mode import ViewMode
-from app.threads.TranscriptionThread import TranscriptionThread
+
+# Thread class shim so tests can patch it even when Qt isn't installed
+try:
+    from app.threads.TranscriptionThread import TranscriptionThread  # type: ignore
+except Exception:  # pragma: no cover - CI without Qt/torch
+    class TranscriptionThread:  # type: ignore
+        pass
+
 from app.ThreadManager import ThreadManager
 from app.secure import get_api_key
 from app.constants import ERROR_INVALID_FILE, SUCCESS_TRANSCRIPTION

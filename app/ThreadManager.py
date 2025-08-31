@@ -1,8 +1,23 @@
-"""Manage QThread lifecycle via singleton registry."""
+"""Manage QThread lifecycle via singleton registry.
+
+This module should be importable in environments without Qt installed
+(e.g., headless CI). We therefore attempt to import ``QThread`` from
+PyQt6 first, then fall back to PySide6, and finally to a minimal stub
+class so tests that mock thread objects can run without Qt.
+"""
 
 import logging
 from typing import Dict, List, Optional
-from PyQt6.QtCore import QThread
+
+# Try to import Qt's QThread, but gracefully fall back if unavailable.
+try:  # Prefer PyQt6 when available
+    from PyQt6.QtCore import QThread  # type: ignore
+except Exception:  # pragma: no cover - exercised in CI without Qt
+    try:  # Allow PySide6 as an alternative
+        from PySide6.QtCore import QThread  # type: ignore
+    except Exception:  # Final fallback: minimal stub for typing/runtime
+        class QThread:  # type: ignore
+            pass
 
 logger = logging.getLogger(__name__)
 

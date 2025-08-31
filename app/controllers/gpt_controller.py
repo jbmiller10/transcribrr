@@ -1,12 +1,43 @@
-"""GPT Controller for handling AI text processing."""
+"""GPT Controller for handling AI text processing.
+
+Designed to be importable without Qt installed (e.g., CI). We fall back
+to minimal stubs when Qt or thread classes are unavailable; tests patch
+these symbols as needed.
+"""
 
 import logging
 from typing import Dict, Any, Optional, Callable, List
 
-from PyQt6.QtCore import QObject, pyqtSignal
+# Qt shims: prefer PyQt6, then PySide6, finally minimal stubs
+try:  # Prefer PyQt6
+    from PyQt6.QtCore import QObject, pyqtSignal  # type: ignore
+except Exception:  # pragma: no cover - exercised in CI without Qt
+    try:  # Allow PySide6
+        from PySide6.QtCore import QObject, Signal as pyqtSignal  # type: ignore
+    except Exception:
+        class QObject:  # type: ignore
+            def __init__(self, parent=None) -> None:  # Minimal stub
+                pass
+
+        def pyqtSignal(*_args, **_kwargs):  # type: ignore
+            class _Signal:
+                def connect(self, *_a, **_k):
+                    pass
+
+                def emit(self, *_a, **_k):
+                    pass
+
+            return _Signal()
 
 from app.models.recording import Recording
-from app.threads.GPT4ProcessingThread import GPT4ProcessingThread
+
+# Thread class shim: make attribute available even if thread module can't import
+try:
+    from app.threads.GPT4ProcessingThread import GPT4ProcessingThread  # type: ignore
+except Exception:  # pragma: no cover - CI without Qt/requests
+    class GPT4ProcessingThread:  # type: ignore
+        pass
+
 from app.ThreadManager import ThreadManager
 from app.secure import get_api_key
 
@@ -27,6 +58,13 @@ class GPTController(QObject):
         super().__init__(parent)
         self.db_manager = db_manager
         self.threads = {}  # Store active threads
+        # Bind logger at instance-level so tests that patch the module
+        # logger during construction can assert calls later.
+        self.logger = logger
+        # Capture dependencies at construction time so tests that patch them
+        # in setUp (and then end the patch) still affect instance behaviour.
+        self.get_api_key = get_api_key
+        self._Thread = GPT4ProcessingThread
 
     def process(
         self,
@@ -39,17 +77,17 @@ class GPTController(QObject):
         """Process a recording with GPT."""
         # Validate inputs
         if not recording or not recording.raw_transcript:
-            logger.error("No transcript available for GPT processing")
+            self.logger.error("No transcript available for GPT processing")
             return False
 
         if not prompt:
-            logger.error("No prompt provided for GPT processing")
+            self.logger.error("No prompt provided for GPT processing")
             return False
 
         # Get API key
-        api_key = get_api_key("OPENAI_API_KEY")
+        api_key = self.get_api_key("OPENAI_API_KEY")
         if not api_key:
-            logger.error("OpenAI API key missing for GPT processing")
+            self.logger.error("OpenAI API key missing for GPT processing")
             return False
 
         # Extract config values
@@ -63,7 +101,7 @@ class GPTController(QObject):
         )
 
         # Create thread
-        thread = GPT4ProcessingThread(
+        thread = self._Thread(
             transcript=recording.raw_transcript,
             prompt_instructions=prompt,
             gpt_model=gpt_model,
@@ -104,13 +142,13 @@ class GPTController(QObject):
         """Format text with GPT for display."""
         # Validate inputs
         if not text:
-            logger.error("No text provided for smart formatting")
+            self.logger.error("No text provided for smart formatting")
             return False
 
         # Get API key
-        api_key = get_api_key("OPENAI_API_KEY")
+        api_key = self.get_api_key("OPENAI_API_KEY")
         if not api_key:
-            logger.error("OpenAI API key missing for smart formatting")
+            self.logger.error("OpenAI API key missing for smart formatting")
             return False
 
         # Use cheaper model with lower temperature for format task
@@ -132,7 +170,7 @@ class GPTController(QObject):
         )
 
         # Create thread
-        thread = GPT4ProcessingThread(
+        thread = self._Thread(
             transcript=text,
             prompt_instructions=prompt,
             gpt_model=gpt_model,
@@ -173,21 +211,21 @@ class GPTController(QObject):
         """Refine existing processed text with new instructions."""
         # Validate inputs
         if not recording or not recording.raw_transcript:
-            logger.error("No transcript available for refinement")
+            self.logger.error("No transcript available for refinement")
             return False
 
         if not refinement_instructions:
-            logger.error("No refinement instructions provided")
+            self.logger.error("No refinement instructions provided")
             return False
 
         if not current_text:
-            logger.error("No current text provided for refinement")
+            self.logger.error("No current text provided for refinement")
             return False
 
         # Get API key
-        api_key = get_api_key("OPENAI_API_KEY")
+        api_key = self.get_api_key("OPENAI_API_KEY")
         if not api_key:
-            logger.error("OpenAI API key missing for refinement")
+            self.logger.error("OpenAI API key missing for refinement")
             return False
 
         # Extract config values
@@ -216,7 +254,7 @@ class GPTController(QObject):
         ]
 
         # Create thread
-        thread = GPT4ProcessingThread(
+        thread = self._Thread(
             transcript=recording.raw_transcript,
             prompt_instructions=refinement_instructions,
             messages=messages,
@@ -325,7 +363,7 @@ class GPTController(QObject):
         if thread_key in self.threads:
             del self.threads[thread_key]
 
-        logger.info(f"GPT thread ({thread_key}) finished.")
+        self.logger.info(f"GPT thread ({thread_key}) finished.")
 
     def cancel(self, thread_key: str = "process") -> None:
         """Cancel current GPT processing if running."""
@@ -333,6 +371,6 @@ class GPTController(QObject):
             thread_info = self.threads[thread_key]
             thread = thread_info["thread"]
             if thread and thread.isRunning():
-                logger.info(f"Canceling {thread_key} thread...")
+                self.logger.info(f"Canceling {thread_key} thread...")
                 thread.cancel()
                 self.status_update.emit(f"Canceling {thread_key}...")

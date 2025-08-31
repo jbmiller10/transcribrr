@@ -30,3 +30,202 @@
 2025-08-30 15:55:26,637 - transcribrr - DEBUG - [ui_utils_legacy.py:109] - Spinner 'test_spinner' started.
 2025-08-30 15:55:26,638 - transcribrr - DEBUG - [ui_utils_legacy.py:115] - Spinner 'test_spinner' stopped.
 2025-08-30 16:38:24,663 - transcribrr - WARNING - [busy_guard.py:118] - Spinner 'nonexistent' not found or couldn't be started
+2025-08-30 19:47:28,385 - transcribrr - WARNING - [busy_guard.py:118] - Spinner 'nonexistent' not found or couldn't be started
+2025-08-30 19:47:28,432 - transcribrr - DEBUG - [FolderManager.py:100] - Folder tables are initialized during database creation
+2025-08-30 19:47:28,434 - transcribrr - DEBUG - [FolderManager.py:100] - Folder tables are initialized during database creation
+2025-08-30 19:47:28,434 - transcribrr - WARNING - [FolderManager.py:53] - Different DatabaseManager instance provided to FolderManager.instance() after initialization. Using original instance.
+2025-08-30 19:47:28,434 - transcribrr - DEBUG - [FolderManager.py:100] - Folder tables are initialized during database creation
+2025-08-30 19:47:28,435 - transcribrr - DEBUG - [FolderManager.py:100] - Folder tables are initialized during database creation
+2025-08-30 19:47:28,435 - transcribrr - DEBUG - [FolderManager.py:100] - Folder tables are initialized during database creation
+2025-08-30 19:47:28,436 - transcribrr - DEBUG - [FolderManager.py:100] - Folder tables are initialized during database creation
+2025-08-30 19:47:28,437 - transcribrr - INFO - [gpt_controller.py:336] - Canceling smart_format thread...
+2025-08-30 19:47:28,439 - transcribrr - INFO - [gpt_controller.py:336] - Canceling process thread...
+2025-08-30 19:47:28,443 - transcribrr - INFO - [gpt_controller.py:328] - GPT thread (process) finished.
+2025-08-30 19:47:28,444 - transcribrr - INFO - [gpt_controller.py:328] - GPT thread (non_existent) finished.
+2025-08-30 19:47:28,446 - transcribrr - ERROR - [gpt_controller.py:46] - No prompt provided for GPT processing
+2025-08-30 19:47:28,447 - transcribrr - ERROR - [gpt_controller.py:42] - No transcript available for GPT processing
+2025-08-30 19:47:28,447 - transcribrr - ERROR - [gpt_controller.py:42] - No transcript available for GPT processing
+2025-08-30 19:47:28,452 - transcribrr - ERROR - [gpt_controller.py:184] - No current text provided for refinement
+2025-08-30 19:47:28,453 - transcribrr - ERROR - [gpt_controller.py:180] - No refinement instructions provided
+2025-08-30 19:47:28,454 - transcribrr - ERROR - [gpt_controller.py:176] - No transcript available for refinement
+2025-08-30 19:47:28,457 - transcribrr - ERROR - [gpt_controller.py:107] - No text provided for smart formatting
+2025-08-30 19:47:28,466 - transcribrr - DEBUG - [ui_utils_legacy.py:272] - FeedbackManager created new SpinnerManager
+2025-08-30 19:47:28,466 - transcribrr - DEBUG - [path_utils.py:37] - Using development path: /home/john/transcribrr
+2025-08-30 19:47:28,466 - transcribrr - DEBUG - [path_utils.py:37] - Using development path: /home/john/transcribrr
+2025-08-30 19:47:28,466 - transcribrr - DEBUG - [path_utils.py:67] - Resource path for './icons/spinner.gif': /home/john/transcribrr/./icons/spinner.gif
+2025-08-30 19:47:28,484 - transcribrr - DEBUG - [ui_utils_legacy.py:109] - Spinner 'test_spinner' started.
+2025-08-30 19:47:28,484 - transcribrr - DEBUG - [ui_utils_legacy.py:115] - Spinner 'test_spinner' stopped.
+2025-08-30 19:47:28,484 - transcribrr - ERROR - [ui_utils_legacy.py:309] - Spinner 'nonexistent' not found
+2025-08-30 19:47:28,485 - transcribrr - DEBUG - [path_utils.py:37] - Using development path: /home/john/transcribrr
+2025-08-30 19:47:28,485 - transcribrr - DEBUG - [path_utils.py:37] - Using development path: /home/john/transcribrr
+2025-08-30 19:47:28,485 - transcribrr - DEBUG - [path_utils.py:67] - Resource path for './icons/spinner.gif': /home/john/transcribrr/./icons/spinner.gif
+2025-08-30 19:47:28,487 - transcribrr - DEBUG - [ui_utils_legacy.py:109] - Spinner 'test_spinner' started.
+2025-08-30 19:47:28,487 - transcribrr - DEBUG - [ui_utils_legacy.py:115] - Spinner 'test_spinner' stopped.
+2025-08-30 19:49:12,605 - transcribrr - WARNING - [busy_guard.py:118] - Spinner 'nonexistent' not found or couldn't be started
+2025-08-30 19:49:12,654 - transcribrr - DEBUG - [FolderManager.py:100] - Folder tables are initialized during database creation
+2025-08-30 19:49:12,655 - transcribrr - DEBUG - [FolderManager.py:100] - Folder tables are initialized during database creation
+2025-08-30 19:49:12,655 - transcribrr - WARNING - [FolderManager.py:53] - Different DatabaseManager instance provided to FolderManager.instance() after initialization. Using original instance.
+2025-08-30 19:49:12,656 - transcribrr - DEBUG - [FolderManager.py:100] - Folder tables are initialized during database creation
+2025-08-30 19:49:12,656 - transcribrr - DEBUG - [FolderManager.py:100] - Folder tables are initialized during database creation
+2025-08-30 19:49:12,656 - transcribrr - DEBUG - [FolderManager.py:100] - Folder tables are initialized during database creation
+2025-08-30 19:49:12,657 - transcribrr - DEBUG - [FolderManager.py:100] - Folder tables are initialized during database creation
+2025-08-30 19:49:12,662 - transcribrr - INFO - [gpt_controller.py:367] - Canceling smart_format thread...
+2025-08-30 19:49:12,664 - transcribrr - INFO - [gpt_controller.py:367] - Canceling process thread...
+2025-08-30 19:49:12,669 - transcribrr - INFO - [gpt_controller.py:359] - GPT thread (process) finished.
+2025-08-30 19:49:12,669 - transcribrr - INFO - [gpt_controller.py:359] - GPT thread (non_existent) finished.
+2025-08-30 19:49:12,671 - transcribrr - ERROR - [gpt_controller.py:77] - No prompt provided for GPT processing
+2025-08-30 19:49:12,672 - transcribrr - ERROR - [gpt_controller.py:73] - No transcript available for GPT processing
+2025-08-30 19:49:12,673 - transcribrr - ERROR - [gpt_controller.py:73] - No transcript available for GPT processing
+2025-08-30 19:49:12,677 - transcribrr - ERROR - [gpt_controller.py:215] - No current text provided for refinement
+2025-08-30 19:49:12,678 - transcribrr - ERROR - [gpt_controller.py:211] - No refinement instructions provided
+2025-08-30 19:49:12,679 - transcribrr - ERROR - [gpt_controller.py:207] - No transcript available for refinement
+2025-08-30 19:49:12,683 - transcribrr - ERROR - [gpt_controller.py:138] - No text provided for smart formatting
+2025-08-30 19:49:12,692 - transcribrr - DEBUG - [ui_utils_legacy.py:272] - FeedbackManager created new SpinnerManager
+2025-08-30 19:49:12,692 - transcribrr - DEBUG - [path_utils.py:37] - Using development path: /home/john/transcribrr
+2025-08-30 19:49:12,692 - transcribrr - DEBUG - [path_utils.py:37] - Using development path: /home/john/transcribrr
+2025-08-30 19:49:12,692 - transcribrr - DEBUG - [path_utils.py:67] - Resource path for './icons/spinner.gif': /home/john/transcribrr/./icons/spinner.gif
+2025-08-30 19:49:12,709 - transcribrr - DEBUG - [ui_utils_legacy.py:109] - Spinner 'test_spinner' started.
+2025-08-30 19:49:12,709 - transcribrr - DEBUG - [ui_utils_legacy.py:115] - Spinner 'test_spinner' stopped.
+2025-08-30 19:49:12,709 - transcribrr - ERROR - [ui_utils_legacy.py:309] - Spinner 'nonexistent' not found
+2025-08-30 19:49:12,710 - transcribrr - DEBUG - [path_utils.py:37] - Using development path: /home/john/transcribrr
+2025-08-30 19:49:12,710 - transcribrr - DEBUG - [path_utils.py:37] - Using development path: /home/john/transcribrr
+2025-08-30 19:49:12,710 - transcribrr - DEBUG - [path_utils.py:67] - Resource path for './icons/spinner.gif': /home/john/transcribrr/./icons/spinner.gif
+2025-08-30 19:49:12,712 - transcribrr - DEBUG - [ui_utils_legacy.py:109] - Spinner 'test_spinner' started.
+2025-08-30 19:49:12,712 - transcribrr - DEBUG - [ui_utils_legacy.py:115] - Spinner 'test_spinner' stopped.
+2025-08-30 19:51:53,141 - transcribrr - WARNING - [busy_guard.py:118] - Spinner 'nonexistent' not found or couldn't be started
+2025-08-30 19:51:53,188 - transcribrr - DEBUG - [FolderManager.py:100] - Folder tables are initialized during database creation
+2025-08-30 19:51:53,189 - transcribrr - DEBUG - [FolderManager.py:100] - Folder tables are initialized during database creation
+2025-08-30 19:51:53,190 - transcribrr - WARNING - [FolderManager.py:53] - Different DatabaseManager instance provided to FolderManager.instance() after initialization. Using original instance.
+2025-08-30 19:51:53,190 - transcribrr - DEBUG - [FolderManager.py:100] - Folder tables are initialized during database creation
+2025-08-30 19:51:53,190 - transcribrr - DEBUG - [FolderManager.py:100] - Folder tables are initialized during database creation
+2025-08-30 19:51:53,191 - transcribrr - DEBUG - [FolderManager.py:100] - Folder tables are initialized during database creation
+2025-08-30 19:51:53,191 - transcribrr - DEBUG - [FolderManager.py:100] - Folder tables are initialized during database creation
+2025-08-30 19:51:53,222 - transcribrr - DEBUG - [ui_utils_legacy.py:272] - FeedbackManager created new SpinnerManager
+2025-08-30 19:51:53,222 - transcribrr - DEBUG - [path_utils.py:37] - Using development path: /home/john/transcribrr
+2025-08-30 19:51:53,222 - transcribrr - DEBUG - [path_utils.py:37] - Using development path: /home/john/transcribrr
+2025-08-30 19:51:53,222 - transcribrr - DEBUG - [path_utils.py:67] - Resource path for './icons/spinner.gif': /home/john/transcribrr/./icons/spinner.gif
+2025-08-30 19:51:53,240 - transcribrr - DEBUG - [ui_utils_legacy.py:109] - Spinner 'test_spinner' started.
+2025-08-30 19:51:53,241 - transcribrr - DEBUG - [ui_utils_legacy.py:115] - Spinner 'test_spinner' stopped.
+2025-08-30 19:51:53,241 - transcribrr - ERROR - [ui_utils_legacy.py:309] - Spinner 'nonexistent' not found
+2025-08-30 19:51:53,242 - transcribrr - DEBUG - [path_utils.py:37] - Using development path: /home/john/transcribrr
+2025-08-30 19:51:53,242 - transcribrr - DEBUG - [path_utils.py:37] - Using development path: /home/john/transcribrr
+2025-08-30 19:51:53,242 - transcribrr - DEBUG - [path_utils.py:67] - Resource path for './icons/spinner.gif': /home/john/transcribrr/./icons/spinner.gif
+2025-08-30 19:51:53,244 - transcribrr - DEBUG - [ui_utils_legacy.py:109] - Spinner 'test_spinner' started.
+2025-08-30 19:51:53,244 - transcribrr - DEBUG - [ui_utils_legacy.py:115] - Spinner 'test_spinner' stopped.
+2025-08-30 19:53:56,074 - transcribrr - WARNING - [busy_guard.py:118] - Spinner 'nonexistent' not found or couldn't be started
+2025-08-30 19:53:56,084 - transcribrr - INFO - [DatabaseManager.py:695] - Starting DatabaseWorker thread
+2025-08-30 19:53:56,085 - transcribrr - INFO - [DatabaseManager.py:697] - DatabaseWorker thread started: True
+2025-08-30 19:53:56,087 - transcribrr - INFO - [DatabaseManager.py:695] - Starting DatabaseWorker thread
+2025-08-30 19:53:56,087 - transcribrr - INFO - [DatabaseManager.py:697] - DatabaseWorker thread started: True
+2025-08-30 19:53:56,088 - transcribrr - INFO - [DatabaseManager.py:695] - Starting DatabaseWorker thread
+2025-08-30 19:53:56,088 - transcribrr - INFO - [DatabaseManager.py:697] - DatabaseWorker thread started: True
+2025-08-30 19:53:56,089 - transcribrr - INFO - [DatabaseManager.py:695] - Starting DatabaseWorker thread
+2025-08-30 19:53:56,089 - transcribrr - INFO - [DatabaseManager.py:697] - DatabaseWorker thread started: True
+2025-08-30 19:53:56,090 - transcribrr - INFO - [DatabaseManager.py:695] - Starting DatabaseWorker thread
+2025-08-30 19:53:56,090 - transcribrr - INFO - [DatabaseManager.py:697] - DatabaseWorker thread started: True
+2025-08-30 19:53:56,091 - transcribrr - INFO - [DatabaseManager.py:695] - Starting DatabaseWorker thread
+2025-08-30 19:53:56,091 - transcribrr - INFO - [DatabaseManager.py:697] - DatabaseWorker thread started: True
+2025-08-30 19:53:56,092 - transcribrr - INFO - [DatabaseManager.py:695] - Starting DatabaseWorker thread
+2025-08-30 19:53:56,093 - transcribrr - INFO - [DatabaseManager.py:697] - DatabaseWorker thread started: True
+2025-08-30 19:53:56,093 - transcribrr - INFO - [DatabaseManager.py:695] - Starting DatabaseWorker thread
+2025-08-30 19:53:56,094 - transcribrr - INFO - [DatabaseManager.py:697] - DatabaseWorker thread started: True
+2025-08-30 19:53:56,095 - transcribrr - INFO - [DatabaseManager.py:695] - Starting DatabaseWorker thread
+2025-08-30 19:53:56,095 - transcribrr - INFO - [DatabaseManager.py:697] - DatabaseWorker thread started: True
+2025-08-30 19:53:56,096 - transcribrr - INFO - [DatabaseManager.py:695] - Starting DatabaseWorker thread
+2025-08-30 19:53:56,096 - transcribrr - INFO - [DatabaseManager.py:697] - DatabaseWorker thread started: True
+2025-08-30 19:53:56,097 - transcribrr - INFO - [DatabaseManager.py:695] - Starting DatabaseWorker thread
+2025-08-30 19:53:56,097 - transcribrr - INFO - [DatabaseManager.py:697] - DatabaseWorker thread started: True
+2025-08-30 19:53:56,100 - transcribrr - INFO - [DatabaseManager.py:695] - Starting DatabaseWorker thread
+2025-08-30 19:53:56,100 - transcribrr - INFO - [DatabaseManager.py:697] - DatabaseWorker thread started: True
+2025-08-30 19:53:56,102 - transcribrr - INFO - [DatabaseManager.py:695] - Starting DatabaseWorker thread
+2025-08-30 19:53:56,102 - transcribrr - INFO - [DatabaseManager.py:697] - DatabaseWorker thread started: True
+2025-08-30 19:53:56,104 - transcribrr - INFO - [DatabaseManager.py:695] - Starting DatabaseWorker thread
+2025-08-30 19:53:56,104 - transcribrr - INFO - [DatabaseManager.py:697] - DatabaseWorker thread started: True
+2025-08-30 19:53:56,106 - transcribrr - INFO - [DatabaseManager.py:695] - Starting DatabaseWorker thread
+2025-08-30 19:53:56,106 - transcribrr - INFO - [DatabaseManager.py:697] - DatabaseWorker thread started: True
+2025-08-30 19:53:56,109 - transcribrr - INFO - [DatabaseManager.py:695] - Starting DatabaseWorker thread
+2025-08-30 19:53:56,109 - transcribrr - INFO - [DatabaseManager.py:697] - DatabaseWorker thread started: False
+2025-08-30 19:53:56,110 - transcribrr - INFO - [DatabaseManager.py:695] - Starting DatabaseWorker thread
+2025-08-30 19:53:56,110 - transcribrr - INFO - [DatabaseManager.py:697] - DatabaseWorker thread started: True
+2025-08-30 19:53:56,111 - transcribrr - INFO - [DatabaseManager.py:695] - Starting DatabaseWorker thread
+2025-08-30 19:53:56,111 - transcribrr - INFO - [DatabaseManager.py:697] - DatabaseWorker thread started: True
+2025-08-30 19:53:56,112 - transcribrr - INFO - [DatabaseManager.py:695] - Starting DatabaseWorker thread
+2025-08-30 19:53:56,112 - transcribrr - INFO - [DatabaseManager.py:697] - DatabaseWorker thread started: True
+2025-08-30 20:18:44,461 - transcribrr - WARNING - [busy_guard.py:118] - Spinner 'nonexistent' not found or couldn't be started
+2025-08-30 20:18:44,471 - transcribrr - INFO - [DatabaseManager.py:691] - Starting DatabaseWorker thread
+2025-08-30 20:18:44,471 - transcribrr - INFO - [DatabaseManager.py:693] - DatabaseWorker thread started: True
+2025-08-30 20:18:44,472 - transcribrr - INFO - [DatabaseManager.py:691] - Starting DatabaseWorker thread
+2025-08-30 20:18:44,472 - transcribrr - INFO - [DatabaseManager.py:693] - DatabaseWorker thread started: True
+2025-08-30 20:18:44,473 - transcribrr - INFO - [DatabaseManager.py:691] - Starting DatabaseWorker thread
+2025-08-30 20:18:44,473 - transcribrr - INFO - [DatabaseManager.py:693] - DatabaseWorker thread started: True
+2025-08-30 20:18:44,474 - transcribrr - INFO - [DatabaseManager.py:691] - Starting DatabaseWorker thread
+2025-08-30 20:18:44,474 - transcribrr - INFO - [DatabaseManager.py:693] - DatabaseWorker thread started: True
+2025-08-30 20:18:44,475 - transcribrr - INFO - [DatabaseManager.py:691] - Starting DatabaseWorker thread
+2025-08-30 20:18:44,475 - transcribrr - INFO - [DatabaseManager.py:693] - DatabaseWorker thread started: True
+2025-08-30 20:18:44,475 - transcribrr - INFO - [DatabaseManager.py:691] - Starting DatabaseWorker thread
+2025-08-30 20:18:44,475 - transcribrr - INFO - [DatabaseManager.py:693] - DatabaseWorker thread started: True
+2025-08-30 20:18:44,476 - transcribrr - INFO - [DatabaseManager.py:691] - Starting DatabaseWorker thread
+2025-08-30 20:18:44,476 - transcribrr - INFO - [DatabaseManager.py:693] - DatabaseWorker thread started: True
+2025-08-30 20:18:44,477 - transcribrr - INFO - [DatabaseManager.py:691] - Starting DatabaseWorker thread
+2025-08-30 20:18:44,477 - transcribrr - INFO - [DatabaseManager.py:693] - DatabaseWorker thread started: True
+2025-08-30 20:18:44,478 - transcribrr - INFO - [DatabaseManager.py:691] - Starting DatabaseWorker thread
+2025-08-30 20:18:44,478 - transcribrr - INFO - [DatabaseManager.py:693] - DatabaseWorker thread started: True
+2025-08-30 20:18:44,478 - transcribrr - INFO - [DatabaseManager.py:691] - Starting DatabaseWorker thread
+2025-08-30 20:18:44,478 - transcribrr - INFO - [DatabaseManager.py:693] - DatabaseWorker thread started: True
+2025-08-30 20:18:44,479 - transcribrr - INFO - [DatabaseManager.py:691] - Starting DatabaseWorker thread
+2025-08-30 20:18:44,479 - transcribrr - INFO - [DatabaseManager.py:693] - DatabaseWorker thread started: True
+2025-08-30 20:18:44,481 - transcribrr - INFO - [DatabaseManager.py:691] - Starting DatabaseWorker thread
+2025-08-30 20:18:44,481 - transcribrr - INFO - [DatabaseManager.py:693] - DatabaseWorker thread started: True
+2025-08-30 20:18:44,483 - transcribrr - INFO - [DatabaseManager.py:691] - Starting DatabaseWorker thread
+2025-08-30 20:18:44,483 - transcribrr - INFO - [DatabaseManager.py:693] - DatabaseWorker thread started: True
+2025-08-30 20:18:44,484 - transcribrr - INFO - [DatabaseManager.py:691] - Starting DatabaseWorker thread
+2025-08-30 20:18:44,484 - transcribrr - INFO - [DatabaseManager.py:693] - DatabaseWorker thread started: True
+2025-08-30 20:18:44,486 - transcribrr - INFO - [DatabaseManager.py:691] - Starting DatabaseWorker thread
+2025-08-30 20:18:44,486 - transcribrr - INFO - [DatabaseManager.py:693] - DatabaseWorker thread started: True
+2025-08-30 20:18:44,488 - transcribrr - INFO - [DatabaseManager.py:691] - Starting DatabaseWorker thread
+2025-08-30 20:18:44,488 - transcribrr - INFO - [DatabaseManager.py:693] - DatabaseWorker thread started: False
+2025-08-30 20:18:44,489 - transcribrr - INFO - [DatabaseManager.py:691] - Starting DatabaseWorker thread
+2025-08-30 20:18:44,489 - transcribrr - INFO - [DatabaseManager.py:693] - DatabaseWorker thread started: True
+2025-08-30 20:18:44,491 - transcribrr - INFO - [DatabaseManager.py:691] - Starting DatabaseWorker thread
+2025-08-30 20:18:44,491 - transcribrr - INFO - [DatabaseManager.py:693] - DatabaseWorker thread started: True
+2025-08-30 20:18:44,491 - transcribrr - INFO - [DatabaseManager.py:691] - Starting DatabaseWorker thread
+2025-08-30 20:18:44,491 - transcribrr - INFO - [DatabaseManager.py:693] - DatabaseWorker thread started: True
+2025-08-30 20:24:21,345 - transcribrr - WARNING - [busy_guard.py:118] - Spinner 'nonexistent' not found or couldn't be started
+2025-08-30 20:24:21,355 - transcribrr - INFO - [DatabaseManager.py:691] - Starting DatabaseWorker thread
+2025-08-30 20:24:21,356 - transcribrr - INFO - [DatabaseManager.py:693] - DatabaseWorker thread started: True
+2025-08-30 20:24:21,356 - transcribrr - INFO - [DatabaseManager.py:691] - Starting DatabaseWorker thread
+2025-08-30 20:24:21,357 - transcribrr - INFO - [DatabaseManager.py:693] - DatabaseWorker thread started: True
+2025-08-30 20:24:21,357 - transcribrr - INFO - [DatabaseManager.py:691] - Starting DatabaseWorker thread
+2025-08-30 20:24:21,357 - transcribrr - INFO - [DatabaseManager.py:693] - DatabaseWorker thread started: True
+2025-08-30 20:24:21,358 - transcribrr - INFO - [DatabaseManager.py:691] - Starting DatabaseWorker thread
+2025-08-30 20:24:21,358 - transcribrr - INFO - [DatabaseManager.py:693] - DatabaseWorker thread started: True
+2025-08-30 20:24:21,359 - transcribrr - INFO - [DatabaseManager.py:691] - Starting DatabaseWorker thread
+2025-08-30 20:24:21,359 - transcribrr - INFO - [DatabaseManager.py:693] - DatabaseWorker thread started: True
+2025-08-30 20:24:21,360 - transcribrr - INFO - [DatabaseManager.py:691] - Starting DatabaseWorker thread
+2025-08-30 20:24:21,360 - transcribrr - INFO - [DatabaseManager.py:693] - DatabaseWorker thread started: True
+2025-08-30 20:24:21,360 - transcribrr - INFO - [DatabaseManager.py:691] - Starting DatabaseWorker thread
+2025-08-30 20:24:21,360 - transcribrr - INFO - [DatabaseManager.py:693] - DatabaseWorker thread started: True
+2025-08-30 20:24:21,362 - transcribrr - INFO - [DatabaseManager.py:691] - Starting DatabaseWorker thread
+2025-08-30 20:24:21,362 - transcribrr - INFO - [DatabaseManager.py:693] - DatabaseWorker thread started: True
+2025-08-30 20:24:21,363 - transcribrr - INFO - [DatabaseManager.py:691] - Starting DatabaseWorker thread
+2025-08-30 20:24:21,363 - transcribrr - INFO - [DatabaseManager.py:693] - DatabaseWorker thread started: True
+2025-08-30 20:24:21,363 - transcribrr - INFO - [DatabaseManager.py:691] - Starting DatabaseWorker thread
+2025-08-30 20:24:21,363 - transcribrr - INFO - [DatabaseManager.py:693] - DatabaseWorker thread started: True
+2025-08-30 20:24:21,364 - transcribrr - INFO - [DatabaseManager.py:691] - Starting DatabaseWorker thread
+2025-08-30 20:24:21,364 - transcribrr - INFO - [DatabaseManager.py:693] - DatabaseWorker thread started: True
+2025-08-30 20:24:21,366 - transcribrr - INFO - [DatabaseManager.py:691] - Starting DatabaseWorker thread
+2025-08-30 20:24:21,366 - transcribrr - INFO - [DatabaseManager.py:693] - DatabaseWorker thread started: True
+2025-08-30 20:24:21,368 - transcribrr - INFO - [DatabaseManager.py:691] - Starting DatabaseWorker thread
+2025-08-30 20:24:21,368 - transcribrr - INFO - [DatabaseManager.py:693] - DatabaseWorker thread started: True
+2025-08-30 20:24:21,369 - transcribrr - INFO - [DatabaseManager.py:691] - Starting DatabaseWorker thread
+2025-08-30 20:24:21,369 - transcribrr - INFO - [DatabaseManager.py:693] - DatabaseWorker thread started: True
+2025-08-30 20:24:21,371 - transcribrr - INFO - [DatabaseManager.py:691] - Starting DatabaseWorker thread
+2025-08-30 20:24:21,371 - transcribrr - INFO - [DatabaseManager.py:693] - DatabaseWorker thread started: True
+2025-08-30 20:24:21,372 - transcribrr - INFO - [DatabaseManager.py:691] - Starting DatabaseWorker thread
+2025-08-30 20:24:21,373 - transcribrr - INFO - [DatabaseManager.py:693] - DatabaseWorker thread started: False
+2025-08-30 20:24:21,374 - transcribrr - INFO - [DatabaseManager.py:691] - Starting DatabaseWorker thread
+2025-08-30 20:24:21,374 - transcribrr - INFO - [DatabaseManager.py:693] - DatabaseWorker thread started: True
+2025-08-30 20:24:21,375 - transcribrr - INFO - [DatabaseManager.py:691] - Starting DatabaseWorker thread
+2025-08-30 20:24:21,375 - transcribrr - INFO - [DatabaseManager.py:693] - DatabaseWorker thread started: True
+2025-08-30 20:24:21,375 - transcribrr - INFO - [DatabaseManager.py:691] - Starting DatabaseWorker thread
+2025-08-30 20:24:21,375 - transcribrr - INFO - [DatabaseManager.py:693] - DatabaseWorker thread started: True
