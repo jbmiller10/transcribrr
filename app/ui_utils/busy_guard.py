@@ -6,10 +6,35 @@ disabling/enabling UI elements during long-running operations.
 
 import logging
 import uuid
-from typing import List, Optional, Callable, Any, Dict, TypeVar, Generic
+from typing import List, Optional, Callable, Any, Dict, TypeVar, Generic, TYPE_CHECKING, Protocol
 
-from PyQt6.QtWidgets import QWidget
-from app.ui_utils_legacy import FeedbackManager
+# Avoid importing PyQt6 at runtime in headless tests; only use QWidget for typing
+if TYPE_CHECKING:  # pragma: no cover - typing aid only
+    from PyQt6.QtWidgets import QWidget
+else:
+    class QWidget:  # type: ignore
+        pass
+
+
+class FeedbackProtocol(Protocol):
+    """Minimal protocol for the feedback manager used by BusyGuard."""
+
+    def set_ui_busy(self, busy: bool, ui_elements: list | None = None) -> None: ...
+    def start_spinner(self, spinner_name: str) -> bool: ...
+    def stop_spinner(self, spinner_name: str) -> bool: ...
+    def start_progress(
+        self,
+        operation_id: str,
+        title: str,
+        message: str,
+        maximum: int = 100,
+        cancelable: bool = True,
+        cancel_callback: Optional[Callable[[], Any]] = None,
+    ) -> Any: ...
+    def update_progress(self, operation_id: str, value: int, message: Optional[str] = None) -> None: ...
+    def finish_progress(self, operation_id: str, message: Optional[str] = None, auto_close: bool = True) -> None: ...
+    def close_progress(self, operation_id: str) -> None: ...
+    def show_status(self, message: str, timeout: int = 3000) -> None: ...
 
 logger = logging.getLogger("transcribrr")
 
@@ -45,7 +70,7 @@ class BusyGuard(Generic[T]):
 
     def __init__(
         self,
-        feedback_manager: FeedbackManager,
+        feedback_manager: FeedbackProtocol,
         operation_name: str,
         ui_elements: Optional[List[QWidget]] = None,
         spinner: Optional[str] = None,

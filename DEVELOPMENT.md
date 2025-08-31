@@ -148,5 +148,5 @@ Some packages require system libraries:
 - PyAudio: `sudo apt-get install portaudio19-dev`
 - PyQt6: May require Qt runtime libraries
 
-### UTF-16 requirements.txt
-The legacy requirements.txt file is UTF-16 encoded. Use the pyproject.toml for dependency management instead.
+### Requirements file
+The `requirements.txt` file is now UTF-8 encoded and aligns with the project’s Python packaging. Prefer `uv sync` (from `pyproject.toml`) in CI and local dev; `pip install -r requirements.txt` remains available for environments that rely on a requirements file.

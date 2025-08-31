@@ -229,3 +229,1532 @@
 2025-08-30 20:24:21,375 - transcribrr - INFO - [DatabaseManager.py:693] - DatabaseWorker thread started: True
 2025-08-30 20:24:21,375 - transcribrr - INFO - [DatabaseManager.py:691] - Starting DatabaseWorker thread
 2025-08-30 20:24:21,375 - transcribrr - INFO - [DatabaseManager.py:693] - DatabaseWorker thread started: True
+2025-08-30 23:03:24,611 - transcribrr - WARNING - [busy_guard.py:118] - Spinner 'nonexistent' not found or couldn't be started
+2025-08-30 23:03:24,622 - transcribrr - INFO - [DatabaseManager.py:691] - Starting DatabaseWorker thread
+2025-08-30 23:03:24,622 - transcribrr - INFO - [DatabaseManager.py:693] - DatabaseWorker thread started: True
+2025-08-30 23:03:24,624 - transcribrr - INFO - [DatabaseManager.py:691] - Starting DatabaseWorker thread
+2025-08-30 23:03:24,624 - transcribrr - INFO - [DatabaseManager.py:693] - DatabaseWorker thread started: True
+2025-08-30 23:03:24,625 - transcribrr - INFO - [DatabaseManager.py:691] - Starting DatabaseWorker thread
+2025-08-30 23:03:24,625 - transcribrr - INFO - [DatabaseManager.py:693] - DatabaseWorker thread started: True
+2025-08-30 23:03:24,625 - transcribrr - INFO - [DatabaseManager.py:691] - Starting DatabaseWorker thread
+2025-08-30 23:03:24,626 - transcribrr - INFO - [DatabaseManager.py:693] - DatabaseWorker thread started: True
+2025-08-30 23:03:24,626 - transcribrr - INFO - [DatabaseManager.py:691] - Starting DatabaseWorker thread
+2025-08-30 23:03:24,626 - transcribrr - INFO - [DatabaseManager.py:693] - DatabaseWorker thread started: True
+2025-08-30 23:03:24,627 - transcribrr - INFO - [DatabaseManager.py:691] - Starting DatabaseWorker thread
+2025-08-30 23:03:24,627 - transcribrr - INFO - [DatabaseManager.py:693] - DatabaseWorker thread started: True
+2025-08-30 23:03:24,628 - transcribrr - INFO - [DatabaseManager.py:691] - Starting DatabaseWorker thread
+2025-08-30 23:03:24,628 - transcribrr - INFO - [DatabaseManager.py:693] - DatabaseWorker thread started: True
+2025-08-30 23:03:24,629 - transcribrr - INFO - [DatabaseManager.py:691] - Starting DatabaseWorker thread
+2025-08-30 23:03:24,629 - transcribrr - INFO - [DatabaseManager.py:693] - DatabaseWorker thread started: True
+2025-08-30 23:03:24,629 - transcribrr - INFO - [DatabaseManager.py:691] - Starting DatabaseWorker thread
+2025-08-30 23:03:24,629 - transcribrr - INFO - [DatabaseManager.py:693] - DatabaseWorker thread started: True
+2025-08-30 23:03:24,630 - transcribrr - INFO - [DatabaseManager.py:691] - Starting DatabaseWorker thread
+2025-08-30 23:03:24,630 - transcribrr - INFO - [DatabaseManager.py:693] - DatabaseWorker thread started: True
+2025-08-30 23:03:24,631 - transcribrr - INFO - [DatabaseManager.py:691] - Starting DatabaseWorker thread
+2025-08-30 23:03:24,631 - transcribrr - INFO - [DatabaseManager.py:693] - DatabaseWorker thread started: True
+2025-08-30 23:03:24,633 - transcribrr - INFO - [DatabaseManager.py:691] - Starting DatabaseWorker thread
+2025-08-30 23:03:24,633 - transcribrr - INFO - [DatabaseManager.py:693] - DatabaseWorker thread started: True
+2025-08-30 23:03:24,635 - transcribrr - INFO - [DatabaseManager.py:691] - Starting DatabaseWorker thread
+2025-08-30 23:03:24,635 - transcribrr - INFO - [DatabaseManager.py:693] - DatabaseWorker thread started: True
+2025-08-30 23:03:24,637 - transcribrr - INFO - [DatabaseManager.py:691] - Starting DatabaseWorker thread
+2025-08-30 23:03:24,637 - transcribrr - INFO - [DatabaseManager.py:693] - DatabaseWorker thread started: True
+2025-08-30 23:03:24,638 - transcribrr - INFO - [DatabaseManager.py:691] - Starting DatabaseWorker thread
+2025-08-30 23:03:24,639 - transcribrr - INFO - [DatabaseManager.py:693] - DatabaseWorker thread started: True
+2025-08-30 23:03:24,640 - transcribrr - INFO - [DatabaseManager.py:691] - Starting DatabaseWorker thread
+2025-08-30 23:03:24,641 - transcribrr - INFO - [DatabaseManager.py:693] - DatabaseWorker thread started: False
+2025-08-30 23:03:24,642 - transcribrr - INFO - [DatabaseManager.py:691] - Starting DatabaseWorker thread
+2025-08-30 23:03:24,642 - transcribrr - INFO - [DatabaseManager.py:693] - DatabaseWorker thread started: True
+2025-08-30 23:03:24,644 - transcribrr - INFO - [DatabaseManager.py:691] - Starting DatabaseWorker thread
+2025-08-30 23:03:24,644 - transcribrr - INFO - [DatabaseManager.py:693] - DatabaseWorker thread started: True
+2025-08-30 23:03:24,644 - transcribrr - INFO - [DatabaseManager.py:691] - Starting DatabaseWorker thread
+2025-08-30 23:03:24,645 - transcribrr - INFO - [DatabaseManager.py:693] - DatabaseWorker thread started: True
+2025-08-30 23:42:33,855 - transcribrr - INFO - [DatabaseManager.py:691] - Starting DatabaseWorker thread
+2025-08-30 23:42:33,855 - transcribrr - INFO - [DatabaseManager.py:693] - DatabaseWorker thread started: True
+2025-08-30 23:42:33,857 - transcribrr - INFO - [DatabaseManager.py:691] - Starting DatabaseWorker thread
+2025-08-30 23:42:33,857 - transcribrr - INFO - [DatabaseManager.py:693] - DatabaseWorker thread started: True
+2025-08-30 23:42:33,858 - transcribrr - INFO - [DatabaseManager.py:691] - Starting DatabaseWorker thread
+2025-08-30 23:42:33,858 - transcribrr - INFO - [DatabaseManager.py:693] - DatabaseWorker thread started: True
+2025-08-30 23:42:33,859 - transcribrr - INFO - [DatabaseManager.py:691] - Starting DatabaseWorker thread
+2025-08-30 23:42:33,860 - transcribrr - INFO - [DatabaseManager.py:693] - DatabaseWorker thread started: True
+2025-08-30 23:42:33,861 - transcribrr - INFO - [DatabaseManager.py:691] - Starting DatabaseWorker thread
+2025-08-30 23:42:33,861 - transcribrr - INFO - [DatabaseManager.py:693] - DatabaseWorker thread started: True
+2025-08-30 23:42:33,862 - transcribrr - INFO - [DatabaseManager.py:691] - Starting DatabaseWorker thread
+2025-08-30 23:42:33,862 - transcribrr - INFO - [DatabaseManager.py:693] - DatabaseWorker thread started: True
+2025-08-30 23:42:33,863 - transcribrr - INFO - [DatabaseManager.py:691] - Starting DatabaseWorker thread
+2025-08-30 23:42:33,863 - transcribrr - INFO - [DatabaseManager.py:693] - DatabaseWorker thread started: True
+2025-08-30 23:42:33,865 - transcribrr - INFO - [DatabaseManager.py:691] - Starting DatabaseWorker thread
+2025-08-30 23:42:33,865 - transcribrr - INFO - [DatabaseManager.py:693] - DatabaseWorker thread started: True
+2025-08-30 23:42:33,866 - transcribrr - INFO - [DatabaseManager.py:691] - Starting DatabaseWorker thread
+2025-08-30 23:42:33,866 - transcribrr - INFO - [DatabaseManager.py:693] - DatabaseWorker thread started: True
+2025-08-30 23:42:33,867 - transcribrr - INFO - [DatabaseManager.py:691] - Starting DatabaseWorker thread
+2025-08-30 23:42:33,867 - transcribrr - INFO - [DatabaseManager.py:693] - DatabaseWorker thread started: True
+2025-08-30 23:42:33,868 - transcribrr - INFO - [DatabaseManager.py:691] - Starting DatabaseWorker thread
+2025-08-30 23:42:33,868 - transcribrr - INFO - [DatabaseManager.py:693] - DatabaseWorker thread started: True
+2025-08-30 23:42:33,872 - transcribrr - INFO - [DatabaseManager.py:691] - Starting DatabaseWorker thread
+2025-08-30 23:42:33,872 - transcribrr - INFO - [DatabaseManager.py:693] - DatabaseWorker thread started: True
+2025-08-30 23:42:33,874 - transcribrr - INFO - [DatabaseManager.py:691] - Starting DatabaseWorker thread
+2025-08-30 23:42:33,874 - transcribrr - INFO - [DatabaseManager.py:693] - DatabaseWorker thread started: True
+2025-08-30 23:42:33,878 - transcribrr - INFO - [DatabaseManager.py:691] - Starting DatabaseWorker thread
+2025-08-30 23:42:33,878 - transcribrr - INFO - [DatabaseManager.py:693] - DatabaseWorker thread started: True
+2025-08-30 23:42:33,880 - transcribrr - INFO - [DatabaseManager.py:691] - Starting DatabaseWorker thread
+2025-08-30 23:42:33,880 - transcribrr - INFO - [DatabaseManager.py:693] - DatabaseWorker thread started: True
+2025-08-30 23:42:33,883 - transcribrr - INFO - [DatabaseManager.py:691] - Starting DatabaseWorker thread
+2025-08-30 23:42:33,883 - transcribrr - INFO - [DatabaseManager.py:693] - DatabaseWorker thread started: False
+2025-08-30 23:42:33,885 - transcribrr - INFO - [DatabaseManager.py:691] - Starting DatabaseWorker thread
+2025-08-30 23:42:33,885 - transcribrr - INFO - [DatabaseManager.py:693] - DatabaseWorker thread started: True
+2025-08-30 23:42:33,886 - transcribrr - INFO - [DatabaseManager.py:691] - Starting DatabaseWorker thread
+2025-08-30 23:42:33,886 - transcribrr - INFO - [DatabaseManager.py:693] - DatabaseWorker thread started: True
+2025-08-30 23:42:33,887 - transcribrr - INFO - [DatabaseManager.py:691] - Starting DatabaseWorker thread
+2025-08-30 23:42:33,887 - transcribrr - INFO - [DatabaseManager.py:693] - DatabaseWorker thread started: True
+2025-08-30 23:51:22,225 - transcribrr - INFO - [DatabaseManager.py:691] - Starting DatabaseWorker thread
+2025-08-30 23:51:22,225 - transcribrr - INFO - [DatabaseManager.py:693] - DatabaseWorker thread started: True
+2025-08-30 23:51:22,227 - transcribrr - INFO - [DatabaseManager.py:691] - Starting DatabaseWorker thread
+2025-08-30 23:51:22,227 - transcribrr - INFO - [DatabaseManager.py:693] - DatabaseWorker thread started: True
+2025-08-30 23:51:22,228 - transcribrr - INFO - [DatabaseManager.py:691] - Starting DatabaseWorker thread
+2025-08-30 23:51:22,228 - transcribrr - INFO - [DatabaseManager.py:693] - DatabaseWorker thread started: True
+2025-08-30 23:51:22,229 - transcribrr - INFO - [DatabaseManager.py:691] - Starting DatabaseWorker thread
+2025-08-30 23:51:22,229 - transcribrr - INFO - [DatabaseManager.py:693] - DatabaseWorker thread started: True
+2025-08-30 23:51:22,231 - transcribrr - INFO - [DatabaseManager.py:691] - Starting DatabaseWorker thread
+2025-08-30 23:51:22,231 - transcribrr - INFO - [DatabaseManager.py:693] - DatabaseWorker thread started: True
+2025-08-30 23:51:22,232 - transcribrr - INFO - [DatabaseManager.py:691] - Starting DatabaseWorker thread
+2025-08-30 23:51:22,232 - transcribrr - INFO - [DatabaseManager.py:693] - DatabaseWorker thread started: True
+2025-08-30 23:51:22,233 - transcribrr - INFO - [DatabaseManager.py:691] - Starting DatabaseWorker thread
+2025-08-30 23:51:22,233 - transcribrr - INFO - [DatabaseManager.py:693] - DatabaseWorker thread started: True
+2025-08-30 23:51:22,235 - transcribrr - INFO - [DatabaseManager.py:691] - Starting DatabaseWorker thread
+2025-08-30 23:51:22,235 - transcribrr - INFO - [DatabaseManager.py:693] - DatabaseWorker thread started: True
+2025-08-30 23:51:22,236 - transcribrr - INFO - [DatabaseManager.py:691] - Starting DatabaseWorker thread
+2025-08-30 23:51:22,236 - transcribrr - INFO - [DatabaseManager.py:693] - DatabaseWorker thread started: True
+2025-08-30 23:51:22,237 - transcribrr - INFO - [DatabaseManager.py:691] - Starting DatabaseWorker thread
+2025-08-30 23:51:22,237 - transcribrr - INFO - [DatabaseManager.py:693] - DatabaseWorker thread started: True
+2025-08-30 23:51:22,238 - transcribrr - INFO - [DatabaseManager.py:691] - Starting DatabaseWorker thread
+2025-08-30 23:51:22,238 - transcribrr - INFO - [DatabaseManager.py:693] - DatabaseWorker thread started: True
+2025-08-30 23:51:22,242 - transcribrr - INFO - [DatabaseManager.py:691] - Starting DatabaseWorker thread
+2025-08-30 23:51:22,242 - transcribrr - INFO - [DatabaseManager.py:693] - DatabaseWorker thread started: True
+2025-08-30 23:51:22,244 - transcribrr - INFO - [DatabaseManager.py:691] - Starting DatabaseWorker thread
+2025-08-30 23:51:22,245 - transcribrr - INFO - [DatabaseManager.py:693] - DatabaseWorker thread started: True
+2025-08-30 23:51:22,248 - transcribrr - INFO - [DatabaseManager.py:691] - Starting DatabaseWorker thread
+2025-08-30 23:51:22,248 - transcribrr - INFO - [DatabaseManager.py:693] - DatabaseWorker thread started: True
+2025-08-30 23:51:22,250 - transcribrr - INFO - [DatabaseManager.py:691] - Starting DatabaseWorker thread
+2025-08-30 23:51:22,250 - transcribrr - INFO - [DatabaseManager.py:693] - DatabaseWorker thread started: True
+2025-08-30 23:51:22,253 - transcribrr - INFO - [DatabaseManager.py:691] - Starting DatabaseWorker thread
+2025-08-30 23:51:22,253 - transcribrr - INFO - [DatabaseManager.py:693] - DatabaseWorker thread started: False
+2025-08-30 23:51:22,255 - transcribrr - INFO - [DatabaseManager.py:691] - Starting DatabaseWorker thread
+2025-08-30 23:51:22,255 - transcribrr - INFO - [DatabaseManager.py:693] - DatabaseWorker thread started: True
+2025-08-30 23:51:22,256 - transcribrr - INFO - [DatabaseManager.py:691] - Starting DatabaseWorker thread
+2025-08-30 23:51:22,256 - transcribrr - INFO - [DatabaseManager.py:693] - DatabaseWorker thread started: True
+2025-08-30 23:51:22,257 - transcribrr - INFO - [DatabaseManager.py:691] - Starting DatabaseWorker thread
+2025-08-30 23:51:22,257 - transcribrr - INFO - [DatabaseManager.py:693] - DatabaseWorker thread started: True
+2025-08-30 23:56:45,983 - transcribrr - INFO - [DatabaseManager.py:691] - Starting DatabaseWorker thread
+2025-08-30 23:56:45,983 - transcribrr - INFO - [DatabaseManager.py:693] - DatabaseWorker thread started: True
+2025-08-30 23:56:45,985 - transcribrr - INFO - [DatabaseManager.py:691] - Starting DatabaseWorker thread
+2025-08-30 23:56:45,985 - transcribrr - INFO - [DatabaseManager.py:693] - DatabaseWorker thread started: True
+2025-08-30 23:56:45,986 - transcribrr - INFO - [DatabaseManager.py:691] - Starting DatabaseWorker thread
+2025-08-30 23:56:45,986 - transcribrr - INFO - [DatabaseManager.py:693] - DatabaseWorker thread started: True
+2025-08-30 23:56:45,988 - transcribrr - INFO - [DatabaseManager.py:691] - Starting DatabaseWorker thread
+2025-08-30 23:56:45,988 - transcribrr - INFO - [DatabaseManager.py:693] - DatabaseWorker thread started: True
+2025-08-30 23:56:45,989 - transcribrr - INFO - [DatabaseManager.py:691] - Starting DatabaseWorker thread
+2025-08-30 23:56:45,989 - transcribrr - INFO - [DatabaseManager.py:693] - DatabaseWorker thread started: True
+2025-08-30 23:56:45,990 - transcribrr - INFO - [DatabaseManager.py:691] - Starting DatabaseWorker thread
+2025-08-30 23:56:45,990 - transcribrr - INFO - [DatabaseManager.py:693] - DatabaseWorker thread started: True
+2025-08-30 23:56:45,992 - transcribrr - INFO - [DatabaseManager.py:691] - Starting DatabaseWorker thread
+2025-08-30 23:56:45,992 - transcribrr - INFO - [DatabaseManager.py:693] - DatabaseWorker thread started: True
+2025-08-30 23:56:45,993 - transcribrr - INFO - [DatabaseManager.py:691] - Starting DatabaseWorker thread
+2025-08-30 23:56:45,993 - transcribrr - INFO - [DatabaseManager.py:693] - DatabaseWorker thread started: True
+2025-08-30 23:56:45,995 - transcribrr - INFO - [DatabaseManager.py:691] - Starting DatabaseWorker thread
+2025-08-30 23:56:45,995 - transcribrr - INFO - [DatabaseManager.py:693] - DatabaseWorker thread started: True
+2025-08-30 23:56:45,996 - transcribrr - INFO - [DatabaseManager.py:691] - Starting DatabaseWorker thread
+2025-08-30 23:56:45,996 - transcribrr - INFO - [DatabaseManager.py:693] - DatabaseWorker thread started: True
+2025-08-30 23:56:45,997 - transcribrr - INFO - [DatabaseManager.py:691] - Starting DatabaseWorker thread
+2025-08-30 23:56:45,997 - transcribrr - INFO - [DatabaseManager.py:693] - DatabaseWorker thread started: True
+2025-08-30 23:56:46,000 - transcribrr - INFO - [DatabaseManager.py:691] - Starting DatabaseWorker thread
+2025-08-30 23:56:46,001 - transcribrr - INFO - [DatabaseManager.py:693] - DatabaseWorker thread started: True
+2025-08-30 23:56:46,003 - transcribrr - INFO - [DatabaseManager.py:691] - Starting DatabaseWorker thread
+2025-08-30 23:56:46,003 - transcribrr - INFO - [DatabaseManager.py:693] - DatabaseWorker thread started: True
+2025-08-30 23:56:46,007 - transcribrr - INFO - [DatabaseManager.py:691] - Starting DatabaseWorker thread
+2025-08-30 23:56:46,007 - transcribrr - INFO - [DatabaseManager.py:693] - DatabaseWorker thread started: True
+2025-08-30 23:56:46,009 - transcribrr - INFO - [DatabaseManager.py:691] - Starting DatabaseWorker thread
+2025-08-30 23:56:46,009 - transcribrr - INFO - [DatabaseManager.py:693] - DatabaseWorker thread started: True
+2025-08-30 23:56:46,012 - transcribrr - INFO - [DatabaseManager.py:691] - Starting DatabaseWorker thread
+2025-08-30 23:56:46,012 - transcribrr - INFO - [DatabaseManager.py:693] - DatabaseWorker thread started: False
+2025-08-30 23:56:46,014 - transcribrr - INFO - [DatabaseManager.py:691] - Starting DatabaseWorker thread
+2025-08-30 23:56:46,014 - transcribrr - INFO - [DatabaseManager.py:693] - DatabaseWorker thread started: True
+2025-08-30 23:56:46,015 - transcribrr - INFO - [DatabaseManager.py:691] - Starting DatabaseWorker thread
+2025-08-30 23:56:46,015 - transcribrr - INFO - [DatabaseManager.py:693] - DatabaseWorker thread started: True
+2025-08-30 23:56:46,016 - transcribrr - INFO - [DatabaseManager.py:691] - Starting DatabaseWorker thread
+2025-08-30 23:56:46,017 - transcribrr - INFO - [DatabaseManager.py:693] - DatabaseWorker thread started: True
+2025-08-31 00:01:30,202 - transcribrr - INFO - [DatabaseManager.py:691] - Starting DatabaseWorker thread
+2025-08-31 00:01:30,202 - transcribrr - INFO - [DatabaseManager.py:693] - DatabaseWorker thread started: True
+2025-08-31 00:01:30,204 - transcribrr - INFO - [DatabaseManager.py:691] - Starting DatabaseWorker thread
+2025-08-31 00:01:30,204 - transcribrr - INFO - [DatabaseManager.py:693] - DatabaseWorker thread started: True
+2025-08-31 00:01:30,205 - transcribrr - INFO - [DatabaseManager.py:691] - Starting DatabaseWorker thread
+2025-08-31 00:01:30,205 - transcribrr - INFO - [DatabaseManager.py:693] - DatabaseWorker thread started: True
+2025-08-31 00:01:30,206 - transcribrr - INFO - [DatabaseManager.py:691] - Starting DatabaseWorker thread
+2025-08-31 00:01:30,207 - transcribrr - INFO - [DatabaseManager.py:693] - DatabaseWorker thread started: True
+2025-08-31 00:01:30,208 - transcribrr - INFO - [DatabaseManager.py:691] - Starting DatabaseWorker thread
+2025-08-31 00:01:30,208 - transcribrr - INFO - [DatabaseManager.py:693] - DatabaseWorker thread started: True
+2025-08-31 00:01:30,209 - transcribrr - INFO - [DatabaseManager.py:691] - Starting DatabaseWorker thread
+2025-08-31 00:01:30,209 - transcribrr - INFO - [DatabaseManager.py:693] - DatabaseWorker thread started: True
+2025-08-31 00:01:30,210 - transcribrr - INFO - [DatabaseManager.py:691] - Starting DatabaseWorker thread
+2025-08-31 00:01:30,211 - transcribrr - INFO - [DatabaseManager.py:693] - DatabaseWorker thread started: True
+2025-08-31 00:01:30,212 - transcribrr - INFO - [DatabaseManager.py:691] - Starting DatabaseWorker thread
+2025-08-31 00:01:30,212 - transcribrr - INFO - [DatabaseManager.py:693] - DatabaseWorker thread started: True
+2025-08-31 00:01:30,213 - transcribrr - INFO - [DatabaseManager.py:691] - Starting DatabaseWorker thread
+2025-08-31 00:01:30,213 - transcribrr - INFO - [DatabaseManager.py:693] - DatabaseWorker thread started: True
+2025-08-31 00:01:30,214 - transcribrr - INFO - [DatabaseManager.py:691] - Starting DatabaseWorker thread
+2025-08-31 00:01:30,215 - transcribrr - INFO - [DatabaseManager.py:693] - DatabaseWorker thread started: True
+2025-08-31 00:01:30,215 - transcribrr - INFO - [DatabaseManager.py:691] - Starting DatabaseWorker thread
+2025-08-31 00:01:30,216 - transcribrr - INFO - [DatabaseManager.py:693] - DatabaseWorker thread started: True
+2025-08-31 00:01:30,219 - transcribrr - INFO - [DatabaseManager.py:691] - Starting DatabaseWorker thread
+2025-08-31 00:01:30,219 - transcribrr - INFO - [DatabaseManager.py:693] - DatabaseWorker thread started: True
+2025-08-31 00:01:30,222 - transcribrr - INFO - [DatabaseManager.py:691] - Starting DatabaseWorker thread
+2025-08-31 00:01:30,222 - transcribrr - INFO - [DatabaseManager.py:693] - DatabaseWorker thread started: True
+2025-08-31 00:01:30,225 - transcribrr - INFO - [DatabaseManager.py:691] - Starting DatabaseWorker thread
+2025-08-31 00:01:30,225 - transcribrr - INFO - [DatabaseManager.py:693] - DatabaseWorker thread started: True
+2025-08-31 00:01:30,227 - transcribrr - INFO - [DatabaseManager.py:691] - Starting DatabaseWorker thread
+2025-08-31 00:01:30,227 - transcribrr - INFO - [DatabaseManager.py:693] - DatabaseWorker thread started: True
+2025-08-31 00:01:30,230 - transcribrr - INFO - [DatabaseManager.py:691] - Starting DatabaseWorker thread
+2025-08-31 00:01:30,230 - transcribrr - INFO - [DatabaseManager.py:693] - DatabaseWorker thread started: False
+2025-08-31 00:01:30,232 - transcribrr - INFO - [DatabaseManager.py:691] - Starting DatabaseWorker thread
+2025-08-31 00:01:30,232 - transcribrr - INFO - [DatabaseManager.py:693] - DatabaseWorker thread started: True
+2025-08-31 00:01:30,234 - transcribrr - INFO - [DatabaseManager.py:691] - Starting DatabaseWorker thread
+2025-08-31 00:01:30,234 - transcribrr - INFO - [DatabaseManager.py:693] - DatabaseWorker thread started: True
+2025-08-31 00:01:30,235 - transcribrr - INFO - [DatabaseManager.py:691] - Starting DatabaseWorker thread
+2025-08-31 00:01:30,235 - transcribrr - INFO - [DatabaseManager.py:693] - DatabaseWorker thread started: True
+2025-08-31 00:06:56,941 - transcribrr - INFO - [DatabaseManager.py:691] - Starting DatabaseWorker thread
+2025-08-31 00:06:56,941 - transcribrr - INFO - [DatabaseManager.py:693] - DatabaseWorker thread started: True
+2025-08-31 00:06:56,943 - transcribrr - INFO - [DatabaseManager.py:691] - Starting DatabaseWorker thread
+2025-08-31 00:06:56,943 - transcribrr - INFO - [DatabaseManager.py:693] - DatabaseWorker thread started: True
+2025-08-31 00:06:56,945 - transcribrr - INFO - [DatabaseManager.py:691] - Starting DatabaseWorker thread
+2025-08-31 00:06:56,945 - transcribrr - INFO - [DatabaseManager.py:693] - DatabaseWorker thread started: True
+2025-08-31 00:06:56,946 - transcribrr - INFO - [DatabaseManager.py:691] - Starting DatabaseWorker thread
+2025-08-31 00:06:56,946 - transcribrr - INFO - [DatabaseManager.py:693] - DatabaseWorker thread started: True
+2025-08-31 00:06:56,947 - transcribrr - INFO - [DatabaseManager.py:691] - Starting DatabaseWorker thread
+2025-08-31 00:06:56,947 - transcribrr - INFO - [DatabaseManager.py:693] - DatabaseWorker thread started: True
+2025-08-31 00:06:56,948 - transcribrr - INFO - [DatabaseManager.py:691] - Starting DatabaseWorker thread
+2025-08-31 00:06:56,949 - transcribrr - INFO - [DatabaseManager.py:693] - DatabaseWorker thread started: True
+2025-08-31 00:06:56,950 - transcribrr - INFO - [DatabaseManager.py:691] - Starting DatabaseWorker thread
+2025-08-31 00:06:56,950 - transcribrr - INFO - [DatabaseManager.py:693] - DatabaseWorker thread started: True
+2025-08-31 00:06:56,951 - transcribrr - INFO - [DatabaseManager.py:691] - Starting DatabaseWorker thread
+2025-08-31 00:06:56,951 - transcribrr - INFO - [DatabaseManager.py:693] - DatabaseWorker thread started: True
+2025-08-31 00:06:56,953 - transcribrr - INFO - [DatabaseManager.py:691] - Starting DatabaseWorker thread
+2025-08-31 00:06:56,953 - transcribrr - INFO - [DatabaseManager.py:693] - DatabaseWorker thread started: True
+2025-08-31 00:06:56,954 - transcribrr - INFO - [DatabaseManager.py:691] - Starting DatabaseWorker thread
+2025-08-31 00:06:56,954 - transcribrr - INFO - [DatabaseManager.py:693] - DatabaseWorker thread started: True
+2025-08-31 00:06:56,955 - transcribrr - INFO - [DatabaseManager.py:691] - Starting DatabaseWorker thread
+2025-08-31 00:06:56,955 - transcribrr - INFO - [DatabaseManager.py:693] - DatabaseWorker thread started: True
+2025-08-31 00:06:56,958 - transcribrr - INFO - [DatabaseManager.py:691] - Starting DatabaseWorker thread
+2025-08-31 00:06:56,959 - transcribrr - INFO - [DatabaseManager.py:693] - DatabaseWorker thread started: True
+2025-08-31 00:06:56,961 - transcribrr - INFO - [DatabaseManager.py:691] - Starting DatabaseWorker thread
+2025-08-31 00:06:56,961 - transcribrr - INFO - [DatabaseManager.py:693] - DatabaseWorker thread started: True
+2025-08-31 00:06:56,964 - transcribrr - INFO - [DatabaseManager.py:691] - Starting DatabaseWorker thread
+2025-08-31 00:06:56,965 - transcribrr - INFO - [DatabaseManager.py:693] - DatabaseWorker thread started: True
+2025-08-31 00:06:56,967 - transcribrr - INFO - [DatabaseManager.py:691] - Starting DatabaseWorker thread
+2025-08-31 00:06:56,967 - transcribrr - INFO - [DatabaseManager.py:693] - DatabaseWorker thread started: True
+2025-08-31 00:06:56,970 - transcribrr - INFO - [DatabaseManager.py:691] - Starting DatabaseWorker thread
+2025-08-31 00:06:56,970 - transcribrr - INFO - [DatabaseManager.py:693] - DatabaseWorker thread started: False
+2025-08-31 00:06:56,972 - transcribrr - INFO - [DatabaseManager.py:691] - Starting DatabaseWorker thread
+2025-08-31 00:06:56,972 - transcribrr - INFO - [DatabaseManager.py:693] - DatabaseWorker thread started: True
+2025-08-31 00:06:56,973 - transcribrr - INFO - [DatabaseManager.py:691] - Starting DatabaseWorker thread
+2025-08-31 00:06:56,973 - transcribrr - INFO - [DatabaseManager.py:693] - DatabaseWorker thread started: True
+2025-08-31 00:06:56,974 - transcribrr - INFO - [DatabaseManager.py:691] - Starting DatabaseWorker thread
+2025-08-31 00:06:56,974 - transcribrr - INFO - [DatabaseManager.py:693] - DatabaseWorker thread started: True
+2025-08-31 00:08:22,857 - transcribrr - INFO - [DatabaseManager.py:691] - Starting DatabaseWorker thread
+2025-08-31 00:08:22,857 - transcribrr - INFO - [DatabaseManager.py:693] - DatabaseWorker thread started: True
+2025-08-31 00:08:22,859 - transcribrr - INFO - [DatabaseManager.py:691] - Starting DatabaseWorker thread
+2025-08-31 00:08:22,859 - transcribrr - INFO - [DatabaseManager.py:693] - DatabaseWorker thread started: True
+2025-08-31 00:08:22,861 - transcribrr - INFO - [DatabaseManager.py:691] - Starting DatabaseWorker thread
+2025-08-31 00:08:22,861 - transcribrr - INFO - [DatabaseManager.py:693] - DatabaseWorker thread started: True
+2025-08-31 00:08:22,862 - transcribrr - INFO - [DatabaseManager.py:691] - Starting DatabaseWorker thread
+2025-08-31 00:08:22,862 - transcribrr - INFO - [DatabaseManager.py:693] - DatabaseWorker thread started: True
+2025-08-31 00:08:22,863 - transcribrr - INFO - [DatabaseManager.py:691] - Starting DatabaseWorker thread
+2025-08-31 00:08:22,863 - transcribrr - INFO - [DatabaseManager.py:693] - DatabaseWorker thread started: True
+2025-08-31 00:08:22,864 - transcribrr - INFO - [DatabaseManager.py:691] - Starting DatabaseWorker thread
+2025-08-31 00:08:22,865 - transcribrr - INFO - [DatabaseManager.py:693] - DatabaseWorker thread started: True
+2025-08-31 00:08:22,866 - transcribrr - INFO - [DatabaseManager.py:691] - Starting DatabaseWorker thread
+2025-08-31 00:08:22,866 - transcribrr - INFO - [DatabaseManager.py:693] - DatabaseWorker thread started: True
+2025-08-31 00:08:22,867 - transcribrr - INFO - [DatabaseManager.py:691] - Starting DatabaseWorker thread
+2025-08-31 00:08:22,867 - transcribrr - INFO - [DatabaseManager.py:693] - DatabaseWorker thread started: True
+2025-08-31 00:08:22,869 - transcribrr - INFO - [DatabaseManager.py:691] - Starting DatabaseWorker thread
+2025-08-31 00:08:22,869 - transcribrr - INFO - [DatabaseManager.py:693] - DatabaseWorker thread started: True
+2025-08-31 00:08:22,870 - transcribrr - INFO - [DatabaseManager.py:691] - Starting DatabaseWorker thread
+2025-08-31 00:08:22,870 - transcribrr - INFO - [DatabaseManager.py:693] - DatabaseWorker thread started: True
+2025-08-31 00:08:22,871 - transcribrr - INFO - [DatabaseManager.py:691] - Starting DatabaseWorker thread
+2025-08-31 00:08:22,871 - transcribrr - INFO - [DatabaseManager.py:693] - DatabaseWorker thread started: True
+2025-08-31 00:08:22,875 - transcribrr - INFO - [DatabaseManager.py:691] - Starting DatabaseWorker thread
+2025-08-31 00:08:22,875 - transcribrr - INFO - [DatabaseManager.py:693] - DatabaseWorker thread started: True
+2025-08-31 00:08:22,877 - transcribrr - INFO - [DatabaseManager.py:691] - Starting DatabaseWorker thread
+2025-08-31 00:08:22,877 - transcribrr - INFO - [DatabaseManager.py:693] - DatabaseWorker thread started: True
+2025-08-31 00:08:22,881 - transcribrr - INFO - [DatabaseManager.py:691] - Starting DatabaseWorker thread
+2025-08-31 00:08:22,881 - transcribrr - INFO - [DatabaseManager.py:693] - DatabaseWorker thread started: True
+2025-08-31 00:08:22,883 - transcribrr - INFO - [DatabaseManager.py:691] - Starting DatabaseWorker thread
+2025-08-31 00:08:22,883 - transcribrr - INFO - [DatabaseManager.py:693] - DatabaseWorker thread started: True
+2025-08-31 00:08:22,886 - transcribrr - INFO - [DatabaseManager.py:691] - Starting DatabaseWorker thread
+2025-08-31 00:08:22,886 - transcribrr - INFO - [DatabaseManager.py:693] - DatabaseWorker thread started: False
+2025-08-31 00:08:22,888 - transcribrr - INFO - [DatabaseManager.py:691] - Starting DatabaseWorker thread
+2025-08-31 00:08:22,888 - transcribrr - INFO - [DatabaseManager.py:693] - DatabaseWorker thread started: True
+2025-08-31 00:08:22,889 - transcribrr - INFO - [DatabaseManager.py:691] - Starting DatabaseWorker thread
+2025-08-31 00:08:22,890 - transcribrr - INFO - [DatabaseManager.py:693] - DatabaseWorker thread started: True
+2025-08-31 00:08:22,891 - transcribrr - INFO - [DatabaseManager.py:691] - Starting DatabaseWorker thread
+2025-08-31 00:08:22,891 - transcribrr - INFO - [DatabaseManager.py:693] - DatabaseWorker thread started: True
+2025-08-31 00:08:50,769 - transcribrr - INFO - [DatabaseManager.py:691] - Starting DatabaseWorker thread
+2025-08-31 00:08:50,769 - transcribrr - INFO - [DatabaseManager.py:693] - DatabaseWorker thread started: True
+2025-08-31 00:08:50,770 - transcribrr - INFO - [DatabaseManager.py:691] - Starting DatabaseWorker thread
+2025-08-31 00:08:50,771 - transcribrr - INFO - [DatabaseManager.py:693] - DatabaseWorker thread started: True
+2025-08-31 00:08:50,772 - transcribrr - INFO - [DatabaseManager.py:691] - Starting DatabaseWorker thread
+2025-08-31 00:08:50,772 - transcribrr - INFO - [DatabaseManager.py:693] - DatabaseWorker thread started: True
+2025-08-31 00:08:50,773 - transcribrr - INFO - [DatabaseManager.py:691] - Starting DatabaseWorker thread
+2025-08-31 00:08:50,773 - transcribrr - INFO - [DatabaseManager.py:693] - DatabaseWorker thread started: True
+2025-08-31 00:08:50,774 - transcribrr - INFO - [DatabaseManager.py:691] - Starting DatabaseWorker thread
+2025-08-31 00:08:50,774 - transcribrr - INFO - [DatabaseManager.py:693] - DatabaseWorker thread started: True
+2025-08-31 00:08:50,776 - transcribrr - INFO - [DatabaseManager.py:691] - Starting DatabaseWorker thread
+2025-08-31 00:08:50,776 - transcribrr - INFO - [DatabaseManager.py:693] - DatabaseWorker thread started: True
+2025-08-31 00:08:50,777 - transcribrr - INFO - [DatabaseManager.py:691] - Starting DatabaseWorker thread
+2025-08-31 00:08:50,777 - transcribrr - INFO - [DatabaseManager.py:693] - DatabaseWorker thread started: True
+2025-08-31 00:08:50,779 - transcribrr - INFO - [DatabaseManager.py:691] - Starting DatabaseWorker thread
+2025-08-31 00:08:50,779 - transcribrr - INFO - [DatabaseManager.py:693] - DatabaseWorker thread started: True
+2025-08-31 00:08:50,780 - transcribrr - INFO - [DatabaseManager.py:691] - Starting DatabaseWorker thread
+2025-08-31 00:08:50,780 - transcribrr - INFO - [DatabaseManager.py:693] - DatabaseWorker thread started: True
+2025-08-31 00:08:50,781 - transcribrr - INFO - [DatabaseManager.py:691] - Starting DatabaseWorker thread
+2025-08-31 00:08:50,781 - transcribrr - INFO - [DatabaseManager.py:693] - DatabaseWorker thread started: True
+2025-08-31 00:08:50,782 - transcribrr - INFO - [DatabaseManager.py:691] - Starting DatabaseWorker thread
+2025-08-31 00:08:50,782 - transcribrr - INFO - [DatabaseManager.py:693] - DatabaseWorker thread started: True
+2025-08-31 00:08:50,786 - transcribrr - INFO - [DatabaseManager.py:691] - Starting DatabaseWorker thread
+2025-08-31 00:08:50,786 - transcribrr - INFO - [DatabaseManager.py:693] - DatabaseWorker thread started: True
+2025-08-31 00:08:50,788 - transcribrr - INFO - [DatabaseManager.py:691] - Starting DatabaseWorker thread
+2025-08-31 00:08:50,788 - transcribrr - INFO - [DatabaseManager.py:693] - DatabaseWorker thread started: True
+2025-08-31 00:08:50,792 - transcribrr - INFO - [DatabaseManager.py:691] - Starting DatabaseWorker thread
+2025-08-31 00:08:50,792 - transcribrr - INFO - [DatabaseManager.py:693] - DatabaseWorker thread started: True
+2025-08-31 00:08:50,794 - transcribrr - INFO - [DatabaseManager.py:691] - Starting DatabaseWorker thread
+2025-08-31 00:08:50,794 - transcribrr - INFO - [DatabaseManager.py:693] - DatabaseWorker thread started: True
+2025-08-31 00:08:50,797 - transcribrr - INFO - [DatabaseManager.py:691] - Starting DatabaseWorker thread
+2025-08-31 00:08:50,797 - transcribrr - INFO - [DatabaseManager.py:693] - DatabaseWorker thread started: False
+2025-08-31 00:08:50,799 - transcribrr - INFO - [DatabaseManager.py:691] - Starting DatabaseWorker thread
+2025-08-31 00:08:50,799 - transcribrr - INFO - [DatabaseManager.py:693] - DatabaseWorker thread started: True
+2025-08-31 00:08:50,800 - transcribrr - INFO - [DatabaseManager.py:691] - Starting DatabaseWorker thread
+2025-08-31 00:08:50,801 - transcribrr - INFO - [DatabaseManager.py:693] - DatabaseWorker thread started: True
+2025-08-31 00:08:50,802 - transcribrr - INFO - [DatabaseManager.py:691] - Starting DatabaseWorker thread
+2025-08-31 00:08:50,802 - transcribrr - INFO - [DatabaseManager.py:693] - DatabaseWorker thread started: True
+2025-08-31 00:09:08,541 - transcribrr - INFO - [DatabaseManager.py:691] - Starting DatabaseWorker thread
+2025-08-31 00:09:08,541 - transcribrr - INFO - [DatabaseManager.py:693] - DatabaseWorker thread started: True
+2025-08-31 00:09:08,543 - transcribrr - INFO - [DatabaseManager.py:691] - Starting DatabaseWorker thread
+2025-08-31 00:09:08,543 - transcribrr - INFO - [DatabaseManager.py:693] - DatabaseWorker thread started: True
+2025-08-31 00:09:08,544 - transcribrr - INFO - [DatabaseManager.py:691] - Starting DatabaseWorker thread
+2025-08-31 00:09:08,544 - transcribrr - INFO - [DatabaseManager.py:693] - DatabaseWorker thread started: True
+2025-08-31 00:09:08,545 - transcribrr - INFO - [DatabaseManager.py:691] - Starting DatabaseWorker thread
+2025-08-31 00:09:08,546 - transcribrr - INFO - [DatabaseManager.py:693] - DatabaseWorker thread started: True
+2025-08-31 00:09:08,547 - transcribrr - INFO - [DatabaseManager.py:691] - Starting DatabaseWorker thread
+2025-08-31 00:09:08,547 - transcribrr - INFO - [DatabaseManager.py:693] - DatabaseWorker thread started: True
+2025-08-31 00:09:08,548 - transcribrr - INFO - [DatabaseManager.py:691] - Starting DatabaseWorker thread
+2025-08-31 00:09:08,548 - transcribrr - INFO - [DatabaseManager.py:693] - DatabaseWorker thread started: True
+2025-08-31 00:09:08,550 - transcribrr - INFO - [DatabaseManager.py:691] - Starting DatabaseWorker thread
+2025-08-31 00:09:08,550 - transcribrr - INFO - [DatabaseManager.py:693] - DatabaseWorker thread started: True
+2025-08-31 00:09:08,551 - transcribrr - INFO - [DatabaseManager.py:691] - Starting DatabaseWorker thread
+2025-08-31 00:09:08,551 - transcribrr - INFO - [DatabaseManager.py:693] - DatabaseWorker thread started: True
+2025-08-31 00:09:08,553 - transcribrr - INFO - [DatabaseManager.py:691] - Starting DatabaseWorker thread
+2025-08-31 00:09:08,553 - transcribrr - INFO - [DatabaseManager.py:693] - DatabaseWorker thread started: True
+2025-08-31 00:09:08,554 - transcribrr - INFO - [DatabaseManager.py:691] - Starting DatabaseWorker thread
+2025-08-31 00:09:08,554 - transcribrr - INFO - [DatabaseManager.py:693] - DatabaseWorker thread started: True
+2025-08-31 00:09:08,555 - transcribrr - INFO - [DatabaseManager.py:691] - Starting DatabaseWorker thread
+2025-08-31 00:09:08,555 - transcribrr - INFO - [DatabaseManager.py:693] - DatabaseWorker thread started: True
+2025-08-31 00:09:08,559 - transcribrr - INFO - [DatabaseManager.py:691] - Starting DatabaseWorker thread
+2025-08-31 00:09:08,559 - transcribrr - INFO - [DatabaseManager.py:693] - DatabaseWorker thread started: True
+2025-08-31 00:09:08,562 - transcribrr - INFO - [DatabaseManager.py:691] - Starting DatabaseWorker thread
+2025-08-31 00:09:08,562 - transcribrr - INFO - [DatabaseManager.py:693] - DatabaseWorker thread started: True
+2025-08-31 00:09:08,566 - transcribrr - INFO - [DatabaseManager.py:691] - Starting DatabaseWorker thread
+2025-08-31 00:09:08,566 - transcribrr - INFO - [DatabaseManager.py:693] - DatabaseWorker thread started: True
+2025-08-31 00:09:08,568 - transcribrr - INFO - [DatabaseManager.py:691] - Starting DatabaseWorker thread
+2025-08-31 00:09:08,568 - transcribrr - INFO - [DatabaseManager.py:693] - DatabaseWorker thread started: True
+2025-08-31 00:09:08,571 - transcribrr - INFO - [DatabaseManager.py:691] - Starting DatabaseWorker thread
+2025-08-31 00:09:08,571 - transcribrr - INFO - [DatabaseManager.py:693] - DatabaseWorker thread started: False
+2025-08-31 00:09:08,573 - transcribrr - INFO - [DatabaseManager.py:691] - Starting DatabaseWorker thread
+2025-08-31 00:09:08,573 - transcribrr - INFO - [DatabaseManager.py:693] - DatabaseWorker thread started: True
+2025-08-31 00:09:08,575 - transcribrr - INFO - [DatabaseManager.py:691] - Starting DatabaseWorker thread
+2025-08-31 00:09:08,575 - transcribrr - INFO - [DatabaseManager.py:693] - DatabaseWorker thread started: True
+2025-08-31 00:09:08,576 - transcribrr - INFO - [DatabaseManager.py:691] - Starting DatabaseWorker thread
+2025-08-31 00:09:08,576 - transcribrr - INFO - [DatabaseManager.py:693] - DatabaseWorker thread started: True
+2025-08-31 00:09:27,053 - transcribrr - INFO - [DatabaseManager.py:691] - Starting DatabaseWorker thread
+2025-08-31 00:09:27,053 - transcribrr - INFO - [DatabaseManager.py:693] - DatabaseWorker thread started: True
+2025-08-31 00:09:27,055 - transcribrr - INFO - [DatabaseManager.py:691] - Starting DatabaseWorker thread
+2025-08-31 00:09:27,055 - transcribrr - INFO - [DatabaseManager.py:693] - DatabaseWorker thread started: True
+2025-08-31 00:09:27,056 - transcribrr - INFO - [DatabaseManager.py:691] - Starting DatabaseWorker thread
+2025-08-31 00:09:27,057 - transcribrr - INFO - [DatabaseManager.py:693] - DatabaseWorker thread started: True
+2025-08-31 00:09:27,058 - transcribrr - INFO - [DatabaseManager.py:691] - Starting DatabaseWorker thread
+2025-08-31 00:09:27,058 - transcribrr - INFO - [DatabaseManager.py:693] - DatabaseWorker thread started: True
+2025-08-31 00:09:27,059 - transcribrr - INFO - [DatabaseManager.py:691] - Starting DatabaseWorker thread
+2025-08-31 00:09:27,059 - transcribrr - INFO - [DatabaseManager.py:693] - DatabaseWorker thread started: True
+2025-08-31 00:09:27,060 - transcribrr - INFO - [DatabaseManager.py:691] - Starting DatabaseWorker thread
+2025-08-31 00:09:27,061 - transcribrr - INFO - [DatabaseManager.py:693] - DatabaseWorker thread started: True
+2025-08-31 00:09:27,062 - transcribrr - INFO - [DatabaseManager.py:691] - Starting DatabaseWorker thread
+2025-08-31 00:09:27,062 - transcribrr - INFO - [DatabaseManager.py:693] - DatabaseWorker thread started: True
+2025-08-31 00:09:27,063 - transcribrr - INFO - [DatabaseManager.py:691] - Starting DatabaseWorker thread
+2025-08-31 00:09:27,064 - transcribrr - INFO - [DatabaseManager.py:693] - DatabaseWorker thread started: True
+2025-08-31 00:09:27,065 - transcribrr - INFO - [DatabaseManager.py:691] - Starting DatabaseWorker thread
+2025-08-31 00:09:27,065 - transcribrr - INFO - [DatabaseManager.py:693] - DatabaseWorker thread started: True
+2025-08-31 00:09:27,066 - transcribrr - INFO - [DatabaseManager.py:691] - Starting DatabaseWorker thread
+2025-08-31 00:09:27,066 - transcribrr - INFO - [DatabaseManager.py:693] - DatabaseWorker thread started: True
+2025-08-31 00:09:27,067 - transcribrr - INFO - [DatabaseManager.py:691] - Starting DatabaseWorker thread
+2025-08-31 00:09:27,067 - transcribrr - INFO - [DatabaseManager.py:693] - DatabaseWorker thread started: True
+2025-08-31 00:09:27,071 - transcribrr - INFO - [DatabaseManager.py:691] - Starting DatabaseWorker thread
+2025-08-31 00:09:27,071 - transcribrr - INFO - [DatabaseManager.py:693] - DatabaseWorker thread started: True
+2025-08-31 00:09:27,073 - transcribrr - INFO - [DatabaseManager.py:691] - Starting DatabaseWorker thread
+2025-08-31 00:09:27,073 - transcribrr - INFO - [DatabaseManager.py:693] - DatabaseWorker thread started: True
+2025-08-31 00:09:27,077 - transcribrr - INFO - [DatabaseManager.py:691] - Starting DatabaseWorker thread
+2025-08-31 00:09:27,077 - transcribrr - INFO - [DatabaseManager.py:693] - DatabaseWorker thread started: True
+2025-08-31 00:09:27,079 - transcribrr - INFO - [DatabaseManager.py:691] - Starting DatabaseWorker thread
+2025-08-31 00:09:27,079 - transcribrr - INFO - [DatabaseManager.py:693] - DatabaseWorker thread started: True
+2025-08-31 00:09:27,082 - transcribrr - INFO - [DatabaseManager.py:691] - Starting DatabaseWorker thread
+2025-08-31 00:09:27,082 - transcribrr - INFO - [DatabaseManager.py:693] - DatabaseWorker thread started: False
+2025-08-31 00:09:27,084 - transcribrr - INFO - [DatabaseManager.py:691] - Starting DatabaseWorker thread
+2025-08-31 00:09:27,084 - transcribrr - INFO - [DatabaseManager.py:693] - DatabaseWorker thread started: True
+2025-08-31 00:09:27,086 - transcribrr - INFO - [DatabaseManager.py:691] - Starting DatabaseWorker thread
+2025-08-31 00:09:27,086 - transcribrr - INFO - [DatabaseManager.py:693] - DatabaseWorker thread started: True
+2025-08-31 00:09:27,087 - transcribrr - INFO - [DatabaseManager.py:691] - Starting DatabaseWorker thread
+2025-08-31 00:09:27,087 - transcribrr - INFO - [DatabaseManager.py:693] - DatabaseWorker thread started: True
+2025-08-31 00:09:38,797 - transcribrr - INFO - [DatabaseManager.py:691] - Starting DatabaseWorker thread
+2025-08-31 00:09:38,797 - transcribrr - INFO - [DatabaseManager.py:693] - DatabaseWorker thread started: True
+2025-08-31 00:09:38,799 - transcribrr - INFO - [DatabaseManager.py:691] - Starting DatabaseWorker thread
+2025-08-31 00:09:38,799 - transcribrr - INFO - [DatabaseManager.py:693] - DatabaseWorker thread started: True
+2025-08-31 00:09:38,801 - transcribrr - INFO - [DatabaseManager.py:691] - Starting DatabaseWorker thread
+2025-08-31 00:09:38,801 - transcribrr - INFO - [DatabaseManager.py:693] - DatabaseWorker thread started: True
+2025-08-31 00:09:38,802 - transcribrr - INFO - [DatabaseManager.py:691] - Starting DatabaseWorker thread
+2025-08-31 00:09:38,802 - transcribrr - INFO - [DatabaseManager.py:693] - DatabaseWorker thread started: True
+2025-08-31 00:09:38,803 - transcribrr - INFO - [DatabaseManager.py:691] - Starting DatabaseWorker thread
+2025-08-31 00:09:38,803 - transcribrr - INFO - [DatabaseManager.py:693] - DatabaseWorker thread started: True
+2025-08-31 00:09:38,805 - transcribrr - INFO - [DatabaseManager.py:691] - Starting DatabaseWorker thread
+2025-08-31 00:09:38,805 - transcribrr - INFO - [DatabaseManager.py:693] - DatabaseWorker thread started: True
+2025-08-31 00:09:38,806 - transcribrr - INFO - [DatabaseManager.py:691] - Starting DatabaseWorker thread
+2025-08-31 00:09:38,806 - transcribrr - INFO - [DatabaseManager.py:693] - DatabaseWorker thread started: True
+2025-08-31 00:09:38,808 - transcribrr - INFO - [DatabaseManager.py:691] - Starting DatabaseWorker thread
+2025-08-31 00:09:38,808 - transcribrr - INFO - [DatabaseManager.py:693] - DatabaseWorker thread started: True
+2025-08-31 00:09:38,809 - transcribrr - INFO - [DatabaseManager.py:691] - Starting DatabaseWorker thread
+2025-08-31 00:09:38,809 - transcribrr - INFO - [DatabaseManager.py:693] - DatabaseWorker thread started: True
+2025-08-31 00:09:38,810 - transcribrr - INFO - [DatabaseManager.py:691] - Starting DatabaseWorker thread
+2025-08-31 00:09:38,811 - transcribrr - INFO - [DatabaseManager.py:693] - DatabaseWorker thread started: True
+2025-08-31 00:09:38,812 - transcribrr - INFO - [DatabaseManager.py:691] - Starting DatabaseWorker thread
+2025-08-31 00:09:38,812 - transcribrr - INFO - [DatabaseManager.py:693] - DatabaseWorker thread started: True
+2025-08-31 00:09:38,816 - transcribrr - INFO - [DatabaseManager.py:691] - Starting DatabaseWorker thread
+2025-08-31 00:09:38,816 - transcribrr - INFO - [DatabaseManager.py:693] - DatabaseWorker thread started: True
+2025-08-31 00:09:38,819 - transcribrr - INFO - [DatabaseManager.py:691] - Starting DatabaseWorker thread
+2025-08-31 00:09:38,819 - transcribrr - INFO - [DatabaseManager.py:693] - DatabaseWorker thread started: True
+2025-08-31 00:09:38,823 - transcribrr - INFO - [DatabaseManager.py:691] - Starting DatabaseWorker thread
+2025-08-31 00:09:38,823 - transcribrr - INFO - [DatabaseManager.py:693] - DatabaseWorker thread started: True
+2025-08-31 00:09:38,825 - transcribrr - INFO - [DatabaseManager.py:691] - Starting DatabaseWorker thread
+2025-08-31 00:09:38,825 - transcribrr - INFO - [DatabaseManager.py:693] - DatabaseWorker thread started: True
+2025-08-31 00:09:38,828 - transcribrr - INFO - [DatabaseManager.py:691] - Starting DatabaseWorker thread
+2025-08-31 00:09:38,828 - transcribrr - INFO - [DatabaseManager.py:693] - DatabaseWorker thread started: False
+2025-08-31 00:09:38,831 - transcribrr - INFO - [DatabaseManager.py:691] - Starting DatabaseWorker thread
+2025-08-31 00:09:38,831 - transcribrr - INFO - [DatabaseManager.py:693] - DatabaseWorker thread started: True
+2025-08-31 00:09:38,832 - transcribrr - INFO - [DatabaseManager.py:691] - Starting DatabaseWorker thread
+2025-08-31 00:09:38,832 - transcribrr - INFO - [DatabaseManager.py:693] - DatabaseWorker thread started: True
+2025-08-31 00:09:38,833 - transcribrr - INFO - [DatabaseManager.py:691] - Starting DatabaseWorker thread
+2025-08-31 00:09:38,833 - transcribrr - INFO - [DatabaseManager.py:693] - DatabaseWorker thread started: True
+2025-08-31 00:09:50,061 - transcribrr - INFO - [DatabaseManager.py:691] - Starting DatabaseWorker thread
+2025-08-31 00:09:50,061 - transcribrr - INFO - [DatabaseManager.py:693] - DatabaseWorker thread started: True
+2025-08-31 00:09:50,063 - transcribrr - INFO - [DatabaseManager.py:691] - Starting DatabaseWorker thread
+2025-08-31 00:09:50,063 - transcribrr - INFO - [DatabaseManager.py:693] - DatabaseWorker thread started: True
+2025-08-31 00:09:50,064 - transcribrr - INFO - [DatabaseManager.py:691] - Starting DatabaseWorker thread
+2025-08-31 00:09:50,064 - transcribrr - INFO - [DatabaseManager.py:693] - DatabaseWorker thread started: True
+2025-08-31 00:09:50,066 - transcribrr - INFO - [DatabaseManager.py:691] - Starting DatabaseWorker thread
+2025-08-31 00:09:50,066 - transcribrr - INFO - [DatabaseManager.py:693] - DatabaseWorker thread started: True
+2025-08-31 00:09:50,067 - transcribrr - INFO - [DatabaseManager.py:691] - Starting DatabaseWorker thread
+2025-08-31 00:09:50,067 - transcribrr - INFO - [DatabaseManager.py:693] - DatabaseWorker thread started: True
+2025-08-31 00:09:50,068 - transcribrr - INFO - [DatabaseManager.py:691] - Starting DatabaseWorker thread
+2025-08-31 00:09:50,068 - transcribrr - INFO - [DatabaseManager.py:693] - DatabaseWorker thread started: True
+2025-08-31 00:09:50,069 - transcribrr - INFO - [DatabaseManager.py:691] - Starting DatabaseWorker thread
+2025-08-31 00:09:50,070 - transcribrr - INFO - [DatabaseManager.py:693] - DatabaseWorker thread started: True
+2025-08-31 00:09:50,071 - transcribrr - INFO - [DatabaseManager.py:691] - Starting DatabaseWorker thread
+2025-08-31 00:09:50,071 - transcribrr - INFO - [DatabaseManager.py:693] - DatabaseWorker thread started: True
+2025-08-31 00:09:50,072 - transcribrr - INFO - [DatabaseManager.py:691] - Starting DatabaseWorker thread
+2025-08-31 00:09:50,072 - transcribrr - INFO - [DatabaseManager.py:693] - DatabaseWorker thread started: True
+2025-08-31 00:09:50,073 - transcribrr - INFO - [DatabaseManager.py:691] - Starting DatabaseWorker thread
+2025-08-31 00:09:50,074 - transcribrr - INFO - [DatabaseManager.py:693] - DatabaseWorker thread started: True
+2025-08-31 00:09:50,075 - transcribrr - INFO - [DatabaseManager.py:691] - Starting DatabaseWorker thread
+2025-08-31 00:09:50,075 - transcribrr - INFO - [DatabaseManager.py:693] - DatabaseWorker thread started: True
+2025-08-31 00:09:50,078 - transcribrr - INFO - [DatabaseManager.py:691] - Starting DatabaseWorker thread
+2025-08-31 00:09:50,078 - transcribrr - INFO - [DatabaseManager.py:693] - DatabaseWorker thread started: True
+2025-08-31 00:09:50,081 - transcribrr - INFO - [DatabaseManager.py:691] - Starting DatabaseWorker thread
+2025-08-31 00:09:50,081 - transcribrr - INFO - [DatabaseManager.py:693] - DatabaseWorker thread started: True
+2025-08-31 00:09:50,084 - transcribrr - INFO - [DatabaseManager.py:691] - Starting DatabaseWorker thread
+2025-08-31 00:09:50,084 - transcribrr - INFO - [DatabaseManager.py:693] - DatabaseWorker thread started: True
+2025-08-31 00:09:50,086 - transcribrr - INFO - [DatabaseManager.py:691] - Starting DatabaseWorker thread
+2025-08-31 00:09:50,086 - transcribrr - INFO - [DatabaseManager.py:693] - DatabaseWorker thread started: True
+2025-08-31 00:09:50,089 - transcribrr - INFO - [DatabaseManager.py:691] - Starting DatabaseWorker thread
+2025-08-31 00:09:50,089 - transcribrr - INFO - [DatabaseManager.py:693] - DatabaseWorker thread started: False
+2025-08-31 00:09:50,091 - transcribrr - INFO - [DatabaseManager.py:691] - Starting DatabaseWorker thread
+2025-08-31 00:09:50,091 - transcribrr - INFO - [DatabaseManager.py:693] - DatabaseWorker thread started: True
+2025-08-31 00:09:50,093 - transcribrr - INFO - [DatabaseManager.py:691] - Starting DatabaseWorker thread
+2025-08-31 00:09:50,093 - transcribrr - INFO - [DatabaseManager.py:693] - DatabaseWorker thread started: True
+2025-08-31 00:09:50,094 - transcribrr - INFO - [DatabaseManager.py:691] - Starting DatabaseWorker thread
+2025-08-31 00:09:50,094 - transcribrr - INFO - [DatabaseManager.py:693] - DatabaseWorker thread started: True
+2025-08-31 00:10:17,927 - transcribrr - INFO - [DatabaseManager.py:691] - Starting DatabaseWorker thread
+2025-08-31 00:10:17,927 - transcribrr - INFO - [DatabaseManager.py:693] - DatabaseWorker thread started: True
+2025-08-31 00:10:17,928 - transcribrr - INFO - [DatabaseManager.py:691] - Starting DatabaseWorker thread
+2025-08-31 00:10:17,928 - transcribrr - INFO - [DatabaseManager.py:693] - DatabaseWorker thread started: True
+2025-08-31 00:10:17,930 - transcribrr - INFO - [DatabaseManager.py:691] - Starting DatabaseWorker thread
+2025-08-31 00:10:17,930 - transcribrr - INFO - [DatabaseManager.py:693] - DatabaseWorker thread started: True
+2025-08-31 00:10:17,931 - transcribrr - INFO - [DatabaseManager.py:691] - Starting DatabaseWorker thread
+2025-08-31 00:10:17,931 - transcribrr - INFO - [DatabaseManager.py:693] - DatabaseWorker thread started: True
+2025-08-31 00:10:17,932 - transcribrr - INFO - [DatabaseManager.py:691] - Starting DatabaseWorker thread
+2025-08-31 00:10:17,932 - transcribrr - INFO - [DatabaseManager.py:693] - DatabaseWorker thread started: True
+2025-08-31 00:10:17,934 - transcribrr - INFO - [DatabaseManager.py:691] - Starting DatabaseWorker thread
+2025-08-31 00:10:17,934 - transcribrr - INFO - [DatabaseManager.py:693] - DatabaseWorker thread started: True
+2025-08-31 00:10:17,935 - transcribrr - INFO - [DatabaseManager.py:691] - Starting DatabaseWorker thread
+2025-08-31 00:10:17,936 - transcribrr - INFO - [DatabaseManager.py:693] - DatabaseWorker thread started: True
+2025-08-31 00:10:17,937 - transcribrr - INFO - [DatabaseManager.py:691] - Starting DatabaseWorker thread
+2025-08-31 00:10:17,937 - transcribrr - INFO - [DatabaseManager.py:693] - DatabaseWorker thread started: True
+2025-08-31 00:10:17,939 - transcribrr - INFO - [DatabaseManager.py:691] - Starting DatabaseWorker thread
+2025-08-31 00:10:17,939 - transcribrr - INFO - [DatabaseManager.py:693] - DatabaseWorker thread started: True
+2025-08-31 00:10:17,940 - transcribrr - INFO - [DatabaseManager.py:691] - Starting DatabaseWorker thread
+2025-08-31 00:10:17,940 - transcribrr - INFO - [DatabaseManager.py:693] - DatabaseWorker thread started: True
+2025-08-31 00:10:17,941 - transcribrr - INFO - [DatabaseManager.py:691] - Starting DatabaseWorker thread
+2025-08-31 00:10:17,941 - transcribrr - INFO - [DatabaseManager.py:693] - DatabaseWorker thread started: True
+2025-08-31 00:10:17,945 - transcribrr - INFO - [DatabaseManager.py:691] - Starting DatabaseWorker thread
+2025-08-31 00:10:17,945 - transcribrr - INFO - [DatabaseManager.py:693] - DatabaseWorker thread started: True
+2025-08-31 00:10:17,947 - transcribrr - INFO - [DatabaseManager.py:691] - Starting DatabaseWorker thread
+2025-08-31 00:10:17,947 - transcribrr - INFO - [DatabaseManager.py:693] - DatabaseWorker thread started: True
+2025-08-31 00:10:17,950 - transcribrr - INFO - [DatabaseManager.py:691] - Starting DatabaseWorker thread
+2025-08-31 00:10:17,950 - transcribrr - INFO - [DatabaseManager.py:693] - DatabaseWorker thread started: True
+2025-08-31 00:10:17,953 - transcribrr - INFO - [DatabaseManager.py:691] - Starting DatabaseWorker thread
+2025-08-31 00:10:17,953 - transcribrr - INFO - [DatabaseManager.py:693] - DatabaseWorker thread started: True
+2025-08-31 00:10:17,956 - transcribrr - INFO - [DatabaseManager.py:691] - Starting DatabaseWorker thread
+2025-08-31 00:10:17,956 - transcribrr - INFO - [DatabaseManager.py:693] - DatabaseWorker thread started: False
+2025-08-31 00:10:17,958 - transcribrr - INFO - [DatabaseManager.py:691] - Starting DatabaseWorker thread
+2025-08-31 00:10:17,958 - transcribrr - INFO - [DatabaseManager.py:693] - DatabaseWorker thread started: True
+2025-08-31 00:10:17,959 - transcribrr - INFO - [DatabaseManager.py:691] - Starting DatabaseWorker thread
+2025-08-31 00:10:17,959 - transcribrr - INFO - [DatabaseManager.py:693] - DatabaseWorker thread started: True
+2025-08-31 00:10:17,960 - transcribrr - INFO - [DatabaseManager.py:691] - Starting DatabaseWorker thread
+2025-08-31 00:10:17,960 - transcribrr - INFO - [DatabaseManager.py:693] - DatabaseWorker thread started: True
+2025-08-31 00:10:30,657 - transcribrr - INFO - [DatabaseManager.py:691] - Starting DatabaseWorker thread
+2025-08-31 00:10:30,657 - transcribrr - INFO - [DatabaseManager.py:693] - DatabaseWorker thread started: True
+2025-08-31 00:10:30,659 - transcribrr - INFO - [DatabaseManager.py:691] - Starting DatabaseWorker thread
+2025-08-31 00:10:30,659 - transcribrr - INFO - [DatabaseManager.py:693] - DatabaseWorker thread started: True
+2025-08-31 00:10:30,660 - transcribrr - INFO - [DatabaseManager.py:691] - Starting DatabaseWorker thread
+2025-08-31 00:10:30,660 - transcribrr - INFO - [DatabaseManager.py:693] - DatabaseWorker thread started: True
+2025-08-31 00:10:30,662 - transcribrr - INFO - [DatabaseManager.py:691] - Starting DatabaseWorker thread
+2025-08-31 00:10:30,662 - transcribrr - INFO - [DatabaseManager.py:693] - DatabaseWorker thread started: True
+2025-08-31 00:10:30,663 - transcribrr - INFO - [DatabaseManager.py:691] - Starting DatabaseWorker thread
+2025-08-31 00:10:30,663 - transcribrr - INFO - [DatabaseManager.py:693] - DatabaseWorker thread started: True
+2025-08-31 00:10:30,664 - transcribrr - INFO - [DatabaseManager.py:691] - Starting DatabaseWorker thread
+2025-08-31 00:10:30,664 - transcribrr - INFO - [DatabaseManager.py:693] - DatabaseWorker thread started: True
+2025-08-31 00:10:30,666 - transcribrr - INFO - [DatabaseManager.py:691] - Starting DatabaseWorker thread
+2025-08-31 00:10:30,666 - transcribrr - INFO - [DatabaseManager.py:693] - DatabaseWorker thread started: True
+2025-08-31 00:10:30,667 - transcribrr - INFO - [DatabaseManager.py:691] - Starting DatabaseWorker thread
+2025-08-31 00:10:30,667 - transcribrr - INFO - [DatabaseManager.py:693] - DatabaseWorker thread started: True
+2025-08-31 00:10:30,669 - transcribrr - INFO - [DatabaseManager.py:691] - Starting DatabaseWorker thread
+2025-08-31 00:10:30,669 - transcribrr - INFO - [DatabaseManager.py:693] - DatabaseWorker thread started: True
+2025-08-31 00:10:30,670 - transcribrr - INFO - [DatabaseManager.py:691] - Starting DatabaseWorker thread
+2025-08-31 00:10:30,670 - transcribrr - INFO - [DatabaseManager.py:693] - DatabaseWorker thread started: True
+2025-08-31 00:10:30,671 - transcribrr - INFO - [DatabaseManager.py:691] - Starting DatabaseWorker thread
+2025-08-31 00:10:30,671 - transcribrr - INFO - [DatabaseManager.py:693] - DatabaseWorker thread started: True
+2025-08-31 00:10:30,675 - transcribrr - INFO - [DatabaseManager.py:691] - Starting DatabaseWorker thread
+2025-08-31 00:10:30,675 - transcribrr - INFO - [DatabaseManager.py:693] - DatabaseWorker thread started: True
+2025-08-31 00:10:30,677 - transcribrr - INFO - [DatabaseManager.py:691] - Starting DatabaseWorker thread
+2025-08-31 00:10:30,677 - transcribrr - INFO - [DatabaseManager.py:693] - DatabaseWorker thread started: True
+2025-08-31 00:10:30,680 - transcribrr - INFO - [DatabaseManager.py:691] - Starting DatabaseWorker thread
+2025-08-31 00:10:30,680 - transcribrr - INFO - [DatabaseManager.py:693] - DatabaseWorker thread started: True
+2025-08-31 00:10:30,683 - transcribrr - INFO - [DatabaseManager.py:691] - Starting DatabaseWorker thread
+2025-08-31 00:10:30,683 - transcribrr - INFO - [DatabaseManager.py:693] - DatabaseWorker thread started: True
+2025-08-31 00:10:30,686 - transcribrr - INFO - [DatabaseManager.py:691] - Starting DatabaseWorker thread
+2025-08-31 00:10:30,686 - transcribrr - INFO - [DatabaseManager.py:693] - DatabaseWorker thread started: False
+2025-08-31 00:10:30,688 - transcribrr - INFO - [DatabaseManager.py:691] - Starting DatabaseWorker thread
+2025-08-31 00:10:30,688 - transcribrr - INFO - [DatabaseManager.py:693] - DatabaseWorker thread started: True
+2025-08-31 00:10:30,690 - transcribrr - INFO - [DatabaseManager.py:691] - Starting DatabaseWorker thread
+2025-08-31 00:10:30,690 - transcribrr - INFO - [DatabaseManager.py:693] - DatabaseWorker thread started: True
+2025-08-31 00:10:30,691 - transcribrr - INFO - [DatabaseManager.py:691] - Starting DatabaseWorker thread
+2025-08-31 00:10:30,691 - transcribrr - INFO - [DatabaseManager.py:693] - DatabaseWorker thread started: True
+2025-08-31 00:10:42,973 - transcribrr - INFO - [DatabaseManager.py:691] - Starting DatabaseWorker thread
+2025-08-31 00:10:42,973 - transcribrr - INFO - [DatabaseManager.py:693] - DatabaseWorker thread started: True
+2025-08-31 00:10:42,975 - transcribrr - INFO - [DatabaseManager.py:691] - Starting DatabaseWorker thread
+2025-08-31 00:10:42,975 - transcribrr - INFO - [DatabaseManager.py:693] - DatabaseWorker thread started: True
+2025-08-31 00:10:42,976 - transcribrr - INFO - [DatabaseManager.py:691] - Starting DatabaseWorker thread
+2025-08-31 00:10:42,976 - transcribrr - INFO - [DatabaseManager.py:693] - DatabaseWorker thread started: True
+2025-08-31 00:10:42,977 - transcribrr - INFO - [DatabaseManager.py:691] - Starting DatabaseWorker thread
+2025-08-31 00:10:42,978 - transcribrr - INFO - [DatabaseManager.py:693] - DatabaseWorker thread started: True
+2025-08-31 00:10:42,979 - transcribrr - INFO - [DatabaseManager.py:691] - Starting DatabaseWorker thread
+2025-08-31 00:10:42,979 - transcribrr - INFO - [DatabaseManager.py:693] - DatabaseWorker thread started: True
+2025-08-31 00:10:42,980 - transcribrr - INFO - [DatabaseManager.py:691] - Starting DatabaseWorker thread
+2025-08-31 00:10:42,980 - transcribrr - INFO - [DatabaseManager.py:693] - DatabaseWorker thread started: True
+2025-08-31 00:10:42,981 - transcribrr - INFO - [DatabaseManager.py:691] - Starting DatabaseWorker thread
+2025-08-31 00:10:42,982 - transcribrr - INFO - [DatabaseManager.py:693] - DatabaseWorker thread started: True
+2025-08-31 00:10:42,983 - transcribrr - INFO - [DatabaseManager.py:691] - Starting DatabaseWorker thread
+2025-08-31 00:10:42,983 - transcribrr - INFO - [DatabaseManager.py:693] - DatabaseWorker thread started: True
+2025-08-31 00:10:42,984 - transcribrr - INFO - [DatabaseManager.py:691] - Starting DatabaseWorker thread
+2025-08-31 00:10:42,985 - transcribrr - INFO - [DatabaseManager.py:693] - DatabaseWorker thread started: True
+2025-08-31 00:10:42,986 - transcribrr - INFO - [DatabaseManager.py:691] - Starting DatabaseWorker thread
+2025-08-31 00:10:42,986 - transcribrr - INFO - [DatabaseManager.py:693] - DatabaseWorker thread started: True
+2025-08-31 00:10:42,987 - transcribrr - INFO - [DatabaseManager.py:691] - Starting DatabaseWorker thread
+2025-08-31 00:10:42,987 - transcribrr - INFO - [DatabaseManager.py:693] - DatabaseWorker thread started: True
+2025-08-31 00:10:42,990 - transcribrr - INFO - [DatabaseManager.py:691] - Starting DatabaseWorker thread
+2025-08-31 00:10:42,990 - transcribrr - INFO - [DatabaseManager.py:693] - DatabaseWorker thread started: True
+2025-08-31 00:10:42,993 - transcribrr - INFO - [DatabaseManager.py:691] - Starting DatabaseWorker thread
+2025-08-31 00:10:42,993 - transcribrr - INFO - [DatabaseManager.py:693] - DatabaseWorker thread started: True
+2025-08-31 00:10:42,996 - transcribrr - INFO - [DatabaseManager.py:691] - Starting DatabaseWorker thread
+2025-08-31 00:10:42,996 - transcribrr - INFO - [DatabaseManager.py:693] - DatabaseWorker thread started: True
+2025-08-31 00:10:42,998 - transcribrr - INFO - [DatabaseManager.py:691] - Starting DatabaseWorker thread
+2025-08-31 00:10:42,999 - transcribrr - INFO - [DatabaseManager.py:693] - DatabaseWorker thread started: True
+2025-08-31 00:10:43,001 - transcribrr - INFO - [DatabaseManager.py:691] - Starting DatabaseWorker thread
+2025-08-31 00:10:43,002 - transcribrr - INFO - [DatabaseManager.py:693] - DatabaseWorker thread started: False
+2025-08-31 00:10:43,004 - transcribrr - INFO - [DatabaseManager.py:691] - Starting DatabaseWorker thread
+2025-08-31 00:10:43,004 - transcribrr - INFO - [DatabaseManager.py:693] - DatabaseWorker thread started: True
+2025-08-31 00:10:43,005 - transcribrr - INFO - [DatabaseManager.py:691] - Starting DatabaseWorker thread
+2025-08-31 00:10:43,005 - transcribrr - INFO - [DatabaseManager.py:693] - DatabaseWorker thread started: True
+2025-08-31 00:10:43,006 - transcribrr - INFO - [DatabaseManager.py:691] - Starting DatabaseWorker thread
+2025-08-31 00:10:43,006 - transcribrr - INFO - [DatabaseManager.py:693] - DatabaseWorker thread started: True
+2025-08-31 00:11:04,766 - transcribrr - INFO - [DatabaseManager.py:691] - Starting DatabaseWorker thread
+2025-08-31 00:11:04,766 - transcribrr - INFO - [DatabaseManager.py:693] - DatabaseWorker thread started: True
+2025-08-31 00:11:04,767 - transcribrr - INFO - [DatabaseManager.py:691] - Starting DatabaseWorker thread
+2025-08-31 00:11:04,768 - transcribrr - INFO - [DatabaseManager.py:693] - DatabaseWorker thread started: True
+2025-08-31 00:11:04,769 - transcribrr - INFO - [DatabaseManager.py:691] - Starting DatabaseWorker thread
+2025-08-31 00:11:04,769 - transcribrr - INFO - [DatabaseManager.py:693] - DatabaseWorker thread started: True
+2025-08-31 00:11:04,770 - transcribrr - INFO - [DatabaseManager.py:691] - Starting DatabaseWorker thread
+2025-08-31 00:11:04,770 - transcribrr - INFO - [DatabaseManager.py:693] - DatabaseWorker thread started: True
+2025-08-31 00:11:04,771 - transcribrr - INFO - [DatabaseManager.py:691] - Starting DatabaseWorker thread
+2025-08-31 00:11:04,772 - transcribrr - INFO - [DatabaseManager.py:693] - DatabaseWorker thread started: True
+2025-08-31 00:11:04,773 - transcribrr - INFO - [DatabaseManager.py:691] - Starting DatabaseWorker thread
+2025-08-31 00:11:04,773 - transcribrr - INFO - [DatabaseManager.py:693] - DatabaseWorker thread started: True
+2025-08-31 00:11:04,774 - transcribrr - INFO - [DatabaseManager.py:691] - Starting DatabaseWorker thread
+2025-08-31 00:11:04,774 - transcribrr - INFO - [DatabaseManager.py:693] - DatabaseWorker thread started: True
+2025-08-31 00:11:04,776 - transcribrr - INFO - [DatabaseManager.py:691] - Starting DatabaseWorker thread
+2025-08-31 00:11:04,776 - transcribrr - INFO - [DatabaseManager.py:693] - DatabaseWorker thread started: True
+2025-08-31 00:11:04,778 - transcribrr - INFO - [DatabaseManager.py:691] - Starting DatabaseWorker thread
+2025-08-31 00:11:04,778 - transcribrr - INFO - [DatabaseManager.py:693] - DatabaseWorker thread started: True
+2025-08-31 00:11:04,779 - transcribrr - INFO - [DatabaseManager.py:691] - Starting DatabaseWorker thread
+2025-08-31 00:11:04,779 - transcribrr - INFO - [DatabaseManager.py:693] - DatabaseWorker thread started: True
+2025-08-31 00:11:04,780 - transcribrr - INFO - [DatabaseManager.py:691] - Starting DatabaseWorker thread
+2025-08-31 00:11:04,781 - transcribrr - INFO - [DatabaseManager.py:693] - DatabaseWorker thread started: True
+2025-08-31 00:11:04,785 - transcribrr - INFO - [DatabaseManager.py:691] - Starting DatabaseWorker thread
+2025-08-31 00:11:04,785 - transcribrr - INFO - [DatabaseManager.py:693] - DatabaseWorker thread started: True
+2025-08-31 00:11:04,787 - transcribrr - INFO - [DatabaseManager.py:691] - Starting DatabaseWorker thread
+2025-08-31 00:11:04,787 - transcribrr - INFO - [DatabaseManager.py:693] - DatabaseWorker thread started: True
+2025-08-31 00:11:04,790 - transcribrr - INFO - [DatabaseManager.py:691] - Starting DatabaseWorker thread
+2025-08-31 00:11:04,791 - transcribrr - INFO - [DatabaseManager.py:693] - DatabaseWorker thread started: True
+2025-08-31 00:11:04,793 - transcribrr - INFO - [DatabaseManager.py:691] - Starting DatabaseWorker thread
+2025-08-31 00:11:04,793 - transcribrr - INFO - [DatabaseManager.py:693] - DatabaseWorker thread started: True
+2025-08-31 00:11:04,796 - transcribrr - INFO - [DatabaseManager.py:691] - Starting DatabaseWorker thread
+2025-08-31 00:11:04,796 - transcribrr - INFO - [DatabaseManager.py:693] - DatabaseWorker thread started: False
+2025-08-31 00:11:04,798 - transcribrr - INFO - [DatabaseManager.py:691] - Starting DatabaseWorker thread
+2025-08-31 00:11:04,798 - transcribrr - INFO - [DatabaseManager.py:693] - DatabaseWorker thread started: True
+2025-08-31 00:11:04,800 - transcribrr - INFO - [DatabaseManager.py:691] - Starting DatabaseWorker thread
+2025-08-31 00:11:04,800 - transcribrr - INFO - [DatabaseManager.py:693] - DatabaseWorker thread started: True
+2025-08-31 00:11:04,801 - transcribrr - INFO - [DatabaseManager.py:691] - Starting DatabaseWorker thread
+2025-08-31 00:11:04,801 - transcribrr - INFO - [DatabaseManager.py:693] - DatabaseWorker thread started: True
+2025-08-31 00:11:21,144 - transcribrr - INFO - [DatabaseManager.py:691] - Starting DatabaseWorker thread
+2025-08-31 00:11:21,144 - transcribrr - INFO - [DatabaseManager.py:693] - DatabaseWorker thread started: True
+2025-08-31 00:11:21,145 - transcribrr - INFO - [DatabaseManager.py:691] - Starting DatabaseWorker thread
+2025-08-31 00:11:21,145 - transcribrr - INFO - [DatabaseManager.py:693] - DatabaseWorker thread started: True
+2025-08-31 00:11:21,147 - transcribrr - INFO - [DatabaseManager.py:691] - Starting DatabaseWorker thread
+2025-08-31 00:11:21,147 - transcribrr - INFO - [DatabaseManager.py:693] - DatabaseWorker thread started: True
+2025-08-31 00:11:21,148 - transcribrr - INFO - [DatabaseManager.py:691] - Starting DatabaseWorker thread
+2025-08-31 00:11:21,148 - transcribrr - INFO - [DatabaseManager.py:693] - DatabaseWorker thread started: True
+2025-08-31 00:11:21,149 - transcribrr - INFO - [DatabaseManager.py:691] - Starting DatabaseWorker thread
+2025-08-31 00:11:21,149 - transcribrr - INFO - [DatabaseManager.py:693] - DatabaseWorker thread started: True
+2025-08-31 00:11:21,151 - transcribrr - INFO - [DatabaseManager.py:691] - Starting DatabaseWorker thread
+2025-08-31 00:11:21,151 - transcribrr - INFO - [DatabaseManager.py:693] - DatabaseWorker thread started: True
+2025-08-31 00:11:21,152 - transcribrr - INFO - [DatabaseManager.py:691] - Starting DatabaseWorker thread
+2025-08-31 00:11:21,152 - transcribrr - INFO - [DatabaseManager.py:693] - DatabaseWorker thread started: True
+2025-08-31 00:11:21,153 - transcribrr - INFO - [DatabaseManager.py:691] - Starting DatabaseWorker thread
+2025-08-31 00:11:21,153 - transcribrr - INFO - [DatabaseManager.py:693] - DatabaseWorker thread started: True
+2025-08-31 00:11:21,155 - transcribrr - INFO - [DatabaseManager.py:691] - Starting DatabaseWorker thread
+2025-08-31 00:11:21,155 - transcribrr - INFO - [DatabaseManager.py:693] - DatabaseWorker thread started: True
+2025-08-31 00:11:21,156 - transcribrr - INFO - [DatabaseManager.py:691] - Starting DatabaseWorker thread
+2025-08-31 00:11:21,156 - transcribrr - INFO - [DatabaseManager.py:693] - DatabaseWorker thread started: True
+2025-08-31 00:11:21,157 - transcribrr - INFO - [DatabaseManager.py:691] - Starting DatabaseWorker thread
+2025-08-31 00:11:21,157 - transcribrr - INFO - [DatabaseManager.py:693] - DatabaseWorker thread started: True
+2025-08-31 00:11:21,161 - transcribrr - INFO - [DatabaseManager.py:691] - Starting DatabaseWorker thread
+2025-08-31 00:11:21,161 - transcribrr - INFO - [DatabaseManager.py:693] - DatabaseWorker thread started: True
+2025-08-31 00:11:21,164 - transcribrr - INFO - [DatabaseManager.py:691] - Starting DatabaseWorker thread
+2025-08-31 00:11:21,164 - transcribrr - INFO - [DatabaseManager.py:693] - DatabaseWorker thread started: True
+2025-08-31 00:11:21,166 - transcribrr - INFO - [DatabaseManager.py:691] - Starting DatabaseWorker thread
+2025-08-31 00:11:21,166 - transcribrr - INFO - [DatabaseManager.py:693] - DatabaseWorker thread started: True
+2025-08-31 00:11:21,169 - transcribrr - INFO - [DatabaseManager.py:691] - Starting DatabaseWorker thread
+2025-08-31 00:11:21,169 - transcribrr - INFO - [DatabaseManager.py:693] - DatabaseWorker thread started: True
+2025-08-31 00:11:21,172 - transcribrr - INFO - [DatabaseManager.py:691] - Starting DatabaseWorker thread
+2025-08-31 00:11:21,172 - transcribrr - INFO - [DatabaseManager.py:693] - DatabaseWorker thread started: False
+2025-08-31 00:11:21,174 - transcribrr - INFO - [DatabaseManager.py:691] - Starting DatabaseWorker thread
+2025-08-31 00:11:21,174 - transcribrr - INFO - [DatabaseManager.py:693] - DatabaseWorker thread started: True
+2025-08-31 00:11:21,176 - transcribrr - INFO - [DatabaseManager.py:691] - Starting DatabaseWorker thread
+2025-08-31 00:11:21,176 - transcribrr - INFO - [DatabaseManager.py:693] - DatabaseWorker thread started: True
+2025-08-31 00:11:21,177 - transcribrr - INFO - [DatabaseManager.py:691] - Starting DatabaseWorker thread
+2025-08-31 00:11:21,177 - transcribrr - INFO - [DatabaseManager.py:693] - DatabaseWorker thread started: True
+2025-08-31 00:11:34,977 - transcribrr - INFO - [DatabaseManager.py:691] - Starting DatabaseWorker thread
+2025-08-31 00:11:34,977 - transcribrr - INFO - [DatabaseManager.py:693] - DatabaseWorker thread started: True
+2025-08-31 00:11:34,978 - transcribrr - INFO - [DatabaseManager.py:691] - Starting DatabaseWorker thread
+2025-08-31 00:11:34,978 - transcribrr - INFO - [DatabaseManager.py:693] - DatabaseWorker thread started: True
+2025-08-31 00:11:34,980 - transcribrr - INFO - [DatabaseManager.py:691] - Starting DatabaseWorker thread
+2025-08-31 00:11:34,980 - transcribrr - INFO - [DatabaseManager.py:693] - DatabaseWorker thread started: True
+2025-08-31 00:11:34,981 - transcribrr - INFO - [DatabaseManager.py:691] - Starting DatabaseWorker thread
+2025-08-31 00:11:34,981 - transcribrr - INFO - [DatabaseManager.py:693] - DatabaseWorker thread started: True
+2025-08-31 00:11:34,982 - transcribrr - INFO - [DatabaseManager.py:691] - Starting DatabaseWorker thread
+2025-08-31 00:11:34,982 - transcribrr - INFO - [DatabaseManager.py:693] - DatabaseWorker thread started: True
+2025-08-31 00:11:34,984 - transcribrr - INFO - [DatabaseManager.py:691] - Starting DatabaseWorker thread
+2025-08-31 00:11:34,984 - transcribrr - INFO - [DatabaseManager.py:693] - DatabaseWorker thread started: True
+2025-08-31 00:11:34,985 - transcribrr - INFO - [DatabaseManager.py:691] - Starting DatabaseWorker thread
+2025-08-31 00:11:34,985 - transcribrr - INFO - [DatabaseManager.py:693] - DatabaseWorker thread started: True
+2025-08-31 00:11:34,986 - transcribrr - INFO - [DatabaseManager.py:691] - Starting DatabaseWorker thread
+2025-08-31 00:11:34,986 - transcribrr - INFO - [DatabaseManager.py:693] - DatabaseWorker thread started: True
+2025-08-31 00:11:34,988 - transcribrr - INFO - [DatabaseManager.py:691] - Starting DatabaseWorker thread
+2025-08-31 00:11:34,988 - transcribrr - INFO - [DatabaseManager.py:693] - DatabaseWorker thread started: True
+2025-08-31 00:11:34,989 - transcribrr - INFO - [DatabaseManager.py:691] - Starting DatabaseWorker thread
+2025-08-31 00:11:34,989 - transcribrr - INFO - [DatabaseManager.py:693] - DatabaseWorker thread started: True
+2025-08-31 00:11:34,990 - transcribrr - INFO - [DatabaseManager.py:691] - Starting DatabaseWorker thread
+2025-08-31 00:11:34,990 - transcribrr - INFO - [DatabaseManager.py:693] - DatabaseWorker thread started: True
+2025-08-31 00:11:34,994 - transcribrr - INFO - [DatabaseManager.py:691] - Starting DatabaseWorker thread
+2025-08-31 00:11:34,994 - transcribrr - INFO - [DatabaseManager.py:693] - DatabaseWorker thread started: True
+2025-08-31 00:11:34,996 - transcribrr - INFO - [DatabaseManager.py:691] - Starting DatabaseWorker thread
+2025-08-31 00:11:34,997 - transcribrr - INFO - [DatabaseManager.py:693] - DatabaseWorker thread started: True
+2025-08-31 00:11:34,999 - transcribrr - INFO - [DatabaseManager.py:691] - Starting DatabaseWorker thread
+2025-08-31 00:11:34,999 - transcribrr - INFO - [DatabaseManager.py:693] - DatabaseWorker thread started: True
+2025-08-31 00:11:35,003 - transcribrr - INFO - [DatabaseManager.py:691] - Starting DatabaseWorker thread
+2025-08-31 00:11:35,003 - transcribrr - INFO - [DatabaseManager.py:693] - DatabaseWorker thread started: True
+2025-08-31 00:11:35,006 - transcribrr - INFO - [DatabaseManager.py:691] - Starting DatabaseWorker thread
+2025-08-31 00:11:35,006 - transcribrr - INFO - [DatabaseManager.py:693] - DatabaseWorker thread started: False
+2025-08-31 00:11:35,008 - transcribrr - INFO - [DatabaseManager.py:691] - Starting DatabaseWorker thread
+2025-08-31 00:11:35,009 - transcribrr - INFO - [DatabaseManager.py:693] - DatabaseWorker thread started: True
+2025-08-31 00:11:35,010 - transcribrr - INFO - [DatabaseManager.py:691] - Starting DatabaseWorker thread
+2025-08-31 00:11:35,010 - transcribrr - INFO - [DatabaseManager.py:693] - DatabaseWorker thread started: True
+2025-08-31 00:11:35,011 - transcribrr - INFO - [DatabaseManager.py:691] - Starting DatabaseWorker thread
+2025-08-31 00:11:35,011 - transcribrr - INFO - [DatabaseManager.py:693] - DatabaseWorker thread started: True
+2025-08-31 00:11:35,125 - transcribrr - INFO - [db_utils.py:326] - Deleted recording ID 42
+2025-08-31 00:11:35,141 - transcribrr - WARNING - [db_utils.py:291] - Invalid field 'transcript' provided for update_recording.
+2025-08-31 00:11:35,141 - transcribrr - WARNING - [db_utils.py:295] - No valid fields provided to update recording 42.
+2025-08-31 00:11:35,144 - transcribrr - DEBUG - [FolderManager.py:100] - Folder tables are initialized during database creation
+2025-08-31 00:11:35,145 - transcribrr - DEBUG - [FolderManager.py:100] - Folder tables are initialized during database creation
+2025-08-31 00:11:35,145 - transcribrr - WARNING - [FolderManager.py:53] - Different DatabaseManager instance provided to FolderManager.instance() after initialization. Using original instance.
+2025-08-31 00:11:35,145 - transcribrr - DEBUG - [FolderManager.py:100] - Folder tables are initialized during database creation
+2025-08-31 00:11:35,146 - transcribrr - DEBUG - [FolderManager.py:100] - Folder tables are initialized during database creation
+2025-08-31 00:11:35,146 - transcribrr - DEBUG - [FolderManager.py:100] - Folder tables are initialized during database creation
+2025-08-31 00:11:35,146 - transcribrr - DEBUG - [FolderManager.py:100] - Folder tables are initialized during database creation
+2025-08-31 00:12:26,834 - transcribrr - INFO - [DatabaseManager.py:691] - Starting DatabaseWorker thread
+2025-08-31 00:12:26,834 - transcribrr - INFO - [DatabaseManager.py:693] - DatabaseWorker thread started: True
+2025-08-31 00:12:26,835 - transcribrr - INFO - [DatabaseManager.py:691] - Starting DatabaseWorker thread
+2025-08-31 00:12:26,836 - transcribrr - INFO - [DatabaseManager.py:693] - DatabaseWorker thread started: True
+2025-08-31 00:12:26,837 - transcribrr - INFO - [DatabaseManager.py:691] - Starting DatabaseWorker thread
+2025-08-31 00:12:26,837 - transcribrr - INFO - [DatabaseManager.py:693] - DatabaseWorker thread started: True
+2025-08-31 00:12:26,838 - transcribrr - INFO - [DatabaseManager.py:691] - Starting DatabaseWorker thread
+2025-08-31 00:12:26,838 - transcribrr - INFO - [DatabaseManager.py:693] - DatabaseWorker thread started: True
+2025-08-31 00:12:26,840 - transcribrr - INFO - [DatabaseManager.py:691] - Starting DatabaseWorker thread
+2025-08-31 00:12:26,840 - transcribrr - INFO - [DatabaseManager.py:693] - DatabaseWorker thread started: True
+2025-08-31 00:12:26,841 - transcribrr - INFO - [DatabaseManager.py:691] - Starting DatabaseWorker thread
+2025-08-31 00:12:26,841 - transcribrr - INFO - [DatabaseManager.py:693] - DatabaseWorker thread started: True
+2025-08-31 00:12:26,842 - transcribrr - INFO - [DatabaseManager.py:691] - Starting DatabaseWorker thread
+2025-08-31 00:12:26,843 - transcribrr - INFO - [DatabaseManager.py:693] - DatabaseWorker thread started: True
+2025-08-31 00:12:26,844 - transcribrr - INFO - [DatabaseManager.py:691] - Starting DatabaseWorker thread
+2025-08-31 00:12:26,844 - transcribrr - INFO - [DatabaseManager.py:693] - DatabaseWorker thread started: True
+2025-08-31 00:12:26,845 - transcribrr - INFO - [DatabaseManager.py:691] - Starting DatabaseWorker thread
+2025-08-31 00:12:26,846 - transcribrr - INFO - [DatabaseManager.py:693] - DatabaseWorker thread started: True
+2025-08-31 00:12:26,847 - transcribrr - INFO - [DatabaseManager.py:691] - Starting DatabaseWorker thread
+2025-08-31 00:12:26,847 - transcribrr - INFO - [DatabaseManager.py:693] - DatabaseWorker thread started: True
+2025-08-31 00:12:26,848 - transcribrr - INFO - [DatabaseManager.py:691] - Starting DatabaseWorker thread
+2025-08-31 00:12:26,848 - transcribrr - INFO - [DatabaseManager.py:693] - DatabaseWorker thread started: True
+2025-08-31 00:12:26,851 - transcribrr - INFO - [DatabaseManager.py:691] - Starting DatabaseWorker thread
+2025-08-31 00:12:26,852 - transcribrr - INFO - [DatabaseManager.py:693] - DatabaseWorker thread started: True
+2025-08-31 00:12:26,854 - transcribrr - INFO - [DatabaseManager.py:691] - Starting DatabaseWorker thread
+2025-08-31 00:12:26,854 - transcribrr - INFO - [DatabaseManager.py:693] - DatabaseWorker thread started: True
+2025-08-31 00:12:26,857 - transcribrr - INFO - [DatabaseManager.py:691] - Starting DatabaseWorker thread
+2025-08-31 00:12:26,857 - transcribrr - INFO - [DatabaseManager.py:693] - DatabaseWorker thread started: True
+2025-08-31 00:12:26,860 - transcribrr - INFO - [DatabaseManager.py:691] - Starting DatabaseWorker thread
+2025-08-31 00:12:26,860 - transcribrr - INFO - [DatabaseManager.py:693] - DatabaseWorker thread started: True
+2025-08-31 00:12:26,863 - transcribrr - INFO - [DatabaseManager.py:691] - Starting DatabaseWorker thread
+2025-08-31 00:12:26,863 - transcribrr - INFO - [DatabaseManager.py:693] - DatabaseWorker thread started: False
+2025-08-31 00:12:26,865 - transcribrr - INFO - [DatabaseManager.py:691] - Starting DatabaseWorker thread
+2025-08-31 00:12:26,865 - transcribrr - INFO - [DatabaseManager.py:693] - DatabaseWorker thread started: True
+2025-08-31 00:12:26,866 - transcribrr - INFO - [DatabaseManager.py:691] - Starting DatabaseWorker thread
+2025-08-31 00:12:26,866 - transcribrr - INFO - [DatabaseManager.py:693] - DatabaseWorker thread started: True
+2025-08-31 00:12:26,867 - transcribrr - INFO - [DatabaseManager.py:691] - Starting DatabaseWorker thread
+2025-08-31 00:12:26,867 - transcribrr - INFO - [DatabaseManager.py:693] - DatabaseWorker thread started: True
+2025-08-31 00:12:26,980 - transcribrr - INFO - [db_utils.py:326] - Deleted recording ID 42
+2025-08-31 00:12:26,994 - transcribrr - WARNING - [db_utils.py:291] - Invalid field 'transcript' provided for update_recording.
+2025-08-31 00:12:26,994 - transcribrr - WARNING - [db_utils.py:295] - No valid fields provided to update recording 42.
+2025-08-31 00:12:26,997 - transcribrr - DEBUG - [FolderManager.py:100] - Folder tables are initialized during database creation
+2025-08-31 00:12:26,998 - transcribrr - DEBUG - [FolderManager.py:100] - Folder tables are initialized during database creation
+2025-08-31 00:12:26,999 - transcribrr - WARNING - [FolderManager.py:53] - Different DatabaseManager instance provided to FolderManager.instance() after initialization. Using original instance.
+2025-08-31 00:12:26,999 - transcribrr - DEBUG - [FolderManager.py:100] - Folder tables are initialized during database creation
+2025-08-31 00:12:26,999 - transcribrr - DEBUG - [FolderManager.py:100] - Folder tables are initialized during database creation
+2025-08-31 00:12:27,000 - transcribrr - DEBUG - [FolderManager.py:100] - Folder tables are initialized during database creation
+2025-08-31 00:12:27,000 - transcribrr - DEBUG - [FolderManager.py:100] - Folder tables are initialized during database creation
+2025-08-31 00:31:24,907 - transcribrr - WARNING - [busy_guard.py:143] - Spinner 'nonexistent' not found or couldn't be started
+2025-08-31 00:31:24,909 - transcribrr - INFO - [DatabaseManager.py:733] - Starting DatabaseWorker thread
+2025-08-31 00:31:24,909 - transcribrr - INFO - [DatabaseManager.py:735] - DatabaseWorker thread started: True
+2025-08-31 00:31:24,910 - transcribrr - INFO - [DatabaseManager.py:733] - Starting DatabaseWorker thread
+2025-08-31 00:31:24,911 - transcribrr - INFO - [DatabaseManager.py:735] - DatabaseWorker thread started: True
+2025-08-31 00:31:24,912 - transcribrr - INFO - [DatabaseManager.py:733] - Starting DatabaseWorker thread
+2025-08-31 00:31:24,912 - transcribrr - INFO - [DatabaseManager.py:735] - DatabaseWorker thread started: True
+2025-08-31 00:31:24,913 - transcribrr - INFO - [DatabaseManager.py:733] - Starting DatabaseWorker thread
+2025-08-31 00:31:24,913 - transcribrr - INFO - [DatabaseManager.py:735] - DatabaseWorker thread started: True
+2025-08-31 00:31:24,914 - transcribrr - INFO - [DatabaseManager.py:733] - Starting DatabaseWorker thread
+2025-08-31 00:31:24,915 - transcribrr - INFO - [DatabaseManager.py:735] - DatabaseWorker thread started: True
+2025-08-31 00:31:24,916 - transcribrr - INFO - [DatabaseManager.py:733] - Starting DatabaseWorker thread
+2025-08-31 00:31:24,917 - transcribrr - INFO - [DatabaseManager.py:735] - DatabaseWorker thread started: True
+2025-08-31 00:31:24,918 - transcribrr - INFO - [DatabaseManager.py:733] - Starting DatabaseWorker thread
+2025-08-31 00:31:24,918 - transcribrr - INFO - [DatabaseManager.py:735] - DatabaseWorker thread started: True
+2025-08-31 00:31:24,919 - transcribrr - INFO - [DatabaseManager.py:733] - Starting DatabaseWorker thread
+2025-08-31 00:31:24,919 - transcribrr - INFO - [DatabaseManager.py:735] - DatabaseWorker thread started: True
+2025-08-31 00:31:24,920 - transcribrr - INFO - [DatabaseManager.py:733] - Starting DatabaseWorker thread
+2025-08-31 00:31:24,920 - transcribrr - INFO - [DatabaseManager.py:735] - DatabaseWorker thread started: True
+2025-08-31 00:31:24,921 - transcribrr - INFO - [DatabaseManager.py:733] - Starting DatabaseWorker thread
+2025-08-31 00:31:24,921 - transcribrr - INFO - [DatabaseManager.py:735] - DatabaseWorker thread started: True
+2025-08-31 00:31:24,922 - transcribrr - INFO - [DatabaseManager.py:733] - Starting DatabaseWorker thread
+2025-08-31 00:31:24,922 - transcribrr - INFO - [DatabaseManager.py:735] - DatabaseWorker thread started: True
+2025-08-31 00:31:24,926 - transcribrr - INFO - [DatabaseManager.py:733] - Starting DatabaseWorker thread
+2025-08-31 00:31:24,926 - transcribrr - INFO - [DatabaseManager.py:735] - DatabaseWorker thread started: True
+2025-08-31 00:31:24,929 - transcribrr - INFO - [DatabaseManager.py:733] - Starting DatabaseWorker thread
+2025-08-31 00:31:24,929 - transcribrr - INFO - [DatabaseManager.py:735] - DatabaseWorker thread started: True
+2025-08-31 00:31:24,932 - transcribrr - INFO - [DatabaseManager.py:733] - Starting DatabaseWorker thread
+2025-08-31 00:31:24,932 - transcribrr - INFO - [DatabaseManager.py:735] - DatabaseWorker thread started: True
+2025-08-31 00:31:24,934 - transcribrr - INFO - [DatabaseManager.py:733] - Starting DatabaseWorker thread
+2025-08-31 00:31:24,934 - transcribrr - INFO - [DatabaseManager.py:735] - DatabaseWorker thread started: True
+2025-08-31 00:31:24,937 - transcribrr - INFO - [DatabaseManager.py:733] - Starting DatabaseWorker thread
+2025-08-31 00:31:24,937 - transcribrr - INFO - [DatabaseManager.py:735] - DatabaseWorker thread started: False
+2025-08-31 00:31:24,939 - transcribrr - INFO - [DatabaseManager.py:733] - Starting DatabaseWorker thread
+2025-08-31 00:31:24,940 - transcribrr - INFO - [DatabaseManager.py:735] - DatabaseWorker thread started: True
+2025-08-31 00:31:24,941 - transcribrr - INFO - [DatabaseManager.py:733] - Starting DatabaseWorker thread
+2025-08-31 00:31:24,941 - transcribrr - INFO - [DatabaseManager.py:735] - DatabaseWorker thread started: True
+2025-08-31 00:31:24,942 - transcribrr - INFO - [DatabaseManager.py:733] - Starting DatabaseWorker thread
+2025-08-31 00:31:24,942 - transcribrr - INFO - [DatabaseManager.py:735] - DatabaseWorker thread started: True
+2025-08-31 00:32:15,930 - transcribrr - WARNING - [busy_guard.py:143] - Spinner 'nonexistent' not found or couldn't be started
+2025-08-31 00:32:15,932 - transcribrr - INFO - [DatabaseManager.py:733] - Starting DatabaseWorker thread
+2025-08-31 00:32:15,932 - transcribrr - INFO - [DatabaseManager.py:735] - DatabaseWorker thread started: True
+2025-08-31 00:32:15,933 - transcribrr - INFO - [DatabaseManager.py:733] - Starting DatabaseWorker thread
+2025-08-31 00:32:15,934 - transcribrr - INFO - [DatabaseManager.py:735] - DatabaseWorker thread started: True
+2025-08-31 00:32:15,935 - transcribrr - INFO - [DatabaseManager.py:733] - Starting DatabaseWorker thread
+2025-08-31 00:32:15,935 - transcribrr - INFO - [DatabaseManager.py:735] - DatabaseWorker thread started: True
+2025-08-31 00:32:15,936 - transcribrr - INFO - [DatabaseManager.py:733] - Starting DatabaseWorker thread
+2025-08-31 00:32:15,936 - transcribrr - INFO - [DatabaseManager.py:735] - DatabaseWorker thread started: True
+2025-08-31 00:32:15,937 - transcribrr - INFO - [DatabaseManager.py:733] - Starting DatabaseWorker thread
+2025-08-31 00:32:15,937 - transcribrr - INFO - [DatabaseManager.py:735] - DatabaseWorker thread started: True
+2025-08-31 00:32:15,939 - transcribrr - INFO - [DatabaseManager.py:733] - Starting DatabaseWorker thread
+2025-08-31 00:32:15,939 - transcribrr - INFO - [DatabaseManager.py:735] - DatabaseWorker thread started: True
+2025-08-31 00:32:15,940 - transcribrr - INFO - [DatabaseManager.py:733] - Starting DatabaseWorker thread
+2025-08-31 00:32:15,940 - transcribrr - INFO - [DatabaseManager.py:735] - DatabaseWorker thread started: True
+2025-08-31 00:32:15,941 - transcribrr - INFO - [DatabaseManager.py:733] - Starting DatabaseWorker thread
+2025-08-31 00:32:15,942 - transcribrr - INFO - [DatabaseManager.py:735] - DatabaseWorker thread started: True
+2025-08-31 00:32:15,943 - transcribrr - INFO - [DatabaseManager.py:733] - Starting DatabaseWorker thread
+2025-08-31 00:32:15,943 - transcribrr - INFO - [DatabaseManager.py:735] - DatabaseWorker thread started: True
+2025-08-31 00:32:15,944 - transcribrr - INFO - [DatabaseManager.py:733] - Starting DatabaseWorker thread
+2025-08-31 00:32:15,944 - transcribrr - INFO - [DatabaseManager.py:735] - DatabaseWorker thread started: True
+2025-08-31 00:32:15,945 - transcribrr - INFO - [DatabaseManager.py:733] - Starting DatabaseWorker thread
+2025-08-31 00:32:15,945 - transcribrr - INFO - [DatabaseManager.py:735] - DatabaseWorker thread started: True
+2025-08-31 00:32:15,949 - transcribrr - INFO - [DatabaseManager.py:733] - Starting DatabaseWorker thread
+2025-08-31 00:32:15,949 - transcribrr - INFO - [DatabaseManager.py:735] - DatabaseWorker thread started: True
+2025-08-31 00:32:15,951 - transcribrr - INFO - [DatabaseManager.py:733] - Starting DatabaseWorker thread
+2025-08-31 00:32:15,951 - transcribrr - INFO - [DatabaseManager.py:735] - DatabaseWorker thread started: True
+2025-08-31 00:32:15,955 - transcribrr - INFO - [DatabaseManager.py:733] - Starting DatabaseWorker thread
+2025-08-31 00:32:15,955 - transcribrr - INFO - [DatabaseManager.py:735] - DatabaseWorker thread started: True
+2025-08-31 00:32:15,957 - transcribrr - INFO - [DatabaseManager.py:733] - Starting DatabaseWorker thread
+2025-08-31 00:32:15,957 - transcribrr - INFO - [DatabaseManager.py:735] - DatabaseWorker thread started: True
+2025-08-31 00:32:15,960 - transcribrr - INFO - [DatabaseManager.py:733] - Starting DatabaseWorker thread
+2025-08-31 00:32:15,960 - transcribrr - INFO - [DatabaseManager.py:735] - DatabaseWorker thread started: False
+2025-08-31 00:32:15,962 - transcribrr - INFO - [DatabaseManager.py:733] - Starting DatabaseWorker thread
+2025-08-31 00:32:15,962 - transcribrr - INFO - [DatabaseManager.py:735] - DatabaseWorker thread started: True
+2025-08-31 00:32:15,963 - transcribrr - INFO - [DatabaseManager.py:733] - Starting DatabaseWorker thread
+2025-08-31 00:32:15,963 - transcribrr - INFO - [DatabaseManager.py:735] - DatabaseWorker thread started: True
+2025-08-31 00:32:15,964 - transcribrr - INFO - [DatabaseManager.py:733] - Starting DatabaseWorker thread
+2025-08-31 00:32:15,965 - transcribrr - INFO - [DatabaseManager.py:735] - DatabaseWorker thread started: True
+2025-08-31 00:32:16,577 - transcribrr - INFO - [db_utils.py:326] - Deleted recording ID 42
+2025-08-31 00:32:24,021 - transcribrr - WARNING - [busy_guard.py:143] - Spinner 'nonexistent' not found or couldn't be started
+2025-08-31 00:32:24,023 - transcribrr - INFO - [DatabaseManager.py:733] - Starting DatabaseWorker thread
+2025-08-31 00:32:24,023 - transcribrr - INFO - [DatabaseManager.py:735] - DatabaseWorker thread started: True
+2025-08-31 00:32:24,025 - transcribrr - INFO - [DatabaseManager.py:733] - Starting DatabaseWorker thread
+2025-08-31 00:32:24,025 - transcribrr - INFO - [DatabaseManager.py:735] - DatabaseWorker thread started: True
+2025-08-31 00:32:24,026 - transcribrr - INFO - [DatabaseManager.py:733] - Starting DatabaseWorker thread
+2025-08-31 00:32:24,026 - transcribrr - INFO - [DatabaseManager.py:735] - DatabaseWorker thread started: True
+2025-08-31 00:32:24,027 - transcribrr - INFO - [DatabaseManager.py:733] - Starting DatabaseWorker thread
+2025-08-31 00:32:24,028 - transcribrr - INFO - [DatabaseManager.py:735] - DatabaseWorker thread started: True
+2025-08-31 00:32:24,029 - transcribrr - INFO - [DatabaseManager.py:733] - Starting DatabaseWorker thread
+2025-08-31 00:32:24,029 - transcribrr - INFO - [DatabaseManager.py:735] - DatabaseWorker thread started: True
+2025-08-31 00:32:24,030 - transcribrr - INFO - [DatabaseManager.py:733] - Starting DatabaseWorker thread
+2025-08-31 00:32:24,031 - transcribrr - INFO - [DatabaseManager.py:735] - DatabaseWorker thread started: True
+2025-08-31 00:32:24,032 - transcribrr - INFO - [DatabaseManager.py:733] - Starting DatabaseWorker thread
+2025-08-31 00:32:24,032 - transcribrr - INFO - [DatabaseManager.py:735] - DatabaseWorker thread started: True
+2025-08-31 00:32:24,033 - transcribrr - INFO - [DatabaseManager.py:733] - Starting DatabaseWorker thread
+2025-08-31 00:32:24,033 - transcribrr - INFO - [DatabaseManager.py:735] - DatabaseWorker thread started: True
+2025-08-31 00:32:24,034 - transcribrr - INFO - [DatabaseManager.py:733] - Starting DatabaseWorker thread
+2025-08-31 00:32:24,034 - transcribrr - INFO - [DatabaseManager.py:735] - DatabaseWorker thread started: True
+2025-08-31 00:32:24,035 - transcribrr - INFO - [DatabaseManager.py:733] - Starting DatabaseWorker thread
+2025-08-31 00:32:24,035 - transcribrr - INFO - [DatabaseManager.py:735] - DatabaseWorker thread started: True
+2025-08-31 00:32:24,036 - transcribrr - INFO - [DatabaseManager.py:733] - Starting DatabaseWorker thread
+2025-08-31 00:32:24,036 - transcribrr - INFO - [DatabaseManager.py:735] - DatabaseWorker thread started: True
+2025-08-31 00:32:24,040 - transcribrr - INFO - [DatabaseManager.py:733] - Starting DatabaseWorker thread
+2025-08-31 00:32:24,040 - transcribrr - INFO - [DatabaseManager.py:735] - DatabaseWorker thread started: True
+2025-08-31 00:32:24,043 - transcribrr - INFO - [DatabaseManager.py:733] - Starting DatabaseWorker thread
+2025-08-31 00:32:24,043 - transcribrr - INFO - [DatabaseManager.py:735] - DatabaseWorker thread started: True
+2025-08-31 00:32:24,046 - transcribrr - INFO - [DatabaseManager.py:733] - Starting DatabaseWorker thread
+2025-08-31 00:32:24,046 - transcribrr - INFO - [DatabaseManager.py:735] - DatabaseWorker thread started: True
+2025-08-31 00:32:24,048 - transcribrr - INFO - [DatabaseManager.py:733] - Starting DatabaseWorker thread
+2025-08-31 00:32:24,048 - transcribrr - INFO - [DatabaseManager.py:735] - DatabaseWorker thread started: True
+2025-08-31 00:32:24,051 - transcribrr - INFO - [DatabaseManager.py:733] - Starting DatabaseWorker thread
+2025-08-31 00:32:24,051 - transcribrr - INFO - [DatabaseManager.py:735] - DatabaseWorker thread started: False
+2025-08-31 00:32:24,054 - transcribrr - INFO - [DatabaseManager.py:733] - Starting DatabaseWorker thread
+2025-08-31 00:32:24,054 - transcribrr - INFO - [DatabaseManager.py:735] - DatabaseWorker thread started: True
+2025-08-31 00:32:24,055 - transcribrr - INFO - [DatabaseManager.py:733] - Starting DatabaseWorker thread
+2025-08-31 00:32:24,055 - transcribrr - INFO - [DatabaseManager.py:735] - DatabaseWorker thread started: True
+2025-08-31 00:32:24,056 - transcribrr - INFO - [DatabaseManager.py:733] - Starting DatabaseWorker thread
+2025-08-31 00:32:24,056 - transcribrr - INFO - [DatabaseManager.py:735] - DatabaseWorker thread started: True
+2025-08-31 00:32:24,670 - transcribrr - INFO - [db_utils.py:326] - Deleted recording ID 42
+2025-08-31 00:32:43,396 - transcribrr - WARNING - [busy_guard.py:143] - Spinner 'nonexistent' not found or couldn't be started
+2025-08-31 00:32:43,398 - transcribrr - INFO - [DatabaseManager.py:733] - Starting DatabaseWorker thread
+2025-08-31 00:32:43,398 - transcribrr - INFO - [DatabaseManager.py:735] - DatabaseWorker thread started: True
+2025-08-31 00:32:43,400 - transcribrr - INFO - [DatabaseManager.py:733] - Starting DatabaseWorker thread
+2025-08-31 00:32:43,400 - transcribrr - INFO - [DatabaseManager.py:735] - DatabaseWorker thread started: True
+2025-08-31 00:32:43,401 - transcribrr - INFO - [DatabaseManager.py:733] - Starting DatabaseWorker thread
+2025-08-31 00:32:43,401 - transcribrr - INFO - [DatabaseManager.py:735] - DatabaseWorker thread started: True
+2025-08-31 00:32:43,402 - transcribrr - INFO - [DatabaseManager.py:733] - Starting DatabaseWorker thread
+2025-08-31 00:32:43,402 - transcribrr - INFO - [DatabaseManager.py:735] - DatabaseWorker thread started: True
+2025-08-31 00:32:43,403 - transcribrr - INFO - [DatabaseManager.py:733] - Starting DatabaseWorker thread
+2025-08-31 00:32:43,404 - transcribrr - INFO - [DatabaseManager.py:735] - DatabaseWorker thread started: True
+2025-08-31 00:32:43,405 - transcribrr - INFO - [DatabaseManager.py:733] - Starting DatabaseWorker thread
+2025-08-31 00:32:43,405 - transcribrr - INFO - [DatabaseManager.py:735] - DatabaseWorker thread started: True
+2025-08-31 00:32:43,407 - transcribrr - INFO - [DatabaseManager.py:733] - Starting DatabaseWorker thread
+2025-08-31 00:32:43,407 - transcribrr - INFO - [DatabaseManager.py:735] - DatabaseWorker thread started: True
+2025-08-31 00:32:43,408 - transcribrr - INFO - [DatabaseManager.py:733] - Starting DatabaseWorker thread
+2025-08-31 00:32:43,408 - transcribrr - INFO - [DatabaseManager.py:735] - DatabaseWorker thread started: True
+2025-08-31 00:32:43,409 - transcribrr - INFO - [DatabaseManager.py:733] - Starting DatabaseWorker thread
+2025-08-31 00:32:43,409 - transcribrr - INFO - [DatabaseManager.py:735] - DatabaseWorker thread started: True
+2025-08-31 00:32:43,410 - transcribrr - INFO - [DatabaseManager.py:733] - Starting DatabaseWorker thread
+2025-08-31 00:32:43,410 - transcribrr - INFO - [DatabaseManager.py:735] - DatabaseWorker thread started: True
+2025-08-31 00:32:43,411 - transcribrr - INFO - [DatabaseManager.py:733] - Starting DatabaseWorker thread
+2025-08-31 00:32:43,411 - transcribrr - INFO - [DatabaseManager.py:735] - DatabaseWorker thread started: True
+2025-08-31 00:32:43,415 - transcribrr - INFO - [DatabaseManager.py:733] - Starting DatabaseWorker thread
+2025-08-31 00:32:43,415 - transcribrr - INFO - [DatabaseManager.py:735] - DatabaseWorker thread started: True
+2025-08-31 00:32:43,417 - transcribrr - INFO - [DatabaseManager.py:733] - Starting DatabaseWorker thread
+2025-08-31 00:32:43,418 - transcribrr - INFO - [DatabaseManager.py:735] - DatabaseWorker thread started: True
+2025-08-31 00:32:43,421 - transcribrr - INFO - [DatabaseManager.py:733] - Starting DatabaseWorker thread
+2025-08-31 00:32:43,421 - transcribrr - INFO - [DatabaseManager.py:735] - DatabaseWorker thread started: True
+2025-08-31 00:32:43,423 - transcribrr - INFO - [DatabaseManager.py:733] - Starting DatabaseWorker thread
+2025-08-31 00:32:43,423 - transcribrr - INFO - [DatabaseManager.py:735] - DatabaseWorker thread started: True
+2025-08-31 00:32:43,426 - transcribrr - INFO - [DatabaseManager.py:733] - Starting DatabaseWorker thread
+2025-08-31 00:32:43,426 - transcribrr - INFO - [DatabaseManager.py:735] - DatabaseWorker thread started: False
+2025-08-31 00:32:43,428 - transcribrr - INFO - [DatabaseManager.py:733] - Starting DatabaseWorker thread
+2025-08-31 00:32:43,428 - transcribrr - INFO - [DatabaseManager.py:735] - DatabaseWorker thread started: True
+2025-08-31 00:32:43,429 - transcribrr - INFO - [DatabaseManager.py:733] - Starting DatabaseWorker thread
+2025-08-31 00:32:43,429 - transcribrr - INFO - [DatabaseManager.py:735] - DatabaseWorker thread started: True
+2025-08-31 00:32:43,430 - transcribrr - INFO - [DatabaseManager.py:733] - Starting DatabaseWorker thread
+2025-08-31 00:32:43,431 - transcribrr - INFO - [DatabaseManager.py:735] - DatabaseWorker thread started: True
+2025-08-31 00:32:44,043 - transcribrr - INFO - [db_utils.py:326] - Deleted recording ID 42
+2025-08-31 00:32:44,059 - transcribrr - WARNING - [db_utils.py:291] - Invalid field 'transcript' provided for update_recording.
+2025-08-31 00:32:44,059 - transcribrr - WARNING - [db_utils.py:295] - No valid fields provided to update recording 42.
+2025-08-31 00:32:44,066 - transcribrr - DEBUG - [FolderManager.py:100] - Folder tables are initialized during database creation
+2025-08-31 00:32:44,067 - transcribrr - DEBUG - [FolderManager.py:100] - Folder tables are initialized during database creation
+2025-08-31 00:32:44,068 - transcribrr - WARNING - [FolderManager.py:53] - Different DatabaseManager instance provided to FolderManager.instance() after initialization. Using original instance.
+2025-08-31 00:32:44,068 - transcribrr - DEBUG - [FolderManager.py:100] - Folder tables are initialized during database creation
+2025-08-31 00:32:44,068 - transcribrr - DEBUG - [FolderManager.py:100] - Folder tables are initialized during database creation
+2025-08-31 00:32:44,068 - transcribrr - DEBUG - [FolderManager.py:100] - Folder tables are initialized during database creation
+2025-08-31 00:32:44,069 - transcribrr - DEBUG - [FolderManager.py:100] - Folder tables are initialized during database creation
+2025-08-31 00:33:21,414 - transcribrr - WARNING - [busy_guard.py:143] - Spinner 'nonexistent' not found or couldn't be started
+2025-08-31 00:33:21,416 - transcribrr - INFO - [DatabaseManager.py:733] - Starting DatabaseWorker thread
+2025-08-31 00:33:21,416 - transcribrr - INFO - [DatabaseManager.py:735] - DatabaseWorker thread started: True
+2025-08-31 00:33:21,417 - transcribrr - INFO - [DatabaseManager.py:733] - Starting DatabaseWorker thread
+2025-08-31 00:33:21,418 - transcribrr - INFO - [DatabaseManager.py:735] - DatabaseWorker thread started: True
+2025-08-31 00:33:21,419 - transcribrr - INFO - [DatabaseManager.py:733] - Starting DatabaseWorker thread
+2025-08-31 00:33:21,419 - transcribrr - INFO - [DatabaseManager.py:735] - DatabaseWorker thread started: True
+2025-08-31 00:33:21,420 - transcribrr - INFO - [DatabaseManager.py:733] - Starting DatabaseWorker thread
+2025-08-31 00:33:21,420 - transcribrr - INFO - [DatabaseManager.py:735] - DatabaseWorker thread started: True
+2025-08-31 00:33:21,422 - transcribrr - INFO - [DatabaseManager.py:733] - Starting DatabaseWorker thread
+2025-08-31 00:33:21,422 - transcribrr - INFO - [DatabaseManager.py:735] - DatabaseWorker thread started: True
+2025-08-31 00:33:21,424 - transcribrr - INFO - [DatabaseManager.py:733] - Starting DatabaseWorker thread
+2025-08-31 00:33:21,424 - transcribrr - INFO - [DatabaseManager.py:735] - DatabaseWorker thread started: True
+2025-08-31 00:33:21,425 - transcribrr - INFO - [DatabaseManager.py:733] - Starting DatabaseWorker thread
+2025-08-31 00:33:21,425 - transcribrr - INFO - [DatabaseManager.py:735] - DatabaseWorker thread started: True
+2025-08-31 00:33:21,426 - transcribrr - INFO - [DatabaseManager.py:733] - Starting DatabaseWorker thread
+2025-08-31 00:33:21,426 - transcribrr - INFO - [DatabaseManager.py:735] - DatabaseWorker thread started: True
+2025-08-31 00:33:21,427 - transcribrr - INFO - [DatabaseManager.py:733] - Starting DatabaseWorker thread
+2025-08-31 00:33:21,427 - transcribrr - INFO - [DatabaseManager.py:735] - DatabaseWorker thread started: True
+2025-08-31 00:33:21,428 - transcribrr - INFO - [DatabaseManager.py:733] - Starting DatabaseWorker thread
+2025-08-31 00:33:21,429 - transcribrr - INFO - [DatabaseManager.py:735] - DatabaseWorker thread started: True
+2025-08-31 00:33:21,429 - transcribrr - INFO - [DatabaseManager.py:733] - Starting DatabaseWorker thread
+2025-08-31 00:33:21,430 - transcribrr - INFO - [DatabaseManager.py:735] - DatabaseWorker thread started: True
+2025-08-31 00:33:21,434 - transcribrr - INFO - [DatabaseManager.py:733] - Starting DatabaseWorker thread
+2025-08-31 00:33:21,434 - transcribrr - INFO - [DatabaseManager.py:735] - DatabaseWorker thread started: True
+2025-08-31 00:33:21,436 - transcribrr - INFO - [DatabaseManager.py:733] - Starting DatabaseWorker thread
+2025-08-31 00:33:21,436 - transcribrr - INFO - [DatabaseManager.py:735] - DatabaseWorker thread started: True
+2025-08-31 00:33:21,440 - transcribrr - INFO - [DatabaseManager.py:733] - Starting DatabaseWorker thread
+2025-08-31 00:33:21,440 - transcribrr - INFO - [DatabaseManager.py:735] - DatabaseWorker thread started: True
+2025-08-31 00:33:21,442 - transcribrr - INFO - [DatabaseManager.py:733] - Starting DatabaseWorker thread
+2025-08-31 00:33:21,442 - transcribrr - INFO - [DatabaseManager.py:735] - DatabaseWorker thread started: True
+2025-08-31 00:33:21,445 - transcribrr - INFO - [DatabaseManager.py:733] - Starting DatabaseWorker thread
+2025-08-31 00:33:21,445 - transcribrr - INFO - [DatabaseManager.py:735] - DatabaseWorker thread started: False
+2025-08-31 00:33:21,447 - transcribrr - INFO - [DatabaseManager.py:733] - Starting DatabaseWorker thread
+2025-08-31 00:33:21,447 - transcribrr - INFO - [DatabaseManager.py:735] - DatabaseWorker thread started: True
+2025-08-31 00:33:21,448 - transcribrr - INFO - [DatabaseManager.py:733] - Starting DatabaseWorker thread
+2025-08-31 00:33:21,448 - transcribrr - INFO - [DatabaseManager.py:735] - DatabaseWorker thread started: True
+2025-08-31 00:33:21,450 - transcribrr - INFO - [DatabaseManager.py:733] - Starting DatabaseWorker thread
+2025-08-31 00:33:21,450 - transcribrr - INFO - [DatabaseManager.py:735] - DatabaseWorker thread started: True
+2025-08-31 00:33:22,062 - transcribrr - INFO - [db_utils.py:326] - Deleted recording ID 42
+2025-08-31 00:33:22,078 - transcribrr - WARNING - [db_utils.py:291] - Invalid field 'transcript' provided for update_recording.
+2025-08-31 00:33:22,078 - transcribrr - WARNING - [db_utils.py:295] - No valid fields provided to update recording 42.
+2025-08-31 00:33:22,087 - transcribrr - DEBUG - [FolderManager.py:100] - Folder tables are initialized during database creation
+2025-08-31 00:33:22,088 - transcribrr - DEBUG - [FolderManager.py:100] - Folder tables are initialized during database creation
+2025-08-31 00:33:22,089 - transcribrr - WARNING - [FolderManager.py:53] - Different DatabaseManager instance provided to FolderManager.instance() after initialization. Using original instance.
+2025-08-31 00:33:22,089 - transcribrr - DEBUG - [FolderManager.py:100] - Folder tables are initialized during database creation
+2025-08-31 00:33:22,089 - transcribrr - DEBUG - [FolderManager.py:100] - Folder tables are initialized during database creation
+2025-08-31 00:33:22,089 - transcribrr - DEBUG - [FolderManager.py:100] - Folder tables are initialized during database creation
+2025-08-31 00:33:22,090 - transcribrr - DEBUG - [FolderManager.py:100] - Folder tables are initialized during database creation
+2025-08-31 00:36:42,677 - transcribrr - WARNING - [busy_guard.py:143] - Spinner 'nonexistent' not found or couldn't be started
+2025-08-31 00:36:42,679 - transcribrr - INFO - [DatabaseManager.py:733] - Starting DatabaseWorker thread
+2025-08-31 00:36:42,679 - transcribrr - INFO - [DatabaseManager.py:735] - DatabaseWorker thread started: True
+2025-08-31 00:36:42,681 - transcribrr - INFO - [DatabaseManager.py:733] - Starting DatabaseWorker thread
+2025-08-31 00:36:42,681 - transcribrr - INFO - [DatabaseManager.py:735] - DatabaseWorker thread started: True
+2025-08-31 00:36:42,682 - transcribrr - INFO - [DatabaseManager.py:733] - Starting DatabaseWorker thread
+2025-08-31 00:36:42,682 - transcribrr - INFO - [DatabaseManager.py:735] - DatabaseWorker thread started: True
+2025-08-31 00:36:42,683 - transcribrr - INFO - [DatabaseManager.py:733] - Starting DatabaseWorker thread
+2025-08-31 00:36:42,684 - transcribrr - INFO - [DatabaseManager.py:735] - DatabaseWorker thread started: True
+2025-08-31 00:36:42,685 - transcribrr - INFO - [DatabaseManager.py:733] - Starting DatabaseWorker thread
+2025-08-31 00:36:42,685 - transcribrr - INFO - [DatabaseManager.py:735] - DatabaseWorker thread started: True
+2025-08-31 00:36:42,686 - transcribrr - INFO - [DatabaseManager.py:733] - Starting DatabaseWorker thread
+2025-08-31 00:36:42,686 - transcribrr - INFO - [DatabaseManager.py:735] - DatabaseWorker thread started: True
+2025-08-31 00:36:42,688 - transcribrr - INFO - [DatabaseManager.py:733] - Starting DatabaseWorker thread
+2025-08-31 00:36:42,688 - transcribrr - INFO - [DatabaseManager.py:735] - DatabaseWorker thread started: True
+2025-08-31 00:36:42,689 - transcribrr - INFO - [DatabaseManager.py:733] - Starting DatabaseWorker thread
+2025-08-31 00:36:42,689 - transcribrr - INFO - [DatabaseManager.py:735] - DatabaseWorker thread started: True
+2025-08-31 00:36:42,690 - transcribrr - INFO - [DatabaseManager.py:733] - Starting DatabaseWorker thread
+2025-08-31 00:36:42,690 - transcribrr - INFO - [DatabaseManager.py:735] - DatabaseWorker thread started: True
+2025-08-31 00:36:42,691 - transcribrr - INFO - [DatabaseManager.py:733] - Starting DatabaseWorker thread
+2025-08-31 00:36:42,691 - transcribrr - INFO - [DatabaseManager.py:735] - DatabaseWorker thread started: True
+2025-08-31 00:36:42,692 - transcribrr - INFO - [DatabaseManager.py:733] - Starting DatabaseWorker thread
+2025-08-31 00:36:42,692 - transcribrr - INFO - [DatabaseManager.py:735] - DatabaseWorker thread started: True
+2025-08-31 00:36:42,696 - transcribrr - INFO - [DatabaseManager.py:733] - Starting DatabaseWorker thread
+2025-08-31 00:36:42,696 - transcribrr - INFO - [DatabaseManager.py:735] - DatabaseWorker thread started: True
+2025-08-31 00:36:42,698 - transcribrr - INFO - [DatabaseManager.py:733] - Starting DatabaseWorker thread
+2025-08-31 00:36:42,699 - transcribrr - INFO - [DatabaseManager.py:735] - DatabaseWorker thread started: True
+2025-08-31 00:36:42,702 - transcribrr - INFO - [DatabaseManager.py:733] - Starting DatabaseWorker thread
+2025-08-31 00:36:42,702 - transcribrr - INFO - [DatabaseManager.py:735] - DatabaseWorker thread started: True
+2025-08-31 00:36:42,704 - transcribrr - INFO - [DatabaseManager.py:733] - Starting DatabaseWorker thread
+2025-08-31 00:36:42,704 - transcribrr - INFO - [DatabaseManager.py:735] - DatabaseWorker thread started: True
+2025-08-31 00:36:42,707 - transcribrr - INFO - [DatabaseManager.py:733] - Starting DatabaseWorker thread
+2025-08-31 00:36:42,707 - transcribrr - INFO - [DatabaseManager.py:735] - DatabaseWorker thread started: False
+2025-08-31 00:36:42,709 - transcribrr - INFO - [DatabaseManager.py:733] - Starting DatabaseWorker thread
+2025-08-31 00:36:42,709 - transcribrr - INFO - [DatabaseManager.py:735] - DatabaseWorker thread started: True
+2025-08-31 00:36:42,710 - transcribrr - INFO - [DatabaseManager.py:733] - Starting DatabaseWorker thread
+2025-08-31 00:36:42,710 - transcribrr - INFO - [DatabaseManager.py:735] - DatabaseWorker thread started: True
+2025-08-31 00:36:42,712 - transcribrr - INFO - [DatabaseManager.py:733] - Starting DatabaseWorker thread
+2025-08-31 00:36:42,712 - transcribrr - INFO - [DatabaseManager.py:735] - DatabaseWorker thread started: True
+2025-08-31 00:36:43,246 - transcribrr - DEBUG - [FolderManager.py:100] - Folder tables are initialized during database creation
+2025-08-31 00:36:43,247 - transcribrr - DEBUG - [FolderManager.py:100] - Folder tables are initialized during database creation
+2025-08-31 00:36:43,247 - transcribrr - WARNING - [FolderManager.py:53] - Different DatabaseManager instance provided to FolderManager.instance() after initialization. Using original instance.
+2025-08-31 00:36:43,247 - transcribrr - DEBUG - [FolderManager.py:100] - Folder tables are initialized during database creation
+2025-08-31 00:36:43,247 - transcribrr - DEBUG - [FolderManager.py:100] - Folder tables are initialized during database creation
+2025-08-31 00:36:43,248 - transcribrr - DEBUG - [FolderManager.py:100] - Folder tables are initialized during database creation
+2025-08-31 00:36:43,248 - transcribrr - DEBUG - [FolderManager.py:100] - Folder tables are initialized during database creation
+2025-08-31 00:39:04,297 - transcribrr - WARNING - [busy_guard.py:143] - Spinner 'nonexistent' not found or couldn't be started
+2025-08-31 00:39:04,299 - transcribrr - INFO - [DatabaseManager.py:733] - Starting DatabaseWorker thread
+2025-08-31 00:39:04,299 - transcribrr - INFO - [DatabaseManager.py:735] - DatabaseWorker thread started: True
+2025-08-31 00:39:04,300 - transcribrr - INFO - [DatabaseManager.py:733] - Starting DatabaseWorker thread
+2025-08-31 00:39:04,301 - transcribrr - INFO - [DatabaseManager.py:735] - DatabaseWorker thread started: True
+2025-08-31 00:39:04,302 - transcribrr - INFO - [DatabaseManager.py:733] - Starting DatabaseWorker thread
+2025-08-31 00:39:04,302 - transcribrr - INFO - [DatabaseManager.py:735] - DatabaseWorker thread started: True
+2025-08-31 00:39:04,304 - transcribrr - INFO - [DatabaseManager.py:733] - Starting DatabaseWorker thread
+2025-08-31 00:39:04,304 - transcribrr - INFO - [DatabaseManager.py:735] - DatabaseWorker thread started: True
+2025-08-31 00:39:04,305 - transcribrr - INFO - [DatabaseManager.py:733] - Starting DatabaseWorker thread
+2025-08-31 00:39:04,305 - transcribrr - INFO - [DatabaseManager.py:735] - DatabaseWorker thread started: True
+2025-08-31 00:39:04,307 - transcribrr - INFO - [DatabaseManager.py:733] - Starting DatabaseWorker thread
+2025-08-31 00:39:04,307 - transcribrr - INFO - [DatabaseManager.py:735] - DatabaseWorker thread started: True
+2025-08-31 00:39:04,308 - transcribrr - INFO - [DatabaseManager.py:733] - Starting DatabaseWorker thread
+2025-08-31 00:39:04,308 - transcribrr - INFO - [DatabaseManager.py:735] - DatabaseWorker thread started: True
+2025-08-31 00:39:04,309 - transcribrr - INFO - [DatabaseManager.py:733] - Starting DatabaseWorker thread
+2025-08-31 00:39:04,309 - transcribrr - INFO - [DatabaseManager.py:735] - DatabaseWorker thread started: True
+2025-08-31 00:39:04,311 - transcribrr - INFO - [DatabaseManager.py:733] - Starting DatabaseWorker thread
+2025-08-31 00:39:04,311 - transcribrr - INFO - [DatabaseManager.py:735] - DatabaseWorker thread started: True
+2025-08-31 00:39:04,312 - transcribrr - INFO - [DatabaseManager.py:733] - Starting DatabaseWorker thread
+2025-08-31 00:39:04,312 - transcribrr - INFO - [DatabaseManager.py:735] - DatabaseWorker thread started: True
+2025-08-31 00:39:04,313 - transcribrr - INFO - [DatabaseManager.py:733] - Starting DatabaseWorker thread
+2025-08-31 00:39:04,313 - transcribrr - INFO - [DatabaseManager.py:735] - DatabaseWorker thread started: True
+2025-08-31 00:39:04,317 - transcribrr - INFO - [DatabaseManager.py:733] - Starting DatabaseWorker thread
+2025-08-31 00:39:04,317 - transcribrr - INFO - [DatabaseManager.py:735] - DatabaseWorker thread started: True
+2025-08-31 00:39:04,319 - transcribrr - INFO - [DatabaseManager.py:733] - Starting DatabaseWorker thread
+2025-08-31 00:39:04,319 - transcribrr - INFO - [DatabaseManager.py:735] - DatabaseWorker thread started: True
+2025-08-31 00:39:04,323 - transcribrr - INFO - [DatabaseManager.py:733] - Starting DatabaseWorker thread
+2025-08-31 00:39:04,323 - transcribrr - INFO - [DatabaseManager.py:735] - DatabaseWorker thread started: True
+2025-08-31 00:39:04,325 - transcribrr - INFO - [DatabaseManager.py:733] - Starting DatabaseWorker thread
+2025-08-31 00:39:04,325 - transcribrr - INFO - [DatabaseManager.py:735] - DatabaseWorker thread started: True
+2025-08-31 00:39:04,328 - transcribrr - INFO - [DatabaseManager.py:733] - Starting DatabaseWorker thread
+2025-08-31 00:39:04,328 - transcribrr - INFO - [DatabaseManager.py:735] - DatabaseWorker thread started: False
+2025-08-31 00:39:04,330 - transcribrr - INFO - [DatabaseManager.py:733] - Starting DatabaseWorker thread
+2025-08-31 00:39:04,330 - transcribrr - INFO - [DatabaseManager.py:735] - DatabaseWorker thread started: True
+2025-08-31 00:39:04,332 - transcribrr - INFO - [DatabaseManager.py:733] - Starting DatabaseWorker thread
+2025-08-31 00:39:04,332 - transcribrr - INFO - [DatabaseManager.py:735] - DatabaseWorker thread started: True
+2025-08-31 00:39:04,333 - transcribrr - INFO - [DatabaseManager.py:733] - Starting DatabaseWorker thread
+2025-08-31 00:39:04,333 - transcribrr - INFO - [DatabaseManager.py:735] - DatabaseWorker thread started: True
+2025-08-31 00:46:49,072 - transcribrr - WARNING - [busy_guard.py:143] - Spinner 'nonexistent' not found or couldn't be started
+2025-08-31 00:46:49,075 - transcribrr - INFO - [DatabaseManager.py:733] - Starting DatabaseWorker thread
+2025-08-31 00:46:49,075 - transcribrr - INFO - [DatabaseManager.py:735] - DatabaseWorker thread started: True
+2025-08-31 00:46:49,076 - transcribrr - INFO - [DatabaseManager.py:733] - Starting DatabaseWorker thread
+2025-08-31 00:46:49,076 - transcribrr - INFO - [DatabaseManager.py:735] - DatabaseWorker thread started: True
+2025-08-31 00:46:49,078 - transcribrr - INFO - [DatabaseManager.py:733] - Starting DatabaseWorker thread
+2025-08-31 00:46:49,078 - transcribrr - INFO - [DatabaseManager.py:735] - DatabaseWorker thread started: True
+2025-08-31 00:46:49,079 - transcribrr - INFO - [DatabaseManager.py:733] - Starting DatabaseWorker thread
+2025-08-31 00:46:49,079 - transcribrr - INFO - [DatabaseManager.py:735] - DatabaseWorker thread started: True
+2025-08-31 00:46:49,080 - transcribrr - INFO - [DatabaseManager.py:733] - Starting DatabaseWorker thread
+2025-08-31 00:46:49,080 - transcribrr - INFO - [DatabaseManager.py:735] - DatabaseWorker thread started: True
+2025-08-31 00:46:49,082 - transcribrr - INFO - [DatabaseManager.py:733] - Starting DatabaseWorker thread
+2025-08-31 00:46:49,082 - transcribrr - INFO - [DatabaseManager.py:735] - DatabaseWorker thread started: True
+2025-08-31 00:46:49,083 - transcribrr - INFO - [DatabaseManager.py:733] - Starting DatabaseWorker thread
+2025-08-31 00:46:49,083 - transcribrr - INFO - [DatabaseManager.py:735] - DatabaseWorker thread started: True
+2025-08-31 00:46:49,085 - transcribrr - INFO - [DatabaseManager.py:733] - Starting DatabaseWorker thread
+2025-08-31 00:46:49,085 - transcribrr - INFO - [DatabaseManager.py:735] - DatabaseWorker thread started: True
+2025-08-31 00:46:49,086 - transcribrr - INFO - [DatabaseManager.py:733] - Starting DatabaseWorker thread
+2025-08-31 00:46:49,086 - transcribrr - INFO - [DatabaseManager.py:735] - DatabaseWorker thread started: True
+2025-08-31 00:46:49,087 - transcribrr - INFO - [DatabaseManager.py:733] - Starting DatabaseWorker thread
+2025-08-31 00:46:49,087 - transcribrr - INFO - [DatabaseManager.py:735] - DatabaseWorker thread started: True
+2025-08-31 00:46:49,088 - transcribrr - INFO - [DatabaseManager.py:733] - Starting DatabaseWorker thread
+2025-08-31 00:46:49,088 - transcribrr - INFO - [DatabaseManager.py:735] - DatabaseWorker thread started: True
+2025-08-31 00:46:49,092 - transcribrr - INFO - [DatabaseManager.py:733] - Starting DatabaseWorker thread
+2025-08-31 00:46:49,092 - transcribrr - INFO - [DatabaseManager.py:735] - DatabaseWorker thread started: True
+2025-08-31 00:46:49,095 - transcribrr - INFO - [DatabaseManager.py:733] - Starting DatabaseWorker thread
+2025-08-31 00:46:49,095 - transcribrr - INFO - [DatabaseManager.py:735] - DatabaseWorker thread started: True
+2025-08-31 00:46:49,098 - transcribrr - INFO - [DatabaseManager.py:733] - Starting DatabaseWorker thread
+2025-08-31 00:46:49,098 - transcribrr - INFO - [DatabaseManager.py:735] - DatabaseWorker thread started: True
+2025-08-31 00:46:49,100 - transcribrr - INFO - [DatabaseManager.py:733] - Starting DatabaseWorker thread
+2025-08-31 00:46:49,100 - transcribrr - INFO - [DatabaseManager.py:735] - DatabaseWorker thread started: True
+2025-08-31 00:46:49,103 - transcribrr - INFO - [DatabaseManager.py:733] - Starting DatabaseWorker thread
+2025-08-31 00:46:49,103 - transcribrr - INFO - [DatabaseManager.py:735] - DatabaseWorker thread started: False
+2025-08-31 00:46:49,105 - transcribrr - INFO - [DatabaseManager.py:733] - Starting DatabaseWorker thread
+2025-08-31 00:46:49,105 - transcribrr - INFO - [DatabaseManager.py:735] - DatabaseWorker thread started: True
+2025-08-31 00:46:49,107 - transcribrr - INFO - [DatabaseManager.py:733] - Starting DatabaseWorker thread
+2025-08-31 00:46:49,107 - transcribrr - INFO - [DatabaseManager.py:735] - DatabaseWorker thread started: True
+2025-08-31 00:46:49,108 - transcribrr - INFO - [DatabaseManager.py:733] - Starting DatabaseWorker thread
+2025-08-31 00:46:49,108 - transcribrr - INFO - [DatabaseManager.py:735] - DatabaseWorker thread started: True
+2025-08-31 00:47:17,386 - transcribrr - WARNING - [busy_guard.py:143] - Spinner 'nonexistent' not found or couldn't be started
+2025-08-31 00:47:17,388 - transcribrr - DEBUG - [FolderManager.py:100] - Folder tables are initialized during database creation
+2025-08-31 00:47:17,389 - transcribrr - DEBUG - [FolderManager.py:100] - Folder tables are initialized during database creation
+2025-08-31 00:47:17,389 - transcribrr - WARNING - [FolderManager.py:53] - Different DatabaseManager instance provided to FolderManager.instance() after initialization. Using original instance.
+2025-08-31 00:47:17,389 - transcribrr - DEBUG - [FolderManager.py:100] - Folder tables are initialized during database creation
+2025-08-31 00:47:17,389 - transcribrr - DEBUG - [FolderManager.py:100] - Folder tables are initialized during database creation
+2025-08-31 00:47:17,390 - transcribrr - DEBUG - [FolderManager.py:100] - Folder tables are initialized during database creation
+2025-08-31 00:47:17,390 - transcribrr - DEBUG - [FolderManager.py:100] - Folder tables are initialized during database creation
+2025-08-31 00:47:49,514 - transcribrr - WARNING - [busy_guard.py:143] - Spinner 'nonexistent' not found or couldn't be started
+2025-08-31 00:47:49,515 - transcribrr - DEBUG - [FolderManager.py:100] - Folder tables are initialized during database creation
+2025-08-31 00:47:49,517 - transcribrr - DEBUG - [FolderManager.py:100] - Folder tables are initialized during database creation
+2025-08-31 00:47:49,517 - transcribrr - WARNING - [FolderManager.py:53] - Different DatabaseManager instance provided to FolderManager.instance() after initialization. Using original instance.
+2025-08-31 00:47:49,517 - transcribrr - DEBUG - [FolderManager.py:100] - Folder tables are initialized during database creation
+2025-08-31 00:47:49,517 - transcribrr - DEBUG - [FolderManager.py:100] - Folder tables are initialized during database creation
+2025-08-31 00:47:49,518 - transcribrr - DEBUG - [FolderManager.py:100] - Folder tables are initialized during database creation
+2025-08-31 00:47:49,518 - transcribrr - DEBUG - [FolderManager.py:100] - Folder tables are initialized during database creation
+2025-08-31 00:48:09,061 - transcribrr - WARNING - [busy_guard.py:143] - Spinner 'nonexistent' not found or couldn't be started
+2025-08-31 00:48:09,063 - transcribrr - INFO - [DatabaseManager.py:733] - Starting DatabaseWorker thread
+2025-08-31 00:48:09,063 - transcribrr - INFO - [DatabaseManager.py:735] - DatabaseWorker thread started: True
+2025-08-31 00:48:09,064 - transcribrr - INFO - [DatabaseManager.py:733] - Starting DatabaseWorker thread
+2025-08-31 00:48:09,065 - transcribrr - INFO - [DatabaseManager.py:735] - DatabaseWorker thread started: True
+2025-08-31 00:48:09,066 - transcribrr - INFO - [DatabaseManager.py:733] - Starting DatabaseWorker thread
+2025-08-31 00:48:09,066 - transcribrr - INFO - [DatabaseManager.py:735] - DatabaseWorker thread started: True
+2025-08-31 00:48:09,067 - transcribrr - INFO - [DatabaseManager.py:733] - Starting DatabaseWorker thread
+2025-08-31 00:48:09,067 - transcribrr - INFO - [DatabaseManager.py:735] - DatabaseWorker thread started: True
+2025-08-31 00:48:09,069 - transcribrr - INFO - [DatabaseManager.py:733] - Starting DatabaseWorker thread
+2025-08-31 00:48:09,069 - transcribrr - INFO - [DatabaseManager.py:735] - DatabaseWorker thread started: True
+2025-08-31 00:48:09,070 - transcribrr - INFO - [DatabaseManager.py:733] - Starting DatabaseWorker thread
+2025-08-31 00:48:09,071 - transcribrr - INFO - [DatabaseManager.py:735] - DatabaseWorker thread started: True
+2025-08-31 00:48:09,072 - transcribrr - INFO - [DatabaseManager.py:733] - Starting DatabaseWorker thread
+2025-08-31 00:48:09,072 - transcribrr - INFO - [DatabaseManager.py:735] - DatabaseWorker thread started: True
+2025-08-31 00:48:09,073 - transcribrr - INFO - [DatabaseManager.py:733] - Starting DatabaseWorker thread
+2025-08-31 00:48:09,073 - transcribrr - INFO - [DatabaseManager.py:735] - DatabaseWorker thread started: True
+2025-08-31 00:48:09,074 - transcribrr - INFO - [DatabaseManager.py:733] - Starting DatabaseWorker thread
+2025-08-31 00:48:09,074 - transcribrr - INFO - [DatabaseManager.py:735] - DatabaseWorker thread started: True
+2025-08-31 00:48:09,075 - transcribrr - INFO - [DatabaseManager.py:733] - Starting DatabaseWorker thread
+2025-08-31 00:48:09,076 - transcribrr - INFO - [DatabaseManager.py:735] - DatabaseWorker thread started: True
+2025-08-31 00:48:09,077 - transcribrr - INFO - [DatabaseManager.py:733] - Starting DatabaseWorker thread
+2025-08-31 00:48:09,077 - transcribrr - INFO - [DatabaseManager.py:735] - DatabaseWorker thread started: True
+2025-08-31 00:48:09,080 - transcribrr - INFO - [DatabaseManager.py:733] - Starting DatabaseWorker thread
+2025-08-31 00:48:09,081 - transcribrr - INFO - [DatabaseManager.py:735] - DatabaseWorker thread started: True
+2025-08-31 00:48:09,083 - transcribrr - INFO - [DatabaseManager.py:733] - Starting DatabaseWorker thread
+2025-08-31 00:48:09,083 - transcribrr - INFO - [DatabaseManager.py:735] - DatabaseWorker thread started: True
+2025-08-31 00:48:09,086 - transcribrr - INFO - [DatabaseManager.py:733] - Starting DatabaseWorker thread
+2025-08-31 00:48:09,086 - transcribrr - INFO - [DatabaseManager.py:735] - DatabaseWorker thread started: True
+2025-08-31 00:48:09,088 - transcribrr - INFO - [DatabaseManager.py:733] - Starting DatabaseWorker thread
+2025-08-31 00:48:09,089 - transcribrr - INFO - [DatabaseManager.py:735] - DatabaseWorker thread started: True
+2025-08-31 00:48:09,092 - transcribrr - INFO - [DatabaseManager.py:733] - Starting DatabaseWorker thread
+2025-08-31 00:48:09,092 - transcribrr - INFO - [DatabaseManager.py:735] - DatabaseWorker thread started: False
+2025-08-31 00:48:09,094 - transcribrr - INFO - [DatabaseManager.py:733] - Starting DatabaseWorker thread
+2025-08-31 00:48:09,094 - transcribrr - INFO - [DatabaseManager.py:735] - DatabaseWorker thread started: True
+2025-08-31 00:48:09,095 - transcribrr - INFO - [DatabaseManager.py:733] - Starting DatabaseWorker thread
+2025-08-31 00:48:09,095 - transcribrr - INFO - [DatabaseManager.py:735] - DatabaseWorker thread started: True
+2025-08-31 00:48:09,096 - transcribrr - INFO - [DatabaseManager.py:733] - Starting DatabaseWorker thread
+2025-08-31 00:48:09,097 - transcribrr - INFO - [DatabaseManager.py:735] - DatabaseWorker thread started: True
+2025-08-31 00:48:14,231 - transcribrr - WARNING - [busy_guard.py:143] - Spinner 'nonexistent' not found or couldn't be started
+2025-08-31 00:48:14,234 - transcribrr - INFO - [DatabaseManager.py:733] - Starting DatabaseWorker thread
+2025-08-31 00:48:14,234 - transcribrr - INFO - [DatabaseManager.py:735] - DatabaseWorker thread started: True
+2025-08-31 00:48:14,235 - transcribrr - INFO - [DatabaseManager.py:733] - Starting DatabaseWorker thread
+2025-08-31 00:48:14,236 - transcribrr - INFO - [DatabaseManager.py:735] - DatabaseWorker thread started: True
+2025-08-31 00:48:14,237 - transcribrr - INFO - [DatabaseManager.py:733] - Starting DatabaseWorker thread
+2025-08-31 00:48:14,237 - transcribrr - INFO - [DatabaseManager.py:735] - DatabaseWorker thread started: True
+2025-08-31 00:48:14,238 - transcribrr - INFO - [DatabaseManager.py:733] - Starting DatabaseWorker thread
+2025-08-31 00:48:14,239 - transcribrr - INFO - [DatabaseManager.py:735] - DatabaseWorker thread started: True
+2025-08-31 00:48:14,240 - transcribrr - INFO - [DatabaseManager.py:733] - Starting DatabaseWorker thread
+2025-08-31 00:48:14,240 - transcribrr - INFO - [DatabaseManager.py:735] - DatabaseWorker thread started: True
+2025-08-31 00:48:14,242 - transcribrr - INFO - [DatabaseManager.py:733] - Starting DatabaseWorker thread
+2025-08-31 00:48:14,242 - transcribrr - INFO - [DatabaseManager.py:735] - DatabaseWorker thread started: True
+2025-08-31 00:48:14,243 - transcribrr - INFO - [DatabaseManager.py:733] - Starting DatabaseWorker thread
+2025-08-31 00:48:14,243 - transcribrr - INFO - [DatabaseManager.py:735] - DatabaseWorker thread started: True
+2025-08-31 00:48:14,244 - transcribrr - INFO - [DatabaseManager.py:733] - Starting DatabaseWorker thread
+2025-08-31 00:48:14,244 - transcribrr - INFO - [DatabaseManager.py:735] - DatabaseWorker thread started: True
+2025-08-31 00:48:14,245 - transcribrr - INFO - [DatabaseManager.py:733] - Starting DatabaseWorker thread
+2025-08-31 00:48:14,245 - transcribrr - INFO - [DatabaseManager.py:735] - DatabaseWorker thread started: True
+2025-08-31 00:48:14,246 - transcribrr - INFO - [DatabaseManager.py:733] - Starting DatabaseWorker thread
+2025-08-31 00:48:14,246 - transcribrr - INFO - [DatabaseManager.py:735] - DatabaseWorker thread started: True
+2025-08-31 00:48:14,247 - transcribrr - INFO - [DatabaseManager.py:733] - Starting DatabaseWorker thread
+2025-08-31 00:48:14,247 - transcribrr - INFO - [DatabaseManager.py:735] - DatabaseWorker thread started: True
+2025-08-31 00:48:14,251 - transcribrr - INFO - [DatabaseManager.py:733] - Starting DatabaseWorker thread
+2025-08-31 00:48:14,251 - transcribrr - INFO - [DatabaseManager.py:735] - DatabaseWorker thread started: True
+2025-08-31 00:48:14,254 - transcribrr - INFO - [DatabaseManager.py:733] - Starting DatabaseWorker thread
+2025-08-31 00:48:14,254 - transcribrr - INFO - [DatabaseManager.py:735] - DatabaseWorker thread started: True
+2025-08-31 00:48:14,257 - transcribrr - INFO - [DatabaseManager.py:733] - Starting DatabaseWorker thread
+2025-08-31 00:48:14,257 - transcribrr - INFO - [DatabaseManager.py:735] - DatabaseWorker thread started: True
+2025-08-31 00:48:14,259 - transcribrr - INFO - [DatabaseManager.py:733] - Starting DatabaseWorker thread
+2025-08-31 00:48:14,259 - transcribrr - INFO - [DatabaseManager.py:735] - DatabaseWorker thread started: True
+2025-08-31 00:48:14,262 - transcribrr - INFO - [DatabaseManager.py:733] - Starting DatabaseWorker thread
+2025-08-31 00:48:14,263 - transcribrr - INFO - [DatabaseManager.py:735] - DatabaseWorker thread started: False
+2025-08-31 00:48:14,265 - transcribrr - INFO - [DatabaseManager.py:733] - Starting DatabaseWorker thread
+2025-08-31 00:48:14,265 - transcribrr - INFO - [DatabaseManager.py:735] - DatabaseWorker thread started: True
+2025-08-31 00:48:14,266 - transcribrr - INFO - [DatabaseManager.py:733] - Starting DatabaseWorker thread
+2025-08-31 00:48:14,266 - transcribrr - INFO - [DatabaseManager.py:735] - DatabaseWorker thread started: True
+2025-08-31 00:48:14,267 - transcribrr - INFO - [DatabaseManager.py:733] - Starting DatabaseWorker thread
+2025-08-31 00:48:14,267 - transcribrr - INFO - [DatabaseManager.py:735] - DatabaseWorker thread started: True
+2025-08-31 00:48:54,425 - transcribrr - WARNING - [busy_guard.py:143] - Spinner 'nonexistent' not found or couldn't be started
+2025-08-31 00:48:54,427 - transcribrr - INFO - [DatabaseManager.py:733] - Starting DatabaseWorker thread
+2025-08-31 00:48:54,427 - transcribrr - INFO - [DatabaseManager.py:735] - DatabaseWorker thread started: True
+2025-08-31 00:48:54,429 - transcribrr - INFO - [DatabaseManager.py:733] - Starting DatabaseWorker thread
+2025-08-31 00:48:54,429 - transcribrr - INFO - [DatabaseManager.py:735] - DatabaseWorker thread started: True
+2025-08-31 00:48:54,430 - transcribrr - INFO - [DatabaseManager.py:733] - Starting DatabaseWorker thread
+2025-08-31 00:48:54,430 - transcribrr - INFO - [DatabaseManager.py:735] - DatabaseWorker thread started: True
+2025-08-31 00:48:54,432 - transcribrr - INFO - [DatabaseManager.py:733] - Starting DatabaseWorker thread
+2025-08-31 00:48:54,432 - transcribrr - INFO - [DatabaseManager.py:735] - DatabaseWorker thread started: True
+2025-08-31 00:48:54,433 - transcribrr - INFO - [DatabaseManager.py:733] - Starting DatabaseWorker thread
+2025-08-31 00:48:54,433 - transcribrr - INFO - [DatabaseManager.py:735] - DatabaseWorker thread started: True
+2025-08-31 00:48:54,435 - transcribrr - INFO - [DatabaseManager.py:733] - Starting DatabaseWorker thread
+2025-08-31 00:48:54,435 - transcribrr - INFO - [DatabaseManager.py:735] - DatabaseWorker thread started: True
+2025-08-31 00:48:54,436 - transcribrr - INFO - [DatabaseManager.py:733] - Starting DatabaseWorker thread
+2025-08-31 00:48:54,436 - transcribrr - INFO - [DatabaseManager.py:735] - DatabaseWorker thread started: True
+2025-08-31 00:48:54,437 - transcribrr - INFO - [DatabaseManager.py:733] - Starting DatabaseWorker thread
+2025-08-31 00:48:54,437 - transcribrr - INFO - [DatabaseManager.py:735] - DatabaseWorker thread started: True
+2025-08-31 00:48:54,439 - transcribrr - INFO - [DatabaseManager.py:733] - Starting DatabaseWorker thread
+2025-08-31 00:48:54,439 - transcribrr - INFO - [DatabaseManager.py:735] - DatabaseWorker thread started: True
+2025-08-31 00:48:54,440 - transcribrr - INFO - [DatabaseManager.py:733] - Starting DatabaseWorker thread
+2025-08-31 00:48:54,440 - transcribrr - INFO - [DatabaseManager.py:735] - DatabaseWorker thread started: True
+2025-08-31 00:48:54,441 - transcribrr - INFO - [DatabaseManager.py:733] - Starting DatabaseWorker thread
+2025-08-31 00:48:54,441 - transcribrr - INFO - [DatabaseManager.py:735] - DatabaseWorker thread started: True
+2025-08-31 00:48:54,445 - transcribrr - INFO - [DatabaseManager.py:733] - Starting DatabaseWorker thread
+2025-08-31 00:48:54,445 - transcribrr - INFO - [DatabaseManager.py:735] - DatabaseWorker thread started: True
+2025-08-31 00:48:54,448 - transcribrr - INFO - [DatabaseManager.py:733] - Starting DatabaseWorker thread
+2025-08-31 00:48:54,448 - transcribrr - INFO - [DatabaseManager.py:735] - DatabaseWorker thread started: True
+2025-08-31 00:48:54,451 - transcribrr - INFO - [DatabaseManager.py:733] - Starting DatabaseWorker thread
+2025-08-31 00:48:54,451 - transcribrr - INFO - [DatabaseManager.py:735] - DatabaseWorker thread started: True
+2025-08-31 00:48:54,453 - transcribrr - INFO - [DatabaseManager.py:733] - Starting DatabaseWorker thread
+2025-08-31 00:48:54,453 - transcribrr - INFO - [DatabaseManager.py:735] - DatabaseWorker thread started: True
+2025-08-31 00:48:54,456 - transcribrr - INFO - [DatabaseManager.py:733] - Starting DatabaseWorker thread
+2025-08-31 00:48:54,456 - transcribrr - INFO - [DatabaseManager.py:735] - DatabaseWorker thread started: False
+2025-08-31 00:48:54,458 - transcribrr - INFO - [DatabaseManager.py:733] - Starting DatabaseWorker thread
+2025-08-31 00:48:54,459 - transcribrr - INFO - [DatabaseManager.py:735] - DatabaseWorker thread started: True
+2025-08-31 00:48:54,460 - transcribrr - INFO - [DatabaseManager.py:733] - Starting DatabaseWorker thread
+2025-08-31 00:48:54,460 - transcribrr - INFO - [DatabaseManager.py:735] - DatabaseWorker thread started: True
+2025-08-31 00:48:54,461 - transcribrr - INFO - [DatabaseManager.py:733] - Starting DatabaseWorker thread
+2025-08-31 00:48:54,461 - transcribrr - INFO - [DatabaseManager.py:735] - DatabaseWorker thread started: True
+2025-08-31 00:49:14,153 - transcribrr - WARNING - [busy_guard.py:143] - Spinner 'nonexistent' not found or couldn't be started
+2025-08-31 00:49:14,155 - transcribrr - INFO - [DatabaseManager.py:733] - Starting DatabaseWorker thread
+2025-08-31 00:49:14,155 - transcribrr - INFO - [DatabaseManager.py:735] - DatabaseWorker thread started: True
+2025-08-31 00:49:14,157 - transcribrr - INFO - [DatabaseManager.py:733] - Starting DatabaseWorker thread
+2025-08-31 00:49:14,157 - transcribrr - INFO - [DatabaseManager.py:735] - DatabaseWorker thread started: True
+2025-08-31 00:49:14,158 - transcribrr - INFO - [DatabaseManager.py:733] - Starting DatabaseWorker thread
+2025-08-31 00:49:14,158 - transcribrr - INFO - [DatabaseManager.py:735] - DatabaseWorker thread started: True
+2025-08-31 00:49:14,160 - transcribrr - INFO - [DatabaseManager.py:733] - Starting DatabaseWorker thread
+2025-08-31 00:49:14,160 - transcribrr - INFO - [DatabaseManager.py:735] - DatabaseWorker thread started: True
+2025-08-31 00:49:14,162 - transcribrr - INFO - [DatabaseManager.py:733] - Starting DatabaseWorker thread
+2025-08-31 00:49:14,162 - transcribrr - INFO - [DatabaseManager.py:735] - DatabaseWorker thread started: True
+2025-08-31 00:49:14,163 - transcribrr - INFO - [DatabaseManager.py:733] - Starting DatabaseWorker thread
+2025-08-31 00:49:14,164 - transcribrr - INFO - [DatabaseManager.py:735] - DatabaseWorker thread started: True
+2025-08-31 00:49:14,165 - transcribrr - INFO - [DatabaseManager.py:733] - Starting DatabaseWorker thread
+2025-08-31 00:49:14,165 - transcribrr - INFO - [DatabaseManager.py:735] - DatabaseWorker thread started: True
+2025-08-31 00:49:14,166 - transcribrr - INFO - [DatabaseManager.py:733] - Starting DatabaseWorker thread
+2025-08-31 00:49:14,166 - transcribrr - INFO - [DatabaseManager.py:735] - DatabaseWorker thread started: True
+2025-08-31 00:49:14,168 - transcribrr - INFO - [DatabaseManager.py:733] - Starting DatabaseWorker thread
+2025-08-31 00:49:14,168 - transcribrr - INFO - [DatabaseManager.py:735] - DatabaseWorker thread started: True
+2025-08-31 00:49:14,169 - transcribrr - INFO - [DatabaseManager.py:733] - Starting DatabaseWorker thread
+2025-08-31 00:49:14,169 - transcribrr - INFO - [DatabaseManager.py:735] - DatabaseWorker thread started: True
+2025-08-31 00:49:14,170 - transcribrr - INFO - [DatabaseManager.py:733] - Starting DatabaseWorker thread
+2025-08-31 00:49:14,170 - transcribrr - INFO - [DatabaseManager.py:735] - DatabaseWorker thread started: True
+2025-08-31 00:49:14,174 - transcribrr - INFO - [DatabaseManager.py:733] - Starting DatabaseWorker thread
+2025-08-31 00:49:14,174 - transcribrr - INFO - [DatabaseManager.py:735] - DatabaseWorker thread started: True
+2025-08-31 00:49:14,177 - transcribrr - INFO - [DatabaseManager.py:733] - Starting DatabaseWorker thread
+2025-08-31 00:49:14,177 - transcribrr - INFO - [DatabaseManager.py:735] - DatabaseWorker thread started: True
+2025-08-31 00:49:14,180 - transcribrr - INFO - [DatabaseManager.py:733] - Starting DatabaseWorker thread
+2025-08-31 00:49:14,180 - transcribrr - INFO - [DatabaseManager.py:735] - DatabaseWorker thread started: True
+2025-08-31 00:49:14,182 - transcribrr - INFO - [DatabaseManager.py:733] - Starting DatabaseWorker thread
+2025-08-31 00:49:14,182 - transcribrr - INFO - [DatabaseManager.py:735] - DatabaseWorker thread started: True
+2025-08-31 00:49:14,185 - transcribrr - INFO - [DatabaseManager.py:733] - Starting DatabaseWorker thread
+2025-08-31 00:49:14,185 - transcribrr - INFO - [DatabaseManager.py:735] - DatabaseWorker thread started: False
+2025-08-31 00:49:14,187 - transcribrr - INFO - [DatabaseManager.py:733] - Starting DatabaseWorker thread
+2025-08-31 00:49:14,187 - transcribrr - INFO - [DatabaseManager.py:735] - DatabaseWorker thread started: True
+2025-08-31 00:49:14,189 - transcribrr - INFO - [DatabaseManager.py:733] - Starting DatabaseWorker thread
+2025-08-31 00:49:14,189 - transcribrr - INFO - [DatabaseManager.py:735] - DatabaseWorker thread started: True
+2025-08-31 00:49:14,190 - transcribrr - INFO - [DatabaseManager.py:733] - Starting DatabaseWorker thread
+2025-08-31 00:49:14,190 - transcribrr - INFO - [DatabaseManager.py:735] - DatabaseWorker thread started: True
+2025-08-31 00:49:48,158 - transcribrr - WARNING - [busy_guard.py:143] - Spinner 'nonexistent' not found or couldn't be started
+2025-08-31 00:49:48,160 - transcribrr - INFO - [DatabaseManager.py:733] - Starting DatabaseWorker thread
+2025-08-31 00:49:48,160 - transcribrr - INFO - [DatabaseManager.py:735] - DatabaseWorker thread started: True
+2025-08-31 00:49:48,162 - transcribrr - INFO - [DatabaseManager.py:733] - Starting DatabaseWorker thread
+2025-08-31 00:49:48,162 - transcribrr - INFO - [DatabaseManager.py:735] - DatabaseWorker thread started: True
+2025-08-31 00:49:48,163 - transcribrr - INFO - [DatabaseManager.py:733] - Starting DatabaseWorker thread
+2025-08-31 00:49:48,163 - transcribrr - INFO - [DatabaseManager.py:735] - DatabaseWorker thread started: True
+2025-08-31 00:49:48,165 - transcribrr - INFO - [DatabaseManager.py:733] - Starting DatabaseWorker thread
+2025-08-31 00:49:48,165 - transcribrr - INFO - [DatabaseManager.py:735] - DatabaseWorker thread started: True
+2025-08-31 00:49:48,166 - transcribrr - INFO - [DatabaseManager.py:733] - Starting DatabaseWorker thread
+2025-08-31 00:49:48,166 - transcribrr - INFO - [DatabaseManager.py:735] - DatabaseWorker thread started: True
+2025-08-31 00:49:48,167 - transcribrr - INFO - [DatabaseManager.py:733] - Starting DatabaseWorker thread
+2025-08-31 00:49:48,168 - transcribrr - INFO - [DatabaseManager.py:735] - DatabaseWorker thread started: True
+2025-08-31 00:49:48,169 - transcribrr - INFO - [DatabaseManager.py:733] - Starting DatabaseWorker thread
+2025-08-31 00:49:48,169 - transcribrr - INFO - [DatabaseManager.py:735] - DatabaseWorker thread started: True
+2025-08-31 00:49:48,170 - transcribrr - INFO - [DatabaseManager.py:733] - Starting DatabaseWorker thread
+2025-08-31 00:49:48,170 - transcribrr - INFO - [DatabaseManager.py:735] - DatabaseWorker thread started: True
+2025-08-31 00:49:48,171 - transcribrr - INFO - [DatabaseManager.py:733] - Starting DatabaseWorker thread
+2025-08-31 00:49:48,171 - transcribrr - INFO - [DatabaseManager.py:735] - DatabaseWorker thread started: True
+2025-08-31 00:49:48,172 - transcribrr - INFO - [DatabaseManager.py:733] - Starting DatabaseWorker thread
+2025-08-31 00:49:48,172 - transcribrr - INFO - [DatabaseManager.py:735] - DatabaseWorker thread started: True
+2025-08-31 00:49:48,173 - transcribrr - INFO - [DatabaseManager.py:733] - Starting DatabaseWorker thread
+2025-08-31 00:49:48,174 - transcribrr - INFO - [DatabaseManager.py:735] - DatabaseWorker thread started: True
+2025-08-31 00:49:48,177 - transcribrr - INFO - [DatabaseManager.py:733] - Starting DatabaseWorker thread
+2025-08-31 00:49:48,177 - transcribrr - INFO - [DatabaseManager.py:735] - DatabaseWorker thread started: True
+2025-08-31 00:49:48,180 - transcribrr - INFO - [DatabaseManager.py:733] - Starting DatabaseWorker thread
+2025-08-31 00:49:48,180 - transcribrr - INFO - [DatabaseManager.py:735] - DatabaseWorker thread started: True
+2025-08-31 00:49:48,183 - transcribrr - INFO - [DatabaseManager.py:733] - Starting DatabaseWorker thread
+2025-08-31 00:49:48,183 - transcribrr - INFO - [DatabaseManager.py:735] - DatabaseWorker thread started: True
+2025-08-31 00:49:48,185 - transcribrr - INFO - [DatabaseManager.py:733] - Starting DatabaseWorker thread
+2025-08-31 00:49:48,185 - transcribrr - INFO - [DatabaseManager.py:735] - DatabaseWorker thread started: True
+2025-08-31 00:49:48,188 - transcribrr - INFO - [DatabaseManager.py:733] - Starting DatabaseWorker thread
+2025-08-31 00:49:48,188 - transcribrr - INFO - [DatabaseManager.py:735] - DatabaseWorker thread started: False
+2025-08-31 00:49:48,190 - transcribrr - INFO - [DatabaseManager.py:733] - Starting DatabaseWorker thread
+2025-08-31 00:49:48,191 - transcribrr - INFO - [DatabaseManager.py:735] - DatabaseWorker thread started: True
+2025-08-31 00:49:48,192 - transcribrr - INFO - [DatabaseManager.py:733] - Starting DatabaseWorker thread
+2025-08-31 00:49:48,192 - transcribrr - INFO - [DatabaseManager.py:735] - DatabaseWorker thread started: True
+2025-08-31 00:49:48,193 - transcribrr - INFO - [DatabaseManager.py:733] - Starting DatabaseWorker thread
+2025-08-31 00:49:48,193 - transcribrr - INFO - [DatabaseManager.py:735] - DatabaseWorker thread started: True
+2025-08-31 00:49:48,724 - transcribrr - WARNING - [db_utils.py:291] - Invalid field 'transcript' provided for update_recording.
+2025-08-31 00:49:48,724 - transcribrr - WARNING - [db_utils.py:295] - No valid fields provided to update recording 42.
+2025-08-31 00:49:48,728 - transcribrr - DEBUG - [FolderManager.py:100] - Folder tables are initialized during database creation
+2025-08-31 00:49:48,729 - transcribrr - DEBUG - [FolderManager.py:100] - Folder tables are initialized during database creation
+2025-08-31 00:49:48,729 - transcribrr - WARNING - [FolderManager.py:53] - Different DatabaseManager instance provided to FolderManager.instance() after initialization. Using original instance.
+2025-08-31 00:49:48,729 - transcribrr - DEBUG - [FolderManager.py:100] - Folder tables are initialized during database creation
+2025-08-31 00:49:48,729 - transcribrr - DEBUG - [FolderManager.py:100] - Folder tables are initialized during database creation
+2025-08-31 00:49:48,729 - transcribrr - DEBUG - [FolderManager.py:100] - Folder tables are initialized during database creation
+2025-08-31 00:49:48,730 - transcribrr - DEBUG - [FolderManager.py:100] - Folder tables are initialized during database creation
+2025-08-31 00:50:33,472 - transcribrr - WARNING - [busy_guard.py:143] - Spinner 'nonexistent' not found or couldn't be started
+2025-08-31 00:50:33,474 - transcribrr - INFO - [DatabaseManager.py:733] - Starting DatabaseWorker thread
+2025-08-31 00:50:33,474 - transcribrr - INFO - [DatabaseManager.py:735] - DatabaseWorker thread started: True
+2025-08-31 00:50:33,476 - transcribrr - INFO - [DatabaseManager.py:733] - Starting DatabaseWorker thread
+2025-08-31 00:50:33,476 - transcribrr - INFO - [DatabaseManager.py:735] - DatabaseWorker thread started: True
+2025-08-31 00:50:33,478 - transcribrr - INFO - [DatabaseManager.py:733] - Starting DatabaseWorker thread
+2025-08-31 00:50:33,478 - transcribrr - INFO - [DatabaseManager.py:735] - DatabaseWorker thread started: True
+2025-08-31 00:50:33,479 - transcribrr - INFO - [DatabaseManager.py:733] - Starting DatabaseWorker thread
+2025-08-31 00:50:33,479 - transcribrr - INFO - [DatabaseManager.py:735] - DatabaseWorker thread started: True
+2025-08-31 00:50:33,480 - transcribrr - INFO - [DatabaseManager.py:733] - Starting DatabaseWorker thread
+2025-08-31 00:50:33,480 - transcribrr - INFO - [DatabaseManager.py:735] - DatabaseWorker thread started: True
+2025-08-31 00:50:33,482 - transcribrr - INFO - [DatabaseManager.py:733] - Starting DatabaseWorker thread
+2025-08-31 00:50:33,482 - transcribrr - INFO - [DatabaseManager.py:735] - DatabaseWorker thread started: True
+2025-08-31 00:50:33,483 - transcribrr - INFO - [DatabaseManager.py:733] - Starting DatabaseWorker thread
+2025-08-31 00:50:33,483 - transcribrr - INFO - [DatabaseManager.py:735] - DatabaseWorker thread started: True
+2025-08-31 00:50:33,484 - transcribrr - INFO - [DatabaseManager.py:733] - Starting DatabaseWorker thread
+2025-08-31 00:50:33,485 - transcribrr - INFO - [DatabaseManager.py:735] - DatabaseWorker thread started: True
+2025-08-31 00:50:33,486 - transcribrr - INFO - [DatabaseManager.py:733] - Starting DatabaseWorker thread
+2025-08-31 00:50:33,486 - transcribrr - INFO - [DatabaseManager.py:735] - DatabaseWorker thread started: True
+2025-08-31 00:50:33,487 - transcribrr - INFO - [DatabaseManager.py:733] - Starting DatabaseWorker thread
+2025-08-31 00:50:33,487 - transcribrr - INFO - [DatabaseManager.py:735] - DatabaseWorker thread started: True
+2025-08-31 00:50:33,488 - transcribrr - INFO - [DatabaseManager.py:733] - Starting DatabaseWorker thread
+2025-08-31 00:50:33,488 - transcribrr - INFO - [DatabaseManager.py:735] - DatabaseWorker thread started: True
+2025-08-31 00:50:33,492 - transcribrr - INFO - [DatabaseManager.py:733] - Starting DatabaseWorker thread
+2025-08-31 00:50:33,492 - transcribrr - INFO - [DatabaseManager.py:735] - DatabaseWorker thread started: True
+2025-08-31 00:50:33,495 - transcribrr - INFO - [DatabaseManager.py:733] - Starting DatabaseWorker thread
+2025-08-31 00:50:33,495 - transcribrr - INFO - [DatabaseManager.py:735] - DatabaseWorker thread started: True
+2025-08-31 00:50:33,498 - transcribrr - INFO - [DatabaseManager.py:733] - Starting DatabaseWorker thread
+2025-08-31 00:50:33,498 - transcribrr - INFO - [DatabaseManager.py:735] - DatabaseWorker thread started: True
+2025-08-31 00:50:33,500 - transcribrr - INFO - [DatabaseManager.py:733] - Starting DatabaseWorker thread
+2025-08-31 00:50:33,500 - transcribrr - INFO - [DatabaseManager.py:735] - DatabaseWorker thread started: True
+2025-08-31 00:50:33,503 - transcribrr - INFO - [DatabaseManager.py:733] - Starting DatabaseWorker thread
+2025-08-31 00:50:33,503 - transcribrr - INFO - [DatabaseManager.py:735] - DatabaseWorker thread started: False
+2025-08-31 00:50:33,505 - transcribrr - INFO - [DatabaseManager.py:733] - Starting DatabaseWorker thread
+2025-08-31 00:50:33,506 - transcribrr - INFO - [DatabaseManager.py:735] - DatabaseWorker thread started: True
+2025-08-31 00:50:33,507 - transcribrr - INFO - [DatabaseManager.py:733] - Starting DatabaseWorker thread
+2025-08-31 00:50:33,507 - transcribrr - INFO - [DatabaseManager.py:735] - DatabaseWorker thread started: True
+2025-08-31 00:50:33,508 - transcribrr - INFO - [DatabaseManager.py:733] - Starting DatabaseWorker thread
+2025-08-31 00:50:33,508 - transcribrr - INFO - [DatabaseManager.py:735] - DatabaseWorker thread started: True
+2025-08-31 00:50:34,035 - transcribrr - WARNING - [db_utils.py:291] - Invalid field 'transcript' provided for update_recording.
+2025-08-31 00:50:34,035 - transcribrr - WARNING - [db_utils.py:295] - No valid fields provided to update recording 42.
+2025-08-31 00:50:34,038 - transcribrr - DEBUG - [FolderManager.py:100] - Folder tables are initialized during database creation
+2025-08-31 00:50:34,039 - transcribrr - DEBUG - [FolderManager.py:100] - Folder tables are initialized during database creation
+2025-08-31 00:50:34,039 - transcribrr - WARNING - [FolderManager.py:53] - Different DatabaseManager instance provided to FolderManager.instance() after initialization. Using original instance.
+2025-08-31 00:50:34,040 - transcribrr - DEBUG - [FolderManager.py:100] - Folder tables are initialized during database creation
+2025-08-31 00:50:34,040 - transcribrr - DEBUG - [FolderManager.py:100] - Folder tables are initialized during database creation
+2025-08-31 00:50:34,040 - transcribrr - DEBUG - [FolderManager.py:100] - Folder tables are initialized during database creation
+2025-08-31 00:50:34,041 - transcribrr - DEBUG - [FolderManager.py:100] - Folder tables are initialized during database creation
+2025-08-31 00:51:41,852 - transcribrr - WARNING - [busy_guard.py:143] - Spinner 'nonexistent' not found or couldn't be started
+2025-08-31 00:51:41,854 - transcribrr - INFO - [DatabaseManager.py:733] - Starting DatabaseWorker thread
+2025-08-31 00:51:41,854 - transcribrr - INFO - [DatabaseManager.py:735] - DatabaseWorker thread started: True
+2025-08-31 00:51:41,856 - transcribrr - INFO - [DatabaseManager.py:733] - Starting DatabaseWorker thread
+2025-08-31 00:51:41,856 - transcribrr - INFO - [DatabaseManager.py:735] - DatabaseWorker thread started: True
+2025-08-31 00:51:41,857 - transcribrr - INFO - [DatabaseManager.py:733] - Starting DatabaseWorker thread
+2025-08-31 00:51:41,857 - transcribrr - INFO - [DatabaseManager.py:735] - DatabaseWorker thread started: True
+2025-08-31 00:51:41,858 - transcribrr - INFO - [DatabaseManager.py:733] - Starting DatabaseWorker thread
+2025-08-31 00:51:41,859 - transcribrr - INFO - [DatabaseManager.py:735] - DatabaseWorker thread started: True
+2025-08-31 00:51:41,860 - transcribrr - INFO - [DatabaseManager.py:733] - Starting DatabaseWorker thread
+2025-08-31 00:51:41,860 - transcribrr - INFO - [DatabaseManager.py:735] - DatabaseWorker thread started: True
+2025-08-31 00:51:41,861 - transcribrr - INFO - [DatabaseManager.py:733] - Starting DatabaseWorker thread
+2025-08-31 00:51:41,862 - transcribrr - INFO - [DatabaseManager.py:735] - DatabaseWorker thread started: True
+2025-08-31 00:51:41,863 - transcribrr - INFO - [DatabaseManager.py:733] - Starting DatabaseWorker thread
+2025-08-31 00:51:41,863 - transcribrr - INFO - [DatabaseManager.py:735] - DatabaseWorker thread started: True
+2025-08-31 00:51:41,864 - transcribrr - INFO - [DatabaseManager.py:733] - Starting DatabaseWorker thread
+2025-08-31 00:51:41,864 - transcribrr - INFO - [DatabaseManager.py:735] - DatabaseWorker thread started: True
+2025-08-31 00:51:41,866 - transcribrr - INFO - [DatabaseManager.py:733] - Starting DatabaseWorker thread
+2025-08-31 00:51:41,866 - transcribrr - INFO - [DatabaseManager.py:735] - DatabaseWorker thread started: True
+2025-08-31 00:51:41,867 - transcribrr - INFO - [DatabaseManager.py:733] - Starting DatabaseWorker thread
+2025-08-31 00:51:41,867 - transcribrr - INFO - [DatabaseManager.py:735] - DatabaseWorker thread started: True
+2025-08-31 00:51:41,868 - transcribrr - INFO - [DatabaseManager.py:733] - Starting DatabaseWorker thread
+2025-08-31 00:51:41,868 - transcribrr - INFO - [DatabaseManager.py:735] - DatabaseWorker thread started: True
+2025-08-31 00:51:41,872 - transcribrr - INFO - [DatabaseManager.py:733] - Starting DatabaseWorker thread
+2025-08-31 00:51:41,872 - transcribrr - INFO - [DatabaseManager.py:735] - DatabaseWorker thread started: True
+2025-08-31 00:51:41,875 - transcribrr - INFO - [DatabaseManager.py:733] - Starting DatabaseWorker thread
+2025-08-31 00:51:41,875 - transcribrr - INFO - [DatabaseManager.py:735] - DatabaseWorker thread started: True
+2025-08-31 00:51:41,878 - transcribrr - INFO - [DatabaseManager.py:733] - Starting DatabaseWorker thread
+2025-08-31 00:51:41,878 - transcribrr - INFO - [DatabaseManager.py:735] - DatabaseWorker thread started: True
+2025-08-31 00:51:41,881 - transcribrr - INFO - [DatabaseManager.py:733] - Starting DatabaseWorker thread
+2025-08-31 00:51:41,881 - transcribrr - INFO - [DatabaseManager.py:735] - DatabaseWorker thread started: True
+2025-08-31 00:51:41,883 - transcribrr - INFO - [DatabaseManager.py:733] - Starting DatabaseWorker thread
+2025-08-31 00:51:41,884 - transcribrr - INFO - [DatabaseManager.py:735] - DatabaseWorker thread started: False
+2025-08-31 00:51:41,886 - transcribrr - INFO - [DatabaseManager.py:733] - Starting DatabaseWorker thread
+2025-08-31 00:51:41,886 - transcribrr - INFO - [DatabaseManager.py:735] - DatabaseWorker thread started: True
+2025-08-31 00:51:41,887 - transcribrr - INFO - [DatabaseManager.py:733] - Starting DatabaseWorker thread
+2025-08-31 00:51:41,887 - transcribrr - INFO - [DatabaseManager.py:735] - DatabaseWorker thread started: True
+2025-08-31 00:51:41,888 - transcribrr - INFO - [DatabaseManager.py:733] - Starting DatabaseWorker thread
+2025-08-31 00:51:41,888 - transcribrr - INFO - [DatabaseManager.py:735] - DatabaseWorker thread started: True
+2025-08-31 00:51:42,421 - transcribrr - DEBUG - [FolderManager.py:100] - Folder tables are initialized during database creation
+2025-08-31 00:51:42,422 - transcribrr - DEBUG - [FolderManager.py:100] - Folder tables are initialized during database creation
+2025-08-31 00:51:42,422 - transcribrr - WARNING - [FolderManager.py:53] - Different DatabaseManager instance provided to FolderManager.instance() after initialization. Using original instance.
+2025-08-31 00:51:42,422 - transcribrr - DEBUG - [FolderManager.py:100] - Folder tables are initialized during database creation
+2025-08-31 00:51:42,423 - transcribrr - DEBUG - [FolderManager.py:100] - Folder tables are initialized during database creation
+2025-08-31 00:51:42,423 - transcribrr - DEBUG - [FolderManager.py:100] - Folder tables are initialized during database creation
+2025-08-31 00:51:42,423 - transcribrr - DEBUG - [FolderManager.py:100] - Folder tables are initialized during database creation
+2025-08-31 00:51:57,308 - transcribrr - WARNING - [busy_guard.py:143] - Spinner 'nonexistent' not found or couldn't be started
+2025-08-31 00:51:57,310 - transcribrr - INFO - [DatabaseManager.py:732] - Starting DatabaseWorker thread
+2025-08-31 00:51:57,310 - transcribrr - INFO - [DatabaseManager.py:734] - DatabaseWorker thread started: True
+2025-08-31 00:51:57,312 - transcribrr - INFO - [DatabaseManager.py:732] - Starting DatabaseWorker thread
+2025-08-31 00:51:57,312 - transcribrr - INFO - [DatabaseManager.py:734] - DatabaseWorker thread started: True
+2025-08-31 00:51:57,313 - transcribrr - INFO - [DatabaseManager.py:732] - Starting DatabaseWorker thread
+2025-08-31 00:51:57,313 - transcribrr - INFO - [DatabaseManager.py:734] - DatabaseWorker thread started: True
+2025-08-31 00:51:57,314 - transcribrr - INFO - [DatabaseManager.py:732] - Starting DatabaseWorker thread
+2025-08-31 00:51:57,314 - transcribrr - INFO - [DatabaseManager.py:734] - DatabaseWorker thread started: True
+2025-08-31 00:51:57,315 - transcribrr - INFO - [DatabaseManager.py:732] - Starting DatabaseWorker thread
+2025-08-31 00:51:57,315 - transcribrr - INFO - [DatabaseManager.py:734] - DatabaseWorker thread started: True
+2025-08-31 00:51:57,317 - transcribrr - INFO - [DatabaseManager.py:732] - Starting DatabaseWorker thread
+2025-08-31 00:51:57,317 - transcribrr - INFO - [DatabaseManager.py:734] - DatabaseWorker thread started: True
+2025-08-31 00:51:57,318 - transcribrr - INFO - [DatabaseManager.py:732] - Starting DatabaseWorker thread
+2025-08-31 00:51:57,319 - transcribrr - INFO - [DatabaseManager.py:734] - DatabaseWorker thread started: True
+2025-08-31 00:51:57,320 - transcribrr - INFO - [DatabaseManager.py:732] - Starting DatabaseWorker thread
+2025-08-31 00:51:57,320 - transcribrr - INFO - [DatabaseManager.py:734] - DatabaseWorker thread started: True
+2025-08-31 00:51:57,321 - transcribrr - INFO - [DatabaseManager.py:732] - Starting DatabaseWorker thread
+2025-08-31 00:51:57,321 - transcribrr - INFO - [DatabaseManager.py:734] - DatabaseWorker thread started: True
+2025-08-31 00:51:57,322 - transcribrr - INFO - [DatabaseManager.py:732] - Starting DatabaseWorker thread
+2025-08-31 00:51:57,322 - transcribrr - INFO - [DatabaseManager.py:734] - DatabaseWorker thread started: True
+2025-08-31 00:51:57,323 - transcribrr - INFO - [DatabaseManager.py:732] - Starting DatabaseWorker thread
+2025-08-31 00:51:57,323 - transcribrr - INFO - [DatabaseManager.py:734] - DatabaseWorker thread started: True
+2025-08-31 00:51:57,327 - transcribrr - INFO - [DatabaseManager.py:732] - Starting DatabaseWorker thread
+2025-08-31 00:51:57,327 - transcribrr - INFO - [DatabaseManager.py:734] - DatabaseWorker thread started: True
+2025-08-31 00:51:57,329 - transcribrr - INFO - [DatabaseManager.py:732] - Starting DatabaseWorker thread
+2025-08-31 00:51:57,330 - transcribrr - INFO - [DatabaseManager.py:734] - DatabaseWorker thread started: True
+2025-08-31 00:51:57,333 - transcribrr - INFO - [DatabaseManager.py:732] - Starting DatabaseWorker thread
+2025-08-31 00:51:57,333 - transcribrr - INFO - [DatabaseManager.py:734] - DatabaseWorker thread started: True
+2025-08-31 00:51:57,335 - transcribrr - INFO - [DatabaseManager.py:732] - Starting DatabaseWorker thread
+2025-08-31 00:51:57,335 - transcribrr - INFO - [DatabaseManager.py:734] - DatabaseWorker thread started: True
+2025-08-31 00:51:57,338 - transcribrr - INFO - [DatabaseManager.py:732] - Starting DatabaseWorker thread
+2025-08-31 00:51:57,338 - transcribrr - INFO - [DatabaseManager.py:734] - DatabaseWorker thread started: False
+2025-08-31 00:51:57,340 - transcribrr - INFO - [DatabaseManager.py:732] - Starting DatabaseWorker thread
+2025-08-31 00:51:57,340 - transcribrr - INFO - [DatabaseManager.py:734] - DatabaseWorker thread started: True
+2025-08-31 00:51:57,341 - transcribrr - INFO - [DatabaseManager.py:732] - Starting DatabaseWorker thread
+2025-08-31 00:51:57,341 - transcribrr - INFO - [DatabaseManager.py:734] - DatabaseWorker thread started: True
+2025-08-31 00:51:57,342 - transcribrr - INFO - [DatabaseManager.py:732] - Starting DatabaseWorker thread
+2025-08-31 00:51:57,342 - transcribrr - INFO - [DatabaseManager.py:734] - DatabaseWorker thread started: True
+2025-08-31 00:51:57,874 - transcribrr - DEBUG - [FolderManager.py:100] - Folder tables are initialized during database creation
+2025-08-31 00:51:57,875 - transcribrr - DEBUG - [FolderManager.py:100] - Folder tables are initialized during database creation
+2025-08-31 00:51:57,876 - transcribrr - WARNING - [FolderManager.py:53] - Different DatabaseManager instance provided to FolderManager.instance() after initialization. Using original instance.
+2025-08-31 00:51:57,876 - transcribrr - DEBUG - [FolderManager.py:100] - Folder tables are initialized during database creation
+2025-08-31 00:51:57,876 - transcribrr - DEBUG - [FolderManager.py:100] - Folder tables are initialized during database creation
+2025-08-31 00:51:57,876 - transcribrr - DEBUG - [FolderManager.py:100] - Folder tables are initialized during database creation
+2025-08-31 00:51:57,877 - transcribrr - DEBUG - [FolderManager.py:100] - Folder tables are initialized during database creation
+2025-08-31 00:52:07,001 - transcribrr - WARNING - [busy_guard.py:143] - Spinner 'nonexistent' not found or couldn't be started
+2025-08-31 00:52:07,003 - transcribrr - INFO - [DatabaseManager.py:732] - Starting DatabaseWorker thread
+2025-08-31 00:52:07,004 - transcribrr - INFO - [DatabaseManager.py:734] - DatabaseWorker thread started: True
+2025-08-31 00:52:07,005 - transcribrr - INFO - [DatabaseManager.py:732] - Starting DatabaseWorker thread
+2025-08-31 00:52:07,005 - transcribrr - INFO - [DatabaseManager.py:734] - DatabaseWorker thread started: True
+2025-08-31 00:52:07,007 - transcribrr - INFO - [DatabaseManager.py:732] - Starting DatabaseWorker thread
+2025-08-31 00:52:07,007 - transcribrr - INFO - [DatabaseManager.py:734] - DatabaseWorker thread started: True
+2025-08-31 00:52:07,008 - transcribrr - INFO - [DatabaseManager.py:732] - Starting DatabaseWorker thread
+2025-08-31 00:52:07,008 - transcribrr - INFO - [DatabaseManager.py:734] - DatabaseWorker thread started: True
+2025-08-31 00:52:07,010 - transcribrr - INFO - [DatabaseManager.py:732] - Starting DatabaseWorker thread
+2025-08-31 00:52:07,010 - transcribrr - INFO - [DatabaseManager.py:734] - DatabaseWorker thread started: True
+2025-08-31 00:52:07,012 - transcribrr - INFO - [DatabaseManager.py:732] - Starting DatabaseWorker thread
+2025-08-31 00:52:07,012 - transcribrr - INFO - [DatabaseManager.py:734] - DatabaseWorker thread started: True
+2025-08-31 00:52:07,013 - transcribrr - INFO - [DatabaseManager.py:732] - Starting DatabaseWorker thread
+2025-08-31 00:52:07,013 - transcribrr - INFO - [DatabaseManager.py:734] - DatabaseWorker thread started: True
+2025-08-31 00:52:07,014 - transcribrr - INFO - [DatabaseManager.py:732] - Starting DatabaseWorker thread
+2025-08-31 00:52:07,014 - transcribrr - INFO - [DatabaseManager.py:734] - DatabaseWorker thread started: True
+2025-08-31 00:52:07,015 - transcribrr - INFO - [DatabaseManager.py:732] - Starting DatabaseWorker thread
+2025-08-31 00:52:07,015 - transcribrr - INFO - [DatabaseManager.py:734] - DatabaseWorker thread started: True
+2025-08-31 00:52:07,016 - transcribrr - INFO - [DatabaseManager.py:732] - Starting DatabaseWorker thread
+2025-08-31 00:52:07,017 - transcribrr - INFO - [DatabaseManager.py:734] - DatabaseWorker thread started: True
+2025-08-31 00:52:07,018 - transcribrr - INFO - [DatabaseManager.py:732] - Starting DatabaseWorker thread
+2025-08-31 00:52:07,018 - transcribrr - INFO - [DatabaseManager.py:734] - DatabaseWorker thread started: True
+2025-08-31 00:52:07,022 - transcribrr - INFO - [DatabaseManager.py:732] - Starting DatabaseWorker thread
+2025-08-31 00:52:07,022 - transcribrr - INFO - [DatabaseManager.py:734] - DatabaseWorker thread started: True
+2025-08-31 00:52:07,024 - transcribrr - INFO - [DatabaseManager.py:732] - Starting DatabaseWorker thread
+2025-08-31 00:52:07,024 - transcribrr - INFO - [DatabaseManager.py:734] - DatabaseWorker thread started: True
+2025-08-31 00:52:07,028 - transcribrr - INFO - [DatabaseManager.py:732] - Starting DatabaseWorker thread
+2025-08-31 00:52:07,028 - transcribrr - INFO - [DatabaseManager.py:734] - DatabaseWorker thread started: True
+2025-08-31 00:52:07,030 - transcribrr - INFO - [DatabaseManager.py:732] - Starting DatabaseWorker thread
+2025-08-31 00:52:07,030 - transcribrr - INFO - [DatabaseManager.py:734] - DatabaseWorker thread started: True
+2025-08-31 00:52:07,033 - transcribrr - INFO - [DatabaseManager.py:732] - Starting DatabaseWorker thread
+2025-08-31 00:52:07,033 - transcribrr - INFO - [DatabaseManager.py:734] - DatabaseWorker thread started: False
+2025-08-31 00:52:07,035 - transcribrr - INFO - [DatabaseManager.py:732] - Starting DatabaseWorker thread
+2025-08-31 00:52:07,035 - transcribrr - INFO - [DatabaseManager.py:734] - DatabaseWorker thread started: True
+2025-08-31 00:52:07,036 - transcribrr - INFO - [DatabaseManager.py:732] - Starting DatabaseWorker thread
+2025-08-31 00:52:07,036 - transcribrr - INFO - [DatabaseManager.py:734] - DatabaseWorker thread started: True
+2025-08-31 00:52:07,038 - transcribrr - INFO - [DatabaseManager.py:732] - Starting DatabaseWorker thread
+2025-08-31 00:52:07,038 - transcribrr - INFO - [DatabaseManager.py:734] - DatabaseWorker thread started: True
+2025-08-31 00:52:07,574 - transcribrr - DEBUG - [FolderManager.py:100] - Folder tables are initialized during database creation
+2025-08-31 00:52:07,575 - transcribrr - DEBUG - [FolderManager.py:100] - Folder tables are initialized during database creation
+2025-08-31 00:52:07,576 - transcribrr - WARNING - [FolderManager.py:53] - Different DatabaseManager instance provided to FolderManager.instance() after initialization. Using original instance.
+2025-08-31 00:52:07,576 - transcribrr - DEBUG - [FolderManager.py:100] - Folder tables are initialized during database creation
+2025-08-31 00:52:07,576 - transcribrr - DEBUG - [FolderManager.py:100] - Folder tables are initialized during database creation
+2025-08-31 00:52:07,576 - transcribrr - DEBUG - [FolderManager.py:100] - Folder tables are initialized during database creation
+2025-08-31 00:52:07,577 - transcribrr - DEBUG - [FolderManager.py:100] - Folder tables are initialized during database creation
+2025-08-31 00:52:15,226 - transcribrr - WARNING - [busy_guard.py:143] - Spinner 'nonexistent' not found or couldn't be started
+2025-08-31 00:52:15,228 - transcribrr - INFO - [DatabaseManager.py:732] - Starting DatabaseWorker thread
+2025-08-31 00:52:15,229 - transcribrr - INFO - [DatabaseManager.py:734] - DatabaseWorker thread started: True
+2025-08-31 00:52:15,230 - transcribrr - INFO - [DatabaseManager.py:732] - Starting DatabaseWorker thread
+2025-08-31 00:52:15,230 - transcribrr - INFO - [DatabaseManager.py:734] - DatabaseWorker thread started: True
+2025-08-31 00:52:15,232 - transcribrr - INFO - [DatabaseManager.py:732] - Starting DatabaseWorker thread
+2025-08-31 00:52:15,232 - transcribrr - INFO - [DatabaseManager.py:734] - DatabaseWorker thread started: True
+2025-08-31 00:52:15,233 - transcribrr - INFO - [DatabaseManager.py:732] - Starting DatabaseWorker thread
+2025-08-31 00:52:15,233 - transcribrr - INFO - [DatabaseManager.py:734] - DatabaseWorker thread started: True
+2025-08-31 00:52:15,234 - transcribrr - INFO - [DatabaseManager.py:732] - Starting DatabaseWorker thread
+2025-08-31 00:52:15,234 - transcribrr - INFO - [DatabaseManager.py:734] - DatabaseWorker thread started: True
+2025-08-31 00:52:15,236 - transcribrr - INFO - [DatabaseManager.py:732] - Starting DatabaseWorker thread
+2025-08-31 00:52:15,236 - transcribrr - INFO - [DatabaseManager.py:734] - DatabaseWorker thread started: True
+2025-08-31 00:52:15,237 - transcribrr - INFO - [DatabaseManager.py:732] - Starting DatabaseWorker thread
+2025-08-31 00:52:15,237 - transcribrr - INFO - [DatabaseManager.py:734] - DatabaseWorker thread started: True
+2025-08-31 00:52:15,238 - transcribrr - INFO - [DatabaseManager.py:732] - Starting DatabaseWorker thread
+2025-08-31 00:52:15,238 - transcribrr - INFO - [DatabaseManager.py:734] - DatabaseWorker thread started: True
+2025-08-31 00:52:15,240 - transcribrr - INFO - [DatabaseManager.py:732] - Starting DatabaseWorker thread
+2025-08-31 00:52:15,240 - transcribrr - INFO - [DatabaseManager.py:734] - DatabaseWorker thread started: True
+2025-08-31 00:52:15,241 - transcribrr - INFO - [DatabaseManager.py:732] - Starting DatabaseWorker thread
+2025-08-31 00:52:15,241 - transcribrr - INFO - [DatabaseManager.py:734] - DatabaseWorker thread started: True
+2025-08-31 00:52:15,242 - transcribrr - INFO - [DatabaseManager.py:732] - Starting DatabaseWorker thread
+2025-08-31 00:52:15,242 - transcribrr - INFO - [DatabaseManager.py:734] - DatabaseWorker thread started: True
+2025-08-31 00:52:15,246 - transcribrr - INFO - [DatabaseManager.py:732] - Starting DatabaseWorker thread
+2025-08-31 00:52:15,246 - transcribrr - INFO - [DatabaseManager.py:734] - DatabaseWorker thread started: True
+2025-08-31 00:52:15,248 - transcribrr - INFO - [DatabaseManager.py:732] - Starting DatabaseWorker thread
+2025-08-31 00:52:15,248 - transcribrr - INFO - [DatabaseManager.py:734] - DatabaseWorker thread started: True
+2025-08-31 00:52:15,252 - transcribrr - INFO - [DatabaseManager.py:732] - Starting DatabaseWorker thread
+2025-08-31 00:52:15,252 - transcribrr - INFO - [DatabaseManager.py:734] - DatabaseWorker thread started: True
+2025-08-31 00:52:15,254 - transcribrr - INFO - [DatabaseManager.py:732] - Starting DatabaseWorker thread
+2025-08-31 00:52:15,254 - transcribrr - INFO - [DatabaseManager.py:734] - DatabaseWorker thread started: True
+2025-08-31 00:52:15,257 - transcribrr - INFO - [DatabaseManager.py:732] - Starting DatabaseWorker thread
+2025-08-31 00:52:15,257 - transcribrr - INFO - [DatabaseManager.py:734] - DatabaseWorker thread started: False
+2025-08-31 00:52:15,259 - transcribrr - INFO - [DatabaseManager.py:732] - Starting DatabaseWorker thread
+2025-08-31 00:52:15,259 - transcribrr - INFO - [DatabaseManager.py:734] - DatabaseWorker thread started: True
+2025-08-31 00:52:15,260 - transcribrr - INFO - [DatabaseManager.py:732] - Starting DatabaseWorker thread
+2025-08-31 00:52:15,260 - transcribrr - INFO - [DatabaseManager.py:734] - DatabaseWorker thread started: True
+2025-08-31 00:52:15,262 - transcribrr - INFO - [DatabaseManager.py:732] - Starting DatabaseWorker thread
+2025-08-31 00:52:15,262 - transcribrr - INFO - [DatabaseManager.py:734] - DatabaseWorker thread started: True
