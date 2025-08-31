@@ -1,108 +1,171 @@
-###############################################################################
-# PEP 518 – build backend                                                      #
-###############################################################################
-[build-system]
-requires      = ["briefcase>=0.3.22"]
-build-backend = "briefcase.build_system"
-
-
-###############################################################################
-# PEP 621 – core project metadata                                             #
-###############################################################################
 [project]
-name            = "transcribrr"                # distribution name (all-lowercase)
-version         = "1.0.0"                      # single source of truth
-description     = "Speech-to-text transcription tool"
-authors         = [{ name = "John Miller", email = "john@johnbmiller.com" }]
-license         = { file = "LICENSE" }
+name = "transcribrr"
+version = "1.0.0"
+description = "Speech-to-text transcription tool with GPT-4 integration"
+authors = [{ name = "John Miller", email = "john@johnbmiller.com" }]
+readme = "README.md"
+license = { file = "LICENSE" }
 requires-python = ">=3.11"
-
-
-###############################################################################
-# Briefcase – global settings                                                  #
-###############################################################################
-[tool.briefcase]
-project_name = "Transcribrr"                   # human-readable
-bundle       = "com.transcribrr"               # reverse-DNS identifier
-author       = "John Miller"
-author_email = "john@johnbmiller.com"
-
-# Runtime dependencies installed into the bundle
-requires = [
-    "-r", "requirements.txt",
+dependencies = [
+    # Core utilities (minimal dependencies for testing)
+    "requests>=2.31.0",
+    "python-dotenv>=1.0.0",
+    "keyring>=24.0.0",
+    "appdirs>=1.4.4",
+    "psutil>=5.9.0",
+    
+    # Data processing
+    "beautifulsoup4>=4.12.0",
+    "pyyaml>=6.0",
+    "colorlog>=6.8.0",
+    "humanfriendly>=10.0",
+    
+    # API client
+    "openai>=1.0.0",
 ]
 
-
-###############################################################################
-# Briefcase – app definition (cross-platform keys)                             #
-###############################################################################
-[tool.briefcase.app.transcribrr]
-formal_name  = "Transcribrr"
-description  = "Speech-to-text transcription tool"
-
-# Source code that must be copied into the bundle
-sources = [
-    "transcribrr",          # wrapper package created in CI
-    "app",                  # your application package
+[project.optional-dependencies]
+gui = [
+    "PyQt6>=6.5.0",
+    "PyQt6-Qt6>=6.5.0",
 ]
 
-# Cross-platform permission (Briefcase converts to plist + entitlement)
-permission.microphone = true
+audio = [
+    "pyaudio>=0.2.11",
+    "pydub>=0.25.1",
+    "sounddevice>=0.5.1",
+    "soundfile>=0.12.1",
+]
 
+ml = [
+    "torch>=2.0.0",
+    "torchaudio>=2.0.0",
+    "transformers>=4.30.0",
+    "pyannote.audio>=3.0.0",
+    "faster-whisper>=1.1.0",
+    "openai-whisper>=20231117",
+]
 
-###############################################################################
-# macOS-specific configuration                                                 #
-###############################################################################
-# No keys required here unless you have macOS-only *requires* or build hooks.
-[tool.briefcase.app.transcribrr.macOS]
+docs = [
+    "python-docx>=1.0.0",
+    "htmldocx>=0.0.6",
+]
 
+dev = [
+    "flake8>=7.0.0",
+    "black>=24.0.0",
+    "mypy>=1.9.0",
+    "pytest>=8.0.0",
+    "pytest-cov>=5.0.0",
+    "pytest-qt>=4.4.0",
+    "coverage>=7.4.0",
+]
 
-###############################################################################
-# macOS.app bundle-level options                                               #
-###############################################################################
-[tool.briefcase.app.transcribrr.macOS.app]
-# Visual and data assets
-icon        = "icons/app/app_icon.icns"
-resources   = ["icons", "preset_prompts.json"]
+build = [
+    "briefcase>=0.3.22",
+    "pyinstaller>=6.0.0",
+]
 
-# Apple-silicon-only build (skips x86-64 slice)
-universal_build = false
+all = [
+    "PyQt6>=6.5.0",
+    "PyQt6-Qt6>=6.5.0",
+    "pyaudio>=0.2.11",
+    "pydub>=0.25.1",
+    "sounddevice>=0.5.1",
+    "soundfile>=0.12.1",
+    "torch>=2.0.0",
+    "torchaudio>=2.0.0",
+    "transformers>=4.30.0",
+    "pyannote.audio>=3.0.0",
+    "faster-whisper>=1.1.0",
+    "openai-whisper>=20231117",
+    "python-docx>=1.0.0",
+    "htmldocx>=0.0.6",
+]
 
-# Optional explicit privacy string (overrides Briefcase default)
-info."NSMicrophoneUsageDescription" = "Transcribrr records audio so it can transcribe your speech."
+[project.scripts]
+transcribrr = "app.__main__:main"
 
-###############################################################################
-# Mypy configuration                                                           #
-###############################################################################
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.uv]
+dev-dependencies = [
+    "flake8>=7.1.1",
+    "black>=24.0.0",
+    "mypy>=1.9.0",
+    "pytest>=8.0.0",
+    "pytest-cov>=5.0.0",
+    "coverage>=7.4.0",
+]
+
+[[tool.uv.index]]
+name = "pytorch-cu121"
+url = "https://download.pytorch.org/whl/cu121"
+explicit = true
+
+[tool.uv.sources]
+torch = { index = "pytorch-cu121" }
+torchaudio = { index = "pytorch-cu121" }
+
+[tool.hatch.build.targets.wheel]
+packages = ["app"]
+
+[tool.black]
+line-length = 100
+target-version = ['py311']
+include = '\.pyi?$'
+
+[tool.flake8]
+max-line-length = 100
+extend-ignore = ["E203", "W503"]
+exclude = [".git", "__pycache__", "build", "dist", ".venv"]
+
 [tool.mypy]
 python_version = "3.11"
 warn_return_any = true
 warn_unused_configs = true
 disallow_untyped_defs = false
-disallow_incomplete_defs = false
 check_untyped_defs = true
-disallow_untyped_decorators = false
 no_implicit_optional = true
 strict_optional = false
 
-# Ignore errors in __init__.py files to prevent import cycle warnings
 [[tool.mypy.overrides]]
-module = "app.*.__init__"
-ignore_errors = true
-
-# Ignore missing type stubs for third-party libraries
-[[tool.mypy.overrides]]
-module = "appdirs"
+module = [
+    "appdirs",
+    "pyannote.audio",
+    "torchaudio",
+    "pydub",
+    "PyQt6.*",
+    "transformers",
+    "torch",
+    "whisper",
+    "faster_whisper",
+]
 ignore_missing_imports = true
 
-[[tool.mypy.overrides]]
-module = "pyannote.audio"
-ignore_missing_imports = true
+[tool.pytest.ini_options]
+minversion = "6.0"
+testpaths = ["app/tests"]
+python_files = "test_*.py"
+addopts = "-v --tb=short"
 
-[[tool.mypy.overrides]]
-module = "torchaudio"
-ignore_missing_imports = true
+[tool.coverage.run]
+source = ["app"]
+omit = [
+    "*/tests/*",
+    "*/__init__.py",
+    "*/test_*.py",
+]
 
-[[tool.mypy.overrides]]
-module = "pydub"
-ignore_missing_imports = true
+[tool.coverage.report]
+exclude_lines = [
+    "pragma: no cover",
+    "def __repr__",
+    "if self.debug:",
+    "if __name__ == .__main__.:",
+    "raise NotImplementedError",
+    "pass",
+    "except ImportError:",
+]

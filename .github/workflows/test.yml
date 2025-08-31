@@ -17,10 +17,19 @@ jobs:
     steps:
     - uses: actions/checkout@v4
     
-    - name: Set up Python ${{ matrix.python-version }}
-      uses: actions/setup-python@v5
+    - name: Install uv
+      uses: astral-sh/setup-uv@v4
       with:
-        python-version: ${{ matrix.python-version }}
+        enable-cache: true
+        cache-dependency-glob: "uv.lock"
+    
+    - name: Set up Python ${{ matrix.python-version }}
+      run: uv python install ${{ matrix.python-version }}
+    
+    - name: Install dependencies
+      run: |
+        uv sync --frozen --no-install-project
+        uv pip install -e .
     
     - name: Run unit tests
       env:
@@ -30,15 +39,20 @@ jobs:
         echo "Running tests with Python ${{ matrix.python-version }}"
         
         # Run tests that don't require external dependencies
-        python -m unittest app.tests.test_secure -v
-        python -m unittest app.tests.test_thread_manager -v
-        python -m unittest app.tests.test_recording_model -v
-        python -m unittest app.tests.test_transcription_controller -v
-        python -m unittest app.tests.test_folder_manager -v
+        uv run python -m unittest app.tests.test_secure -v
+        uv run python -m unittest app.tests.test_thread_manager -v
+        uv run python -m unittest app.tests.test_recording_model -v
+        uv run python -m unittest app.tests.test_transcription_controller -v
+        uv run python -m unittest app.tests.test_folder_manager -v
         
-        # Count results
         echo ""
         echo "Test suite completed successfully!"
+    
+    - name: Run linting
+      if: matrix.python-version == '3.11'
+      run: |
+        uv run flake8 app --count --select=E9,F63,F7,F82 --show-source --statistics
+        uv run flake8 app --count --exit-zero --max-complexity=10 --max-line-length=100 --statistics
     
     - name: Upload test results
       if: always()

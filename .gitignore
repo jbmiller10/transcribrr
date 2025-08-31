@@ -1,16 +1,52 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+*.egg-info/
+dist/
+build/
+*.egg
+
+# Virtual environments
 venv/
-__pycache__
-.git/
-*.wav
-.idea/inspectionProfiles/profiles_settings.xml
-.idea/misc.xml
-.idea/vcs.xml
-.idea/workspace.xml
+env/
+ENV/
+.venv/
+
+# uv
+.venv/
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+.DS_Store
+
+# Project specific
 config.json
+*.wav
 *.mp3
 *.m4a
-.DS_Storen
 *.sqlite
-
+*.db
 /output
-.idea/transcribrr.iml
+
+# Testing
+.coverage
+htmlcov/
+.pytest_cache/
+.tox/
+test-results/
+
+# Logs
+*.log
+
+# Temporary files
+*.tmp
+*.bak
+requirements_utf8.txt
+pyproject.toml.briefcase.bak
