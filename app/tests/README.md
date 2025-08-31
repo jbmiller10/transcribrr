@@ -68,6 +68,13 @@ The tests follow these general patterns:
 
 7. **Focus on internal logic** - Tests focus on the internal logic of components rather than their interaction with the UI.
 
+## Headless/CI Tips
+
+- Set `QT_QPA_PLATFORM=offscreen` to run Qt-dependent tests without a display.
+- Wrap test runs with a process timeout to avoid hangs during development/CI:
+  - Linux/macOS: `timeout 5m python -m unittest discover -v`
+  - With uv: `timeout 5m uv run python -m unittest discover -v`
+
 ## Manual Tests
 
 The `manual/` directory contains test scripts that need to be run manually to verify UI interactions, database operations, and error handling. These tests include visual feedback and require user interaction.

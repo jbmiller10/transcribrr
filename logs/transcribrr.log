@@ -2113,3 +2113,1007 @@ sqlite3.IntegrityError: duplicate
 2025-08-31 00:54:13,201 - transcribrr - DEBUG - [path_utils.py:21] - Using PyInstaller _MEIPASS path: /tmp/pyi12345
 2025-08-31 00:54:13,201 - transcribrr - DEBUG - [path_utils.py:21] - Using PyInstaller _MEIPASS path: /tmp/pyi12345
 2025-08-31 00:54:13,202 - transcribrr - DEBUG - [path_utils.py:67] - Resource path for 'file.txt': /tmp/pyi12345/file.txt
+2025-08-31 02:08:22,978 - transcribrr - WARNING - [busy_guard.py:143] - Spinner 'nonexistent' not found or couldn't be started
+2025-08-31 02:08:23,000 - transcribrr - INFO - [DatabaseManager.py:732] - Starting DatabaseWorker thread
+2025-08-31 02:08:23,000 - transcribrr - INFO - [DatabaseManager.py:734] - DatabaseWorker thread started: True
+2025-08-31 02:08:23,003 - transcribrr - INFO - [DatabaseManager.py:732] - Starting DatabaseWorker thread
+2025-08-31 02:08:23,004 - transcribrr - INFO - [DatabaseManager.py:734] - DatabaseWorker thread started: True
+2025-08-31 02:08:23,007 - transcribrr - INFO - [DatabaseManager.py:732] - Starting DatabaseWorker thread
+2025-08-31 02:08:23,007 - transcribrr - INFO - [DatabaseManager.py:734] - DatabaseWorker thread started: True
+2025-08-31 02:08:23,010 - transcribrr - INFO - [DatabaseManager.py:732] - Starting DatabaseWorker thread
+2025-08-31 02:08:23,010 - transcribrr - INFO - [DatabaseManager.py:734] - DatabaseWorker thread started: True
+2025-08-31 02:08:23,013 - transcribrr - INFO - [DatabaseManager.py:732] - Starting DatabaseWorker thread
+2025-08-31 02:08:23,013 - transcribrr - INFO - [DatabaseManager.py:734] - DatabaseWorker thread started: True
+2025-08-31 02:08:23,016 - transcribrr - INFO - [DatabaseManager.py:732] - Starting DatabaseWorker thread
+2025-08-31 02:08:23,016 - transcribrr - INFO - [DatabaseManager.py:734] - DatabaseWorker thread started: True
+2025-08-31 02:08:23,019 - transcribrr - INFO - [DatabaseManager.py:732] - Starting DatabaseWorker thread
+2025-08-31 02:08:23,019 - transcribrr - INFO - [DatabaseManager.py:734] - DatabaseWorker thread started: True
+2025-08-31 02:08:23,022 - transcribrr - INFO - [DatabaseManager.py:732] - Starting DatabaseWorker thread
+2025-08-31 02:08:23,022 - transcribrr - INFO - [DatabaseManager.py:734] - DatabaseWorker thread started: True
+2025-08-31 02:08:23,025 - transcribrr - INFO - [DatabaseManager.py:732] - Starting DatabaseWorker thread
+2025-08-31 02:08:23,025 - transcribrr - INFO - [DatabaseManager.py:734] - DatabaseWorker thread started: True
+2025-08-31 02:08:23,027 - transcribrr - INFO - [DatabaseManager.py:732] - Starting DatabaseWorker thread
+2025-08-31 02:08:23,027 - transcribrr - INFO - [DatabaseManager.py:734] - DatabaseWorker thread started: True
+2025-08-31 02:08:23,030 - transcribrr - INFO - [DatabaseManager.py:732] - Starting DatabaseWorker thread
+2025-08-31 02:08:23,030 - transcribrr - INFO - [DatabaseManager.py:734] - DatabaseWorker thread started: True
+2025-08-31 02:08:23,039 - transcribrr - INFO - [DatabaseManager.py:732] - Starting DatabaseWorker thread
+2025-08-31 02:08:23,039 - transcribrr - INFO - [DatabaseManager.py:734] - DatabaseWorker thread started: True
+2025-08-31 02:08:23,045 - transcribrr - INFO - [DatabaseManager.py:732] - Starting DatabaseWorker thread
+2025-08-31 02:08:23,045 - transcribrr - INFO - [DatabaseManager.py:734] - DatabaseWorker thread started: True
+2025-08-31 02:08:23,051 - transcribrr - INFO - [DatabaseManager.py:732] - Starting DatabaseWorker thread
+2025-08-31 02:08:23,051 - transcribrr - INFO - [DatabaseManager.py:734] - DatabaseWorker thread started: True
+2025-08-31 02:08:23,056 - transcribrr - INFO - [DatabaseManager.py:732] - Starting DatabaseWorker thread
+2025-08-31 02:08:23,056 - transcribrr - INFO - [DatabaseManager.py:734] - DatabaseWorker thread started: True
+2025-08-31 02:08:23,063 - transcribrr - INFO - [DatabaseManager.py:732] - Starting DatabaseWorker thread
+2025-08-31 02:08:23,063 - transcribrr - INFO - [DatabaseManager.py:734] - DatabaseWorker thread started: False
+2025-08-31 02:08:23,068 - transcribrr - INFO - [DatabaseManager.py:732] - Starting DatabaseWorker thread
+2025-08-31 02:08:23,068 - transcribrr - INFO - [DatabaseManager.py:734] - DatabaseWorker thread started: True
+2025-08-31 02:08:23,072 - transcribrr - INFO - [DatabaseManager.py:732] - Starting DatabaseWorker thread
+2025-08-31 02:08:23,072 - transcribrr - INFO - [DatabaseManager.py:734] - DatabaseWorker thread started: True
+2025-08-31 02:08:23,080 - transcribrr - INFO - [DatabaseManager.py:732] - Starting DatabaseWorker thread
+2025-08-31 02:08:23,080 - transcribrr - INFO - [DatabaseManager.py:734] - DatabaseWorker thread started: True
+2025-08-31 02:08:23,645 - transcribrr - ERROR - [db_utils.py:261] - Error creating recording (duplicate path '/x'): duplicate
+Traceback (most recent call last):
+  File "/home/john/transcribrr/app/db_utils.py", line 253, in create_recording
+    cursor.execute(sql, tuple(data_to_insert[:7]))
+  File "/home/john/.local/share/uv/python/cpython-3.11.9-linux-x86_64-gnu/lib/python3.11/unittest/mock.py", line 1124, in __call__
+    return self._mock_call(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/john/.local/share/uv/python/cpython-3.11.9-linux-x86_64-gnu/lib/python3.11/unittest/mock.py", line 1128, in _mock_call
+    return self._execute_mock_call(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/john/.local/share/uv/python/cpython-3.11.9-linux-x86_64-gnu/lib/python3.11/unittest/mock.py", line 1183, in _execute_mock_call
+    raise effect
+sqlite3.IntegrityError: duplicate
+2025-08-31 02:08:23,647 - transcribrr - INFO - [db_utils.py:256] - Created recording 'file.wav' with ID 7
+2025-08-31 02:08:23,648 - transcribrr - INFO - [db_utils.py:326] - Deleted recording ID 5
+2025-08-31 02:08:23,648 - transcribrr - WARNING - [db_utils.py:291] - Invalid field 'transcript' provided for update_recording.
+2025-08-31 02:08:23,648 - transcribrr - WARNING - [db_utils.py:291] - Invalid field 'unknown' provided for update_recording.
+2025-08-31 02:08:23,649 - transcribrr - INFO - [db_utils.py:308] - Updated recording ID 1 with fields: filename
+2025-08-31 02:08:23,656 - transcribrr - DEBUG - [FolderManager.py:100] - Folder tables are initialized during database creation
+2025-08-31 02:08:23,659 - transcribrr - DEBUG - [FolderManager.py:100] - Folder tables are initialized during database creation
+2025-08-31 02:08:23,659 - transcribrr - WARNING - [FolderManager.py:53] - Different DatabaseManager instance provided to FolderManager.instance() after initialization. Using original instance.
+2025-08-31 02:08:23,660 - transcribrr - DEBUG - [FolderManager.py:100] - Folder tables are initialized during database creation
+2025-08-31 02:08:23,661 - transcribrr - DEBUG - [FolderManager.py:100] - Folder tables are initialized during database creation
+2025-08-31 02:08:23,661 - transcribrr - DEBUG - [FolderManager.py:100] - Folder tables are initialized during database creation
+2025-08-31 02:08:23,662 - transcribrr - DEBUG - [FolderManager.py:100] - Folder tables are initialized during database creation
+2025-08-31 02:08:23,748 - transcribrr - DEBUG - [path_utils.py:37] - Using development path: /home/john/transcribrr
+2025-08-31 02:08:23,748 - transcribrr - DEBUG - [path_utils.py:37] - Using development path: /home/john/transcribrr
+2025-08-31 02:08:23,748 - transcribrr - DEBUG - [path_utils.py:67] - Resource path for 'icons/logo.png': /home/john/transcribrr/icons/logo.png
+2025-08-31 02:08:23,748 - transcribrr - DEBUG - [path_utils.py:31] - Using py2app bundle path: /Applications/MyApp.app/Contents/Resources
+2025-08-31 02:08:23,748 - transcribrr - DEBUG - [path_utils.py:31] - Using py2app bundle path: /Applications/MyApp.app/Contents/Resources
+2025-08-31 02:08:23,749 - transcribrr - DEBUG - [path_utils.py:67] - Resource path for 'asset.dat': /Applications/MyApp.app/Contents/Resources/asset.dat
+2025-08-31 02:08:23,749 - transcribrr - DEBUG - [path_utils.py:21] - Using PyInstaller _MEIPASS path: /tmp/pyi12345
+2025-08-31 02:08:23,749 - transcribrr - DEBUG - [path_utils.py:21] - Using PyInstaller _MEIPASS path: /tmp/pyi12345
+2025-08-31 02:08:23,749 - transcribrr - DEBUG - [path_utils.py:67] - Resource path for 'file.txt': /tmp/pyi12345/file.txt
+2025-08-31 02:08:23,767 - transcribrr - DEBUG - [ui_utils_legacy.py:272] - FeedbackManager created new SpinnerManager
+2025-08-31 02:08:23,767 - transcribrr - DEBUG - [path_utils.py:37] - Using development path: /home/john/transcribrr
+2025-08-31 02:08:23,767 - transcribrr - DEBUG - [path_utils.py:37] - Using development path: /home/john/transcribrr
+2025-08-31 02:08:23,767 - transcribrr - DEBUG - [path_utils.py:67] - Resource path for './icons/spinner.gif': /home/john/transcribrr/./icons/spinner.gif
+2025-08-31 02:08:23,779 - transcribrr - DEBUG - [ui_utils_legacy.py:109] - Spinner 'test_spinner' started.
+2025-08-31 02:08:23,780 - transcribrr - DEBUG - [ui_utils_legacy.py:115] - Spinner 'test_spinner' stopped.
+2025-08-31 02:08:23,780 - transcribrr - ERROR - [ui_utils_legacy.py:309] - Spinner 'nonexistent' not found
+2025-08-31 02:08:23,782 - transcribrr - DEBUG - [path_utils.py:37] - Using development path: /home/john/transcribrr
+2025-08-31 02:08:23,782 - transcribrr - DEBUG - [path_utils.py:37] - Using development path: /home/john/transcribrr
+2025-08-31 02:08:23,782 - transcribrr - DEBUG - [path_utils.py:67] - Resource path for './icons/spinner.gif': /home/john/transcribrr/./icons/spinner.gif
+2025-08-31 02:08:23,788 - transcribrr - DEBUG - [ui_utils_legacy.py:109] - Spinner 'test_spinner' started.
+2025-08-31 02:08:23,789 - transcribrr - DEBUG - [ui_utils_legacy.py:115] - Spinner 'test_spinner' stopped.
+2025-08-31 05:52:22,578 - transcribrr - WARNING - [busy_guard.py:143] - Spinner 'nonexistent' not found or couldn't be started
+2025-08-31 05:52:22,589 - transcribrr - INFO - [DatabaseManager.py:732] - Starting DatabaseWorker thread
+2025-08-31 05:52:22,589 - transcribrr - INFO - [DatabaseManager.py:734] - DatabaseWorker thread started: True
+2025-08-31 05:52:22,590 - transcribrr - INFO - [DatabaseManager.py:732] - Starting DatabaseWorker thread
+2025-08-31 05:52:22,590 - transcribrr - INFO - [DatabaseManager.py:734] - DatabaseWorker thread started: True
+2025-08-31 05:52:22,592 - transcribrr - INFO - [DatabaseManager.py:732] - Starting DatabaseWorker thread
+2025-08-31 05:52:22,592 - transcribrr - INFO - [DatabaseManager.py:734] - DatabaseWorker thread started: True
+2025-08-31 05:52:22,593 - transcribrr - INFO - [DatabaseManager.py:732] - Starting DatabaseWorker thread
+2025-08-31 05:52:22,593 - transcribrr - INFO - [DatabaseManager.py:734] - DatabaseWorker thread started: True
+2025-08-31 05:52:22,594 - transcribrr - INFO - [DatabaseManager.py:732] - Starting DatabaseWorker thread
+2025-08-31 05:52:22,594 - transcribrr - INFO - [DatabaseManager.py:734] - DatabaseWorker thread started: True
+2025-08-31 05:52:22,596 - transcribrr - INFO - [DatabaseManager.py:732] - Starting DatabaseWorker thread
+2025-08-31 05:52:22,596 - transcribrr - INFO - [DatabaseManager.py:734] - DatabaseWorker thread started: True
+2025-08-31 05:52:22,598 - transcribrr - INFO - [DatabaseManager.py:732] - Starting DatabaseWorker thread
+2025-08-31 05:52:22,598 - transcribrr - INFO - [DatabaseManager.py:734] - DatabaseWorker thread started: True
+2025-08-31 05:52:22,599 - transcribrr - INFO - [DatabaseManager.py:732] - Starting DatabaseWorker thread
+2025-08-31 05:52:22,599 - transcribrr - INFO - [DatabaseManager.py:734] - DatabaseWorker thread started: True
+2025-08-31 05:52:22,600 - transcribrr - INFO - [DatabaseManager.py:732] - Starting DatabaseWorker thread
+2025-08-31 05:52:22,600 - transcribrr - INFO - [DatabaseManager.py:734] - DatabaseWorker thread started: True
+2025-08-31 05:52:22,601 - transcribrr - INFO - [DatabaseManager.py:732] - Starting DatabaseWorker thread
+2025-08-31 05:52:22,601 - transcribrr - INFO - [DatabaseManager.py:734] - DatabaseWorker thread started: True
+2025-08-31 05:52:22,602 - transcribrr - INFO - [DatabaseManager.py:732] - Starting DatabaseWorker thread
+2025-08-31 05:52:22,602 - transcribrr - INFO - [DatabaseManager.py:734] - DatabaseWorker thread started: True
+2025-08-31 05:52:22,606 - transcribrr - INFO - [DatabaseManager.py:732] - Starting DatabaseWorker thread
+2025-08-31 05:52:22,606 - transcribrr - INFO - [DatabaseManager.py:734] - DatabaseWorker thread started: True
+2025-08-31 05:52:22,609 - transcribrr - INFO - [DatabaseManager.py:732] - Starting DatabaseWorker thread
+2025-08-31 05:52:22,609 - transcribrr - INFO - [DatabaseManager.py:734] - DatabaseWorker thread started: True
+2025-08-31 05:52:22,612 - transcribrr - INFO - [DatabaseManager.py:732] - Starting DatabaseWorker thread
+2025-08-31 05:52:22,612 - transcribrr - INFO - [DatabaseManager.py:734] - DatabaseWorker thread started: True
+2025-08-31 05:52:22,614 - transcribrr - INFO - [DatabaseManager.py:732] - Starting DatabaseWorker thread
+2025-08-31 05:52:22,614 - transcribrr - INFO - [DatabaseManager.py:734] - DatabaseWorker thread started: True
+2025-08-31 05:52:22,617 - transcribrr - INFO - [DatabaseManager.py:732] - Starting DatabaseWorker thread
+2025-08-31 05:52:22,617 - transcribrr - INFO - [DatabaseManager.py:734] - DatabaseWorker thread started: False
+2025-08-31 05:52:22,619 - transcribrr - INFO - [DatabaseManager.py:732] - Starting DatabaseWorker thread
+2025-08-31 05:52:22,619 - transcribrr - INFO - [DatabaseManager.py:734] - DatabaseWorker thread started: True
+2025-08-31 05:52:22,621 - transcribrr - INFO - [DatabaseManager.py:732] - Starting DatabaseWorker thread
+2025-08-31 05:52:22,621 - transcribrr - INFO - [DatabaseManager.py:734] - DatabaseWorker thread started: True
+2025-08-31 05:52:22,622 - transcribrr - INFO - [DatabaseManager.py:732] - Starting DatabaseWorker thread
+2025-08-31 05:52:22,622 - transcribrr - INFO - [DatabaseManager.py:734] - DatabaseWorker thread started: True
+2025-08-31 05:52:23,157 - transcribrr - ERROR - [db_utils.py:261] - Error creating recording (duplicate path '/x'): duplicate
+Traceback (most recent call last):
+  File "/home/john/transcribrr/app/db_utils.py", line 253, in create_recording
+    cursor.execute(sql, tuple(data_to_insert[:7]))
+  File "/home/john/.local/share/uv/python/cpython-3.11.9-linux-x86_64-gnu/lib/python3.11/unittest/mock.py", line 1124, in __call__
+    return self._mock_call(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/john/.local/share/uv/python/cpython-3.11.9-linux-x86_64-gnu/lib/python3.11/unittest/mock.py", line 1128, in _mock_call
+    return self._execute_mock_call(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/john/.local/share/uv/python/cpython-3.11.9-linux-x86_64-gnu/lib/python3.11/unittest/mock.py", line 1183, in _execute_mock_call
+    raise effect
+sqlite3.IntegrityError: duplicate
+2025-08-31 05:52:23,158 - transcribrr - INFO - [db_utils.py:256] - Created recording 'file.wav' with ID 7
+2025-08-31 05:52:23,159 - transcribrr - INFO - [db_utils.py:326] - Deleted recording ID 5
+2025-08-31 05:52:23,159 - transcribrr - WARNING - [db_utils.py:291] - Invalid field 'transcript' provided for update_recording.
+2025-08-31 05:52:23,159 - transcribrr - WARNING - [db_utils.py:291] - Invalid field 'unknown' provided for update_recording.
+2025-08-31 05:52:23,159 - transcribrr - INFO - [db_utils.py:308] - Updated recording ID 1 with fields: filename
+2025-08-31 05:52:23,162 - transcribrr - DEBUG - [FolderManager.py:100] - Folder tables are initialized during database creation
+2025-08-31 05:52:23,163 - transcribrr - DEBUG - [FolderManager.py:100] - Folder tables are initialized during database creation
+2025-08-31 05:52:23,163 - transcribrr - WARNING - [FolderManager.py:53] - Different DatabaseManager instance provided to FolderManager.instance() after initialization. Using original instance.
+2025-08-31 05:52:23,164 - transcribrr - DEBUG - [FolderManager.py:100] - Folder tables are initialized during database creation
+2025-08-31 05:52:23,164 - transcribrr - DEBUG - [FolderManager.py:100] - Folder tables are initialized during database creation
+2025-08-31 05:52:23,164 - transcribrr - DEBUG - [FolderManager.py:100] - Folder tables are initialized during database creation
+2025-08-31 05:52:23,165 - transcribrr - DEBUG - [FolderManager.py:100] - Folder tables are initialized during database creation
+2025-08-31 05:52:23,203 - transcribrr - DEBUG - [path_utils.py:37] - Using development path: /home/john/transcribrr
+2025-08-31 05:52:23,203 - transcribrr - DEBUG - [path_utils.py:37] - Using development path: /home/john/transcribrr
+2025-08-31 05:52:23,203 - transcribrr - DEBUG - [path_utils.py:67] - Resource path for 'icons/logo.png': /home/john/transcribrr/icons/logo.png
+2025-08-31 05:52:23,203 - transcribrr - DEBUG - [path_utils.py:31] - Using py2app bundle path: /Applications/MyApp.app/Contents/Resources
+2025-08-31 05:52:23,203 - transcribrr - DEBUG - [path_utils.py:31] - Using py2app bundle path: /Applications/MyApp.app/Contents/Resources
+2025-08-31 05:52:23,203 - transcribrr - DEBUG - [path_utils.py:67] - Resource path for 'asset.dat': /Applications/MyApp.app/Contents/Resources/asset.dat
+2025-08-31 05:52:23,203 - transcribrr - DEBUG - [path_utils.py:21] - Using PyInstaller _MEIPASS path: /tmp/pyi12345
+2025-08-31 05:52:23,203 - transcribrr - DEBUG - [path_utils.py:21] - Using PyInstaller _MEIPASS path: /tmp/pyi12345
+2025-08-31 05:52:23,203 - transcribrr - DEBUG - [path_utils.py:67] - Resource path for 'file.txt': /tmp/pyi12345/file.txt
+2025-08-31 05:52:23,212 - transcribrr - DEBUG - [ui_utils_legacy.py:272] - FeedbackManager created new SpinnerManager
+2025-08-31 05:52:23,212 - transcribrr - DEBUG - [path_utils.py:37] - Using development path: /home/john/transcribrr
+2025-08-31 05:52:23,212 - transcribrr - DEBUG - [path_utils.py:37] - Using development path: /home/john/transcribrr
+2025-08-31 05:52:23,213 - transcribrr - DEBUG - [path_utils.py:67] - Resource path for './icons/spinner.gif': /home/john/transcribrr/./icons/spinner.gif
+2025-08-31 05:52:23,219 - transcribrr - DEBUG - [ui_utils_legacy.py:109] - Spinner 'test_spinner' started.
+2025-08-31 05:52:23,220 - transcribrr - DEBUG - [ui_utils_legacy.py:115] - Spinner 'test_spinner' stopped.
+2025-08-31 05:52:23,220 - transcribrr - ERROR - [ui_utils_legacy.py:309] - Spinner 'nonexistent' not found
+2025-08-31 05:52:23,221 - transcribrr - DEBUG - [path_utils.py:37] - Using development path: /home/john/transcribrr
+2025-08-31 05:52:23,221 - transcribrr - DEBUG - [path_utils.py:37] - Using development path: /home/john/transcribrr
+2025-08-31 05:52:23,221 - transcribrr - DEBUG - [path_utils.py:67] - Resource path for './icons/spinner.gif': /home/john/transcribrr/./icons/spinner.gif
+2025-08-31 05:52:23,224 - transcribrr - DEBUG - [ui_utils_legacy.py:109] - Spinner 'test_spinner' started.
+2025-08-31 05:52:23,225 - transcribrr - DEBUG - [ui_utils_legacy.py:115] - Spinner 'test_spinner' stopped.
+2025-08-31 05:53:57,812 - transcribrr - WARNING - [busy_guard.py:143] - Spinner 'nonexistent' not found or couldn't be started
+2025-08-31 05:53:57,814 - transcribrr - INFO - [DatabaseManager.py:732] - Starting DatabaseWorker thread
+2025-08-31 05:53:57,814 - transcribrr - INFO - [DatabaseManager.py:734] - DatabaseWorker thread started: True
+2025-08-31 05:53:57,816 - transcribrr - INFO - [DatabaseManager.py:732] - Starting DatabaseWorker thread
+2025-08-31 05:53:57,816 - transcribrr - INFO - [DatabaseManager.py:734] - DatabaseWorker thread started: True
+2025-08-31 05:53:57,817 - transcribrr - INFO - [DatabaseManager.py:732] - Starting DatabaseWorker thread
+2025-08-31 05:53:57,818 - transcribrr - INFO - [DatabaseManager.py:734] - DatabaseWorker thread started: True
+2025-08-31 05:53:57,819 - transcribrr - INFO - [DatabaseManager.py:732] - Starting DatabaseWorker thread
+2025-08-31 05:53:57,819 - transcribrr - INFO - [DatabaseManager.py:734] - DatabaseWorker thread started: True
+2025-08-31 05:53:57,820 - transcribrr - INFO - [DatabaseManager.py:732] - Starting DatabaseWorker thread
+2025-08-31 05:53:57,820 - transcribrr - INFO - [DatabaseManager.py:734] - DatabaseWorker thread started: True
+2025-08-31 05:53:57,822 - transcribrr - INFO - [DatabaseManager.py:732] - Starting DatabaseWorker thread
+2025-08-31 05:53:57,822 - transcribrr - INFO - [DatabaseManager.py:734] - DatabaseWorker thread started: True
+2025-08-31 05:53:57,823 - transcribrr - INFO - [DatabaseManager.py:732] - Starting DatabaseWorker thread
+2025-08-31 05:53:57,823 - transcribrr - INFO - [DatabaseManager.py:734] - DatabaseWorker thread started: True
+2025-08-31 05:53:57,825 - transcribrr - INFO - [DatabaseManager.py:732] - Starting DatabaseWorker thread
+2025-08-31 05:53:57,825 - transcribrr - INFO - [DatabaseManager.py:734] - DatabaseWorker thread started: True
+2025-08-31 05:53:57,826 - transcribrr - INFO - [DatabaseManager.py:732] - Starting DatabaseWorker thread
+2025-08-31 05:53:57,826 - transcribrr - INFO - [DatabaseManager.py:734] - DatabaseWorker thread started: True
+2025-08-31 05:53:57,827 - transcribrr - INFO - [DatabaseManager.py:732] - Starting DatabaseWorker thread
+2025-08-31 05:53:57,827 - transcribrr - INFO - [DatabaseManager.py:734] - DatabaseWorker thread started: True
+2025-08-31 05:53:57,828 - transcribrr - INFO - [DatabaseManager.py:732] - Starting DatabaseWorker thread
+2025-08-31 05:53:57,828 - transcribrr - INFO - [DatabaseManager.py:734] - DatabaseWorker thread started: True
+2025-08-31 05:53:57,832 - transcribrr - INFO - [DatabaseManager.py:732] - Starting DatabaseWorker thread
+2025-08-31 05:53:57,833 - transcribrr - INFO - [DatabaseManager.py:734] - DatabaseWorker thread started: True
+2025-08-31 05:53:57,835 - transcribrr - INFO - [DatabaseManager.py:732] - Starting DatabaseWorker thread
+2025-08-31 05:53:57,835 - transcribrr - INFO - [DatabaseManager.py:734] - DatabaseWorker thread started: True
+2025-08-31 05:53:57,838 - transcribrr - INFO - [DatabaseManager.py:732] - Starting DatabaseWorker thread
+2025-08-31 05:53:57,838 - transcribrr - INFO - [DatabaseManager.py:734] - DatabaseWorker thread started: True
+2025-08-31 05:53:57,841 - transcribrr - INFO - [DatabaseManager.py:732] - Starting DatabaseWorker thread
+2025-08-31 05:53:57,841 - transcribrr - INFO - [DatabaseManager.py:734] - DatabaseWorker thread started: True
+2025-08-31 05:53:57,844 - transcribrr - INFO - [DatabaseManager.py:732] - Starting DatabaseWorker thread
+2025-08-31 05:53:57,844 - transcribrr - INFO - [DatabaseManager.py:734] - DatabaseWorker thread started: False
+2025-08-31 05:53:57,846 - transcribrr - INFO - [DatabaseManager.py:732] - Starting DatabaseWorker thread
+2025-08-31 05:53:57,846 - transcribrr - INFO - [DatabaseManager.py:734] - DatabaseWorker thread started: True
+2025-08-31 05:53:57,847 - transcribrr - INFO - [DatabaseManager.py:732] - Starting DatabaseWorker thread
+2025-08-31 05:53:57,847 - transcribrr - INFO - [DatabaseManager.py:734] - DatabaseWorker thread started: True
+2025-08-31 05:53:57,848 - transcribrr - INFO - [DatabaseManager.py:732] - Starting DatabaseWorker thread
+2025-08-31 05:53:57,848 - transcribrr - INFO - [DatabaseManager.py:734] - DatabaseWorker thread started: True
+2025-08-31 05:53:58,379 - transcribrr - ERROR - [db_utils.py:261] - Error creating recording (duplicate path '/x'): duplicate
+Traceback (most recent call last):
+  File "/home/john/transcribrr/app/db_utils.py", line 253, in create_recording
+    cursor.execute(sql, tuple(data_to_insert[:7]))
+  File "/home/john/.local/share/uv/python/cpython-3.11.9-linux-x86_64-gnu/lib/python3.11/unittest/mock.py", line 1124, in __call__
+    return self._mock_call(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/john/.local/share/uv/python/cpython-3.11.9-linux-x86_64-gnu/lib/python3.11/unittest/mock.py", line 1128, in _mock_call
+    return self._execute_mock_call(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/john/.local/share/uv/python/cpython-3.11.9-linux-x86_64-gnu/lib/python3.11/unittest/mock.py", line 1183, in _execute_mock_call
+    raise effect
+sqlite3.IntegrityError: duplicate
+2025-08-31 05:53:58,380 - transcribrr - INFO - [db_utils.py:256] - Created recording 'file.wav' with ID 7
+2025-08-31 05:53:58,381 - transcribrr - INFO - [db_utils.py:326] - Deleted recording ID 5
+2025-08-31 05:53:58,381 - transcribrr - WARNING - [db_utils.py:291] - Invalid field 'transcript' provided for update_recording.
+2025-08-31 05:53:58,381 - transcribrr - WARNING - [db_utils.py:291] - Invalid field 'unknown' provided for update_recording.
+2025-08-31 05:53:58,381 - transcribrr - INFO - [db_utils.py:308] - Updated recording ID 1 with fields: filename
+2025-08-31 05:53:58,384 - transcribrr - DEBUG - [FolderManager.py:100] - Folder tables are initialized during database creation
+2025-08-31 05:53:58,385 - transcribrr - DEBUG - [FolderManager.py:100] - Folder tables are initialized during database creation
+2025-08-31 05:53:58,386 - transcribrr - WARNING - [FolderManager.py:53] - Different DatabaseManager instance provided to FolderManager.instance() after initialization. Using original instance.
+2025-08-31 05:53:58,386 - transcribrr - DEBUG - [FolderManager.py:100] - Folder tables are initialized during database creation
+2025-08-31 05:53:58,386 - transcribrr - DEBUG - [FolderManager.py:100] - Folder tables are initialized during database creation
+2025-08-31 05:53:58,386 - transcribrr - DEBUG - [FolderManager.py:100] - Folder tables are initialized during database creation
+2025-08-31 05:53:58,387 - transcribrr - DEBUG - [FolderManager.py:100] - Folder tables are initialized during database creation
+2025-08-31 05:53:58,430 - transcribrr - DEBUG - [path_utils.py:37] - Using development path: /home/john/transcribrr
+2025-08-31 05:53:58,430 - transcribrr - DEBUG - [path_utils.py:37] - Using development path: /home/john/transcribrr
+2025-08-31 05:53:58,430 - transcribrr - DEBUG - [path_utils.py:67] - Resource path for 'icons/logo.png': /home/john/transcribrr/icons/logo.png
+2025-08-31 05:53:58,430 - transcribrr - DEBUG - [path_utils.py:31] - Using py2app bundle path: /Applications/MyApp.app/Contents/Resources
+2025-08-31 05:53:58,430 - transcribrr - DEBUG - [path_utils.py:31] - Using py2app bundle path: /Applications/MyApp.app/Contents/Resources
+2025-08-31 05:53:58,430 - transcribrr - DEBUG - [path_utils.py:67] - Resource path for 'asset.dat': /Applications/MyApp.app/Contents/Resources/asset.dat
+2025-08-31 05:53:58,430 - transcribrr - DEBUG - [path_utils.py:21] - Using PyInstaller _MEIPASS path: /tmp/pyi12345
+2025-08-31 05:53:58,430 - transcribrr - DEBUG - [path_utils.py:21] - Using PyInstaller _MEIPASS path: /tmp/pyi12345
+2025-08-31 05:53:58,430 - transcribrr - DEBUG - [path_utils.py:67] - Resource path for 'file.txt': /tmp/pyi12345/file.txt
+2025-08-31 05:55:18,413 - transcribrr - WARNING - [busy_guard.py:143] - Spinner 'nonexistent' not found or couldn't be started
+2025-08-31 05:55:18,418 - transcribrr - INFO - [DatabaseManager.py:732] - Starting DatabaseWorker thread
+2025-08-31 05:55:18,418 - transcribrr - INFO - [DatabaseManager.py:734] - DatabaseWorker thread started: True
+2025-08-31 05:55:18,422 - transcribrr - INFO - [DatabaseManager.py:732] - Starting DatabaseWorker thread
+2025-08-31 05:55:18,422 - transcribrr - INFO - [DatabaseManager.py:734] - DatabaseWorker thread started: True
+2025-08-31 05:55:18,425 - transcribrr - INFO - [DatabaseManager.py:732] - Starting DatabaseWorker thread
+2025-08-31 05:55:18,425 - transcribrr - INFO - [DatabaseManager.py:734] - DatabaseWorker thread started: True
+2025-08-31 05:55:18,428 - transcribrr - INFO - [DatabaseManager.py:732] - Starting DatabaseWorker thread
+2025-08-31 05:55:18,429 - transcribrr - INFO - [DatabaseManager.py:734] - DatabaseWorker thread started: True
+2025-08-31 05:55:18,431 - transcribrr - INFO - [DatabaseManager.py:732] - Starting DatabaseWorker thread
+2025-08-31 05:55:18,431 - transcribrr - INFO - [DatabaseManager.py:734] - DatabaseWorker thread started: True
+2025-08-31 05:55:18,434 - transcribrr - INFO - [DatabaseManager.py:732] - Starting DatabaseWorker thread
+2025-08-31 05:55:18,434 - transcribrr - INFO - [DatabaseManager.py:734] - DatabaseWorker thread started: True
+2025-08-31 05:55:18,437 - transcribrr - INFO - [DatabaseManager.py:732] - Starting DatabaseWorker thread
+2025-08-31 05:55:18,437 - transcribrr - INFO - [DatabaseManager.py:734] - DatabaseWorker thread started: True
+2025-08-31 05:55:18,440 - transcribrr - INFO - [DatabaseManager.py:732] - Starting DatabaseWorker thread
+2025-08-31 05:55:18,440 - transcribrr - INFO - [DatabaseManager.py:734] - DatabaseWorker thread started: True
+2025-08-31 05:55:18,443 - transcribrr - INFO - [DatabaseManager.py:732] - Starting DatabaseWorker thread
+2025-08-31 05:55:18,443 - transcribrr - INFO - [DatabaseManager.py:734] - DatabaseWorker thread started: True
+2025-08-31 05:55:18,446 - transcribrr - INFO - [DatabaseManager.py:732] - Starting DatabaseWorker thread
+2025-08-31 05:55:18,446 - transcribrr - INFO - [DatabaseManager.py:734] - DatabaseWorker thread started: True
+2025-08-31 05:55:18,448 - transcribrr - INFO - [DatabaseManager.py:732] - Starting DatabaseWorker thread
+2025-08-31 05:55:18,448 - transcribrr - INFO - [DatabaseManager.py:734] - DatabaseWorker thread started: True
+2025-08-31 05:55:18,457 - transcribrr - INFO - [DatabaseManager.py:732] - Starting DatabaseWorker thread
+2025-08-31 05:55:18,457 - transcribrr - INFO - [DatabaseManager.py:734] - DatabaseWorker thread started: True
+2025-08-31 05:55:18,464 - transcribrr - INFO - [DatabaseManager.py:732] - Starting DatabaseWorker thread
+2025-08-31 05:55:18,464 - transcribrr - INFO - [DatabaseManager.py:734] - DatabaseWorker thread started: True
+2025-08-31 05:55:18,470 - transcribrr - INFO - [DatabaseManager.py:732] - Starting DatabaseWorker thread
+2025-08-31 05:55:18,470 - transcribrr - INFO - [DatabaseManager.py:734] - DatabaseWorker thread started: True
+2025-08-31 05:55:18,475 - transcribrr - INFO - [DatabaseManager.py:732] - Starting DatabaseWorker thread
+2025-08-31 05:55:18,475 - transcribrr - INFO - [DatabaseManager.py:734] - DatabaseWorker thread started: True
+2025-08-31 05:55:18,482 - transcribrr - INFO - [DatabaseManager.py:732] - Starting DatabaseWorker thread
+2025-08-31 05:55:18,482 - transcribrr - INFO - [DatabaseManager.py:734] - DatabaseWorker thread started: False
+2025-08-31 05:55:18,487 - transcribrr - INFO - [DatabaseManager.py:732] - Starting DatabaseWorker thread
+2025-08-31 05:55:18,487 - transcribrr - INFO - [DatabaseManager.py:734] - DatabaseWorker thread started: True
+2025-08-31 05:55:18,491 - transcribrr - INFO - [DatabaseManager.py:732] - Starting DatabaseWorker thread
+2025-08-31 05:55:18,491 - transcribrr - INFO - [DatabaseManager.py:734] - DatabaseWorker thread started: True
+2025-08-31 05:55:18,494 - transcribrr - INFO - [DatabaseManager.py:732] - Starting DatabaseWorker thread
+2025-08-31 05:55:18,494 - transcribrr - INFO - [DatabaseManager.py:734] - DatabaseWorker thread started: True
+2025-08-31 05:55:19,066 - transcribrr - ERROR - [db_utils.py:261] - Error creating recording (duplicate path '/x'): duplicate
+Traceback (most recent call last):
+  File "/home/john/transcribrr/app/db_utils.py", line 253, in create_recording
+    cursor.execute(sql, tuple(data_to_insert[:7]))
+  File "/home/john/.local/share/uv/python/cpython-3.11.9-linux-x86_64-gnu/lib/python3.11/unittest/mock.py", line 1124, in __call__
+    return self._mock_call(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/john/.local/share/uv/python/cpython-3.11.9-linux-x86_64-gnu/lib/python3.11/unittest/mock.py", line 1128, in _mock_call
+    return self._execute_mock_call(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/john/.local/share/uv/python/cpython-3.11.9-linux-x86_64-gnu/lib/python3.11/unittest/mock.py", line 1183, in _execute_mock_call
+    raise effect
+sqlite3.IntegrityError: duplicate
+2025-08-31 05:55:19,067 - transcribrr - INFO - [db_utils.py:256] - Created recording 'file.wav' with ID 7
+2025-08-31 05:55:19,068 - transcribrr - INFO - [db_utils.py:326] - Deleted recording ID 5
+2025-08-31 05:55:19,069 - transcribrr - WARNING - [db_utils.py:291] - Invalid field 'transcript' provided for update_recording.
+2025-08-31 05:55:19,069 - transcribrr - WARNING - [db_utils.py:291] - Invalid field 'unknown' provided for update_recording.
+2025-08-31 05:55:19,069 - transcribrr - INFO - [db_utils.py:308] - Updated recording ID 1 with fields: filename
+2025-08-31 05:55:19,076 - transcribrr - DEBUG - [FolderManager.py:100] - Folder tables are initialized during database creation
+2025-08-31 05:55:19,078 - transcribrr - DEBUG - [FolderManager.py:100] - Folder tables are initialized during database creation
+2025-08-31 05:55:19,079 - transcribrr - WARNING - [FolderManager.py:53] - Different DatabaseManager instance provided to FolderManager.instance() after initialization. Using original instance.
+2025-08-31 05:55:19,079 - transcribrr - DEBUG - [FolderManager.py:100] - Folder tables are initialized during database creation
+2025-08-31 05:55:19,080 - transcribrr - DEBUG - [FolderManager.py:100] - Folder tables are initialized during database creation
+2025-08-31 05:55:19,080 - transcribrr - DEBUG - [FolderManager.py:100] - Folder tables are initialized during database creation
+2025-08-31 05:55:19,081 - transcribrr - DEBUG - [FolderManager.py:100] - Folder tables are initialized during database creation
+2025-08-31 05:55:19,166 - transcribrr - DEBUG - [path_utils.py:37] - Using development path: /home/john/transcribrr
+2025-08-31 05:55:19,166 - transcribrr - DEBUG - [path_utils.py:37] - Using development path: /home/john/transcribrr
+2025-08-31 05:55:19,167 - transcribrr - DEBUG - [path_utils.py:67] - Resource path for 'icons/logo.png': /home/john/transcribrr/icons/logo.png
+2025-08-31 05:55:19,167 - transcribrr - DEBUG - [path_utils.py:31] - Using py2app bundle path: /Applications/MyApp.app/Contents/Resources
+2025-08-31 05:55:19,167 - transcribrr - DEBUG - [path_utils.py:31] - Using py2app bundle path: /Applications/MyApp.app/Contents/Resources
+2025-08-31 05:55:19,167 - transcribrr - DEBUG - [path_utils.py:67] - Resource path for 'asset.dat': /Applications/MyApp.app/Contents/Resources/asset.dat
+2025-08-31 05:55:19,167 - transcribrr - DEBUG - [path_utils.py:21] - Using PyInstaller _MEIPASS path: /tmp/pyi12345
+2025-08-31 05:55:19,167 - transcribrr - DEBUG - [path_utils.py:21] - Using PyInstaller _MEIPASS path: /tmp/pyi12345
+2025-08-31 05:55:19,167 - transcribrr - DEBUG - [path_utils.py:67] - Resource path for 'file.txt': /tmp/pyi12345/file.txt
+2025-08-31 05:57:50,818 - transcribrr - WARNING - [busy_guard.py:143] - Spinner 'nonexistent' not found or couldn't be started
+2025-08-31 05:57:50,820 - transcribrr - INFO - [DatabaseManager.py:732] - Starting DatabaseWorker thread
+2025-08-31 05:57:50,820 - transcribrr - INFO - [DatabaseManager.py:734] - DatabaseWorker thread started: True
+2025-08-31 05:57:50,822 - transcribrr - INFO - [DatabaseManager.py:732] - Starting DatabaseWorker thread
+2025-08-31 05:57:50,822 - transcribrr - INFO - [DatabaseManager.py:734] - DatabaseWorker thread started: True
+2025-08-31 05:57:50,823 - transcribrr - INFO - [DatabaseManager.py:732] - Starting DatabaseWorker thread
+2025-08-31 05:57:50,823 - transcribrr - INFO - [DatabaseManager.py:734] - DatabaseWorker thread started: True
+2025-08-31 05:57:50,825 - transcribrr - INFO - [DatabaseManager.py:732] - Starting DatabaseWorker thread
+2025-08-31 05:57:50,825 - transcribrr - INFO - [DatabaseManager.py:734] - DatabaseWorker thread started: True
+2025-08-31 05:57:50,826 - transcribrr - INFO - [DatabaseManager.py:732] - Starting DatabaseWorker thread
+2025-08-31 05:57:50,826 - transcribrr - INFO - [DatabaseManager.py:734] - DatabaseWorker thread started: True
+2025-08-31 05:57:50,828 - transcribrr - INFO - [DatabaseManager.py:732] - Starting DatabaseWorker thread
+2025-08-31 05:57:50,828 - transcribrr - INFO - [DatabaseManager.py:734] - DatabaseWorker thread started: True
+2025-08-31 05:57:50,829 - transcribrr - INFO - [DatabaseManager.py:732] - Starting DatabaseWorker thread
+2025-08-31 05:57:50,829 - transcribrr - INFO - [DatabaseManager.py:734] - DatabaseWorker thread started: True
+2025-08-31 05:57:50,830 - transcribrr - INFO - [DatabaseManager.py:732] - Starting DatabaseWorker thread
+2025-08-31 05:57:50,830 - transcribrr - INFO - [DatabaseManager.py:734] - DatabaseWorker thread started: True
+2025-08-31 05:57:50,831 - transcribrr - INFO - [DatabaseManager.py:732] - Starting DatabaseWorker thread
+2025-08-31 05:57:50,831 - transcribrr - INFO - [DatabaseManager.py:734] - DatabaseWorker thread started: True
+2025-08-31 05:57:50,832 - transcribrr - INFO - [DatabaseManager.py:732] - Starting DatabaseWorker thread
+2025-08-31 05:57:50,832 - transcribrr - INFO - [DatabaseManager.py:734] - DatabaseWorker thread started: True
+2025-08-31 05:57:50,833 - transcribrr - INFO - [DatabaseManager.py:732] - Starting DatabaseWorker thread
+2025-08-31 05:57:50,833 - transcribrr - INFO - [DatabaseManager.py:734] - DatabaseWorker thread started: True
+2025-08-31 05:57:50,837 - transcribrr - INFO - [DatabaseManager.py:732] - Starting DatabaseWorker thread
+2025-08-31 05:57:50,837 - transcribrr - INFO - [DatabaseManager.py:734] - DatabaseWorker thread started: True
+2025-08-31 05:57:50,840 - transcribrr - INFO - [DatabaseManager.py:732] - Starting DatabaseWorker thread
+2025-08-31 05:57:50,840 - transcribrr - INFO - [DatabaseManager.py:734] - DatabaseWorker thread started: True
+2025-08-31 05:57:50,843 - transcribrr - INFO - [DatabaseManager.py:732] - Starting DatabaseWorker thread
+2025-08-31 05:57:50,843 - transcribrr - INFO - [DatabaseManager.py:734] - DatabaseWorker thread started: True
+2025-08-31 05:57:50,845 - transcribrr - INFO - [DatabaseManager.py:732] - Starting DatabaseWorker thread
+2025-08-31 05:57:50,845 - transcribrr - INFO - [DatabaseManager.py:734] - DatabaseWorker thread started: True
+2025-08-31 05:57:50,848 - transcribrr - INFO - [DatabaseManager.py:732] - Starting DatabaseWorker thread
+2025-08-31 05:57:50,848 - transcribrr - INFO - [DatabaseManager.py:734] - DatabaseWorker thread started: False
+2025-08-31 05:57:50,850 - transcribrr - INFO - [DatabaseManager.py:732] - Starting DatabaseWorker thread
+2025-08-31 05:57:50,850 - transcribrr - INFO - [DatabaseManager.py:734] - DatabaseWorker thread started: True
+2025-08-31 05:57:50,852 - transcribrr - INFO - [DatabaseManager.py:732] - Starting DatabaseWorker thread
+2025-08-31 05:57:50,852 - transcribrr - INFO - [DatabaseManager.py:734] - DatabaseWorker thread started: True
+2025-08-31 05:57:50,853 - transcribrr - INFO - [DatabaseManager.py:732] - Starting DatabaseWorker thread
+2025-08-31 05:57:50,853 - transcribrr - INFO - [DatabaseManager.py:734] - DatabaseWorker thread started: True
+2025-08-31 05:57:51,383 - transcribrr - ERROR - [db_utils.py:261] - Error creating recording (duplicate path '/x'): duplicate
+Traceback (most recent call last):
+  File "/home/john/transcribrr/app/db_utils.py", line 253, in create_recording
+    cursor.execute(sql, tuple(data_to_insert[:7]))
+  File "/home/john/.local/share/uv/python/cpython-3.11.9-linux-x86_64-gnu/lib/python3.11/unittest/mock.py", line 1124, in __call__
+    return self._mock_call(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/john/.local/share/uv/python/cpython-3.11.9-linux-x86_64-gnu/lib/python3.11/unittest/mock.py", line 1128, in _mock_call
+    return self._execute_mock_call(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/john/.local/share/uv/python/cpython-3.11.9-linux-x86_64-gnu/lib/python3.11/unittest/mock.py", line 1183, in _execute_mock_call
+    raise effect
+sqlite3.IntegrityError: duplicate
+2025-08-31 05:57:51,383 - transcribrr - INFO - [db_utils.py:256] - Created recording 'file.wav' with ID 7
+2025-08-31 05:57:51,384 - transcribrr - INFO - [db_utils.py:326] - Deleted recording ID 5
+2025-08-31 05:57:51,384 - transcribrr - WARNING - [db_utils.py:291] - Invalid field 'transcript' provided for update_recording.
+2025-08-31 05:57:51,384 - transcribrr - WARNING - [db_utils.py:291] - Invalid field 'unknown' provided for update_recording.
+2025-08-31 05:57:51,384 - transcribrr - INFO - [db_utils.py:308] - Updated recording ID 1 with fields: filename
+2025-08-31 05:57:51,387 - transcribrr - INFO - [FolderManager.py:130] - Loaded 0 folders
+2025-08-31 05:57:51,387 - transcribrr - INFO - [FolderManager.py:364] - Recording 77 is already in folder 5
+2025-08-31 05:57:51,387 - transcribrr - INFO - [FolderManager.py:130] - Loaded 0 folders
+2025-08-31 05:57:51,387 - transcribrr - INFO - [FolderManager.py:342] - Added recording 77 to folder 5
+2025-08-31 05:57:51,388 - transcribrr - INFO - [FolderManager.py:130] - Loaded 0 folders
+2025-08-31 05:57:51,388 - transcribrr - WARNING - [FolderManager.py:153] - Folder with name 'Dup' already exists at this level
+2025-08-31 05:57:51,388 - transcribrr - INFO - [FolderManager.py:130] - Loaded 0 folders
+2025-08-31 05:57:51,388 - transcribrr - ERROR - [FolderManager.py:200] - Failed to get new folder ID
+2025-08-31 05:57:51,388 - transcribrr - INFO - [FolderManager.py:130] - Loaded 0 folders
+2025-08-31 05:57:51,388 - transcribrr - INFO - [FolderManager.py:192] - Created folder: New (ID: 123)
+2025-08-31 05:57:51,389 - transcribrr - INFO - [FolderManager.py:130] - Loaded 0 folders
+2025-08-31 05:57:51,389 - transcribrr - WARNING - [FolderManager.py:268] - Folder with ID 999 not found for deletion
+2025-08-31 05:57:51,389 - transcribrr - INFO - [FolderManager.py:130] - Loaded 0 folders
+2025-08-31 05:57:51,389 - transcribrr - INFO - [FolderManager.py:310] - Deleted folder ID 11
+2025-08-31 05:57:51,389 - transcribrr - INFO - [FolderManager.py:130] - Loaded 0 folders
+2025-08-31 05:57:51,389 - transcribrr - INFO - [FolderManager.py:130] - Loaded 0 folders
+2025-08-31 05:57:51,389 - transcribrr - INFO - [FolderManager.py:130] - Loaded 0 folders
+2025-08-31 05:57:51,390 - transcribrr - INFO - [FolderManager.py:130] - Loaded 0 folders
+2025-08-31 05:57:51,390 - transcribrr - INFO - [FolderManager.py:130] - Loaded 0 folders
+2025-08-31 05:57:51,390 - transcribrr - INFO - [FolderManager.py:130] - Loaded 0 folders
+2025-08-31 05:57:51,390 - transcribrr - INFO - [FolderManager.py:130] - Loaded 0 folders
+2025-08-31 05:57:51,390 - transcribrr - INFO - [FolderManager.py:427] - Fetched 2 recordings from folder 2
+2025-08-31 05:57:51,391 - transcribrr - INFO - [FolderManager.py:130] - Loaded 0 folders
+2025-08-31 05:57:51,391 - transcribrr - INFO - [FolderManager.py:491] - Fetched 1 unassigned recordings from database
+2025-08-31 05:57:51,391 - transcribrr - INFO - [FolderManager.py:130] - Loaded 0 folders
+2025-08-31 05:57:51,391 - transcribrr - ERROR - [FolderManager.py:609] - Error importing folder structure: DB boom
+2025-08-31 05:57:51,391 - transcribrr - INFO - [FolderManager.py:130] - Loaded 0 folders
+2025-08-31 05:57:51,391 - transcribrr - ERROR - [FolderManager.py:609] - Error importing folder structure: Expecting property name enclosed in double quotes: line 1 column 3 (char 2)
+2025-08-31 05:57:51,391 - transcribrr - INFO - [FolderManager.py:130] - Loaded 0 folders
+2025-08-31 05:57:51,392 - transcribrr - INFO - [FolderManager.py:130] - Loaded 0 folders
+2025-08-31 05:57:51,392 - transcribrr - INFO - [FolderManager.py:130] - Loaded 0 folders
+2025-08-31 05:57:51,392 - transcribrr - INFO - [FolderManager.py:130] - Loaded 0 folders
+2025-08-31 05:57:51,392 - transcribrr - INFO - [FolderManager.py:130] - Loaded 2 folders
+2025-08-31 05:57:51,392 - transcribrr - INFO - [FolderManager.py:130] - Loaded 0 folders
+2025-08-31 05:57:51,392 - transcribrr - INFO - [FolderManager.py:399] - Removed recording 9 from folder 3
+2025-08-31 05:57:51,393 - transcribrr - INFO - [FolderManager.py:130] - Loaded 0 folders
+2025-08-31 05:57:51,393 - transcribrr - WARNING - [FolderManager.py:228] - Folder with name 'A' already exists at this level
+2025-08-31 05:57:51,393 - transcribrr - INFO - [FolderManager.py:130] - Loaded 0 folders
+2025-08-31 05:57:51,393 - transcribrr - WARNING - [FolderManager.py:222] - Folder with ID 999 not found
+2025-08-31 05:57:51,393 - transcribrr - INFO - [FolderManager.py:130] - Loaded 0 folders
+2025-08-31 05:57:51,393 - transcribrr - INFO - [FolderManager.py:250] - Renamed folder ID 5 to 'New'
+2025-08-31 05:57:51,393 - transcribrr - DEBUG - [FolderManager.py:100] - Folder tables are initialized during database creation
+2025-08-31 05:57:51,395 - transcribrr - DEBUG - [FolderManager.py:100] - Folder tables are initialized during database creation
+2025-08-31 05:57:51,395 - transcribrr - WARNING - [FolderManager.py:53] - Different DatabaseManager instance provided to FolderManager.instance() after initialization. Using original instance.
+2025-08-31 05:57:51,395 - transcribrr - DEBUG - [FolderManager.py:100] - Folder tables are initialized during database creation
+2025-08-31 05:57:51,396 - transcribrr - DEBUG - [FolderManager.py:100] - Folder tables are initialized during database creation
+2025-08-31 05:57:51,396 - transcribrr - DEBUG - [FolderManager.py:100] - Folder tables are initialized during database creation
+2025-08-31 05:57:51,396 - transcribrr - DEBUG - [FolderManager.py:100] - Folder tables are initialized during database creation
+2025-08-31 05:57:51,438 - transcribrr - DEBUG - [path_utils.py:37] - Using development path: /home/john/transcribrr
+2025-08-31 05:57:51,438 - transcribrr - DEBUG - [path_utils.py:37] - Using development path: /home/john/transcribrr
+2025-08-31 05:57:51,438 - transcribrr - DEBUG - [path_utils.py:67] - Resource path for 'icons/logo.png': /home/john/transcribrr/icons/logo.png
+2025-08-31 05:57:51,438 - transcribrr - DEBUG - [path_utils.py:31] - Using py2app bundle path: /Applications/MyApp.app/Contents/Resources
+2025-08-31 05:57:51,438 - transcribrr - DEBUG - [path_utils.py:31] - Using py2app bundle path: /Applications/MyApp.app/Contents/Resources
+2025-08-31 05:57:51,438 - transcribrr - DEBUG - [path_utils.py:67] - Resource path for 'asset.dat': /Applications/MyApp.app/Contents/Resources/asset.dat
+2025-08-31 05:57:51,438 - transcribrr - DEBUG - [path_utils.py:21] - Using PyInstaller _MEIPASS path: /tmp/pyi12345
+2025-08-31 05:57:51,438 - transcribrr - DEBUG - [path_utils.py:21] - Using PyInstaller _MEIPASS path: /tmp/pyi12345
+2025-08-31 05:57:51,438 - transcribrr - DEBUG - [path_utils.py:67] - Resource path for 'file.txt': /tmp/pyi12345/file.txt
+2025-08-31 05:58:05,724 - transcribrr - WARNING - [busy_guard.py:143] - Spinner 'nonexistent' not found or couldn't be started
+2025-08-31 05:58:05,726 - transcribrr - INFO - [DatabaseManager.py:732] - Starting DatabaseWorker thread
+2025-08-31 05:58:05,727 - transcribrr - INFO - [DatabaseManager.py:734] - DatabaseWorker thread started: True
+2025-08-31 05:58:05,728 - transcribrr - INFO - [DatabaseManager.py:732] - Starting DatabaseWorker thread
+2025-08-31 05:58:05,728 - transcribrr - INFO - [DatabaseManager.py:734] - DatabaseWorker thread started: True
+2025-08-31 05:58:05,729 - transcribrr - INFO - [DatabaseManager.py:732] - Starting DatabaseWorker thread
+2025-08-31 05:58:05,730 - transcribrr - INFO - [DatabaseManager.py:734] - DatabaseWorker thread started: True
+2025-08-31 05:58:05,731 - transcribrr - INFO - [DatabaseManager.py:732] - Starting DatabaseWorker thread
+2025-08-31 05:58:05,731 - transcribrr - INFO - [DatabaseManager.py:734] - DatabaseWorker thread started: True
+2025-08-31 05:58:05,732 - transcribrr - INFO - [DatabaseManager.py:732] - Starting DatabaseWorker thread
+2025-08-31 05:58:05,732 - transcribrr - INFO - [DatabaseManager.py:734] - DatabaseWorker thread started: True
+2025-08-31 05:58:05,734 - transcribrr - INFO - [DatabaseManager.py:732] - Starting DatabaseWorker thread
+2025-08-31 05:58:05,734 - transcribrr - INFO - [DatabaseManager.py:734] - DatabaseWorker thread started: True
+2025-08-31 05:58:05,735 - transcribrr - INFO - [DatabaseManager.py:732] - Starting DatabaseWorker thread
+2025-08-31 05:58:05,735 - transcribrr - INFO - [DatabaseManager.py:734] - DatabaseWorker thread started: True
+2025-08-31 05:58:05,736 - transcribrr - INFO - [DatabaseManager.py:732] - Starting DatabaseWorker thread
+2025-08-31 05:58:05,736 - transcribrr - INFO - [DatabaseManager.py:734] - DatabaseWorker thread started: True
+2025-08-31 05:58:05,737 - transcribrr - INFO - [DatabaseManager.py:732] - Starting DatabaseWorker thread
+2025-08-31 05:58:05,738 - transcribrr - INFO - [DatabaseManager.py:734] - DatabaseWorker thread started: True
+2025-08-31 05:58:05,738 - transcribrr - INFO - [DatabaseManager.py:732] - Starting DatabaseWorker thread
+2025-08-31 05:58:05,739 - transcribrr - INFO - [DatabaseManager.py:734] - DatabaseWorker thread started: True
+2025-08-31 05:58:05,740 - transcribrr - INFO - [DatabaseManager.py:732] - Starting DatabaseWorker thread
+2025-08-31 05:58:05,740 - transcribrr - INFO - [DatabaseManager.py:734] - DatabaseWorker thread started: True
+2025-08-31 05:58:05,744 - transcribrr - INFO - [DatabaseManager.py:732] - Starting DatabaseWorker thread
+2025-08-31 05:58:05,744 - transcribrr - INFO - [DatabaseManager.py:734] - DatabaseWorker thread started: True
+2025-08-31 05:58:05,747 - transcribrr - INFO - [DatabaseManager.py:732] - Starting DatabaseWorker thread
+2025-08-31 05:58:05,747 - transcribrr - INFO - [DatabaseManager.py:734] - DatabaseWorker thread started: True
+2025-08-31 05:58:05,750 - transcribrr - INFO - [DatabaseManager.py:732] - Starting DatabaseWorker thread
+2025-08-31 05:58:05,750 - transcribrr - INFO - [DatabaseManager.py:734] - DatabaseWorker thread started: True
+2025-08-31 05:58:05,752 - transcribrr - INFO - [DatabaseManager.py:732] - Starting DatabaseWorker thread
+2025-08-31 05:58:05,752 - transcribrr - INFO - [DatabaseManager.py:734] - DatabaseWorker thread started: True
+2025-08-31 05:58:05,755 - transcribrr - INFO - [DatabaseManager.py:732] - Starting DatabaseWorker thread
+2025-08-31 05:58:05,755 - transcribrr - INFO - [DatabaseManager.py:734] - DatabaseWorker thread started: False
+2025-08-31 05:58:05,757 - transcribrr - INFO - [DatabaseManager.py:732] - Starting DatabaseWorker thread
+2025-08-31 05:58:05,757 - transcribrr - INFO - [DatabaseManager.py:734] - DatabaseWorker thread started: True
+2025-08-31 05:58:05,758 - transcribrr - INFO - [DatabaseManager.py:732] - Starting DatabaseWorker thread
+2025-08-31 05:58:05,758 - transcribrr - INFO - [DatabaseManager.py:734] - DatabaseWorker thread started: True
+2025-08-31 05:58:05,760 - transcribrr - INFO - [DatabaseManager.py:732] - Starting DatabaseWorker thread
+2025-08-31 05:58:05,760 - transcribrr - INFO - [DatabaseManager.py:734] - DatabaseWorker thread started: True
+2025-08-31 05:58:06,290 - transcribrr - ERROR - [db_utils.py:261] - Error creating recording (duplicate path '/x'): duplicate
+Traceback (most recent call last):
+  File "/home/john/transcribrr/app/db_utils.py", line 253, in create_recording
+    cursor.execute(sql, tuple(data_to_insert[:7]))
+  File "/home/john/.local/share/uv/python/cpython-3.11.9-linux-x86_64-gnu/lib/python3.11/unittest/mock.py", line 1124, in __call__
+    return self._mock_call(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/john/.local/share/uv/python/cpython-3.11.9-linux-x86_64-gnu/lib/python3.11/unittest/mock.py", line 1128, in _mock_call
+    return self._execute_mock_call(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/john/.local/share/uv/python/cpython-3.11.9-linux-x86_64-gnu/lib/python3.11/unittest/mock.py", line 1183, in _execute_mock_call
+    raise effect
+sqlite3.IntegrityError: duplicate
+2025-08-31 05:58:06,291 - transcribrr - INFO - [db_utils.py:256] - Created recording 'file.wav' with ID 7
+2025-08-31 05:58:06,291 - transcribrr - INFO - [db_utils.py:326] - Deleted recording ID 5
+2025-08-31 05:58:06,291 - transcribrr - WARNING - [db_utils.py:291] - Invalid field 'transcript' provided for update_recording.
+2025-08-31 05:58:06,291 - transcribrr - WARNING - [db_utils.py:291] - Invalid field 'unknown' provided for update_recording.
+2025-08-31 05:58:06,292 - transcribrr - INFO - [db_utils.py:308] - Updated recording ID 1 with fields: filename
+2025-08-31 05:58:06,295 - transcribrr - INFO - [FolderManager.py:130] - Loaded 0 folders
+2025-08-31 05:58:06,295 - transcribrr - INFO - [FolderManager.py:364] - Recording 77 is already in folder 5
+2025-08-31 05:58:06,295 - transcribrr - INFO - [FolderManager.py:130] - Loaded 0 folders
+2025-08-31 05:58:06,295 - transcribrr - INFO - [FolderManager.py:342] - Added recording 77 to folder 5
+2025-08-31 05:58:06,295 - transcribrr - INFO - [FolderManager.py:130] - Loaded 0 folders
+2025-08-31 05:58:06,295 - transcribrr - WARNING - [FolderManager.py:153] - Folder with name 'Dup' already exists at this level
+2025-08-31 05:58:06,295 - transcribrr - INFO - [FolderManager.py:130] - Loaded 0 folders
+2025-08-31 05:58:06,295 - transcribrr - ERROR - [FolderManager.py:200] - Failed to get new folder ID
+2025-08-31 05:58:06,296 - transcribrr - INFO - [FolderManager.py:130] - Loaded 0 folders
+2025-08-31 05:58:06,296 - transcribrr - INFO - [FolderManager.py:192] - Created folder: New (ID: 123)
+2025-08-31 05:58:06,296 - transcribrr - INFO - [FolderManager.py:130] - Loaded 0 folders
+2025-08-31 05:58:06,296 - transcribrr - WARNING - [FolderManager.py:268] - Folder with ID 999 not found for deletion
+2025-08-31 05:58:06,296 - transcribrr - INFO - [FolderManager.py:130] - Loaded 0 folders
+2025-08-31 05:58:06,296 - transcribrr - INFO - [FolderManager.py:310] - Deleted folder ID 11
+2025-08-31 05:58:06,296 - transcribrr - INFO - [FolderManager.py:130] - Loaded 0 folders
+2025-08-31 05:58:06,297 - transcribrr - INFO - [FolderManager.py:130] - Loaded 0 folders
+2025-08-31 05:58:06,297 - transcribrr - INFO - [FolderManager.py:130] - Loaded 0 folders
+2025-08-31 05:58:06,297 - transcribrr - INFO - [FolderManager.py:130] - Loaded 0 folders
+2025-08-31 05:58:06,297 - transcribrr - INFO - [FolderManager.py:130] - Loaded 0 folders
+2025-08-31 05:58:06,297 - transcribrr - INFO - [FolderManager.py:130] - Loaded 0 folders
+2025-08-31 05:58:06,298 - transcribrr - INFO - [FolderManager.py:130] - Loaded 0 folders
+2025-08-31 05:58:06,298 - transcribrr - INFO - [FolderManager.py:427] - Fetched 2 recordings from folder 2
+2025-08-31 05:58:06,298 - transcribrr - INFO - [FolderManager.py:130] - Loaded 0 folders
+2025-08-31 05:58:06,298 - transcribrr - INFO - [FolderManager.py:491] - Fetched 1 unassigned recordings from database
+2025-08-31 05:58:06,298 - transcribrr - INFO - [FolderManager.py:130] - Loaded 0 folders
+2025-08-31 05:58:06,298 - transcribrr - ERROR - [FolderManager.py:609] - Error importing folder structure: DB boom
+2025-08-31 05:58:06,298 - transcribrr - INFO - [FolderManager.py:130] - Loaded 0 folders
+2025-08-31 05:58:06,299 - transcribrr - ERROR - [FolderManager.py:609] - Error importing folder structure: Expecting property name enclosed in double quotes: line 1 column 3 (char 2)
+2025-08-31 05:58:06,299 - transcribrr - INFO - [FolderManager.py:130] - Loaded 0 folders
+2025-08-31 05:58:06,299 - transcribrr - INFO - [FolderManager.py:130] - Loaded 0 folders
+2025-08-31 05:58:06,299 - transcribrr - INFO - [FolderManager.py:130] - Loaded 0 folders
+2025-08-31 05:58:06,299 - transcribrr - INFO - [FolderManager.py:130] - Loaded 0 folders
+2025-08-31 05:58:06,299 - transcribrr - INFO - [FolderManager.py:130] - Loaded 2 folders
+2025-08-31 05:58:06,300 - transcribrr - INFO - [FolderManager.py:130] - Loaded 0 folders
+2025-08-31 05:58:06,300 - transcribrr - INFO - [FolderManager.py:399] - Removed recording 9 from folder 3
+2025-08-31 05:58:06,300 - transcribrr - INFO - [FolderManager.py:130] - Loaded 0 folders
+2025-08-31 05:58:06,300 - transcribrr - WARNING - [FolderManager.py:228] - Folder with name 'A' already exists at this level
+2025-08-31 05:58:06,300 - transcribrr - INFO - [FolderManager.py:130] - Loaded 0 folders
+2025-08-31 05:58:06,300 - transcribrr - WARNING - [FolderManager.py:222] - Folder with ID 999 not found
+2025-08-31 05:58:06,300 - transcribrr - INFO - [FolderManager.py:130] - Loaded 0 folders
+2025-08-31 05:58:06,300 - transcribrr - INFO - [FolderManager.py:250] - Renamed folder ID 5 to 'New'
+2025-08-31 05:58:06,301 - transcribrr - DEBUG - [FolderManager.py:100] - Folder tables are initialized during database creation
+2025-08-31 05:58:06,302 - transcribrr - DEBUG - [FolderManager.py:100] - Folder tables are initialized during database creation
+2025-08-31 05:58:06,302 - transcribrr - WARNING - [FolderManager.py:53] - Different DatabaseManager instance provided to FolderManager.instance() after initialization. Using original instance.
+2025-08-31 05:58:06,303 - transcribrr - DEBUG - [FolderManager.py:100] - Folder tables are initialized during database creation
+2025-08-31 05:58:06,303 - transcribrr - DEBUG - [FolderManager.py:100] - Folder tables are initialized during database creation
+2025-08-31 05:58:06,303 - transcribrr - DEBUG - [FolderManager.py:100] - Folder tables are initialized during database creation
+2025-08-31 05:58:06,303 - transcribrr - DEBUG - [FolderManager.py:100] - Folder tables are initialized during database creation
+2025-08-31 05:58:06,343 - transcribrr - DEBUG - [path_utils.py:37] - Using development path: /home/john/transcribrr
+2025-08-31 05:58:06,343 - transcribrr - DEBUG - [path_utils.py:37] - Using development path: /home/john/transcribrr
+2025-08-31 05:58:06,343 - transcribrr - DEBUG - [path_utils.py:67] - Resource path for 'icons/logo.png': /home/john/transcribrr/icons/logo.png
+2025-08-31 05:58:06,343 - transcribrr - DEBUG - [path_utils.py:31] - Using py2app bundle path: /Applications/MyApp.app/Contents/Resources
+2025-08-31 05:58:06,343 - transcribrr - DEBUG - [path_utils.py:31] - Using py2app bundle path: /Applications/MyApp.app/Contents/Resources
+2025-08-31 05:58:06,343 - transcribrr - DEBUG - [path_utils.py:67] - Resource path for 'asset.dat': /Applications/MyApp.app/Contents/Resources/asset.dat
+2025-08-31 05:58:06,343 - transcribrr - DEBUG - [path_utils.py:21] - Using PyInstaller _MEIPASS path: /tmp/pyi12345
+2025-08-31 05:58:06,343 - transcribrr - DEBUG - [path_utils.py:21] - Using PyInstaller _MEIPASS path: /tmp/pyi12345
+2025-08-31 05:58:06,343 - transcribrr - DEBUG - [path_utils.py:67] - Resource path for 'file.txt': /tmp/pyi12345/file.txt
+2025-08-31 05:58:13,449 - transcribrr - WARNING - [busy_guard.py:143] - Spinner 'nonexistent' not found or couldn't be started
+2025-08-31 05:58:13,451 - transcribrr - INFO - [DatabaseManager.py:732] - Starting DatabaseWorker thread
+2025-08-31 05:58:13,451 - transcribrr - INFO - [DatabaseManager.py:734] - DatabaseWorker thread started: True
+2025-08-31 05:58:13,453 - transcribrr - INFO - [DatabaseManager.py:732] - Starting DatabaseWorker thread
+2025-08-31 05:58:13,453 - transcribrr - INFO - [DatabaseManager.py:734] - DatabaseWorker thread started: True
+2025-08-31 05:58:13,454 - transcribrr - INFO - [DatabaseManager.py:732] - Starting DatabaseWorker thread
+2025-08-31 05:58:13,454 - transcribrr - INFO - [DatabaseManager.py:734] - DatabaseWorker thread started: True
+2025-08-31 05:58:13,455 - transcribrr - INFO - [DatabaseManager.py:732] - Starting DatabaseWorker thread
+2025-08-31 05:58:13,456 - transcribrr - INFO - [DatabaseManager.py:734] - DatabaseWorker thread started: True
+2025-08-31 05:58:13,457 - transcribrr - INFO - [DatabaseManager.py:732] - Starting DatabaseWorker thread
+2025-08-31 05:58:13,457 - transcribrr - INFO - [DatabaseManager.py:734] - DatabaseWorker thread started: True
+2025-08-31 05:58:13,459 - transcribrr - INFO - [DatabaseManager.py:732] - Starting DatabaseWorker thread
+2025-08-31 05:58:13,459 - transcribrr - INFO - [DatabaseManager.py:734] - DatabaseWorker thread started: True
+2025-08-31 05:58:13,460 - transcribrr - INFO - [DatabaseManager.py:732] - Starting DatabaseWorker thread
+2025-08-31 05:58:13,460 - transcribrr - INFO - [DatabaseManager.py:734] - DatabaseWorker thread started: True
+2025-08-31 05:58:13,461 - transcribrr - INFO - [DatabaseManager.py:732] - Starting DatabaseWorker thread
+2025-08-31 05:58:13,461 - transcribrr - INFO - [DatabaseManager.py:734] - DatabaseWorker thread started: True
+2025-08-31 05:58:13,462 - transcribrr - INFO - [DatabaseManager.py:732] - Starting DatabaseWorker thread
+2025-08-31 05:58:13,462 - transcribrr - INFO - [DatabaseManager.py:734] - DatabaseWorker thread started: True
+2025-08-31 05:58:13,463 - transcribrr - INFO - [DatabaseManager.py:732] - Starting DatabaseWorker thread
+2025-08-31 05:58:13,464 - transcribrr - INFO - [DatabaseManager.py:734] - DatabaseWorker thread started: True
+2025-08-31 05:58:13,465 - transcribrr - INFO - [DatabaseManager.py:732] - Starting DatabaseWorker thread
+2025-08-31 05:58:13,465 - transcribrr - INFO - [DatabaseManager.py:734] - DatabaseWorker thread started: True
+2025-08-31 05:58:13,469 - transcribrr - INFO - [DatabaseManager.py:732] - Starting DatabaseWorker thread
+2025-08-31 05:58:13,469 - transcribrr - INFO - [DatabaseManager.py:734] - DatabaseWorker thread started: True
+2025-08-31 05:58:13,471 - transcribrr - INFO - [DatabaseManager.py:732] - Starting DatabaseWorker thread
+2025-08-31 05:58:13,471 - transcribrr - INFO - [DatabaseManager.py:734] - DatabaseWorker thread started: True
+2025-08-31 05:58:13,474 - transcribrr - INFO - [DatabaseManager.py:732] - Starting DatabaseWorker thread
+2025-08-31 05:58:13,475 - transcribrr - INFO - [DatabaseManager.py:734] - DatabaseWorker thread started: True
+2025-08-31 05:58:13,477 - transcribrr - INFO - [DatabaseManager.py:732] - Starting DatabaseWorker thread
+2025-08-31 05:58:13,477 - transcribrr - INFO - [DatabaseManager.py:734] - DatabaseWorker thread started: True
+2025-08-31 05:58:13,480 - transcribrr - INFO - [DatabaseManager.py:732] - Starting DatabaseWorker thread
+2025-08-31 05:58:13,480 - transcribrr - INFO - [DatabaseManager.py:734] - DatabaseWorker thread started: False
+2025-08-31 05:58:13,482 - transcribrr - INFO - [DatabaseManager.py:732] - Starting DatabaseWorker thread
+2025-08-31 05:58:13,482 - transcribrr - INFO - [DatabaseManager.py:734] - DatabaseWorker thread started: True
+2025-08-31 05:58:13,483 - transcribrr - INFO - [DatabaseManager.py:732] - Starting DatabaseWorker thread
+2025-08-31 05:58:13,483 - transcribrr - INFO - [DatabaseManager.py:734] - DatabaseWorker thread started: True
+2025-08-31 05:58:13,484 - transcribrr - INFO - [DatabaseManager.py:732] - Starting DatabaseWorker thread
+2025-08-31 05:58:13,485 - transcribrr - INFO - [DatabaseManager.py:734] - DatabaseWorker thread started: True
+2025-08-31 05:58:14,015 - transcribrr - ERROR - [db_utils.py:261] - Error creating recording (duplicate path '/x'): duplicate
+Traceback (most recent call last):
+  File "/home/john/transcribrr/app/db_utils.py", line 253, in create_recording
+    cursor.execute(sql, tuple(data_to_insert[:7]))
+  File "/home/john/.local/share/uv/python/cpython-3.11.9-linux-x86_64-gnu/lib/python3.11/unittest/mock.py", line 1124, in __call__
+    return self._mock_call(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/john/.local/share/uv/python/cpython-3.11.9-linux-x86_64-gnu/lib/python3.11/unittest/mock.py", line 1128, in _mock_call
+    return self._execute_mock_call(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/john/.local/share/uv/python/cpython-3.11.9-linux-x86_64-gnu/lib/python3.11/unittest/mock.py", line 1183, in _execute_mock_call
+    raise effect
+sqlite3.IntegrityError: duplicate
+2025-08-31 05:58:14,016 - transcribrr - INFO - [db_utils.py:256] - Created recording 'file.wav' with ID 7
+2025-08-31 05:58:14,017 - transcribrr - INFO - [db_utils.py:326] - Deleted recording ID 5
+2025-08-31 05:58:14,017 - transcribrr - WARNING - [db_utils.py:291] - Invalid field 'transcript' provided for update_recording.
+2025-08-31 05:58:14,017 - transcribrr - WARNING - [db_utils.py:291] - Invalid field 'unknown' provided for update_recording.
+2025-08-31 05:58:14,017 - transcribrr - INFO - [db_utils.py:308] - Updated recording ID 1 with fields: filename
+2025-08-31 05:58:14,020 - transcribrr - INFO - [FolderManager.py:130] - Loaded 0 folders
+2025-08-31 05:58:14,020 - transcribrr - INFO - [FolderManager.py:364] - Recording 77 is already in folder 5
+2025-08-31 05:58:14,020 - transcribrr - INFO - [FolderManager.py:130] - Loaded 0 folders
+2025-08-31 05:58:14,020 - transcribrr - INFO - [FolderManager.py:342] - Added recording 77 to folder 5
+2025-08-31 05:58:14,021 - transcribrr - INFO - [FolderManager.py:130] - Loaded 0 folders
+2025-08-31 05:58:14,021 - transcribrr - WARNING - [FolderManager.py:153] - Folder with name 'Dup' already exists at this level
+2025-08-31 05:58:14,021 - transcribrr - INFO - [FolderManager.py:130] - Loaded 0 folders
+2025-08-31 05:58:14,021 - transcribrr - ERROR - [FolderManager.py:200] - Failed to get new folder ID
+2025-08-31 05:58:14,021 - transcribrr - INFO - [FolderManager.py:130] - Loaded 0 folders
+2025-08-31 05:58:14,021 - transcribrr - INFO - [FolderManager.py:192] - Created folder: New (ID: 123)
+2025-08-31 05:58:14,021 - transcribrr - INFO - [FolderManager.py:130] - Loaded 0 folders
+2025-08-31 05:58:14,022 - transcribrr - WARNING - [FolderManager.py:268] - Folder with ID 999 not found for deletion
+2025-08-31 05:58:14,022 - transcribrr - INFO - [FolderManager.py:130] - Loaded 0 folders
+2025-08-31 05:58:14,022 - transcribrr - INFO - [FolderManager.py:310] - Deleted folder ID 11
+2025-08-31 05:58:14,022 - transcribrr - INFO - [FolderManager.py:130] - Loaded 0 folders
+2025-08-31 05:58:14,022 - transcribrr - INFO - [FolderManager.py:130] - Loaded 0 folders
+2025-08-31 05:58:14,022 - transcribrr - INFO - [FolderManager.py:130] - Loaded 0 folders
+2025-08-31 05:58:14,023 - transcribrr - INFO - [FolderManager.py:130] - Loaded 0 folders
+2025-08-31 05:58:14,023 - transcribrr - INFO - [FolderManager.py:130] - Loaded 0 folders
+2025-08-31 05:58:14,023 - transcribrr - INFO - [FolderManager.py:130] - Loaded 0 folders
+2025-08-31 05:58:14,023 - transcribrr - INFO - [FolderManager.py:130] - Loaded 0 folders
+2025-08-31 05:58:14,023 - transcribrr - INFO - [FolderManager.py:427] - Fetched 2 recordings from folder 2
+2025-08-31 05:58:14,023 - transcribrr - INFO - [FolderManager.py:130] - Loaded 0 folders
+2025-08-31 05:58:14,024 - transcribrr - INFO - [FolderManager.py:491] - Fetched 1 unassigned recordings from database
+2025-08-31 05:58:14,024 - transcribrr - INFO - [FolderManager.py:130] - Loaded 0 folders
+2025-08-31 05:58:14,024 - transcribrr - ERROR - [FolderManager.py:609] - Error importing folder structure: DB boom
+2025-08-31 05:58:14,024 - transcribrr - INFO - [FolderManager.py:130] - Loaded 0 folders
+2025-08-31 05:58:14,024 - transcribrr - ERROR - [FolderManager.py:609] - Error importing folder structure: Expecting property name enclosed in double quotes: line 1 column 3 (char 2)
+2025-08-31 05:58:14,024 - transcribrr - INFO - [FolderManager.py:130] - Loaded 0 folders
+2025-08-31 05:58:14,024 - transcribrr - INFO - [FolderManager.py:130] - Loaded 0 folders
+2025-08-31 05:58:14,025 - transcribrr - INFO - [FolderManager.py:130] - Loaded 0 folders
+2025-08-31 05:58:14,025 - transcribrr - INFO - [FolderManager.py:130] - Loaded 0 folders
+2025-08-31 05:58:14,025 - transcribrr - INFO - [FolderManager.py:130] - Loaded 0 folders
+2025-08-31 05:58:14,025 - transcribrr - INFO - [FolderManager.py:130] - Loaded 2 folders
+2025-08-31 05:58:14,025 - transcribrr - INFO - [FolderManager.py:130] - Loaded 0 folders
+2025-08-31 05:58:14,025 - transcribrr - INFO - [FolderManager.py:399] - Removed recording 9 from folder 3
+2025-08-31 05:58:14,025 - transcribrr - INFO - [FolderManager.py:130] - Loaded 0 folders
+2025-08-31 05:58:14,025 - transcribrr - WARNING - [FolderManager.py:228] - Folder with name 'A' already exists at this level
+2025-08-31 05:58:14,026 - transcribrr - INFO - [FolderManager.py:130] - Loaded 0 folders
+2025-08-31 05:58:14,026 - transcribrr - WARNING - [FolderManager.py:222] - Folder with ID 999 not found
+2025-08-31 05:58:14,026 - transcribrr - INFO - [FolderManager.py:130] - Loaded 0 folders
+2025-08-31 05:58:14,026 - transcribrr - INFO - [FolderManager.py:250] - Renamed folder ID 5 to 'New'
+2025-08-31 05:58:14,026 - transcribrr - DEBUG - [FolderManager.py:100] - Folder tables are initialized during database creation
+2025-08-31 05:58:14,028 - transcribrr - DEBUG - [FolderManager.py:100] - Folder tables are initialized during database creation
+2025-08-31 05:58:14,028 - transcribrr - WARNING - [FolderManager.py:53] - Different DatabaseManager instance provided to FolderManager.instance() after initialization. Using original instance.
+2025-08-31 05:58:14,028 - transcribrr - DEBUG - [FolderManager.py:100] - Folder tables are initialized during database creation
+2025-08-31 05:58:14,028 - transcribrr - DEBUG - [FolderManager.py:100] - Folder tables are initialized during database creation
+2025-08-31 05:58:14,029 - transcribrr - DEBUG - [FolderManager.py:100] - Folder tables are initialized during database creation
+2025-08-31 05:58:14,029 - transcribrr - DEBUG - [FolderManager.py:100] - Folder tables are initialized during database creation
+2025-08-31 05:58:14,070 - transcribrr - DEBUG - [path_utils.py:37] - Using development path: /home/john/transcribrr
+2025-08-31 05:58:14,070 - transcribrr - DEBUG - [path_utils.py:37] - Using development path: /home/john/transcribrr
+2025-08-31 05:58:14,070 - transcribrr - DEBUG - [path_utils.py:67] - Resource path for 'icons/logo.png': /home/john/transcribrr/icons/logo.png
+2025-08-31 05:58:14,070 - transcribrr - DEBUG - [path_utils.py:31] - Using py2app bundle path: /Applications/MyApp.app/Contents/Resources
+2025-08-31 05:58:14,070 - transcribrr - DEBUG - [path_utils.py:31] - Using py2app bundle path: /Applications/MyApp.app/Contents/Resources
+2025-08-31 05:58:14,070 - transcribrr - DEBUG - [path_utils.py:67] - Resource path for 'asset.dat': /Applications/MyApp.app/Contents/Resources/asset.dat
+2025-08-31 05:58:14,070 - transcribrr - DEBUG - [path_utils.py:21] - Using PyInstaller _MEIPASS path: /tmp/pyi12345
+2025-08-31 05:58:14,070 - transcribrr - DEBUG - [path_utils.py:21] - Using PyInstaller _MEIPASS path: /tmp/pyi12345
+2025-08-31 05:58:14,070 - transcribrr - DEBUG - [path_utils.py:67] - Resource path for 'file.txt': /tmp/pyi12345/file.txt
+2025-08-31 05:58:17,549 - transcribrr - WARNING - [busy_guard.py:143] - Spinner 'nonexistent' not found or couldn't be started
+2025-08-31 05:58:17,553 - transcribrr - INFO - [DatabaseManager.py:732] - Starting DatabaseWorker thread
+2025-08-31 05:58:17,554 - transcribrr - INFO - [DatabaseManager.py:734] - DatabaseWorker thread started: True
+2025-08-31 05:58:17,558 - transcribrr - INFO - [DatabaseManager.py:732] - Starting DatabaseWorker thread
+2025-08-31 05:58:17,558 - transcribrr - INFO - [DatabaseManager.py:734] - DatabaseWorker thread started: True
+2025-08-31 05:58:17,561 - transcribrr - INFO - [DatabaseManager.py:732] - Starting DatabaseWorker thread
+2025-08-31 05:58:17,561 - transcribrr - INFO - [DatabaseManager.py:734] - DatabaseWorker thread started: True
+2025-08-31 05:58:17,564 - transcribrr - INFO - [DatabaseManager.py:732] - Starting DatabaseWorker thread
+2025-08-31 05:58:17,565 - transcribrr - INFO - [DatabaseManager.py:734] - DatabaseWorker thread started: True
+2025-08-31 05:58:17,567 - transcribrr - INFO - [DatabaseManager.py:732] - Starting DatabaseWorker thread
+2025-08-31 05:58:17,567 - transcribrr - INFO - [DatabaseManager.py:734] - DatabaseWorker thread started: True
+2025-08-31 05:58:17,570 - transcribrr - INFO - [DatabaseManager.py:732] - Starting DatabaseWorker thread
+2025-08-31 05:58:17,570 - transcribrr - INFO - [DatabaseManager.py:734] - DatabaseWorker thread started: True
+2025-08-31 05:58:17,573 - transcribrr - INFO - [DatabaseManager.py:732] - Starting DatabaseWorker thread
+2025-08-31 05:58:17,573 - transcribrr - INFO - [DatabaseManager.py:734] - DatabaseWorker thread started: True
+2025-08-31 05:58:17,575 - transcribrr - INFO - [DatabaseManager.py:732] - Starting DatabaseWorker thread
+2025-08-31 05:58:17,576 - transcribrr - INFO - [DatabaseManager.py:734] - DatabaseWorker thread started: True
+2025-08-31 05:58:17,578 - transcribrr - INFO - [DatabaseManager.py:732] - Starting DatabaseWorker thread
+2025-08-31 05:58:17,579 - transcribrr - INFO - [DatabaseManager.py:734] - DatabaseWorker thread started: True
+2025-08-31 05:58:17,581 - transcribrr - INFO - [DatabaseManager.py:732] - Starting DatabaseWorker thread
+2025-08-31 05:58:17,581 - transcribrr - INFO - [DatabaseManager.py:734] - DatabaseWorker thread started: True
+2025-08-31 05:58:17,584 - transcribrr - INFO - [DatabaseManager.py:732] - Starting DatabaseWorker thread
+2025-08-31 05:58:17,584 - transcribrr - INFO - [DatabaseManager.py:734] - DatabaseWorker thread started: True
+2025-08-31 05:58:17,592 - transcribrr - INFO - [DatabaseManager.py:732] - Starting DatabaseWorker thread
+2025-08-31 05:58:17,593 - transcribrr - INFO - [DatabaseManager.py:734] - DatabaseWorker thread started: True
+2025-08-31 05:58:17,599 - transcribrr - INFO - [DatabaseManager.py:732] - Starting DatabaseWorker thread
+2025-08-31 05:58:17,599 - transcribrr - INFO - [DatabaseManager.py:734] - DatabaseWorker thread started: True
+2025-08-31 05:58:17,605 - transcribrr - INFO - [DatabaseManager.py:732] - Starting DatabaseWorker thread
+2025-08-31 05:58:17,605 - transcribrr - INFO - [DatabaseManager.py:734] - DatabaseWorker thread started: True
+2025-08-31 05:58:17,610 - transcribrr - INFO - [DatabaseManager.py:732] - Starting DatabaseWorker thread
+2025-08-31 05:58:17,610 - transcribrr - INFO - [DatabaseManager.py:734] - DatabaseWorker thread started: True
+2025-08-31 05:58:17,617 - transcribrr - INFO - [DatabaseManager.py:732] - Starting DatabaseWorker thread
+2025-08-31 05:58:17,617 - transcribrr - INFO - [DatabaseManager.py:734] - DatabaseWorker thread started: False
+2025-08-31 05:58:17,621 - transcribrr - INFO - [DatabaseManager.py:732] - Starting DatabaseWorker thread
+2025-08-31 05:58:17,622 - transcribrr - INFO - [DatabaseManager.py:734] - DatabaseWorker thread started: True
+2025-08-31 05:58:17,626 - transcribrr - INFO - [DatabaseManager.py:732] - Starting DatabaseWorker thread
+2025-08-31 05:58:17,626 - transcribrr - INFO - [DatabaseManager.py:734] - DatabaseWorker thread started: True
+2025-08-31 05:58:17,628 - transcribrr - INFO - [DatabaseManager.py:732] - Starting DatabaseWorker thread
+2025-08-31 05:58:17,629 - transcribrr - INFO - [DatabaseManager.py:734] - DatabaseWorker thread started: True
+2025-08-31 05:58:18,199 - transcribrr - ERROR - [db_utils.py:261] - Error creating recording (duplicate path '/x'): duplicate
+Traceback (most recent call last):
+  File "/home/john/transcribrr/app/db_utils.py", line 253, in create_recording
+    cursor.execute(sql, tuple(data_to_insert[:7]))
+  File "/home/john/.local/share/uv/python/cpython-3.11.9-linux-x86_64-gnu/lib/python3.11/unittest/mock.py", line 1124, in __call__
+    return self._mock_call(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/john/.local/share/uv/python/cpython-3.11.9-linux-x86_64-gnu/lib/python3.11/unittest/mock.py", line 1128, in _mock_call
+    return self._execute_mock_call(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/john/.local/share/uv/python/cpython-3.11.9-linux-x86_64-gnu/lib/python3.11/unittest/mock.py", line 1183, in _execute_mock_call
+    raise effect
+sqlite3.IntegrityError: duplicate
+2025-08-31 05:58:18,200 - transcribrr - INFO - [db_utils.py:256] - Created recording 'file.wav' with ID 7
+2025-08-31 05:58:18,201 - transcribrr - INFO - [db_utils.py:326] - Deleted recording ID 5
+2025-08-31 05:58:18,202 - transcribrr - WARNING - [db_utils.py:291] - Invalid field 'transcript' provided for update_recording.
+2025-08-31 05:58:18,202 - transcribrr - WARNING - [db_utils.py:291] - Invalid field 'unknown' provided for update_recording.
+2025-08-31 05:58:18,202 - transcribrr - INFO - [db_utils.py:308] - Updated recording ID 1 with fields: filename
+2025-08-31 05:58:18,209 - transcribrr - INFO - [FolderManager.py:130] - Loaded 0 folders
+2025-08-31 05:58:18,209 - transcribrr - INFO - [FolderManager.py:364] - Recording 77 is already in folder 5
+2025-08-31 05:58:18,209 - transcribrr - INFO - [FolderManager.py:130] - Loaded 0 folders
+2025-08-31 05:58:18,209 - transcribrr - INFO - [FolderManager.py:342] - Added recording 77 to folder 5
+2025-08-31 05:58:18,210 - transcribrr - INFO - [FolderManager.py:130] - Loaded 0 folders
+2025-08-31 05:58:18,210 - transcribrr - WARNING - [FolderManager.py:153] - Folder with name 'Dup' already exists at this level
+2025-08-31 05:58:18,210 - transcribrr - INFO - [FolderManager.py:130] - Loaded 0 folders
+2025-08-31 05:58:18,210 - transcribrr - ERROR - [FolderManager.py:200] - Failed to get new folder ID
+2025-08-31 05:58:18,211 - transcribrr - INFO - [FolderManager.py:130] - Loaded 0 folders
+2025-08-31 05:58:18,211 - transcribrr - INFO - [FolderManager.py:192] - Created folder: New (ID: 123)
+2025-08-31 05:58:18,211 - transcribrr - INFO - [FolderManager.py:130] - Loaded 0 folders
+2025-08-31 05:58:18,211 - transcribrr - WARNING - [FolderManager.py:268] - Folder with ID 999 not found for deletion
+2025-08-31 05:58:18,212 - transcribrr - INFO - [FolderManager.py:130] - Loaded 0 folders
+2025-08-31 05:58:18,212 - transcribrr - INFO - [FolderManager.py:310] - Deleted folder ID 11
+2025-08-31 05:58:18,213 - transcribrr - INFO - [FolderManager.py:130] - Loaded 0 folders
+2025-08-31 05:58:18,213 - transcribrr - INFO - [FolderManager.py:130] - Loaded 0 folders
+2025-08-31 05:58:18,213 - transcribrr - INFO - [FolderManager.py:130] - Loaded 0 folders
+2025-08-31 05:58:18,214 - transcribrr - INFO - [FolderManager.py:130] - Loaded 0 folders
+2025-08-31 05:58:18,214 - transcribrr - INFO - [FolderManager.py:130] - Loaded 0 folders
+2025-08-31 05:58:18,215 - transcribrr - INFO - [FolderManager.py:130] - Loaded 0 folders
+2025-08-31 05:58:18,215 - transcribrr - INFO - [FolderManager.py:130] - Loaded 0 folders
+2025-08-31 05:58:18,215 - transcribrr - INFO - [FolderManager.py:427] - Fetched 2 recordings from folder 2
+2025-08-31 05:58:18,216 - transcribrr - INFO - [FolderManager.py:130] - Loaded 0 folders
+2025-08-31 05:58:18,216 - transcribrr - INFO - [FolderManager.py:491] - Fetched 1 unassigned recordings from database
+2025-08-31 05:58:18,216 - transcribrr - INFO - [FolderManager.py:130] - Loaded 0 folders
+2025-08-31 05:58:18,216 - transcribrr - ERROR - [FolderManager.py:609] - Error importing folder structure: DB boom
+2025-08-31 05:58:18,217 - transcribrr - INFO - [FolderManager.py:130] - Loaded 0 folders
+2025-08-31 05:58:18,217 - transcribrr - ERROR - [FolderManager.py:609] - Error importing folder structure: Expecting property name enclosed in double quotes: line 1 column 3 (char 2)
+2025-08-31 05:58:18,217 - transcribrr - INFO - [FolderManager.py:130] - Loaded 0 folders
+2025-08-31 05:58:18,217 - transcribrr - INFO - [FolderManager.py:130] - Loaded 0 folders
+2025-08-31 05:58:18,218 - transcribrr - INFO - [FolderManager.py:130] - Loaded 0 folders
+2025-08-31 05:58:18,218 - transcribrr - INFO - [FolderManager.py:130] - Loaded 0 folders
+2025-08-31 05:58:18,218 - transcribrr - INFO - [FolderManager.py:130] - Loaded 0 folders
+2025-08-31 05:58:18,218 - transcribrr - INFO - [FolderManager.py:130] - Loaded 2 folders
+2025-08-31 05:58:18,219 - transcribrr - INFO - [FolderManager.py:130] - Loaded 0 folders
+2025-08-31 05:58:18,219 - transcribrr - INFO - [FolderManager.py:399] - Removed recording 9 from folder 3
+2025-08-31 05:58:18,219 - transcribrr - INFO - [FolderManager.py:130] - Loaded 0 folders
+2025-08-31 05:58:18,219 - transcribrr - WARNING - [FolderManager.py:228] - Folder with name 'A' already exists at this level
+2025-08-31 05:58:18,219 - transcribrr - INFO - [FolderManager.py:130] - Loaded 0 folders
+2025-08-31 05:58:18,220 - transcribrr - WARNING - [FolderManager.py:222] - Folder with ID 999 not found
+2025-08-31 05:58:18,220 - transcribrr - INFO - [FolderManager.py:130] - Loaded 0 folders
+2025-08-31 05:58:18,220 - transcribrr - INFO - [FolderManager.py:250] - Renamed folder ID 5 to 'New'
+2025-08-31 05:58:18,220 - transcribrr - DEBUG - [FolderManager.py:100] - Folder tables are initialized during database creation
+2025-08-31 05:58:18,222 - transcribrr - DEBUG - [FolderManager.py:100] - Folder tables are initialized during database creation
+2025-08-31 05:58:18,223 - transcribrr - WARNING - [FolderManager.py:53] - Different DatabaseManager instance provided to FolderManager.instance() after initialization. Using original instance.
+2025-08-31 05:58:18,223 - transcribrr - DEBUG - [FolderManager.py:100] - Folder tables are initialized during database creation
+2025-08-31 05:58:18,224 - transcribrr - DEBUG - [FolderManager.py:100] - Folder tables are initialized during database creation
+2025-08-31 05:58:18,224 - transcribrr - DEBUG - [FolderManager.py:100] - Folder tables are initialized during database creation
+2025-08-31 05:58:18,225 - transcribrr - DEBUG - [FolderManager.py:100] - Folder tables are initialized during database creation
+2025-08-31 05:58:18,308 - transcribrr - DEBUG - [path_utils.py:37] - Using development path: /home/john/transcribrr
+2025-08-31 05:58:18,308 - transcribrr - DEBUG - [path_utils.py:37] - Using development path: /home/john/transcribrr
+2025-08-31 05:58:18,308 - transcribrr - DEBUG - [path_utils.py:67] - Resource path for 'icons/logo.png': /home/john/transcribrr/icons/logo.png
+2025-08-31 05:58:18,308 - transcribrr - DEBUG - [path_utils.py:31] - Using py2app bundle path: /Applications/MyApp.app/Contents/Resources
+2025-08-31 05:58:18,308 - transcribrr - DEBUG - [path_utils.py:31] - Using py2app bundle path: /Applications/MyApp.app/Contents/Resources
+2025-08-31 05:58:18,308 - transcribrr - DEBUG - [path_utils.py:67] - Resource path for 'asset.dat': /Applications/MyApp.app/Contents/Resources/asset.dat
+2025-08-31 05:58:18,309 - transcribrr - DEBUG - [path_utils.py:21] - Using PyInstaller _MEIPASS path: /tmp/pyi12345
+2025-08-31 05:58:18,309 - transcribrr - DEBUG - [path_utils.py:21] - Using PyInstaller _MEIPASS path: /tmp/pyi12345
+2025-08-31 05:58:18,309 - transcribrr - DEBUG - [path_utils.py:67] - Resource path for 'file.txt': /tmp/pyi12345/file.txt
+2025-08-31 05:59:25,242 - transcribrr - WARNING - [busy_guard.py:143] - Spinner 'nonexistent' not found or couldn't be started
+2025-08-31 05:59:25,244 - transcribrr - INFO - [DatabaseManager.py:732] - Starting DatabaseWorker thread
+2025-08-31 05:59:25,244 - transcribrr - INFO - [DatabaseManager.py:734] - DatabaseWorker thread started: True
+2025-08-31 05:59:25,245 - transcribrr - INFO - [DatabaseManager.py:732] - Starting DatabaseWorker thread
+2025-08-31 05:59:25,245 - transcribrr - INFO - [DatabaseManager.py:734] - DatabaseWorker thread started: True
+2025-08-31 05:59:25,247 - transcribrr - INFO - [DatabaseManager.py:732] - Starting DatabaseWorker thread
+2025-08-31 05:59:25,247 - transcribrr - INFO - [DatabaseManager.py:734] - DatabaseWorker thread started: True
+2025-08-31 05:59:25,248 - transcribrr - INFO - [DatabaseManager.py:732] - Starting DatabaseWorker thread
+2025-08-31 05:59:25,248 - transcribrr - INFO - [DatabaseManager.py:734] - DatabaseWorker thread started: True
+2025-08-31 05:59:25,250 - transcribrr - INFO - [DatabaseManager.py:732] - Starting DatabaseWorker thread
+2025-08-31 05:59:25,250 - transcribrr - INFO - [DatabaseManager.py:734] - DatabaseWorker thread started: True
+2025-08-31 05:59:25,251 - transcribrr - INFO - [DatabaseManager.py:732] - Starting DatabaseWorker thread
+2025-08-31 05:59:25,251 - transcribrr - INFO - [DatabaseManager.py:734] - DatabaseWorker thread started: True
+2025-08-31 05:59:25,252 - transcribrr - INFO - [DatabaseManager.py:732] - Starting DatabaseWorker thread
+2025-08-31 05:59:25,252 - transcribrr - INFO - [DatabaseManager.py:734] - DatabaseWorker thread started: True
+2025-08-31 05:59:25,253 - transcribrr - INFO - [DatabaseManager.py:732] - Starting DatabaseWorker thread
+2025-08-31 05:59:25,254 - transcribrr - INFO - [DatabaseManager.py:734] - DatabaseWorker thread started: True
+2025-08-31 05:59:25,255 - transcribrr - INFO - [DatabaseManager.py:732] - Starting DatabaseWorker thread
+2025-08-31 05:59:25,255 - transcribrr - INFO - [DatabaseManager.py:734] - DatabaseWorker thread started: True
+2025-08-31 05:59:25,256 - transcribrr - INFO - [DatabaseManager.py:732] - Starting DatabaseWorker thread
+2025-08-31 05:59:25,256 - transcribrr - INFO - [DatabaseManager.py:734] - DatabaseWorker thread started: True
+2025-08-31 05:59:25,257 - transcribrr - INFO - [DatabaseManager.py:732] - Starting DatabaseWorker thread
+2025-08-31 05:59:25,257 - transcribrr - INFO - [DatabaseManager.py:734] - DatabaseWorker thread started: True
+2025-08-31 05:59:25,261 - transcribrr - INFO - [DatabaseManager.py:732] - Starting DatabaseWorker thread
+2025-08-31 05:59:25,261 - transcribrr - INFO - [DatabaseManager.py:734] - DatabaseWorker thread started: True
+2025-08-31 05:59:25,264 - transcribrr - INFO - [DatabaseManager.py:732] - Starting DatabaseWorker thread
+2025-08-31 05:59:25,264 - transcribrr - INFO - [DatabaseManager.py:734] - DatabaseWorker thread started: True
+2025-08-31 05:59:25,267 - transcribrr - INFO - [DatabaseManager.py:732] - Starting DatabaseWorker thread
+2025-08-31 05:59:25,267 - transcribrr - INFO - [DatabaseManager.py:734] - DatabaseWorker thread started: True
+2025-08-31 05:59:25,269 - transcribrr - INFO - [DatabaseManager.py:732] - Starting DatabaseWorker thread
+2025-08-31 05:59:25,269 - transcribrr - INFO - [DatabaseManager.py:734] - DatabaseWorker thread started: True
+2025-08-31 05:59:25,272 - transcribrr - INFO - [DatabaseManager.py:732] - Starting DatabaseWorker thread
+2025-08-31 05:59:25,272 - transcribrr - INFO - [DatabaseManager.py:734] - DatabaseWorker thread started: False
+2025-08-31 05:59:25,274 - transcribrr - INFO - [DatabaseManager.py:732] - Starting DatabaseWorker thread
+2025-08-31 05:59:25,274 - transcribrr - INFO - [DatabaseManager.py:734] - DatabaseWorker thread started: True
+2025-08-31 05:59:25,275 - transcribrr - INFO - [DatabaseManager.py:732] - Starting DatabaseWorker thread
+2025-08-31 05:59:25,275 - transcribrr - INFO - [DatabaseManager.py:734] - DatabaseWorker thread started: True
+2025-08-31 05:59:25,277 - transcribrr - INFO - [DatabaseManager.py:732] - Starting DatabaseWorker thread
+2025-08-31 05:59:25,277 - transcribrr - INFO - [DatabaseManager.py:734] - DatabaseWorker thread started: True
+2025-08-31 05:59:25,812 - transcribrr - ERROR - [db_utils.py:261] - Error creating recording (duplicate path '/x'): duplicate
+Traceback (most recent call last):
+  File "/home/john/transcribrr/app/db_utils.py", line 253, in create_recording
+    cursor.execute(sql, tuple(data_to_insert[:7]))
+  File "/home/john/.local/share/uv/python/cpython-3.11.9-linux-x86_64-gnu/lib/python3.11/unittest/mock.py", line 1124, in __call__
+    return self._mock_call(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/john/.local/share/uv/python/cpython-3.11.9-linux-x86_64-gnu/lib/python3.11/unittest/mock.py", line 1128, in _mock_call
+    return self._execute_mock_call(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/john/.local/share/uv/python/cpython-3.11.9-linux-x86_64-gnu/lib/python3.11/unittest/mock.py", line 1183, in _execute_mock_call
+    raise effect
+sqlite3.IntegrityError: duplicate
+2025-08-31 05:59:25,813 - transcribrr - INFO - [db_utils.py:256] - Created recording 'file.wav' with ID 7
+2025-08-31 05:59:25,814 - transcribrr - INFO - [db_utils.py:326] - Deleted recording ID 5
+2025-08-31 05:59:25,814 - transcribrr - WARNING - [db_utils.py:291] - Invalid field 'transcript' provided for update_recording.
+2025-08-31 05:59:25,814 - transcribrr - WARNING - [db_utils.py:291] - Invalid field 'unknown' provided for update_recording.
+2025-08-31 05:59:25,814 - transcribrr - INFO - [db_utils.py:308] - Updated recording ID 1 with fields: filename
+2025-08-31 05:59:25,817 - transcribrr - INFO - [FolderManager.py:130] - Loaded 0 folders
+2025-08-31 05:59:25,817 - transcribrr - INFO - [FolderManager.py:364] - Recording 77 is already in folder 5
+2025-08-31 05:59:25,817 - transcribrr - INFO - [FolderManager.py:130] - Loaded 0 folders
+2025-08-31 05:59:25,817 - transcribrr - INFO - [FolderManager.py:342] - Added recording 77 to folder 5
+2025-08-31 05:59:25,818 - transcribrr - INFO - [FolderManager.py:130] - Loaded 0 folders
+2025-08-31 05:59:25,818 - transcribrr - WARNING - [FolderManager.py:153] - Folder with name 'Dup' already exists at this level
+2025-08-31 05:59:25,818 - transcribrr - INFO - [FolderManager.py:130] - Loaded 0 folders
+2025-08-31 05:59:25,818 - transcribrr - ERROR - [FolderManager.py:200] - Failed to get new folder ID
+2025-08-31 05:59:25,818 - transcribrr - INFO - [FolderManager.py:130] - Loaded 0 folders
+2025-08-31 05:59:25,818 - transcribrr - INFO - [FolderManager.py:192] - Created folder: New (ID: 123)
+2025-08-31 05:59:25,818 - transcribrr - INFO - [FolderManager.py:130] - Loaded 0 folders
+2025-08-31 05:59:25,818 - transcribrr - WARNING - [FolderManager.py:268] - Folder with ID 999 not found for deletion
+2025-08-31 05:59:25,819 - transcribrr - INFO - [FolderManager.py:130] - Loaded 0 folders
+2025-08-31 05:59:25,819 - transcribrr - INFO - [FolderManager.py:310] - Deleted folder ID 11
+2025-08-31 05:59:25,819 - transcribrr - INFO - [FolderManager.py:130] - Loaded 0 folders
+2025-08-31 05:59:25,819 - transcribrr - INFO - [FolderManager.py:130] - Loaded 0 folders
+2025-08-31 05:59:25,819 - transcribrr - INFO - [FolderManager.py:130] - Loaded 0 folders
+2025-08-31 05:59:25,820 - transcribrr - INFO - [FolderManager.py:130] - Loaded 0 folders
+2025-08-31 05:59:25,820 - transcribrr - INFO - [FolderManager.py:130] - Loaded 0 folders
+2025-08-31 05:59:25,820 - transcribrr - INFO - [FolderManager.py:130] - Loaded 0 folders
+2025-08-31 05:59:25,820 - transcribrr - INFO - [FolderManager.py:130] - Loaded 0 folders
+2025-08-31 05:59:25,820 - transcribrr - INFO - [FolderManager.py:427] - Fetched 2 recordings from folder 2
+2025-08-31 05:59:25,820 - transcribrr - INFO - [FolderManager.py:130] - Loaded 0 folders
+2025-08-31 05:59:25,820 - transcribrr - INFO - [FolderManager.py:491] - Fetched 1 unassigned recordings from database
+2025-08-31 05:59:25,821 - transcribrr - INFO - [FolderManager.py:130] - Loaded 0 folders
+2025-08-31 05:59:25,821 - transcribrr - ERROR - [FolderManager.py:609] - Error importing folder structure: DB boom
+2025-08-31 05:59:25,821 - transcribrr - INFO - [FolderManager.py:130] - Loaded 0 folders
+2025-08-31 05:59:25,821 - transcribrr - ERROR - [FolderManager.py:609] - Error importing folder structure: Expecting property name enclosed in double quotes: line 1 column 3 (char 2)
+2025-08-31 05:59:25,821 - transcribrr - INFO - [FolderManager.py:130] - Loaded 0 folders
+2025-08-31 05:59:25,822 - transcribrr - INFO - [FolderManager.py:130] - Loaded 0 folders
+2025-08-31 05:59:25,822 - transcribrr - INFO - [FolderManager.py:130] - Loaded 0 folders
+2025-08-31 05:59:25,822 - transcribrr - INFO - [FolderManager.py:130] - Loaded 0 folders
+2025-08-31 05:59:25,822 - transcribrr - INFO - [FolderManager.py:130] - Loaded 0 folders
+2025-08-31 05:59:25,822 - transcribrr - INFO - [FolderManager.py:130] - Loaded 2 folders
+2025-08-31 05:59:25,823 - transcribrr - INFO - [FolderManager.py:130] - Loaded 0 folders
+2025-08-31 05:59:25,823 - transcribrr - INFO - [FolderManager.py:399] - Removed recording 9 from folder 3
+2025-08-31 05:59:25,823 - transcribrr - INFO - [FolderManager.py:130] - Loaded 0 folders
+2025-08-31 05:59:25,823 - transcribrr - WARNING - [FolderManager.py:228] - Folder with name 'A' already exists at this level
+2025-08-31 05:59:25,823 - transcribrr - INFO - [FolderManager.py:130] - Loaded 0 folders
+2025-08-31 05:59:25,823 - transcribrr - WARNING - [FolderManager.py:222] - Folder with ID 999 not found
+2025-08-31 05:59:25,823 - transcribrr - INFO - [FolderManager.py:130] - Loaded 0 folders
+2025-08-31 05:59:25,823 - transcribrr - INFO - [FolderManager.py:250] - Renamed folder ID 5 to 'New'
+2025-08-31 05:59:25,824 - transcribrr - DEBUG - [FolderManager.py:100] - Folder tables are initialized during database creation
+2025-08-31 05:59:25,825 - transcribrr - DEBUG - [FolderManager.py:100] - Folder tables are initialized during database creation
+2025-08-31 05:59:25,825 - transcribrr - WARNING - [FolderManager.py:53] - Different DatabaseManager instance provided to FolderManager.instance() after initialization. Using original instance.
+2025-08-31 05:59:25,825 - transcribrr - DEBUG - [FolderManager.py:100] - Folder tables are initialized during database creation
+2025-08-31 05:59:25,825 - transcribrr - DEBUG - [FolderManager.py:100] - Folder tables are initialized during database creation
+2025-08-31 05:59:25,826 - transcribrr - DEBUG - [FolderManager.py:100] - Folder tables are initialized during database creation
+2025-08-31 05:59:25,826 - transcribrr - DEBUG - [FolderManager.py:100] - Folder tables are initialized during database creation
+2025-08-31 05:59:25,861 - transcribrr - DEBUG - [path_utils.py:37] - Using development path: /home/john/transcribrr
+2025-08-31 05:59:25,861 - transcribrr - DEBUG - [path_utils.py:37] - Using development path: /home/john/transcribrr
+2025-08-31 05:59:25,861 - transcribrr - DEBUG - [path_utils.py:67] - Resource path for 'icons/logo.png': /home/john/transcribrr/icons/logo.png
+2025-08-31 05:59:25,861 - transcribrr - DEBUG - [path_utils.py:31] - Using py2app bundle path: /Applications/MyApp.app/Contents/Resources
+2025-08-31 05:59:25,861 - transcribrr - DEBUG - [path_utils.py:31] - Using py2app bundle path: /Applications/MyApp.app/Contents/Resources
+2025-08-31 05:59:25,861 - transcribrr - DEBUG - [path_utils.py:67] - Resource path for 'asset.dat': /Applications/MyApp.app/Contents/Resources/asset.dat
+2025-08-31 05:59:25,862 - transcribrr - DEBUG - [path_utils.py:21] - Using PyInstaller _MEIPASS path: /tmp/pyi12345
+2025-08-31 05:59:25,862 - transcribrr - DEBUG - [path_utils.py:21] - Using PyInstaller _MEIPASS path: /tmp/pyi12345
+2025-08-31 05:59:25,862 - transcribrr - DEBUG - [path_utils.py:67] - Resource path for 'file.txt': /tmp/pyi12345/file.txt
+2025-08-31 05:59:32,227 - transcribrr - WARNING - [busy_guard.py:143] - Spinner 'nonexistent' not found or couldn't be started
+2025-08-31 05:59:32,229 - transcribrr - INFO - [DatabaseManager.py:732] - Starting DatabaseWorker thread
+2025-08-31 05:59:32,229 - transcribrr - INFO - [DatabaseManager.py:734] - DatabaseWorker thread started: True
+2025-08-31 05:59:32,231 - transcribrr - INFO - [DatabaseManager.py:732] - Starting DatabaseWorker thread
+2025-08-31 05:59:32,231 - transcribrr - INFO - [DatabaseManager.py:734] - DatabaseWorker thread started: True
+2025-08-31 05:59:32,232 - transcribrr - INFO - [DatabaseManager.py:732] - Starting DatabaseWorker thread
+2025-08-31 05:59:32,233 - transcribrr - INFO - [DatabaseManager.py:734] - DatabaseWorker thread started: True
+2025-08-31 05:59:32,234 - transcribrr - INFO - [DatabaseManager.py:732] - Starting DatabaseWorker thread
+2025-08-31 05:59:32,234 - transcribrr - INFO - [DatabaseManager.py:734] - DatabaseWorker thread started: True
+2025-08-31 05:59:32,235 - transcribrr - INFO - [DatabaseManager.py:732] - Starting DatabaseWorker thread
+2025-08-31 05:59:32,235 - transcribrr - INFO - [DatabaseManager.py:734] - DatabaseWorker thread started: True
+2025-08-31 05:59:32,237 - transcribrr - INFO - [DatabaseManager.py:732] - Starting DatabaseWorker thread
+2025-08-31 05:59:32,237 - transcribrr - INFO - [DatabaseManager.py:734] - DatabaseWorker thread started: True
+2025-08-31 05:59:32,238 - transcribrr - INFO - [DatabaseManager.py:732] - Starting DatabaseWorker thread
+2025-08-31 05:59:32,238 - transcribrr - INFO - [DatabaseManager.py:734] - DatabaseWorker thread started: True
+2025-08-31 05:59:32,239 - transcribrr - INFO - [DatabaseManager.py:732] - Starting DatabaseWorker thread
+2025-08-31 05:59:32,239 - transcribrr - INFO - [DatabaseManager.py:734] - DatabaseWorker thread started: True
+2025-08-31 05:59:32,240 - transcribrr - INFO - [DatabaseManager.py:732] - Starting DatabaseWorker thread
+2025-08-31 05:59:32,240 - transcribrr - INFO - [DatabaseManager.py:734] - DatabaseWorker thread started: True
+2025-08-31 05:59:32,241 - transcribrr - INFO - [DatabaseManager.py:732] - Starting DatabaseWorker thread
+2025-08-31 05:59:32,242 - transcribrr - INFO - [DatabaseManager.py:734] - DatabaseWorker thread started: True
+2025-08-31 05:59:32,243 - transcribrr - INFO - [DatabaseManager.py:732] - Starting DatabaseWorker thread
+2025-08-31 05:59:32,243 - transcribrr - INFO - [DatabaseManager.py:734] - DatabaseWorker thread started: True
+2025-08-31 05:59:32,246 - transcribrr - INFO - [DatabaseManager.py:732] - Starting DatabaseWorker thread
+2025-08-31 05:59:32,247 - transcribrr - INFO - [DatabaseManager.py:734] - DatabaseWorker thread started: True
+2025-08-31 05:59:32,250 - transcribrr - INFO - [DatabaseManager.py:732] - Starting DatabaseWorker thread
+2025-08-31 05:59:32,250 - transcribrr - INFO - [DatabaseManager.py:734] - DatabaseWorker thread started: True
+2025-08-31 05:59:32,252 - transcribrr - INFO - [DatabaseManager.py:732] - Starting DatabaseWorker thread
+2025-08-31 05:59:32,252 - transcribrr - INFO - [DatabaseManager.py:734] - DatabaseWorker thread started: True
+2025-08-31 05:59:32,254 - transcribrr - INFO - [DatabaseManager.py:732] - Starting DatabaseWorker thread
+2025-08-31 05:59:32,254 - transcribrr - INFO - [DatabaseManager.py:734] - DatabaseWorker thread started: True
+2025-08-31 05:59:32,257 - transcribrr - INFO - [DatabaseManager.py:732] - Starting DatabaseWorker thread
+2025-08-31 05:59:32,257 - transcribrr - INFO - [DatabaseManager.py:734] - DatabaseWorker thread started: False
+2025-08-31 05:59:32,260 - transcribrr - INFO - [DatabaseManager.py:732] - Starting DatabaseWorker thread
+2025-08-31 05:59:32,260 - transcribrr - INFO - [DatabaseManager.py:734] - DatabaseWorker thread started: True
+2025-08-31 05:59:32,261 - transcribrr - INFO - [DatabaseManager.py:732] - Starting DatabaseWorker thread
+2025-08-31 05:59:32,261 - transcribrr - INFO - [DatabaseManager.py:734] - DatabaseWorker thread started: True
+2025-08-31 05:59:32,263 - transcribrr - INFO - [DatabaseManager.py:732] - Starting DatabaseWorker thread
+2025-08-31 05:59:32,263 - transcribrr - INFO - [DatabaseManager.py:734] - DatabaseWorker thread started: True
+2025-08-31 05:59:32,797 - transcribrr - ERROR - [db_utils.py:261] - Error creating recording (duplicate path '/x'): duplicate
+Traceback (most recent call last):
+  File "/home/john/transcribrr/app/db_utils.py", line 253, in create_recording
+    cursor.execute(sql, tuple(data_to_insert[:7]))
+  File "/home/john/.local/share/uv/python/cpython-3.11.9-linux-x86_64-gnu/lib/python3.11/unittest/mock.py", line 1124, in __call__
+    return self._mock_call(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/john/.local/share/uv/python/cpython-3.11.9-linux-x86_64-gnu/lib/python3.11/unittest/mock.py", line 1128, in _mock_call
+    return self._execute_mock_call(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/john/.local/share/uv/python/cpython-3.11.9-linux-x86_64-gnu/lib/python3.11/unittest/mock.py", line 1183, in _execute_mock_call
+    raise effect
+sqlite3.IntegrityError: duplicate
+2025-08-31 05:59:32,798 - transcribrr - INFO - [db_utils.py:256] - Created recording 'file.wav' with ID 7
+2025-08-31 05:59:32,798 - transcribrr - INFO - [db_utils.py:326] - Deleted recording ID 5
+2025-08-31 05:59:32,798 - transcribrr - WARNING - [db_utils.py:291] - Invalid field 'transcript' provided for update_recording.
+2025-08-31 05:59:32,799 - transcribrr - WARNING - [db_utils.py:291] - Invalid field 'unknown' provided for update_recording.
+2025-08-31 05:59:32,799 - transcribrr - INFO - [db_utils.py:308] - Updated recording ID 1 with fields: filename
+2025-08-31 05:59:32,801 - transcribrr - INFO - [FolderManager.py:130] - Loaded 0 folders
+2025-08-31 05:59:32,802 - transcribrr - INFO - [FolderManager.py:364] - Recording 77 is already in folder 5
+2025-08-31 05:59:32,802 - transcribrr - INFO - [FolderManager.py:130] - Loaded 0 folders
+2025-08-31 05:59:32,802 - transcribrr - INFO - [FolderManager.py:342] - Added recording 77 to folder 5
+2025-08-31 05:59:32,802 - transcribrr - INFO - [FolderManager.py:130] - Loaded 0 folders
+2025-08-31 05:59:32,802 - transcribrr - WARNING - [FolderManager.py:153] - Folder with name 'Dup' already exists at this level
+2025-08-31 05:59:32,802 - transcribrr - INFO - [FolderManager.py:130] - Loaded 0 folders
+2025-08-31 05:59:32,802 - transcribrr - ERROR - [FolderManager.py:200] - Failed to get new folder ID
+2025-08-31 05:59:32,803 - transcribrr - INFO - [FolderManager.py:130] - Loaded 0 folders
+2025-08-31 05:59:32,803 - transcribrr - INFO - [FolderManager.py:192] - Created folder: New (ID: 123)
+2025-08-31 05:59:32,803 - transcribrr - INFO - [FolderManager.py:130] - Loaded 0 folders
+2025-08-31 05:59:32,803 - transcribrr - WARNING - [FolderManager.py:268] - Folder with ID 999 not found for deletion
+2025-08-31 05:59:32,803 - transcribrr - INFO - [FolderManager.py:130] - Loaded 0 folders
+2025-08-31 05:59:32,803 - transcribrr - INFO - [FolderManager.py:310] - Deleted folder ID 11
+2025-08-31 05:59:32,803 - transcribrr - INFO - [FolderManager.py:130] - Loaded 0 folders
+2025-08-31 05:59:32,803 - transcribrr - INFO - [FolderManager.py:130] - Loaded 0 folders
+2025-08-31 05:59:32,804 - transcribrr - INFO - [FolderManager.py:130] - Loaded 0 folders
+2025-08-31 05:59:32,804 - transcribrr - INFO - [FolderManager.py:130] - Loaded 0 folders
+2025-08-31 05:59:32,804 - transcribrr - INFO - [FolderManager.py:130] - Loaded 0 folders
+2025-08-31 05:59:32,804 - transcribrr - INFO - [FolderManager.py:130] - Loaded 0 folders
+2025-08-31 05:59:32,804 - transcribrr - INFO - [FolderManager.py:130] - Loaded 0 folders
+2025-08-31 05:59:32,804 - transcribrr - INFO - [FolderManager.py:427] - Fetched 2 recordings from folder 2
+2025-08-31 05:59:32,805 - transcribrr - INFO - [FolderManager.py:130] - Loaded 0 folders
+2025-08-31 05:59:32,805 - transcribrr - INFO - [FolderManager.py:491] - Fetched 1 unassigned recordings from database
+2025-08-31 05:59:32,805 - transcribrr - INFO - [FolderManager.py:130] - Loaded 0 folders
+2025-08-31 05:59:32,805 - transcribrr - ERROR - [FolderManager.py:609] - Error importing folder structure: DB boom
+2025-08-31 05:59:32,805 - transcribrr - INFO - [FolderManager.py:130] - Loaded 0 folders
+2025-08-31 05:59:32,805 - transcribrr - ERROR - [FolderManager.py:609] - Error importing folder structure: Expecting property name enclosed in double quotes: line 1 column 3 (char 2)
+2025-08-31 05:59:32,805 - transcribrr - INFO - [FolderManager.py:130] - Loaded 0 folders
+2025-08-31 05:59:32,806 - transcribrr - INFO - [FolderManager.py:130] - Loaded 0 folders
+2025-08-31 05:59:32,806 - transcribrr - INFO - [FolderManager.py:130] - Loaded 0 folders
+2025-08-31 05:59:32,806 - transcribrr - INFO - [FolderManager.py:130] - Loaded 0 folders
+2025-08-31 05:59:32,807 - transcribrr - INFO - [FolderManager.py:130] - Loaded 0 folders
+2025-08-31 05:59:32,807 - transcribrr - INFO - [FolderManager.py:130] - Loaded 2 folders
+2025-08-31 05:59:32,807 - transcribrr - INFO - [FolderManager.py:130] - Loaded 0 folders
+2025-08-31 05:59:32,807 - transcribrr - INFO - [FolderManager.py:399] - Removed recording 9 from folder 3
+2025-08-31 05:59:32,807 - transcribrr - INFO - [FolderManager.py:130] - Loaded 0 folders
+2025-08-31 05:59:32,807 - transcribrr - WARNING - [FolderManager.py:228] - Folder with name 'A' already exists at this level
+2025-08-31 05:59:32,807 - transcribrr - INFO - [FolderManager.py:130] - Loaded 0 folders
+2025-08-31 05:59:32,807 - transcribrr - WARNING - [FolderManager.py:222] - Folder with ID 999 not found
+2025-08-31 05:59:32,807 - transcribrr - INFO - [FolderManager.py:130] - Loaded 0 folders
+2025-08-31 05:59:32,808 - transcribrr - INFO - [FolderManager.py:250] - Renamed folder ID 5 to 'New'
+2025-08-31 05:59:32,808 - transcribrr - DEBUG - [FolderManager.py:100] - Folder tables are initialized during database creation
+2025-08-31 05:59:32,809 - transcribrr - DEBUG - [FolderManager.py:100] - Folder tables are initialized during database creation
+2025-08-31 05:59:32,809 - transcribrr - WARNING - [FolderManager.py:53] - Different DatabaseManager instance provided to FolderManager.instance() after initialization. Using original instance.
+2025-08-31 05:59:32,809 - transcribrr - DEBUG - [FolderManager.py:100] - Folder tables are initialized during database creation
+2025-08-31 05:59:32,809 - transcribrr - DEBUG - [FolderManager.py:100] - Folder tables are initialized during database creation
+2025-08-31 05:59:32,809 - transcribrr - DEBUG - [FolderManager.py:100] - Folder tables are initialized during database creation
+2025-08-31 05:59:32,810 - transcribrr - DEBUG - [FolderManager.py:100] - Folder tables are initialized during database creation
+2025-08-31 05:59:32,846 - transcribrr - DEBUG - [path_utils.py:37] - Using development path: /home/john/transcribrr
+2025-08-31 05:59:32,846 - transcribrr - DEBUG - [path_utils.py:37] - Using development path: /home/john/transcribrr
+2025-08-31 05:59:32,846 - transcribrr - DEBUG - [path_utils.py:67] - Resource path for 'icons/logo.png': /home/john/transcribrr/icons/logo.png
+2025-08-31 05:59:32,846 - transcribrr - DEBUG - [path_utils.py:31] - Using py2app bundle path: /Applications/MyApp.app/Contents/Resources
+2025-08-31 05:59:32,846 - transcribrr - DEBUG - [path_utils.py:31] - Using py2app bundle path: /Applications/MyApp.app/Contents/Resources
+2025-08-31 05:59:32,846 - transcribrr - DEBUG - [path_utils.py:67] - Resource path for 'asset.dat': /Applications/MyApp.app/Contents/Resources/asset.dat
+2025-08-31 05:59:32,846 - transcribrr - DEBUG - [path_utils.py:21] - Using PyInstaller _MEIPASS path: /tmp/pyi12345
+2025-08-31 05:59:32,846 - transcribrr - DEBUG - [path_utils.py:21] - Using PyInstaller _MEIPASS path: /tmp/pyi12345
+2025-08-31 05:59:32,846 - transcribrr - DEBUG - [path_utils.py:67] - Resource path for 'file.txt': /tmp/pyi12345/file.txt
