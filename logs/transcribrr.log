@@ -1758,3 +1758,102 @@
 2025-08-31 00:52:15,260 - transcribrr - INFO - [DatabaseManager.py:734] - DatabaseWorker thread started: True
 2025-08-31 00:52:15,262 - transcribrr - INFO - [DatabaseManager.py:732] - Starting DatabaseWorker thread
 2025-08-31 00:52:15,262 - transcribrr - INFO - [DatabaseManager.py:734] - DatabaseWorker thread started: True
+2025-08-31 00:52:15,792 - transcribrr - DEBUG - [FolderManager.py:100] - Folder tables are initialized during database creation
+2025-08-31 00:52:15,793 - transcribrr - DEBUG - [FolderManager.py:100] - Folder tables are initialized during database creation
+2025-08-31 00:52:15,793 - transcribrr - WARNING - [FolderManager.py:53] - Different DatabaseManager instance provided to FolderManager.instance() after initialization. Using original instance.
+2025-08-31 00:52:15,794 - transcribrr - DEBUG - [FolderManager.py:100] - Folder tables are initialized during database creation
+2025-08-31 00:52:15,794 - transcribrr - DEBUG - [FolderManager.py:100] - Folder tables are initialized during database creation
+2025-08-31 00:52:15,794 - transcribrr - DEBUG - [FolderManager.py:100] - Folder tables are initialized during database creation
+2025-08-31 00:52:15,795 - transcribrr - DEBUG - [FolderManager.py:100] - Folder tables are initialized during database creation
+2025-08-31 00:52:22,859 - transcribrr - WARNING - [busy_guard.py:143] - Spinner 'nonexistent' not found or couldn't be started
+2025-08-31 00:52:22,862 - transcribrr - INFO - [DatabaseManager.py:732] - Starting DatabaseWorker thread
+2025-08-31 00:52:22,862 - transcribrr - INFO - [DatabaseManager.py:734] - DatabaseWorker thread started: True
+2025-08-31 00:52:22,863 - transcribrr - INFO - [DatabaseManager.py:732] - Starting DatabaseWorker thread
+2025-08-31 00:52:22,863 - transcribrr - INFO - [DatabaseManager.py:734] - DatabaseWorker thread started: True
+2025-08-31 00:52:22,864 - transcribrr - INFO - [DatabaseManager.py:732] - Starting DatabaseWorker thread
+2025-08-31 00:52:22,864 - transcribrr - INFO - [DatabaseManager.py:734] - DatabaseWorker thread started: True
+2025-08-31 00:52:22,865 - transcribrr - INFO - [DatabaseManager.py:732] - Starting DatabaseWorker thread
+2025-08-31 00:52:22,865 - transcribrr - INFO - [DatabaseManager.py:734] - DatabaseWorker thread started: True
+2025-08-31 00:52:22,866 - transcribrr - INFO - [DatabaseManager.py:732] - Starting DatabaseWorker thread
+2025-08-31 00:52:22,866 - transcribrr - INFO - [DatabaseManager.py:734] - DatabaseWorker thread started: True
+2025-08-31 00:52:22,867 - transcribrr - INFO - [DatabaseManager.py:732] - Starting DatabaseWorker thread
+2025-08-31 00:52:22,867 - transcribrr - INFO - [DatabaseManager.py:734] - DatabaseWorker thread started: True
+2025-08-31 00:52:22,868 - transcribrr - INFO - [DatabaseManager.py:732] - Starting DatabaseWorker thread
+2025-08-31 00:52:22,868 - transcribrr - INFO - [DatabaseManager.py:734] - DatabaseWorker thread started: True
+2025-08-31 00:52:22,869 - transcribrr - INFO - [DatabaseManager.py:732] - Starting DatabaseWorker thread
+2025-08-31 00:52:22,869 - transcribrr - INFO - [DatabaseManager.py:734] - DatabaseWorker thread started: True
+2025-08-31 00:52:22,870 - transcribrr - INFO - [DatabaseManager.py:732] - Starting DatabaseWorker thread
+2025-08-31 00:52:22,870 - transcribrr - INFO - [DatabaseManager.py:734] - DatabaseWorker thread started: True
+2025-08-31 00:52:22,871 - transcribrr - INFO - [DatabaseManager.py:732] - Starting DatabaseWorker thread
+2025-08-31 00:52:22,871 - transcribrr - INFO - [DatabaseManager.py:734] - DatabaseWorker thread started: True
+2025-08-31 00:52:22,872 - transcribrr - INFO - [DatabaseManager.py:732] - Starting DatabaseWorker thread
+2025-08-31 00:52:22,872 - transcribrr - INFO - [DatabaseManager.py:734] - DatabaseWorker thread started: True
+2025-08-31 00:52:22,875 - transcribrr - INFO - [DatabaseManager.py:732] - Starting DatabaseWorker thread
+2025-08-31 00:52:22,875 - transcribrr - INFO - [DatabaseManager.py:734] - DatabaseWorker thread started: True
+2025-08-31 00:52:22,877 - transcribrr - INFO - [DatabaseManager.py:732] - Starting DatabaseWorker thread
+2025-08-31 00:52:22,877 - transcribrr - INFO - [DatabaseManager.py:734] - DatabaseWorker thread started: True
+2025-08-31 00:52:22,879 - transcribrr - INFO - [DatabaseManager.py:732] - Starting DatabaseWorker thread
+2025-08-31 00:52:22,880 - transcribrr - INFO - [DatabaseManager.py:734] - DatabaseWorker thread started: True
+2025-08-31 00:52:22,881 - transcribrr - INFO - [DatabaseManager.py:732] - Starting DatabaseWorker thread
+2025-08-31 00:52:22,881 - transcribrr - INFO - [DatabaseManager.py:734] - DatabaseWorker thread started: True
+2025-08-31 00:52:22,884 - transcribrr - INFO - [DatabaseManager.py:732] - Starting DatabaseWorker thread
+2025-08-31 00:52:22,885 - transcribrr - INFO - [DatabaseManager.py:734] - DatabaseWorker thread started: False
+2025-08-31 00:52:22,886 - transcribrr - INFO - [DatabaseManager.py:732] - Starting DatabaseWorker thread
+2025-08-31 00:52:22,886 - transcribrr - INFO - [DatabaseManager.py:734] - DatabaseWorker thread started: True
+2025-08-31 00:52:22,887 - transcribrr - INFO - [DatabaseManager.py:732] - Starting DatabaseWorker thread
+2025-08-31 00:52:22,887 - transcribrr - INFO - [DatabaseManager.py:734] - DatabaseWorker thread started: True
+2025-08-31 00:52:22,888 - transcribrr - INFO - [DatabaseManager.py:732] - Starting DatabaseWorker thread
+2025-08-31 00:52:22,888 - transcribrr - INFO - [DatabaseManager.py:734] - DatabaseWorker thread started: True
+2025-08-31 00:52:23,414 - transcribrr - DEBUG - [FolderManager.py:100] - Folder tables are initialized during database creation
+2025-08-31 00:52:23,415 - transcribrr - DEBUG - [FolderManager.py:100] - Folder tables are initialized during database creation
+2025-08-31 00:52:23,415 - transcribrr - WARNING - [FolderManager.py:53] - Different DatabaseManager instance provided to FolderManager.instance() after initialization. Using original instance.
+2025-08-31 00:52:23,415 - transcribrr - DEBUG - [FolderManager.py:100] - Folder tables are initialized during database creation
+2025-08-31 00:52:23,416 - transcribrr - DEBUG - [FolderManager.py:100] - Folder tables are initialized during database creation
+2025-08-31 00:52:23,416 - transcribrr - DEBUG - [FolderManager.py:100] - Folder tables are initialized during database creation
+2025-08-31 00:52:23,421 - transcribrr - DEBUG - [FolderManager.py:100] - Folder tables are initialized during database creation
+2025-08-31 00:52:28,828 - transcribrr - WARNING - [busy_guard.py:143] - Spinner 'nonexistent' not found or couldn't be started
+2025-08-31 00:52:28,830 - transcribrr - INFO - [DatabaseManager.py:732] - Starting DatabaseWorker thread
+2025-08-31 00:52:28,830 - transcribrr - INFO - [DatabaseManager.py:734] - DatabaseWorker thread started: True
+2025-08-31 00:52:28,832 - transcribrr - INFO - [DatabaseManager.py:732] - Starting DatabaseWorker thread
+2025-08-31 00:52:28,832 - transcribrr - INFO - [DatabaseManager.py:734] - DatabaseWorker thread started: True
+2025-08-31 00:52:28,833 - transcribrr - INFO - [DatabaseManager.py:732] - Starting DatabaseWorker thread
+2025-08-31 00:52:28,833 - transcribrr - INFO - [DatabaseManager.py:734] - DatabaseWorker thread started: True
+2025-08-31 00:52:28,835 - transcribrr - INFO - [DatabaseManager.py:732] - Starting DatabaseWorker thread
+2025-08-31 00:52:28,835 - transcribrr - INFO - [DatabaseManager.py:734] - DatabaseWorker thread started: True
+2025-08-31 00:52:28,836 - transcribrr - INFO - [DatabaseManager.py:732] - Starting DatabaseWorker thread
+2025-08-31 00:52:28,836 - transcribrr - INFO - [DatabaseManager.py:734] - DatabaseWorker thread started: True
+2025-08-31 00:52:28,838 - transcribrr - INFO - [DatabaseManager.py:732] - Starting DatabaseWorker thread
+2025-08-31 00:52:28,838 - transcribrr - INFO - [DatabaseManager.py:734] - DatabaseWorker thread started: True
+2025-08-31 00:52:28,839 - transcribrr - INFO - [DatabaseManager.py:732] - Starting DatabaseWorker thread
+2025-08-31 00:52:28,839 - transcribrr - INFO - [DatabaseManager.py:734] - DatabaseWorker thread started: True
+2025-08-31 00:52:28,840 - transcribrr - INFO - [DatabaseManager.py:732] - Starting DatabaseWorker thread
+2025-08-31 00:52:28,840 - transcribrr - INFO - [DatabaseManager.py:734] - DatabaseWorker thread started: True
+2025-08-31 00:52:28,841 - transcribrr - INFO - [DatabaseManager.py:732] - Starting DatabaseWorker thread
+2025-08-31 00:52:28,842 - transcribrr - INFO - [DatabaseManager.py:734] - DatabaseWorker thread started: True
+2025-08-31 00:52:28,843 - transcribrr - INFO - [DatabaseManager.py:732] - Starting DatabaseWorker thread
+2025-08-31 00:52:28,843 - transcribrr - INFO - [DatabaseManager.py:734] - DatabaseWorker thread started: True
+2025-08-31 00:52:28,844 - transcribrr - INFO - [DatabaseManager.py:732] - Starting DatabaseWorker thread
+2025-08-31 00:52:28,844 - transcribrr - INFO - [DatabaseManager.py:734] - DatabaseWorker thread started: True
+2025-08-31 00:52:28,848 - transcribrr - INFO - [DatabaseManager.py:732] - Starting DatabaseWorker thread
+2025-08-31 00:52:28,848 - transcribrr - INFO - [DatabaseManager.py:734] - DatabaseWorker thread started: True
+2025-08-31 00:52:28,850 - transcribrr - INFO - [DatabaseManager.py:732] - Starting DatabaseWorker thread
+2025-08-31 00:52:28,850 - transcribrr - INFO - [DatabaseManager.py:734] - DatabaseWorker thread started: True
+2025-08-31 00:52:28,854 - transcribrr - INFO - [DatabaseManager.py:732] - Starting DatabaseWorker thread
+2025-08-31 00:52:28,854 - transcribrr - INFO - [DatabaseManager.py:734] - DatabaseWorker thread started: True
+2025-08-31 00:52:28,856 - transcribrr - INFO - [DatabaseManager.py:732] - Starting DatabaseWorker thread
+2025-08-31 00:52:28,856 - transcribrr - INFO - [DatabaseManager.py:734] - DatabaseWorker thread started: True
+2025-08-31 00:52:28,859 - transcribrr - INFO - [DatabaseManager.py:732] - Starting DatabaseWorker thread
+2025-08-31 00:52:28,859 - transcribrr - INFO - [DatabaseManager.py:734] - DatabaseWorker thread started: False
+2025-08-31 00:52:28,861 - transcribrr - INFO - [DatabaseManager.py:732] - Starting DatabaseWorker thread
+2025-08-31 00:52:28,861 - transcribrr - INFO - [DatabaseManager.py:734] - DatabaseWorker thread started: True
+2025-08-31 00:52:28,862 - transcribrr - INFO - [DatabaseManager.py:732] - Starting DatabaseWorker thread
+2025-08-31 00:52:28,862 - transcribrr - INFO - [DatabaseManager.py:734] - DatabaseWorker thread started: True
+2025-08-31 00:52:28,864 - transcribrr - INFO - [DatabaseManager.py:732] - Starting DatabaseWorker thread
+2025-08-31 00:52:28,864 - transcribrr - INFO - [DatabaseManager.py:734] - DatabaseWorker thread started: True
+2025-08-31 00:52:29,400 - transcribrr - DEBUG - [FolderManager.py:100] - Folder tables are initialized during database creation
+2025-08-31 00:52:29,401 - transcribrr - DEBUG - [FolderManager.py:100] - Folder tables are initialized during database creation
+2025-08-31 00:52:29,401 - transcribrr - WARNING - [FolderManager.py:53] - Different DatabaseManager instance provided to FolderManager.instance() after initialization. Using original instance.
+2025-08-31 00:52:29,401 - transcribrr - DEBUG - [FolderManager.py:100] - Folder tables are initialized during database creation
+2025-08-31 00:52:29,402 - transcribrr - DEBUG - [FolderManager.py:100] - Folder tables are initialized during database creation
+2025-08-31 00:52:29,402 - transcribrr - DEBUG - [FolderManager.py:100] - Folder tables are initialized during database creation
+2025-08-31 00:52:29,402 - transcribrr - DEBUG - [FolderManager.py:100] - Folder tables are initialized during database creation
