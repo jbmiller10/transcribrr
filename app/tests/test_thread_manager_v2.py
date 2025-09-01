@@ -5,6 +5,9 @@ exercising real behavior (signals, registration, cancellation).
 """
 
 import unittest
+import logging
+import logging.handlers
+
 
 from app.ThreadManager import ThreadManager
 
@@ -25,6 +28,30 @@ class _Signal:
     def emit(self, *args, **kwargs):  # type: ignore[no-untyped-def]
         for fn in list(self._subs):
             fn(*args, **kwargs)
+
+
+class LogCapture:
+    """Capture logs for a given logger name for assertions."""
+
+    def __init__(self, logger_name: str):
+        self.logger = logging.getLogger(logger_name)
+        self.handler = logging.handlers.MemoryHandler(1000)
+        self.original_level = self.logger.level
+
+    def __enter__(self):
+        self.logger.addHandler(self.handler)
+        self.logger.setLevel(logging.DEBUG)
+        return self
+
+    def __exit__(self, *_):
+        self.logger.removeHandler(self.handler)
+        self.logger.setLevel(self.original_level)
+
+    def contains(self, level: int, fragment: str) -> bool:
+        for rec in self.handler.buffer:
+            if rec.levelno == level and fragment in rec.getMessage():
+                return True
+        return False
 
 
 class TestThread:
@@ -59,6 +86,11 @@ class TestThreadRegistration(unittest.TestCase):
         for t in list(self.manager.get_active_threads()):
             self.manager.unregister_thread(t)
 
+    def test_instance_is_singleton(self):
+        a = ThreadManager.instance()
+        b = ThreadManager.instance()
+        self.assertIs(a, b)
+
     def test_registers_thread_and_adds_to_active_list(self):
         thread = TestThread()
         self.assertEqual(len(self.manager.get_active_threads()), 0)
@@ -74,6 +106,16 @@ class TestThreadRegistration(unittest.TestCase):
         # Emit finished signal
         thread.finished.emit()
         self.assertNotIn(thread, self.manager.get_active_threads())
+
+    def test_warns_on_duplicate_registration(self):
+        thread = TestThread()
+        with LogCapture('app.ThreadManager') as log:
+            self.manager.register_thread(thread)
+            self.manager.register_thread(thread)
+        self.assertTrue(
+            log.contains(logging.WARNING, "already registered"),
+            "Should warn on duplicate registration",
+        )
 
 
 class TestThreadCancellation(unittest.TestCase):
@@ -94,6 +136,28 @@ class TestThreadCancellation(unittest.TestCase):
         # Threads should have been waited and no longer considered running
         self.assertFalse(t1.isRunning())
         self.assertFalse(t2.isRunning())
+
+    def test_logs_warning_for_thread_without_cancel(self):
+        class BasicThread:
+            def __init__(self) -> None:
+                self.finished = _Signal()
+                self._running = True
+
+            def isRunning(self) -> bool:  # noqa: N802
+                return self._running
+
+            def wait(self, timeout: int) -> bool:  # noqa: ARG002
+                self._running = False
+                return True
+
+        t = BasicThread()
+        self.manager.register_thread(t)  # type: ignore[arg-type]
+        with LogCapture('app.ThreadManager') as log:
+            self.manager.cancel_all_threads()
+        self.assertTrue(
+            log.contains(logging.WARNING, "has no cancel() method"),
+            "Should log a warning for thread without cancel()",
+        )
 
 
 class TestThreadManagerEdgeCases(unittest.TestCase):
@@ -153,3 +217,11 @@ class TestThreadManagerEdgeCases(unittest.TestCase):
         self.manager.register_thread(t)
         with self.assertRaises(RuntimeError):
             self.manager.cancel_all_threads()
+
+    def test_cancel_all_threads_when_empty_logs_and_returns(self):
+        # Ensure no active threads
+        for t in list(self.manager.get_active_threads()):
+            self.manager.unregister_thread(t)
+        with LogCapture('app.ThreadManager') as log:
+            self.manager.cancel_all_threads()
+        self.assertTrue(log.contains(logging.DEBUG, 'No active threads to cancel'))

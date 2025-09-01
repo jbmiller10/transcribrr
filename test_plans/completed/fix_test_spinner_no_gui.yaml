@@ -1,199 +1,289 @@
-target_file: "app/tests/test_spinner_no_gui.py"
-fix_summary: "Transform from mock-heavy implementation testing to behavior-focused unit tests"
+target_file: "/home/john/transcribrr/app/ui_utils/__init__.py"
+test_file: "/home/john/transcribrr/app/tests/test_spinner_no_gui.py"
+current_issues:
+  - weak_coverage: "Tests only happy path scenarios with minimal edge cases"
+  - unclear_intent: "Test names don't clearly describe behavior being tested"
+  - excessive_mocking: "Uses object() placeholders instead of meaningful test doubles"
+  - missing_scenarios: "No error handling, race conditions, or state corruption tests"
+  - shallow_assertions: "Tests check boolean returns but not actual state changes"
+  - no_integration: "Tests don't validate interaction between SpinnerManager and FeedbackManager"
 
-identified_issues:
-  - issue: "Excessive Mocking (Mockery Anti-Pattern)"
-    description: "Mocks all PyQt6 components instead of using headless fallback implementation"
-    lines: [21-28, 64-68]
-    severity: "high"
+improvement_plan:
+  phase_1_refactoring:
+    - action: "Rename test file to test_ui_feedback_headless.py"
+      reason: "Better reflects the headless nature and broader scope"
     
-  - issue: "Testing Implementation Details"
-    description: "Verifies internal dictionary states rather than observable behavior"
-    lines: [51, 56, 62]
-    severity: "high"
+    - action: "Split into focused test classes"
+      new_structure:
+        - "TestSpinnerManagerCore: Basic spinner lifecycle and state management"
+        - "TestSpinnerManagerErrorHandling: Error scenarios and edge cases"
+        - "TestFeedbackManagerCore: Basic feedback operations"
+        - "TestFeedbackManagerIntegration: Integration with SpinnerManager"
+        - "TestFeedbackManagerConcurrency: Concurrent operation handling"
     
-  - issue: "Conjoined Twins Anti-Pattern"
-    description: "Neither proper unit nor integration test - mixes concerns"
-    severity: "medium"
+    - action: "Create meaningful test doubles"
+      implementations:
+        - name: "FakeToolbar"
+          purpose: "Simulate toolbar behavior for spinner attachment"
+          attributes:
+            - "actions: List of attached actions"
+            - "visible: Boolean visibility state"
+        
+        - name: "FakeUIElement"
+          purpose: "Simulate UI elements for enable/disable tracking"
+          attributes:
+            - "enabled: Boolean enabled state"
+            - "enable_history: List of state changes"
+        
+        - name: "CallbackTracker"
+          purpose: "Track callback invocations"
+          attributes:
+            - "call_count: Number of invocations"
+            - "call_args: Arguments from each call"
+
+  phase_2_new_test_cases:
+    spinner_manager_tests:
+      - test_name: "test_create_spinner_validates_parameters"
+        scenario: "Creating spinner with None or invalid parameters"
+        expected: "Graceful handling, no crashes, appropriate defaults"
+      
+      - test_name: "test_spinner_state_persistence_across_operations"
+        scenario: "Multiple toggle operations maintain consistent state"
+        expected: "State remains synchronized, no state corruption"
+      
+      - test_name: "test_concurrent_spinner_operations"
+        scenario: "Multiple spinners activated/deactivated simultaneously"
+        expected: "Each spinner maintains independent state"
+      
+      - test_name: "test_spinner_cleanup_on_stop_all"
+        scenario: "stop_all_spinners called with various spinner states"
+        expected: "All spinners properly stopped, state cleared"
+      
+      - test_name: "test_duplicate_spinner_creation"
+        scenario: "Attempting to create spinner with existing name"
+        expected: "Either replaces or rejects based on design"
+      
+      - test_name: "test_spinner_memory_leak_prevention"
+        scenario: "Creating and destroying many spinners"
+        expected: "No accumulation of stale spinner references"
+
+    feedback_manager_tests:
+      - test_name: "test_operation_tracking_with_nested_operations"
+        scenario: "Starting operations within other operations"
+        expected: "Proper tracking, UI only re-enabled when all complete"
+      
+      - test_name: "test_ui_state_restoration_after_crash"
+        scenario: "Exception during operation completion"
+        expected: "UI state properly restored, no stuck disabled elements"
+      
+      - test_name: "test_progress_dialog_lifecycle"
+        scenario: "Full progress dialog create/update/close cycle"
+        expected: "Proper resource management, no orphaned dialogs"
+      
+      - test_name: "test_mixed_feedback_types"
+        scenario: "Spinner and progress active simultaneously"
+        expected: "Both tracked independently, proper cleanup"
+      
+      - test_name: "test_stop_all_feedback_comprehensive"
+        scenario: "Multiple active spinners, progress dialogs, UI states"
+        expected: "Everything properly cleaned up and restored"
+      
+      - test_name: "test_ui_element_tracking_with_invalid_elements"
+        scenario: "Tracking elements that throw exceptions on access"
+        expected: "Graceful handling, no crashes, partial restoration"
+      
+      - test_name: "test_operation_id_collision"
+        scenario: "Same operation_id used for different operations"
+        expected: "Proper handling or rejection based on design"
+
+  phase_3_test_patterns:
+    - pattern: "Arrange-Act-Assert with clear sections"
+      example: |
+        def test_spinner_state_persistence(self):
+            # Arrange
+            manager = SpinnerManager()
+            fake_toolbar = FakeToolbar()
+            callback = CallbackTracker()
+            
+            # Act
+            manager.create_spinner("test", fake_toolbar, None, "tip", callback)
+            initial_state = manager.is_active("test")
+            manager.toggle_spinner("test")
+            after_first_toggle = manager.is_active("test")
+            manager.toggle_spinner("test")
+            final_state = manager.is_active("test")
+            
+            # Assert
+            self.assertFalse(initial_state, "Spinner should start inactive")
+            self.assertTrue(after_first_toggle, "First toggle should activate")
+            self.assertFalse(final_state, "Second toggle should deactivate")
+            self.assertEqual(callback.call_count, 0, "Callback not invoked in headless mode")
     
-  - issue: "Happy Path Only"
-    description: "No error scenarios, edge cases, or concurrent access testing"
-    severity: "high"
+    - pattern: "Descriptive test names with Given-When-Then"
+      example: |
+        def test_given_active_spinner_when_stop_all_called_then_spinner_deactivated(self):
+            # Implementation follows name structure
     
-  - issue: "Poor Test Structure"
-    description: "Tests multiple behaviors in single methods without clear separation"
-    severity: "medium"
+    - pattern: "Error scenario testing with context managers"
+      example: |
+        def test_exception_during_ui_restoration(self):
+            # Arrange
+            manager = FeedbackManager()
+            broken_element = FakeUIElement(raise_on_enable=True)
+            working_element = FakeUIElement()
+            
+            # Act & Assert
+            manager.set_ui_busy(True, [broken_element, working_element])
+            manager.finish_operation("test")  # Should not crash
+            
+            # Verify partial restoration
+            self.assertTrue(working_element.enabled)
+            self.assertEqual(len(manager.ui_state), 0, "State cleared despite error")
 
-proposed_fixes:
-
-  1_remove_excessive_mocking:
-    problem: "Current tests mock PyQt6 components unnecessarily"
-    solution: |
-      - Remove all @patch decorators for PyQt6 components
-      - Use the headless fallback implementation in app/ui_utils/__init__.py
-      - The fallback already provides a no-GUI implementation for testing
-    implementation:
-      - Remove lines 21-28 and 64-68 (patch decorators)
-      - Remove mock parameter arguments from test methods
-      - Directly instantiate SpinnerManager and FeedbackManager classes
-
-  2_test_actual_behavior:
-    problem: "Tests check internal dictionary states instead of behavior"
-    solution: |
-      - Test public API methods and their return values
-      - Test observable state changes through public methods only
-      - Focus on behavior contracts, not implementation
-    new_test_cases:
-      - "Test spinner lifecycle (create, start, stop, query state)"
-      - "Test multiple spinner management"
-      - "Test operation tracking in FeedbackManager"
-      - "Test UI busy state management"
-      - "Test cleanup behaviors"
-
-  3_add_error_scenarios:
-    problem: "No error handling or edge case testing"
-    solution: "Add comprehensive error and edge case coverage"
-    new_test_cases:
-      - test_toggle_nonexistent_spinner:
-          description: "Verify graceful handling of operations on non-existent spinners"
-          expected: "Returns False, no exceptions raised"
-      
-      - test_concurrent_spinner_operations:
-          description: "Test rapid start/stop cycles on same spinner"
-          expected: "Maintains consistent state"
-      
-      - test_duplicate_spinner_creation:
-          description: "Attempt to create spinner with existing name"
-          expected: "Either replaces or raises appropriate error"
-      
-      - test_stop_already_inactive_spinner:
-          description: "Stop a spinner that's already stopped"
-          expected: "Returns True (idempotent behavior)"
-      
-      - test_empty_spinner_name:
-          description: "Create/toggle spinner with empty string name"
-          expected: "Handles gracefully or raises ValueError"
-      
-      - test_none_spinner_name:
-          description: "Pass None as spinner name"
-          expected: "Handles gracefully or raises TypeError"
-
-  4_add_edge_cases:
-    problem: "Missing boundary and edge case testing"
-    solution: "Add tests for boundary conditions"
-    new_test_cases:
-      - test_stop_all_spinners_with_empty_list:
-          description: "Call stop_all when no spinners exist"
-          expected: "No errors, method completes successfully"
-      
-      - test_stop_all_spinners_with_multiple_active:
-          description: "Stop multiple active spinners at once"
-          expected: "All spinners become inactive"
-      
-      - test_feedback_manager_operation_tracking:
-          description: "Test start/finish operation state management"
-          expected: "Tracks active operations correctly"
-      
-      - test_ui_state_preservation:
-          description: "Test UI state saving and restoration"
-          expected: "Preserves and restores element states"
-      
-      - test_progress_dialog_lifecycle:
-          description: "Test progress dialog creation and cleanup"
-          expected: "Manages dialog lifecycle correctly"
-
-  5_improve_test_structure:
-    problem: "Tests combine multiple behaviors in single methods"
-    solution: "Split into focused, single-purpose test methods"
-    restructuring:
-      - Split test_spinner_creation into:
-        - test_create_spinner_success
-        - test_toggle_spinner_starts_inactive
-        - test_toggle_spinner_activates
-        - test_toggle_spinner_deactivates
-        - test_is_active_returns_correct_state
-      
-      - Split test_feedback_manager into:
-        - test_feedback_manager_creates_spinner_manager
-        - test_start_spinner_activates_and_tracks_operation
-        - test_stop_spinner_deactivates_and_cleans_operation
-        - test_start_nonexistent_spinner_returns_false
-
-  6_add_parameterized_tests:
-    problem: "Repetitive test patterns without parameterization"
-    solution: "Use parameterized tests for similar scenarios"
-    examples:
-      - test_spinner_states:
-          parameters: ["active", "inactive", "toggled_once", "toggled_twice"]
-          description: "Test various spinner state transitions"
-      
-      - test_invalid_inputs:
-          parameters: ["", None, [], {}, 123, float('inf')]
-          description: "Test handling of various invalid inputs"
-
-  7_add_integration_tests:
-    problem: "No tests for component interactions"
-    solution: "Add focused integration tests"
-    new_test_cases:
-      - test_spinner_operation_integration:
-          description: "Test spinner and operation tracking work together"
-          scenario: "Start spinner triggers operation, stop cleans up"
-      
-      - test_multiple_operations_ui_state:
-          description: "Test UI state with overlapping operations"
-          scenario: "Multiple operations affect same UI elements"
-      
-      - test_cleanup_on_stop_all:
-          description: "Test complete cleanup via stop_all_feedback"
-          scenario: "All spinners, operations, and UI states reset"
-
-test_organization:
-  test_classes:
-    - TestSpinnerManager:
-        focus: "SpinnerManager core functionality"
-        tests:
-          - "Spinner creation and lifecycle"
-          - "State management"
-          - "Error handling"
-          - "Edge cases"
+  phase_4_coverage_targets:
+    - metric: "Line coverage"
+      target: "95% for headless implementations"
+      current: "~60% (estimated)"
     
-    - TestFeedbackManager:
-        focus: "FeedbackManager orchestration"
-        tests:
-          - "Operation tracking"
-          - "UI state management"
-          - "Spinner integration"
-          - "Progress dialog management"
+    - metric: "Branch coverage"
+      target: "90% for all conditional paths"
+      current: "~40% (estimated)"
     
-    - TestSpinnerFeedbackIntegration:
-        focus: "Component interaction"
-        tests:
-          - "Spinner-operation coordination"
-          - "Cleanup behaviors"
-          - "State consistency"
+    - metric: "Error path coverage"
+      target: "100% of exception handlers tested"
+      current: "0% (no error tests)"
+    
+    - metric: "State transition coverage"
+      target: "All valid state transitions tested"
+      current: "Basic transitions only"
 
-implementation_guidelines:
-  - "Use self.subTest() for parameterized scenarios"
-  - "Each test method should be under 15 lines"
-  - "Use descriptive assertion messages for debugging"
-  - "No direct access to internal attributes (e.g., spinner_manager.spinners)"
-  - "Test through public API only"
-  - "Use setUp/tearDown for proper test isolation"
-  - "Document test purpose with clear docstrings"
+  phase_5_documentation:
+    - action: "Add comprehensive docstrings"
+      format: |
+        """Test that [specific behavior] when [condition].
+        
+        This test verifies that the [component] correctly [action]
+        when [scenario]. This is important because [rationale].
+        
+        Test coverage:
+        - [Path 1]: [Description]
+        - [Path 2]: [Description]
+        """
+    
+    - action: "Add test data builders"
+      example: |
+        class TestDataBuilder:
+            @staticmethod
+            def create_configured_spinner_manager(**overrides):
+                manager = SpinnerManager()
+                defaults = {
+                    "spinner1": {"toolbar": FakeToolbar(), "active": False},
+                    "spinner2": {"toolbar": FakeToolbar(), "active": True}
+                }
+                for name, config in defaults.items():
+                    if name not in overrides.get("exclude", []):
+                        manager.create_spinner(name, config["toolbar"], ...)
+                        if config["active"]:
+                            manager.toggle_spinner(name)
+                return manager
 
-expected_improvements:
-  - "Reduction from ~115 lines to ~250-300 lines of focused tests"
-  - "Complete removal of PyQt6 mocking"
-  - "100% coverage of public API methods"
-  - "Error scenario coverage for all major functions"
-  - "Clear separation of unit and integration concerns"
-  - "Improved test maintainability and readability"
+  implementation_checklist:
+    week_1:
+      - "Create new test file structure with focused test classes"
+      - "Implement FakeToolbar, FakeUIElement, CallbackTracker"
+      - "Write comprehensive SpinnerManager tests"
+      - "Achieve 90% coverage for SpinnerManager"
+    
+    week_2:
+      - "Write comprehensive FeedbackManager tests"
+      - "Add error scenario tests for both managers"
+      - "Implement concurrent operation tests"
+      - "Achieve 90% coverage for FeedbackManager"
+    
+    week_3:
+      - "Add integration tests between components"
+      - "Implement state transition tests"
+      - "Add performance/memory leak tests"
+      - "Document all test scenarios"
 
-success_metrics:
-  - "0 @patch decorators (currently 10)"
-  - "0 direct internal state checks"
-  - "15+ focused test methods (currently 2)"
-  - "100% public method coverage"
-  - "5+ error scenario tests"
-  - "3+ edge case tests"
-  - "Test execution under 1 second"
+  success_metrics:
+    - "Test file score improves from 4/10 to 8+/10"
+    - "All error paths have explicit test coverage"
+    - "Test execution time remains under 1 second"
+    - "Zero use of object() placeholders"
+    - "Clear test intent from method names alone"
+    - "Comprehensive assertions verifying all state changes"
+    - "No reliance on implementation details"
+    - "Tests serve as executable documentation"
+
+  anti_patterns_to_avoid:
+    - "Using object() as mock objects"
+    - "Testing only happy paths"
+    - "Unclear test names like 'test_spinner_lifecycle'"
+    - "Missing assertions on side effects"
+    - "Not testing error recovery"
+    - "Ignoring concurrent operation scenarios"
+    - "Testing implementation rather than behavior"
+    - "Monolithic test methods doing too much"
+
+  example_improved_test:
+    before: |
+      def test_spinner_lifecycle(self):
+          sm = SpinnerManager(None)
+          sm.create_spinner("s1", toolbar=object(), action_icon=None, 
+                           action_tooltip="t", callback=lambda: None)
+          self.assertFalse(sm.is_active("s1"))
+          self.assertTrue(sm.toggle_spinner("s1"))
+          self.assertTrue(sm.is_active("s1"))
+    
+    after: |
+      def test_newly_created_spinner_starts_inactive_and_toggles_correctly(self):
+          """Verify spinner lifecycle: creation, activation, and deactivation.
+          
+          Tests that a newly created spinner:
+          1. Starts in inactive state
+          2. Becomes active on first toggle
+          3. Returns to inactive on second toggle
+          4. Maintains state consistency throughout
+          """
+          # Arrange
+          manager = SpinnerManager()
+          fake_toolbar = FakeToolbar()
+          callback_tracker = CallbackTracker()
+          spinner_name = "test_spinner"
+          
+          # Act - Create spinner
+          created_action = manager.create_spinner(
+              name=spinner_name,
+              toolbar=fake_toolbar,
+              action_icon=None,  # Headless mode
+              action_tooltip="Test spinner tooltip",
+              callback=callback_tracker.track
+          )
+          
+          # Assert - Initial state
+          self.assertIsNotNone(created_action, "Spinner creation should return action object")
+          self.assertIn(spinner_name, manager.spinners, "Spinner should be registered")
+          self.assertFalse(manager.is_active(spinner_name), "New spinner should be inactive")
+          
+          # Act - First toggle (activate)
+          activation_result = manager.toggle_spinner(spinner_name)
+          
+          # Assert - Active state
+          self.assertTrue(activation_result, "Toggle should return True when activating")
+          self.assertTrue(manager.is_active(spinner_name), "Spinner should be active after toggle")
+          self.assertEqual(manager.spinners[spinner_name]["active"], True, 
+                          "Internal state should reflect activation")
+          
+          # Act - Second toggle (deactivate)
+          deactivation_result = manager.toggle_spinner(spinner_name)
+          
+          # Assert - Inactive state
+          self.assertFalse(deactivation_result, "Toggle should return False when deactivating")
+          self.assertFalse(manager.is_active(spinner_name), "Spinner should be inactive after second toggle")
+          self.assertEqual(manager.spinners[spinner_name]["active"], False,
+                          "Internal state should reflect deactivation")
+          
+          # Verify callback was not invoked in headless mode
+          self.assertEqual(callback_tracker.call_count, 0, 
+                          "Callbacks should not execute in headless mode")

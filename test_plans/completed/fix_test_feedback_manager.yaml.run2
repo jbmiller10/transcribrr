@@ -1,0 +1,363 @@
+# Test Improvement Plan for test_feedback_manager.py
+# Generated: 2025-09-01
+# Current Issues: Excessive UI mocking, tests mock calls not state, implementation details focus
+# Target: Behavior-driven tests with proper state verification
+
+target_file: "app/ui_utils/__init__.py"
+test_file: "app/tests/test_feedback_manager.py"
+target_class: "app.ui_utils.FeedbackManager"
+
+current_issues:
+  - "Excessive UI element mocking - mocks Qt elements unnecessarily"
+  - "Tests mock method calls not actual UI state - verifies setEnabled was called rather than testing behavior"
+  - "Focuses on implementation details - tests internal method calls instead of observable outcomes"
+  - "Mixed concerns - UI state management mixed with operation tracking"
+  - "Weak assertions - doesn't verify state transitions properly"
+  - "No clear separation between unit and integration tests"
+
+dependencies_to_mock:
+  - "app.ui_utils.SpinnerManager"  # Mock for unit tests, real for integration
+  - "UI elements (isEnabled/setEnabled methods)"  # Mock Qt-like interface
+
+improvement_strategy:
+  philosophy: |
+    Focus on testing the FeedbackManager's core responsibilities:
+    1. Operation lifecycle management (start/finish/track)
+    2. UI element state preservation and restoration
+    3. Progress dialog lifecycle
+    4. Spinner integration coordination
+    5. Error resilience
+    
+    Tests should verify BEHAVIOR and STATE, not method calls.
+
+test_cases:
+
+  # ========== OPERATION TRACKING TESTS ==========
+  - function_to_test: "FeedbackManager.__init__"
+    description: "Initializes with empty state and creates SpinnerManager"
+    scenario: "Creating a new FeedbackManager instance"
+    mocks:
+      - target: "SpinnerManager"
+        return_value: "Mock SpinnerManager instance"
+    expected_behavior:
+      - "Instance has empty active_operations set"
+      - "Instance has empty ui_state dictionary"
+      - "Instance has empty progress_dialogs dictionary"
+      - "SpinnerManager is created with parent_widget"
+
+  - function_to_test: "FeedbackManager.start_operation"
+    description: "Tracks new operation and triggers UI busy on first"
+    scenario: "Starting the first operation"
+    mocks: []
+    expected_behavior:
+      - "Operation ID is added to active_operations set"
+      - "set_ui_busy(True) is called when this is the first operation"
+      - "Subsequent operations don't trigger set_ui_busy again"
+
+  - function_to_test: "FeedbackManager.finish_operation"
+    description: "Removes operation and restores UI when last completes"
+    scenario: "Finishing the last active operation"
+    mocks:
+      - target: "UI elements"
+        return_value: "Mock elements with stored states"
+    expected_behavior:
+      - "Operation ID is removed from active_operations"
+      - "When no operations remain, all UI elements are restored to original states"
+      - "ui_state dictionary is cleared after restoration"
+
+  - function_to_test: "FeedbackManager.finish_operation"
+    description: "Handles non-existent operation gracefully"
+    scenario: "Attempting to finish an operation that was never started"
+    mocks: []
+    expected_behavior:
+      - "No exception is raised"
+      - "active_operations set remains unchanged"
+      - "UI state is not modified"
+
+  - function_to_test: "FeedbackManager.finish_operation"
+    description: "Maintains busy state with multiple operations"
+    scenario: "Multiple overlapping operations where one finishes"
+    mocks:
+      - target: "UI elements"
+        return_value: "Mock elements"
+    expected_behavior:
+      - "Finished operation is removed from tracking"
+      - "UI elements remain disabled while other operations active"
+      - "ui_state is NOT cleared until all operations complete"
+
+  # ========== UI STATE MANAGEMENT TESTS ==========
+  - function_to_test: "FeedbackManager.set_ui_busy"
+    description: "Captures original state and disables elements"
+    scenario: "Setting UI to busy with mixed enabled/disabled elements"
+    mocks:
+      - target: "element.isEnabled"
+        return_value: "True for some, False for others"
+      - target: "element.setEnabled"
+        return_value: "None"
+    expected_behavior:
+      - "Original enabled state is stored for each element"
+      - "All elements are set to disabled regardless of original state"
+      - "Previously stored states are preserved (not overwritten)"
+
+  - function_to_test: "FeedbackManager.set_ui_busy"
+    description: "Ignores request when busy is False"
+    scenario: "Calling set_ui_busy(False)"
+    mocks: []
+    expected_behavior:
+      - "Method returns immediately without any changes"
+      - "No elements are modified"
+      - "No state is stored"
+
+  - function_to_test: "FeedbackManager.set_ui_busy"
+    description: "Handles elements without isEnabled method"
+    scenario: "Element missing isEnabled method"
+    mocks:
+      - target: "element (no isEnabled)"
+        side_effect: "AttributeError on isEnabled access"
+    expected_behavior:
+      - "Exception is caught and handled"
+      - "Default state (True) is stored for the element"
+      - "Element's setEnabled is still called with False"
+
+  - function_to_test: "FeedbackManager.set_ui_busy"
+    description: "Handles setEnabled exceptions gracefully"
+    scenario: "Element raises exception on setEnabled"
+    mocks:
+      - target: "element.setEnabled"
+        side_effect: "RuntimeError"
+    expected_behavior:
+      - "Exception is caught and suppressed"
+      - "Processing continues for other elements"
+      - "State is still tracked despite setEnabled failure"
+
+  # ========== PROGRESS DIALOG TESTS ==========
+  - function_to_test: "FeedbackManager.start_progress"
+    description: "Creates progress dialog and starts operation tracking"
+    scenario: "Starting a new progress operation"
+    mocks: []
+    expected_behavior:
+      - "New object is stored in progress_dialogs with operation_id key"
+      - "start_operation is called with the operation_id"
+      - "Returns the created progress dialog object"
+
+  - function_to_test: "FeedbackManager.start_progress"
+    description: "Replaces existing progress dialog for same ID"
+    scenario: "Starting progress with ID that already exists"
+    mocks: []
+    expected_behavior:
+      - "Previous dialog object is replaced"
+      - "New dialog object is stored"
+      - "Operation remains in active_operations"
+
+  - function_to_test: "FeedbackManager.update_progress"
+    description: "Safe no-op in headless mode"
+    scenario: "Updating progress in headless environment"
+    mocks: []
+    expected_behavior:
+      - "Method returns None without error"
+      - "No state changes occur"
+      - "Handles None message parameter"
+
+  - function_to_test: "FeedbackManager.finish_progress"
+    description: "Triggers close when auto_close is True"
+    scenario: "Finishing progress with auto_close enabled"
+    mocks: []
+    expected_behavior:
+      - "close_progress is called with the operation_id"
+      - "Progress dialog is removed from tracking"
+      - "Operation is removed from active_operations"
+
+  - function_to_test: "FeedbackManager.close_progress"
+    description: "Removes dialog and finishes operation"
+    scenario: "Manually closing a progress dialog"
+    mocks: []
+    expected_behavior:
+      - "Dialog is removed from progress_dialogs dictionary"
+      - "finish_operation is called with operation_id"
+      - "Safe to call even if dialog doesn't exist"
+
+  # ========== SPINNER INTEGRATION TESTS ==========
+  - function_to_test: "FeedbackManager.start_spinner"
+    description: "Activates spinner and tracks as operation"
+    scenario: "Starting a spinner that exists"
+    mocks:
+      - target: "spinner_manager.spinners"
+        return_value: "Dictionary with spinner_name key"
+      - target: "spinner_manager.toggle_spinner"
+        return_value: "True (activated)"
+    expected_behavior:
+      - "Spinner is toggled via spinner_manager"
+      - "Operation is tracked via start_operation"
+      - "Returns True indicating success"
+
+  - function_to_test: "FeedbackManager.start_spinner"
+    description: "Handles non-existent spinner gracefully"
+    scenario: "Attempting to start a spinner that doesn't exist"
+    mocks:
+      - target: "spinner_manager.spinners"
+        return_value: "Empty dictionary"
+    expected_behavior:
+      - "Returns False immediately"
+      - "No operation is started"
+      - "No spinner state is changed"
+
+  - function_to_test: "FeedbackManager.stop_spinner"
+    description: "Deactivates spinner and completes operation"
+    scenario: "Stopping an active spinner"
+    mocks:
+      - target: "spinner_manager.spinners"
+        return_value: "Dictionary with spinner_name"
+      - target: "spinner_manager.is_active"
+        return_value: "True"
+      - target: "spinner_manager.set_spinner_state"
+        return_value: "None"
+    expected_behavior:
+      - "Spinner state is set to False"
+      - "finish_operation is called with spinner_name"
+      - "Returns True indicating success"
+
+  - function_to_test: "FeedbackManager.stop_spinner"
+    description: "Returns early if spinner already stopped"
+    scenario: "Stopping an already inactive spinner"
+    mocks:
+      - target: "spinner_manager.is_active"
+        return_value: "False"
+    expected_behavior:
+      - "Returns True immediately"
+      - "No state changes occur"
+      - "finish_operation is NOT called"
+
+  # ========== CLEANUP AND ERROR RECOVERY TESTS ==========
+  - function_to_test: "FeedbackManager.stop_all_feedback"
+    description: "Comprehensive cleanup of all active feedback"
+    scenario: "Multiple active operations, spinners, and progress dialogs"
+    mocks:
+      - target: "spinner_manager.stop_all_spinners"
+        return_value: "None"
+      - target: "UI elements with various states"
+        return_value: "Mixed enabled/disabled states"
+    expected_behavior:
+      - "All spinners are stopped via spinner_manager"
+      - "All progress dialogs are closed"
+      - "All operations are cleared from tracking"
+      - "All UI elements are restored to original states"
+      - "All internal state dictionaries are cleared"
+
+  - function_to_test: "FeedbackManager.stop_all_feedback"
+    description: "Handles exceptions during cleanup"
+    scenario: "Some UI elements raise exceptions during restoration"
+    mocks:
+      - target: "element.setEnabled"
+        side_effect: "RuntimeError for some elements"
+    expected_behavior:
+      - "Exceptions are caught and suppressed"
+      - "Cleanup continues for other elements"
+      - "All state is still cleared despite errors"
+
+  # ========== STATE CONSISTENCY TESTS ==========
+  - function_to_test: "FeedbackManager (integration)"
+    description: "State remains consistent through operation lifecycle"
+    scenario: "Complete lifecycle: start -> update -> finish"
+    mocks: []
+    expected_behavior:
+      - "State transitions are atomic and consistent"
+      - "No orphaned operations or dialogs"
+      - "UI state properly tracked throughout"
+
+  - function_to_test: "FeedbackManager (integration)"
+    description: "Handles rapid start/stop cycles"
+    scenario: "Same operation started and stopped multiple times quickly"
+    mocks: []
+    expected_behavior:
+      - "No duplicate operations in tracking"
+      - "UI state doesn't get corrupted"
+      - "Final state matches expected based on sequence"
+
+refactoring_approach:
+  step1_state_verification:
+    description: "Replace mock call verification with state checks"
+    rationale: "Test the actual state of the system, not how it got there"
+    example: |
+      # BAD: Testing implementation detail
+      element.setEnabled.assert_called_once_with(False)
+      
+      # GOOD: Testing state/behavior
+      self.assertIn(operation_id, fm.active_operations)
+      self.assertEqual(fm.ui_state[element], original_state)
+
+  step2_behavior_focus:
+    description: "Test observable behavior not internal calls"
+    rationale: "Tests should verify what the system does, not how"
+    example: |
+      # BAD: Verifying internal method was called
+      with patch.object(fm, 'close_progress') as mock_close:
+          fm.finish_progress("op", auto_close=True)
+          mock_close.assert_called_once_with("op")
+      
+      # GOOD: Verifying behavior/outcome
+      fm.start_progress("op", "Title", "Message")
+      fm.finish_progress("op", auto_close=True)
+      self.assertNotIn("op", fm.progress_dialogs)
+      self.assertNotIn("op", fm.active_operations)
+
+  step3_meaningful_assertions:
+    description: "Assert on state transitions and invariants"
+    rationale: "Verify the system maintains its contracts"
+    example: |
+      # Track state through operations
+      initial_ops = len(fm.active_operations)
+      fm.start_operation("test")
+      self.assertEqual(len(fm.active_operations), initial_ops + 1)
+      fm.finish_operation("test")
+      self.assertEqual(len(fm.active_operations), initial_ops)
+
+  step4_proper_mocking:
+    description: "Mock at boundaries, not internals"
+    rationale: "Mock external dependencies, not the system under test"
+    example: |
+      # Mock UI elements (external boundary)
+      element = Mock(spec=['isEnabled', 'setEnabled'])
+      element.isEnabled.return_value = True
+      
+      # Don't mock FeedbackManager's own methods
+
+test_organization:
+  test_classes:
+    - name: "TestFeedbackManagerOperationLifecycle"
+      focus: "Operation tracking and state transitions"
+      tests: ["start/finish operations", "concurrent operations", "operation cleanup"]
+    
+    - name: "TestFeedbackManagerUIState"  
+      focus: "UI element state preservation and restoration"
+      tests: ["capture states", "restore states", "error handling"]
+    
+    - name: "TestFeedbackManagerProgressDialogs"
+      focus: "Progress dialog lifecycle in headless mode"
+      tests: ["create", "update", "close", "auto-close behavior"]
+    
+    - name: "TestFeedbackManagerSpinnerCoordination"
+      focus: "Spinner integration and synchronization"
+      tests: ["start/stop", "state sync", "missing spinners"]
+    
+    - name: "TestFeedbackManagerErrorResilience"
+      focus: "Exception handling and recovery"
+      tests: ["missing methods", "exceptions during operations", "cleanup errors"]
+
+success_criteria:
+  - "Tests verify state and behavior, not method calls"
+  - "No excessive mocking of UI elements"
+  - "Clear test names describing behavior being tested"
+  - "Test isolation - no shared state between tests"
+  - "Fast execution (< 0.5s for entire suite)"
+  - "No dependency on Qt in unit tests"
+  - "Comprehensive error scenario coverage"
+  - "Clear separation of concerns in test organization"
+
+implementation_notes:
+  - "Use Mock(spec=[...]) to create lightweight UI element mocks"
+  - "Verify state through public attributes (active_operations, ui_state, etc.)"
+  - "Test error paths by having mocks raise exceptions"
+  - "Use descriptive test names: test_<action>_<result>_<condition>"
+  - "Keep setUp minimal - only common fixtures"
+  - "Add docstrings with Given/When/Then format"
+  - "Consider parameterized tests for similar scenarios"

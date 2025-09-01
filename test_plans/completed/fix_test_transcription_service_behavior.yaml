@@ -1,0 +1,676 @@
+target_file: "app/services/transcription_service.py"
+test_file: "app/tests/test_transcription_service_behavior.py"
+dependencies_to_mock:
+  - "torch"
+  - "torch.cuda"
+  - "torch.backends.mps"
+  - "transformers.AutoModelForSpeechSeq2Seq"
+  - "transformers.AutoProcessor"
+  - "transformers.pipeline"
+  - "pyannote.audio.Pipeline"
+  - "openai.OpenAI"
+  - "app.utils.ConfigManager"
+  - "app.utils.language_to_iso"
+  - "os.path.exists"
+  - "requests"
+  - "numpy"
+  - "torchaudio.functional"
+  - "warnings.filterwarnings"
+  - "logging.getLogger"
+
+test_cases:
+  # ModelManager Tests
+  - function_to_test: "ModelManager._get_optimal_device"
+    description: "Tests CPU selection when hardware acceleration is disabled"
+    scenario: "ConfigManager reports hardware_acceleration_enabled=False"
+    mocks:
+      - target: "ConfigManager.get"
+        return_value: "False"
+      - target: "torch.cuda.is_available"
+        return_value: "True"
+      - target: "torch.backends.mps.is_available"
+        return_value: "True"
+    expected_behavior:
+      - "Returns 'cpu' string"
+      - "Logs info message about hardware acceleration being disabled"
+      - "Does not check GPU memory or device availability"
+
+  - function_to_test: "ModelManager._get_optimal_device"
+    description: "Tests CUDA selection with sufficient GPU memory"
+    scenario: "CUDA available with 4GB free memory"
+    mocks:
+      - target: "ConfigManager.get"
+        return_value: "True"
+      - target: "torch.cuda.is_available"
+        return_value: "True"
+      - target: "torch.cuda.get_device_properties"
+        return_value: "Mock object with total_memory=8589934592"
+      - target: "torch.cuda.memory_allocated"
+        return_value: "4294967296"
+    expected_behavior:
+      - "Returns 'cuda' string"
+      - "Logs info about CUDA device selection"
+      - "Calls GPU memory check functions"
+
+  - function_to_test: "ModelManager._get_optimal_device"
+    description: "Tests fallback to CPU with insufficient GPU memory"
+    scenario: "CUDA available but only 1GB free memory"
+    mocks:
+      - target: "ConfigManager.get"
+        return_value: "True"
+      - target: "torch.cuda.is_available"
+        return_value: "True"
+      - target: "torch.cuda.get_device_properties"
+        return_value: "Mock object with total_memory=2147483648"
+      - target: "torch.cuda.memory_allocated"
+        return_value: "1073741824"
+    expected_behavior:
+      - "Returns 'cpu' string"
+      - "Logs warning about insufficient GPU memory"
+      - "Reports available memory in log message"
+
+  - function_to_test: "ModelManager._get_optimal_device"
+    description: "Tests MPS selection on Apple Silicon"
+    scenario: "MPS available, CUDA unavailable"
+    mocks:
+      - target: "ConfigManager.get"
+        return_value: "True"
+      - target: "torch.cuda.is_available"
+        return_value: "False"
+      - target: "torch.backends.mps.is_available"
+        return_value: "True"
+    expected_behavior:
+      - "Returns 'mps' string"
+      - "Logs info about MPS device selection"
+      - "Does not check GPU memory"
+
+  - function_to_test: "ModelManager._get_free_gpu_memory"
+    description: "Tests GPU memory check with exception handling"
+    scenario: "CUDA device property access raises exception"
+    mocks:
+      - target: "torch.cuda.is_available"
+        return_value: "True"
+      - target: "torch.cuda.get_device_properties"
+        side_effect: "raises RuntimeError('CUDA error')"
+    expected_behavior:
+      - "Returns 0.0 float"
+      - "Logs warning about error checking GPU memory"
+      - "Does not propagate exception"
+
+  - function_to_test: "ModelManager._load_model"
+    description: "Tests model loading failure with proper error handling"
+    scenario: "AutoModelForSpeechSeq2Seq.from_pretrained raises exception"
+    mocks:
+      - target: "AutoModelForSpeechSeq2Seq.from_pretrained"
+        side_effect: "raises OSError('Model not found')"
+    expected_behavior:
+      - "Raises RuntimeError with descriptive message"
+      - "Logs error with model ID and exception details"
+      - "RuntimeError message includes original error"
+
+  - function_to_test: "ModelManager.create_pipeline"
+    description: "Tests pipeline creation with CPU device"
+    scenario: "Creating pipeline for CPU transcription"
+    mocks:
+      - target: "ModelManager.get_model"
+        return_value: "Mock model object"
+      - target: "ModelManager.get_processor"
+        return_value: "Mock processor with tokenizer and feature_extractor"
+      - target: "pipeline"
+        return_value: "Mock pipeline object"
+      - target: "ModelManager.device"
+        return_value: "cpu"
+    expected_behavior:
+      - "Calls pipeline with torch.float32 dtype"
+      - "Sets device parameter to 'cpu'"
+      - "Does not enable flash attention"
+      - "Passes language parameter in lowercase"
+
+  - function_to_test: "ModelManager.create_pipeline"
+    description: "Tests pipeline creation with CUDA device"
+    scenario: "Creating pipeline for CUDA transcription"
+    mocks:
+      - target: "ModelManager.get_model"
+        return_value: "Mock model object"
+      - target: "ModelManager.get_processor"
+        return_value: "Mock processor with tokenizer and feature_extractor"
+      - target: "pipeline"
+        return_value: "Mock pipeline object"
+      - target: "ModelManager.device"
+        return_value: "cuda"
+    expected_behavior:
+      - "Calls pipeline with torch.float16 dtype"
+      - "Sets device parameter to 'cuda'"
+      - "Enables flash attention in model_kwargs"
+      - "Sets batch_size to 8"
+
+  - function_to_test: "ModelManager.clear_cache"
+    description: "Tests selective cache clearing for specific model"
+    scenario: "Clear cache for a specific model_id that exists"
+    mocks:
+      - target: "ModelManager._models"
+        return_value: "Dictionary with model_id key"
+      - target: "ModelManager._processors"
+        return_value: "Dictionary with model_id key"
+    expected_behavior:
+      - "Removes model_id from _models dictionary"
+      - "Removes model_id from _processors dictionary"
+      - "Logs info about clearing specific model"
+      - "Does not call torch.cuda.empty_cache"
+
+  - function_to_test: "ModelManager.release_memory"
+    description: "Tests comprehensive memory release with CUDA"
+    scenario: "Release all memory with CUDA device"
+    mocks:
+      - target: "ModelManager.clear_cache"
+        return_value: "None"
+      - target: "ModelManager.device"
+        return_value: "cuda"
+      - target: "torch.cuda.empty_cache"
+        return_value: "None"
+      - target: "gc.collect"
+        return_value: "None"
+    expected_behavior:
+      - "Calls clear_cache method"
+      - "Calls torch.cuda.empty_cache"
+      - "Calls garbage collection"
+      - "Logs memory release info"
+
+  # TranscriptionService Tests
+  - function_to_test: "TranscriptionService.transcribe_file"
+    description: "Tests file not found error handling"
+    scenario: "Audio file does not exist"
+    mocks:
+      - target: "os.path.exists"
+        return_value: "False"
+    expected_behavior:
+      - "Raises FileNotFoundError"
+      - "Error message includes file path"
+      - "Does not attempt transcription"
+
+  - function_to_test: "TranscriptionService.transcribe_file"
+    description: "Tests API method with speaker detection warning"
+    scenario: "API transcription requested with speaker_detection=True"
+    mocks:
+      - target: "os.path.exists"
+        return_value: "True"
+      - target: "TranscriptionService._transcribe_with_api"
+        return_value: "{'text': 'result', 'method': 'api'}"
+    expected_behavior:
+      - "Logs warning about speaker detection not available with API"
+      - "Calls _transcribe_with_api method"
+      - "Returns API transcription result"
+      - "Ignores speaker_detection parameter"
+
+  - function_to_test: "TranscriptionService.transcribe_file"
+    description: "Tests MPS path selection with hardware acceleration"
+    scenario: "MPS available, hardware acceleration enabled, no speaker detection"
+    mocks:
+      - target: "os.path.exists"
+        return_value: "True"
+      - target: "_torch_mps_available"
+        return_value: "True"
+      - target: "_torch_cuda_available"
+        return_value: "False"
+      - target: "TranscriptionService._transcribe_with_mps"
+        return_value: "{'text': 'mps result'}"
+    expected_behavior:
+      - "Calls _transcribe_with_mps method"
+      - "Logs info about MPS-optimized transcription"
+      - "Returns MPS transcription result"
+
+  - function_to_test: "TranscriptionService.transcribe_file"
+    description: "Tests MPS with speaker detection conflict resolution"
+    scenario: "MPS available but speaker detection requested"
+    mocks:
+      - target: "os.path.exists"
+        return_value: "True"
+      - target: "_torch_mps_available"
+        return_value: "True"
+      - target: "_torch_cuda_available"
+        return_value: "False"
+      - target: "TranscriptionService._transcribe_locally"
+        return_value: "{'text': 'cpu result with speakers'}"
+    expected_behavior:
+      - "Logs warning about MPS/speaker detection incompatibility"
+      - "Logs info about using CPU for speaker detection"
+      - "Calls _transcribe_locally with speaker_detection=True"
+      - "Returns local transcription result"
+
+  - function_to_test: "TranscriptionService._transcribe_locally"
+    description: "Tests successful local transcription with dict result"
+    scenario: "Pipeline returns dictionary result"
+    mocks:
+      - target: "ModelManager.create_pipeline"
+        return_value: "Mock pipeline function returning dict"
+      - target: "pipeline_call"
+        return_value: "{'text': 'transcribed', 'chunks': []}"
+    expected_behavior:
+      - "Creates pipeline with model_id and language"
+      - "Processes file through pipeline"
+      - "Returns dictionary result unchanged"
+      - "Does not attempt speaker detection when disabled"
+
+  - function_to_test: "TranscriptionService._transcribe_locally"
+    description: "Tests local transcription with string result conversion"
+    scenario: "Pipeline returns string instead of dict"
+    mocks:
+      - target: "ModelManager.create_pipeline"
+        return_value: "Mock pipeline function returning string"
+      - target: "pipeline_call"
+        return_value: "'simple text result'"
+    expected_behavior:
+      - "Converts string result to dictionary"
+      - "Dictionary contains 'text' key with string value"
+      - "Returns properly formatted dict"
+
+  - function_to_test: "TranscriptionService._transcribe_locally"
+    description: "Tests speaker detection failure with graceful fallback"
+    scenario: "Speaker detection raises exception"
+    mocks:
+      - target: "ModelManager.create_pipeline"
+        return_value: "Mock pipeline"
+      - target: "pipeline_call"
+        return_value: "{'text': 'base', 'chunks': []}"
+      - target: "TranscriptionService._add_speaker_detection"
+        side_effect: "raises RuntimeError('Diarization failed')"
+    expected_behavior:
+      - "Logs error about speaker detection failure"
+      - "Returns original transcription result"
+      - "Does not propagate speaker detection exception"
+      - "Result is properly typed as dict"
+
+  - function_to_test: "TranscriptionService._transcribe_locally"
+    description: "Tests pipeline execution failure"
+    scenario: "Pipeline raises exception during transcription"
+    mocks:
+      - target: "ModelManager.create_pipeline"
+        return_value: "Mock pipeline that raises"
+      - target: "pipeline_call"
+        side_effect: "raises OSError('Out of memory')"
+    expected_behavior:
+      - "Logs error with exception details"
+      - "Raises RuntimeError with descriptive message"
+      - "RuntimeError wraps original exception"
+
+  - function_to_test: "TranscriptionService._transcribe_with_mps"
+    description: "Tests MPS transcription with proper model configuration"
+    scenario: "Successful MPS transcription"
+    mocks:
+      - target: "_torch_mps_available"
+        return_value: "True"
+      - target: "AutoModelForSpeechSeq2Seq.from_pretrained"
+        return_value: "Mock model"
+      - target: "AutoProcessor.from_pretrained"
+        return_value: "Mock processor"
+      - target: "pipeline"
+        return_value: "Mock MPS pipeline"
+      - target: "mps_pipeline_call"
+        return_value: "{'text': 'mps transcribed'}"
+    expected_behavior:
+      - "Loads model with torch.float16 dtype"
+      - "Sets low_cpu_mem_usage to False for MPS"
+      - "Moves model to MPS device"
+      - "Creates pipeline with MPS-specific settings"
+      - "Returns dict result"
+
+  - function_to_test: "TranscriptionService._transcribe_with_mps"
+    description: "Tests MPS fallback when not available"
+    scenario: "MPS requested but not available"
+    mocks:
+      - target: "_torch_mps_available"
+        return_value: "False"
+      - target: "TranscriptionService._transcribe_locally"
+        return_value: "{'text': 'fallback result'}"
+    expected_behavior:
+      - "Logs warning about MPS not available"
+      - "Falls back to _transcribe_locally"
+      - "Returns local transcription result"
+      - "Does not attempt MPS model loading"
+
+  - function_to_test: "TranscriptionService._transcribe_with_mps"
+    description: "Tests MPS model loading failure"
+    scenario: "Model loading fails with MPS"
+    mocks:
+      - target: "_torch_mps_available"
+        return_value: "True"
+      - target: "AutoModelForSpeechSeq2Seq.from_pretrained"
+        side_effect: "raises RuntimeError('MPS backend error')"
+    expected_behavior:
+      - "Logs error with exception details and traceback"
+      - "Raises RuntimeError with MPS-specific message"
+      - "Exception message includes original error"
+
+  - function_to_test: "TranscriptionService._transcribe_with_api"
+    description: "Tests API key validation"
+    scenario: "API transcription without API key"
+    mocks: []
+    expected_behavior:
+      - "Raises ValueError immediately"
+      - "Error message mentions API key requirement"
+      - "Does not attempt API call"
+
+  - function_to_test: "TranscriptionService._transcribe_with_api"
+    description: "Tests insecure URL rejection"
+    scenario: "API transcription with HTTP URL"
+    mocks: []
+    expected_behavior:
+      - "Raises ValueError for non-HTTPS URL"
+      - "Error message mentions security requirement"
+      - "Does not create OpenAI client"
+
+  - function_to_test: "TranscriptionService._transcribe_with_api"
+    description: "Tests successful API transcription"
+    scenario: "OpenAI API returns valid response"
+    mocks:
+      - target: "OpenAI"
+        return_value: "Mock client with audio.transcriptions"
+      - target: "client.audio.transcriptions.create"
+        return_value: "Mock response with text='api result'"
+      - target: "language_to_iso"
+        return_value: "en"
+    expected_behavior:
+      - "Creates OpenAI client with API key"
+      - "Opens file in binary mode"
+      - "Converts language to ISO code"
+      - "Returns dict with text and method='api'"
+
+  - function_to_test: "TranscriptionService._transcribe_with_api"
+    description: "Tests empty API response handling"
+    scenario: "OpenAI API returns empty text"
+    mocks:
+      - target: "OpenAI"
+        return_value: "Mock client"
+      - target: "client.audio.transcriptions.create"
+        return_value: "Mock response with text=''"
+    expected_behavior:
+      - "Raises ValueError about empty response"
+      - "Does not return incomplete result"
+
+  - function_to_test: "TranscriptionService._transcribe_with_api"
+    description: "Tests API network timeout"
+    scenario: "OpenAI API call times out"
+    mocks:
+      - target: "OpenAI"
+        return_value: "Mock client"
+      - target: "client.audio.transcriptions.create"
+        side_effect: "raises requests.Timeout('Connection timeout')"
+    expected_behavior:
+      - "Logs error with exception details"
+      - "Raises RuntimeError mentioning API failure"
+      - "Includes original timeout in error chain"
+
+  - function_to_test: "TranscriptionService._transcribe_with_api"
+    description: "Tests API authentication failure"
+    scenario: "OpenAI API returns 401 unauthorized"
+    mocks:
+      - target: "OpenAI"
+        return_value: "Mock client"
+      - target: "client.audio.transcriptions.create"
+        side_effect: "raises openai.AuthenticationError('Invalid API key')"
+    expected_behavior:
+      - "Logs error with authentication details"
+      - "Raises RuntimeError about API failure"
+      - "Preserves authentication error in chain"
+
+  - function_to_test: "TranscriptionService._transcribe_with_api"
+    description: "Tests API rate limiting"
+    scenario: "OpenAI API returns 429 rate limit error"
+    mocks:
+      - target: "OpenAI"
+        return_value: "Mock client"
+      - target: "client.audio.transcriptions.create"
+        side_effect: "raises openai.RateLimitError('Rate limit exceeded')"
+    expected_behavior:
+      - "Logs error about rate limiting"
+      - "Raises RuntimeError with API failure message"
+      - "Includes rate limit details in error chain"
+
+  - function_to_test: "TranscriptionService._add_speaker_detection"
+    description: "Tests successful speaker diarization"
+    scenario: "Pyannote pipeline returns valid diarization"
+    mocks:
+      - target: "Pipeline.from_pretrained"
+        return_value: "Mock diarization pipeline"
+      - target: "diarization_pipeline"
+        return_value: "Mock diarization with segments"
+      - target: "diarization.itertracks"
+        return_value: "Iterator with speaker segments"
+    expected_behavior:
+      - "Initializes pyannote pipeline with auth token"
+      - "Processes audio file for diarization"
+      - "Assigns speakers to transcript chunks"
+      - "Returns result with has_speaker_detection=True"
+      - "Includes formatted_text with speaker labels"
+
+  - function_to_test: "TranscriptionService._add_speaker_detection"
+    description: "Tests speaker detection with no segments"
+    scenario: "Diarization returns empty segments"
+    mocks:
+      - target: "Pipeline.from_pretrained"
+        return_value: "Mock pipeline"
+      - target: "diarization_pipeline"
+        return_value: "Mock diarization"
+      - target: "diarization.itertracks"
+        return_value: "Empty iterator"
+    expected_behavior:
+      - "Returns original result unchanged"
+      - "Does not add speaker information"
+      - "Does not crash on empty segments"
+
+  - function_to_test: "TranscriptionService._add_speaker_detection"
+    description: "Tests speaker detection with missing chunks"
+    scenario: "Transcription result has no chunks field"
+    mocks:
+      - target: "Pipeline.from_pretrained"
+        return_value: "Mock pipeline"
+      - target: "diarization_pipeline"
+        return_value: "Mock diarization with segments"
+      - target: "result.get('chunks')"
+        return_value: "[]"
+    expected_behavior:
+      - "Creates synthetic chunks from main text"
+      - "Assigns speakers to synthetic chunks"
+      - "Returns enhanced result with chunks"
+
+  - function_to_test: "TranscriptionService._add_speaker_detection"
+    description: "Tests speaker detection pipeline initialization failure"
+    scenario: "Pyannote pipeline fails to load"
+    mocks:
+      - target: "Pipeline.from_pretrained"
+        side_effect: "raises OSError('Model not found')"
+    expected_behavior:
+      - "Logs error about speaker detection failure"
+      - "Returns original result unchanged"
+      - "Does not propagate exception"
+
+  - function_to_test: "TranscriptionService._add_speaker_detection"
+    description: "Tests speaker detection with invalid auth token"
+    scenario: "HuggingFace auth token is invalid"
+    mocks:
+      - target: "Pipeline.from_pretrained"
+        side_effect: "raises ValueError('Invalid auth token')"
+    expected_behavior:
+      - "Logs error with auth failure details"
+      - "Returns original transcription result"
+      - "Does not crash the transcription process"
+
+  - function_to_test: "TranscriptionService._add_speaker_detection"
+    description: "Tests chunk-speaker alignment with overlapping segments"
+    scenario: "Transcript chunks overlap multiple speaker segments"
+    mocks:
+      - target: "Pipeline.from_pretrained"
+        return_value: "Mock pipeline"
+      - target: "diarization"
+        return_value: "Mock with overlapping segments"
+      - target: "chunks"
+        return_value: "[{'text': 'overlap', 'timestamp': (0.5, 1.5)}]"
+    expected_behavior:
+      - "Assigns speaker based on overlap logic"
+      - "Handles boundary conditions correctly"
+      - "Sets 'Unknown' for unmatched chunks"
+
+  # Edge Cases and Boundary Conditions
+  - function_to_test: "TranscriptionService.transcribe_file"
+    description: "Tests transcription of zero-byte file"
+    scenario: "Audio file exists but is empty"
+    mocks:
+      - target: "os.path.exists"
+        return_value: "True"
+      - target: "ModelManager.create_pipeline"
+        side_effect: "raises ValueError('Empty audio file')"
+    expected_behavior:
+      - "Raises RuntimeError about transcription failure"
+      - "Error message mentions empty file"
+      - "Logs error with file details"
+
+  - function_to_test: "TranscriptionService.transcribe_file"
+    description: "Tests transcription with corrupted audio file"
+    scenario: "Audio file has invalid format/corrupted data"
+    mocks:
+      - target: "os.path.exists"
+        return_value: "True"
+      - target: "pipeline"
+        side_effect: "raises RuntimeError('Invalid audio format')"
+    expected_behavior:
+      - "Raises RuntimeError about transcription failure"
+      - "Logs detailed error information"
+      - "Includes format error in message"
+
+  - function_to_test: "TranscriptionService.transcribe_file"
+    description: "Tests transcription with permission denied"
+    scenario: "File exists but no read permission"
+    mocks:
+      - target: "os.path.exists"
+        return_value: "True"
+      - target: "open"
+        side_effect: "raises PermissionError('Access denied')"
+    expected_behavior:
+      - "Raises RuntimeError or PermissionError"
+      - "Logs permission error details"
+      - "Error message mentions access issue"
+
+  - function_to_test: "TranscriptionService.transcribe_file"
+    description: "Tests transcription of directory instead of file"
+    scenario: "Path points to directory not file"
+    mocks:
+      - target: "os.path.exists"
+        return_value: "True"
+      - target: "os.path.isdir"
+        return_value: "True"
+      - target: "open"
+        side_effect: "raises IsADirectoryError"
+    expected_behavior:
+      - "Raises appropriate error"
+      - "Error message indicates directory issue"
+      - "Does not attempt transcription"
+
+  - function_to_test: "ModelManager._get_free_gpu_memory"
+    description: "Tests memory check when CUDA unavailable"
+    scenario: "CUDA is not available on system"
+    mocks:
+      - target: "torch.cuda.is_available"
+        return_value: "False"
+    expected_behavior:
+      - "Returns 0.0 immediately"
+      - "Does not attempt to access device properties"
+      - "No exceptions raised"
+
+  - function_to_test: "ModelManager.clear_cache"
+    description: "Tests clearing cache for non-existent model"
+    scenario: "Attempt to clear specific model not in cache"
+    mocks:
+      - target: "ModelManager._models"
+        return_value: "{}"
+      - target: "ModelManager._processors"
+        return_value: "{}"
+    expected_behavior:
+      - "Does not raise exception"
+      - "Does not log clearing message"
+      - "Handles gracefully"
+
+  - function_to_test: "TranscriptionService._transcribe_with_api"
+    description: "Tests API transcription with very large file"
+    scenario: "File size exceeds API limits"
+    mocks:
+      - target: "OpenAI"
+        return_value: "Mock client"
+      - target: "client.audio.transcriptions.create"
+        side_effect: "raises openai.InvalidRequestError('File too large')"
+    expected_behavior:
+      - "Logs error about file size"
+      - "Raises RuntimeError with size details"
+      - "Suggests file size limits in error"
+
+  - function_to_test: "TranscriptionService._transcribe_locally"
+    description: "Tests transcription with unsupported language"
+    scenario: "Language code not supported by model"
+    mocks:
+      - target: "ModelManager.create_pipeline"
+        return_value: "Mock pipeline"
+      - target: "pipeline"
+        side_effect: "raises ValueError('Language not supported')"
+    expected_behavior:
+      - "Raises RuntimeError about language support"
+      - "Logs language error details"
+      - "Includes language code in error"
+
+  # System Resource and Performance Edge Cases
+  - function_to_test: "ModelManager._load_model"
+    description: "Tests model loading with insufficient memory"
+    scenario: "System runs out of memory during model load"
+    mocks:
+      - target: "AutoModelForSpeechSeq2Seq.from_pretrained"
+        side_effect: "raises RuntimeError('CUDA out of memory')"
+    expected_behavior:
+      - "Raises RuntimeError with memory details"
+      - "Logs memory error with model size info"
+      - "Suggests memory solutions in error"
+
+  - function_to_test: "ModelManager.create_pipeline"
+    description: "Tests pipeline creation with invalid model"
+    scenario: "Model object is corrupted or invalid"
+    mocks:
+      - target: "ModelManager.get_model"
+        return_value: "None"
+      - target: "pipeline"
+        side_effect: "raises AttributeError('NoneType has no attribute')"
+    expected_behavior:
+      - "Raises exception about invalid model"
+      - "Logs model validation error"
+      - "Includes model_id in error context"
+
+  - function_to_test: "TranscriptionService._add_speaker_detection"
+    description: "Tests speaker detection with extremely long audio"
+    scenario: "Audio file is several hours long"
+    mocks:
+      - target: "Pipeline.from_pretrained"
+        return_value: "Mock pipeline"
+      - target: "diarization_pipeline"
+        side_effect: "raises RuntimeError('Audio too long for processing')"
+    expected_behavior:
+      - "Logs error about audio length"
+      - "Returns original transcription"
+      - "Does not crash main transcription"
+
+  - function_to_test: "_torch_mps_available"
+    description: "Tests MPS availability check with module import error"
+    scenario: "Torch module has unexpected structure"
+    mocks:
+      - target: "sys.modules.get"
+        return_value: "Object without backends attribute"
+    expected_behavior:
+      - "Returns False safely"
+      - "Does not raise AttributeError"
+      - "Handles missing attributes gracefully"
+
+  - function_to_test: "_torch_cuda_available"
+    description: "Tests CUDA availability with stub module"
+    scenario: "Torch is stubbed/mocked module"
+    mocks:
+      - target: "sys.modules.get"
+        return_value: "Mock object with cuda.is_available returning non-boolean"
+    expected_behavior:
+      - "Converts result to boolean"
+      - "Returns False for invalid values"
+      - "Does not raise exceptions"

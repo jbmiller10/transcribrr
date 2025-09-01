@@ -1,0 +1,281 @@
+---
+# Test Improvement Plan for test_database_manager_behavior.py
+# Current Score: 6/10
+# Target Score: 9/10
+
+file: app/tests/test_database_manager_behavior.py
+current_issues:
+  - issue: "Flaky tests with hardcoded 1-second timeouts"
+    severity: high
+    description: "Tests rely on threading.Event.wait(1.0) which can fail under load"
+    impact: "Tests may fail intermittently in CI/CD environments"
+    
+  - issue: "Monkey-patching production signals"
+    severity: high
+    description: "Test replaces worker signals with custom _Sig class, modifying production code behavior"
+    impact: "Tests don't validate real signal behavior; production bugs may be masked"
+    
+  - issue: "Poor test naming with '_behavior' suffix"
+    severity: medium
+    description: "Test names end with generic '_behavior' which adds no value"
+    impact: "Unclear test intent; difficult to understand what specific behavior is tested"
+    
+  - issue: "Missing negative test cases"
+    severity: medium
+    description: "Only happy path scenarios tested; no error handling validation"
+    impact: "Production failures from untested error conditions"
+
+  - issue: "Complex setUp with environment manipulation"
+    severity: low
+    description: "Direct manipulation of os.environ and module internals"
+    impact: "Test fragility and potential side effects on other tests"
+
+improvement_actions:
+
+  phase_1_immediate_fixes:
+    - action: "Replace hardcoded timeouts with configurable/adaptive waiting"
+      implementation:
+        - Create a proper test helper for async waiting with exponential backoff
+        - Use condition-based waiting rather than fixed timeouts
+        - Add timeout configuration based on test environment (CI vs local)
+      code_example: |
+        class AsyncTestHelper:
+            def __init__(self, default_timeout=5.0, poll_interval=0.1):
+                self.default_timeout = default_timeout
+                self.poll_interval = poll_interval
+                
+            def wait_for_condition(self, condition_fn, timeout=None, message=""):
+                """Wait for a condition with exponential backoff."""
+                timeout = timeout or self.default_timeout
+                end_time = time.time() + timeout
+                interval = self.poll_interval
+                
+                while time.time() < end_time:
+                    if condition_fn():
+                        return True
+                    time.sleep(interval)
+                    interval = min(interval * 1.5, 1.0)  # Exponential backoff
+                    
+                raise TimeoutError(f"Condition not met within {timeout}s: {message}")
+
+    - action: "Remove signal monkey-patching"
+      implementation:
+        - Use proper Qt test utilities or dependency injection
+        - Create a TestDatabaseManager that inherits from DatabaseManager
+        - Override signal creation in subclass, not monkey-patch
+      code_example: |
+        class TestDatabaseManager(DatabaseManager):
+            """DatabaseManager with testable signals."""
+            
+            def __init__(self, *args, **kwargs):
+                super().__init__(*args, **kwargs)
+                # Replace worker with test-friendly version
+                self.worker = TestDatabaseWorker(self.get_database_path())
+                self.worker.moveToThread(self.worker_thread)
+
+  phase_2_test_structure_refactoring:
+    - action: "Rename tests with descriptive behavior-driven names"
+      mapping:
+        old: "test_create_and_list_recordings_behavior"
+        new: "test_create_recording_persists_to_database_and_appears_in_listing"
+        
+        old: "test_update_then_get_by_id"
+        new: "test_update_recording_modifies_fields_retrievable_by_id"
+        
+        old: "test_delete_recording_behavior"
+        new: "test_delete_recording_removes_from_database_permanently"
+        
+        old: "test_search_recordings_behavior"
+        new: "test_search_recordings_returns_matching_transcripts"
+
+    - action: "Split test class into focused test suites"
+      new_structure:
+        - TestDatabaseManagerCreation:
+            - "Test database initialization and table creation"
+            - "Test connection pooling and thread safety"
+            
+        - TestDatabaseManagerCRUD:
+            - "Test create operations with valid/invalid data"
+            - "Test read operations with various query patterns"
+            - "Test update operations with partial/full updates"
+            - "Test delete operations with cascade behavior"
+            
+        - TestDatabaseManagerSearch:
+            - "Test text search with various patterns"
+            - "Test filtering and sorting"
+            - "Test pagination"
+            
+        - TestDatabaseManagerErrorHandling:
+            - "Test database lock scenarios"
+            - "Test constraint violations"
+            - "Test connection failures"
+            - "Test corrupt database recovery"
+
+  phase_3_negative_test_cases:
+    - test_case: "test_create_recording_with_invalid_path_raises_error"
+      scenario: "Attempt to create recording with non-existent file path"
+      expected: "Error callback triggered with appropriate error message"
+      
+    - test_case: "test_create_recording_with_null_fields_raises_error"
+      scenario: "Pass None for required fields"
+      expected: "Database constraint violation handled gracefully"
+      
+    - test_case: "test_update_non_existent_recording_returns_error"
+      scenario: "Update with invalid recording ID"
+      expected: "Error callback with 'recording not found' message"
+      
+    - test_case: "test_delete_recording_with_active_references_handles_cascade"
+      scenario: "Delete recording that has associated transcripts"
+      expected: "Cascading delete or error based on foreign key constraints"
+      
+    - test_case: "test_search_with_sql_injection_attempt_is_safe"
+      scenario: "Search query contains SQL injection patterns"
+      expected: "Query safely escaped, no SQL execution"
+      
+    - test_case: "test_concurrent_writes_maintain_data_integrity"
+      scenario: "Multiple threads updating same recording"
+      expected: "Last write wins, no corruption"
+      
+    - test_case: "test_database_lock_timeout_handled_gracefully"
+      scenario: "Simulate database lock during operation"
+      expected: "Retry logic or error callback after timeout"
+      
+    - test_case: "test_corrupt_database_detected_and_reported"
+      scenario: "Corrupt database file"
+      expected: "Error reported, attempt recovery or safe mode"
+
+  phase_4_test_utilities:
+    - utility: "DatabaseTestCase base class"
+      purpose: "Shared setup/teardown for database tests"
+      features:
+        - "Automatic temp database creation/cleanup"
+        - "Test data factories"
+        - "Assertion helpers for database state"
+        
+    - utility: "TestDataBuilder"
+      purpose: "Create valid test data with minimal setup"
+      example: |
+        class TestDataBuilder:
+            @staticmethod
+            def recording(**overrides):
+                defaults = {
+                    'name': f'test_{uuid.uuid4()}.wav',
+                    'path': '/tmp/test.wav',
+                    'date': datetime.now().isoformat(),
+                    'duration': '1:00'
+                }
+                defaults.update(overrides)
+                return defaults
+                
+    - utility: "AsyncCallbackCapture"
+      purpose: "Capture async callbacks without threading.Event"
+      example: |
+        class AsyncCallbackCapture:
+            def __init__(self):
+                self.calls = []
+                self.errors = []
+                
+            def success_callback(self, *args, **kwargs):
+                self.calls.append(('success', args, kwargs))
+                
+            def error_callback(self, *args, **kwargs):
+                self.errors.append(('error', args, kwargs))
+                
+            def assert_success_called(self, times=1):
+                assert len(self.calls) == times
+                
+            def assert_error_called(self, times=1):
+                assert len(self.errors) == times
+
+  phase_5_isolation_improvements:
+    - action: "Use pytest fixtures for environment setup"
+      rationale: "Better isolation and cleanup than setUp/tearDown"
+      example: |
+        @pytest.fixture
+        def isolated_database(tmp_path):
+            """Provide isolated database for each test."""
+            db_path = tmp_path / "test.db"
+            os.environ["TRANSCRIBRR_USER_DATA_DIR"] = str(tmp_path)
+            yield db_path
+            # Cleanup happens automatically
+            
+    - action: "Use context managers for resource management"
+      example: |
+        @contextmanager
+        def database_manager(db_path):
+            """Context manager for DatabaseManager lifecycle."""
+            mgr = DatabaseManager(db_path=db_path)
+            try:
+                yield mgr
+            finally:
+                mgr.shutdown()
+                
+    - action: "Implement proper test doubles"
+      example: |
+        class FakeDatabaseWorker:
+            """Test double for DatabaseWorker with synchronous behavior."""
+            def __init__(self, db_path):
+                self.db_path = db_path
+                self.operations = []
+                
+            def execute_operation(self, op, callback):
+                # Execute synchronously for deterministic testing
+                try:
+                    result = self._execute(op)
+                    callback(result)
+                except Exception as e:
+                    callback(None, error=str(e))
+
+testing_best_practices:
+  - "Use Given-When-Then structure in test docstrings"
+  - "One assertion focus per test (test one behavior)"
+  - "Prefer integration tests with real SQLite over heavy mocking"
+  - "Use descriptive variable names (not w1, w2, etc.)"
+  - "Include both positive and negative test cases"
+  - "Test boundary conditions and edge cases"
+  - "Verify error messages, not just error occurrence"
+  - "Use test data builders for complex object creation"
+  - "Separate test concerns (unit vs integration vs e2e)"
+
+success_metrics:
+  - "Zero flaky tests over 1000 runs"
+  - "All tests complete in < 100ms (excluding intentional waits)"
+  - "100% branch coverage for DatabaseManager"
+  - "No direct production code modification in tests"
+  - "Clear test names that describe behavior being tested"
+  - "Comprehensive error scenario coverage"
+
+implementation_timeline:
+  week_1:
+    - "Fix timeout issues with AsyncTestHelper"
+    - "Remove signal monkey-patching"
+    - "Rename existing tests with descriptive names"
+    
+  week_2:
+    - "Add negative test cases"
+    - "Implement test utilities and base classes"
+    - "Split into focused test classes"
+    
+  week_3:
+    - "Add integration tests for complex scenarios"
+    - "Implement performance benchmarks"
+    - "Document testing patterns for team"
+
+estimated_impact:
+  - "Test reliability: 60% → 99%"
+  - "Test execution time: -30% (removal of fixed waits)"
+  - "Bug detection rate: +40% (negative cases)"
+  - "Maintenance effort: -50% (clearer structure)"
+  - "New developer onboarding: -2 days (better documentation)"
+
+code_review_checklist:
+  - "[ ] No hardcoded timeouts in tests"
+  - "[ ] No monkey-patching of production code"
+  - "[ ] Test names describe specific behavior"
+  - "[ ] Both success and failure paths tested"
+  - "[ ] Test data created with builders/factories"
+  - "[ ] Proper cleanup in tearDown/fixtures"
+  - "[ ] No test interdependencies"
+  - "[ ] Clear Given-When-Then structure"
+  - "[ ] Assertions have descriptive messages"
+  - "[ ] Mock boundaries clearly defined"

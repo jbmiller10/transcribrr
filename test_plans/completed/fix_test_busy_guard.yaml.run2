@@ -1,0 +1,306 @@
+# Test Plan: Fix test_busy_guard.py
+# Target: app/ui_utils/busy_guard.py
+# Current Test File: app/tests/test_busy_guard.py
+
+module_under_test:
+  path: app/ui_utils/busy_guard.py
+  class: BusyGuard
+  description: "Context manager that coordinates UI state during long operations (spinners, progress, status messages)"
+
+current_issues:
+  - issue: "Tests implementation details (method calls) rather than behavior"
+    examples:
+      - "Checking if specific methods were called instead of verifying observable outcomes"
+      - "Testing internal tracking flags like spinner_started"
+      - "Asserting on call order rather than final state"
+  
+  - issue: "Weak assertion patterns"
+    examples:
+      - "Using 'any()' to check for method calls instead of precise assertions"
+      - "Not verifying actual parameters passed to methods"
+      - "Missing assertions for edge cases and error scenarios"
+  
+  - issue: "Compound tests that test multiple behaviors"
+    examples:
+      - "test_spinner_lifecycle_and_missing_spinner tests two unrelated scenarios"
+      - "test_cancel_is_idempotent_and_logs_errors_from_callback tests multiple concerns"
+
+refactoring_strategy:
+  approach: "Behavior-Driven Testing"
+  principles:
+    - "Focus on observable outcomes, not internal implementation"
+    - "Test what the BusyGuard does for the user, not how it does it"
+    - "Each test should verify one specific behavior"
+    - "Use clear Given-When-Then structure"
+  
+  key_behaviors_to_test:
+    - "UI state management (elements disabled/enabled)"
+    - "Visual feedback coordination (spinner, progress, status)"
+    - "Cancellation behavior"
+    - "Error recovery and cleanup"
+    - "Result capture and propagation"
+
+test_organization:
+  test_classes:
+    - name: "TestBusyGuardUIStateManagement"
+      focus: "Tests how BusyGuard manages UI element states"
+      
+    - name: "TestBusyGuardVisualFeedback"
+      focus: "Tests spinner, progress, and status message coordination"
+      
+    - name: "TestBusyGuardCancellation"
+      focus: "Tests cancellation behavior and callbacks"
+      
+    - name: "TestBusyGuardErrorHandling"
+      focus: "Tests cleanup during exceptions and partial failures"
+      
+    - name: "TestBusyGuardResultCapture"
+      focus: "Tests result storage and retrieval"
+
+detailed_test_cases:
+  - test_class: "TestBusyGuardUIStateManagement"
+    test_cases:
+      - name: "test_disables_ui_elements_during_operation"
+        scenario: "UI elements should be disabled when operation starts and re-enabled when it ends"
+        given:
+          - "A list of UI elements to manage"
+          - "A feedback manager tracking UI state"
+        when: "Operation runs in BusyGuard context"
+        then:
+          - "UI elements are marked busy at start"
+          - "UI busy state is cleared after operation"
+        implementation_notes:
+          - "Use a StatefulFeedback helper that tracks busy state"
+          - "Verify state transitions, not method calls"
+      
+      - name: "test_handles_empty_ui_element_list"
+        scenario: "BusyGuard should handle operations with no UI elements gracefully"
+        given: "No UI elements specified"
+        when: "Operation runs"
+        then: "No UI state changes occur"
+      
+      - name: "test_ui_state_restored_after_exception"
+        scenario: "UI elements should be re-enabled even if operation fails"
+        given: "UI elements to manage"
+        when: "Operation raises exception"
+        then: "UI busy state is still cleared"
+
+  - test_class: "TestBusyGuardVisualFeedback"
+    test_cases:
+      - name: "test_spinner_shows_during_operation"
+        scenario: "Spinner should be visible during the entire operation"
+        given: "A spinner name is provided"
+        when: "Operation runs"
+        then:
+          - "Spinner is active during operation"
+          - "Spinner is stopped after operation"
+        implementation_notes:
+          - "Use StatefulFeedback that tracks spinner state"
+          - "Assert on final spinner state, not start/stop calls"
+      
+      - name: "test_handles_missing_spinner_gracefully"
+        scenario: "Operations should continue even if spinner doesn't exist"
+        given: "Invalid spinner name"
+        when: "Spinner start fails"
+        then:
+          - "Operation continues normally"
+          - "No errors raised"
+          - "Warning is logged"
+      
+      - name: "test_progress_dialog_shows_updates"
+        scenario: "Progress dialog should reflect operation progress"
+        given: "Progress dialog requested"
+        when: "Progress updates are sent"
+        then:
+          - "Dialog shows with initial message"
+          - "Updates reflect new values and messages"
+          - "Dialog closes on completion"
+        implementation_notes:
+          - "Track progress state in StatefulFeedback"
+          - "Verify final progress value and message"
+      
+      - name: "test_indeterminate_progress"
+        scenario: "Progress with maximum=0 shows indeterminate state"
+        given: "Progress with maximum=0"
+        when: "Operation runs without updates"
+        then: "Progress shows indeterminate/busy state"
+      
+      - name: "test_status_message_display"
+        scenario: "Status messages should be shown with appropriate timeout"
+        given: "Status message configured"
+        when: "Operation starts"
+        then: "Status message displayed with timeout"
+
+  - test_class: "TestBusyGuardCancellation"
+    test_cases:
+      - name: "test_cancel_invokes_callback"
+        scenario: "Cancel should trigger user's cancellation logic"
+        given: "Cancel callback provided"
+        when: "cancel() is called"
+        then:
+          - "Callback is invoked once"
+          - "Progress dialog closes"
+          - "Cancellation status shown"
+      
+      - name: "test_cancel_without_callback"
+        scenario: "Cancel without callback should still clean up UI"
+        given: "No cancel callback"
+        when: "cancel() is called"
+        then:
+          - "Progress closes"
+          - "Cancellation status shown"
+          - "No errors raised"
+      
+      - name: "test_cancel_idempotency"
+        scenario: "Multiple cancel calls should be safe"
+        given: "Operation with progress"
+        when: "cancel() called multiple times"
+        then:
+          - "Callback invoked only once"
+          - "No errors on subsequent calls"
+      
+      - name: "test_cancel_callback_error_handling"
+        scenario: "Errors in cancel callback shouldn't break cleanup"
+        given: "Cancel callback that raises exception"
+        when: "cancel() is called"
+        then:
+          - "Error is logged"
+          - "UI cleanup still happens"
+          - "Operation can continue or exit cleanly"
+
+  - test_class: "TestBusyGuardErrorHandling"
+    test_cases:
+      - name: "test_exception_triggers_cleanup"
+        scenario: "Exceptions during operation should trigger proper cleanup"
+        given: "Active spinner and progress"
+        when: "Operation raises exception"
+        then:
+          - "Progress dialog closes (not finishes)"
+          - "Spinner stops"
+          - "Exception propagates"
+      
+      - name: "test_partial_setup_failure_cleanup"
+        scenario: "If setup partially fails, cleanup what was started"
+        given: "Progress setup fails after spinner starts"
+        when: "Entering context"
+        then:
+          - "Spinner is cleaned up"
+          - "Setup exception propagates"
+          - "No resource leaks"
+      
+      - name: "test_cleanup_error_doesnt_mask_exception"
+        scenario: "Errors during cleanup shouldn't hide original exception"
+        given: "Operation raises ValueError"
+        when: "Cleanup also fails"
+        then:
+          - "Original ValueError propagates"
+          - "Cleanup error is logged"
+      
+      - name: "test_feedback_manager_errors_handled"
+        scenario: "Errors from feedback manager shouldn't crash guard"
+        given: "Feedback manager that raises on some calls"
+        when: "Operations are performed"
+        then:
+          - "Errors are logged"
+          - "Guard continues best-effort cleanup"
+
+  - test_class: "TestBusyGuardResultCapture"
+    test_cases:
+      - name: "test_result_storage_and_retrieval"
+        scenario: "Results can be captured and retrieved after operation"
+        given: "Operation that produces a result"
+        when: "set_result() is called"
+        then:
+          - "Result is stored in guard.result"
+          - "set_result returns the value"
+          - "Result persists after context exit"
+      
+      - name: "test_result_none_by_default"
+        scenario: "Result should be None if not set"
+        given: "Operation without set_result call"
+        when: "Context exits"
+        then: "guard.result is None"
+      
+      - name: "test_result_survives_exception"
+        scenario: "Partial results should be accessible after exception"
+        given: "Result set before exception"
+        when: "Exception occurs after set_result"
+        then: "Result is still accessible"
+
+helpers_to_create:
+  - name: "StatefulFeedback"
+    purpose: "Track actual state instead of just recording calls"
+    attributes:
+      - "ui_busy: bool - Current UI busy state"
+      - "active_spinners: Set[str] - Currently active spinners"
+      - "progress_states: Dict[str, ProgressState] - Progress dialog states"
+      - "status_messages: List[StatusMessage] - Status messages shown"
+    methods:
+      - "is_spinner_active(name) -> bool"
+      - "get_progress_state(operation_id) -> ProgressState"
+      - "was_status_shown(message) -> bool"
+  
+  - name: "ProgressState"
+    purpose: "Represent current state of a progress dialog"
+    attributes:
+      - "is_open: bool"
+      - "value: int"
+      - "message: str"
+      - "maximum: int"
+      - "cancelable: bool"
+  
+  - name: "CallCountingFeedback"
+    purpose: "Count method invocations without recording all details"
+    attributes:
+      - "call_counts: Dict[str, int]"
+    methods:
+      - "get_call_count(method_name) -> int"
+      - "was_called(method_name) -> bool"
+
+assertions_to_improve:
+  old_pattern: |
+    self.assertTrue(any(m == "start_spinner" for m, _ in spy.calls))
+  new_pattern: |
+    self.assertTrue(feedback.is_spinner_active("test_spinner"))
+  
+  old_pattern: |
+    self.assertTrue(any(m == "show_status" for m, _ in spy.calls))
+  new_pattern: |
+    self.assertTrue(feedback.was_status_shown("Expected message"))
+  
+  old_pattern: |
+    updates = [c for c in spy.calls if c[0] == "update_progress"]
+    self.assertEqual(updates[-1][1]["value"], 50)
+  new_pattern: |
+    progress = feedback.get_progress_state(guard.operation_id)
+    self.assertEqual(progress.value, 50)
+    self.assertEqual(progress.message, "Halfway done")
+
+test_naming_conventions:
+  pattern: "test_{scenario}_{expected_outcome}"
+  examples:
+    - "test_operation_with_exception_cleans_up_resources"
+    - "test_cancel_with_failing_callback_still_closes_progress"
+    - "test_missing_spinner_logs_warning_continues_operation"
+
+implementation_priority:
+  high:
+    - "Split compound tests into focused single-behavior tests"
+    - "Replace method-call assertions with state-based assertions"
+    - "Create StatefulFeedback helper"
+  
+  medium:
+    - "Add missing edge case tests"
+    - "Improve test names for clarity"
+    - "Add proper Given-When-Then structure"
+  
+  low:
+    - "Add performance-related tests if needed"
+    - "Add integration tests with real Qt widgets (separate file)"
+
+notes:
+  - "Keep tests focused on BusyGuard's contract, not its implementation"
+  - "Each test should tell a story about expected behavior"
+  - "Avoid testing PyQt internals - that's Qt's responsibility"
+  - "Use descriptive assertion messages to explain failures"
+  - "Consider property-based testing for operation_id generation"

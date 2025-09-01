@@ -1,240 +1,571 @@
 target_file: "app/db_utils.py"
 test_file: "app/tests/test_db_utils_unit.py"
-fix_priority: "HIGH"
+dependencies_to_mock:
+  - "os.path.exists"
+  - "os.makedirs"
+  - "os.path.dirname"
+  - "sqlite3.connect"
+  - "json.dump"
+  - "open"
+  - "app.constants.get_database_path"
+  - "app.constants.get_config_path"
+  - "app.constants.DEFAULT_CONFIG"
+  - "logging.getLogger"
+  - "datetime.datetime.now"
 
-current_issues:
-  - issue: "Excessive mocking - mocks entire database connection and cursor"
-    severity: "CRITICAL"
-    details: "All tests mock sqlite3.Connection and cursor, never testing actual SQL execution or database behavior"
-    
-  - issue: "Testing implementation details"
-    severity: "HIGH"
-    details: "Tests verify mock method calls (assert_called_with) instead of actual database state changes"
-    
-  - issue: "Happy path only testing"
-    severity: "HIGH"
-    details: "Missing error scenarios, edge cases, concurrent access, and transaction rollback testing"
-    
-  - issue: "Weak assertions"
-    severity: "MEDIUM"
-    details: "Tests check if methods were called, not what they actually did or returned"
-    
-  - issue: "No integration with real SQLite"
-    severity: "CRITICAL"
-    details: "Never uses in-memory SQLite (:memory:) to validate actual SQL queries and database operations"
+test_cases:
+  # Connection Management Tests - Error Conditions First (80% focus on error paths)
+  - function_to_test: "get_connection"
+    description: "Tests database locked scenario with timeout"
+    scenario: "When database is locked by another process and timeout expires"
+    mocks:
+      - target: "sqlite3.connect"
+        side_effect: "raises sqlite3.OperationalError('database is locked')"
+      - target: "get_database_path"
+        return_value: "/path/to/db.sqlite"
+      - target: "os.path.dirname"
+        return_value: "/path/to"
+      - target: "os.makedirs"
+        return_value: "None"
+    expected_behavior:
+      - "Raises RuntimeError with meaningful message about database lock"
+      - "Logger.critical is called with full error details"
+      - "Original sqlite3.OperationalError is preserved in exception chain"
 
-fix_strategy:
-  approach: "Hybrid testing with in-memory SQLite for core logic and minimal mocking for external dependencies"
-  principles:
-    - "Use in-memory SQLite (:memory:) for all database operation tests"
-    - "Only mock external I/O operations (file system, logging)"
-    - "Test actual SQL execution and database state changes"
-    - "Verify data integrity and constraints"
-    - "Test error recovery and transaction behavior"
+  - function_to_test: "get_connection"
+    description: "Tests corrupted database file handling"
+    scenario: "When database file is corrupted or unreadable"
+    mocks:
+      - target: "sqlite3.connect"
+        side_effect: "raises sqlite3.DatabaseError('file is not a database')"
+      - target: "get_database_path"
+        return_value: "/path/to/corrupt.db"
+      - target: "os.path.dirname"
+        return_value: "/path/to"
+      - target: "os.makedirs"
+        return_value: "None"
+    expected_behavior:
+      - "Raises RuntimeError with corruption message"
+      - "Logger.critical logs the fatal error with context"
+      - "Does not attempt to retry or recover automatically"
 
-test_structure_improvements:
-  - split_by_functionality:
-      - "TestDatabaseSetup" # Database initialization and table creation
-      - "TestRecordingCRUD" # Create, Read, Update, Delete operations
-      - "TestQueryOperations" # Search and utility queries
-      - "TestErrorHandling" # Error scenarios and exception handling
-      - "TestConcurrency" # Concurrent access and locking
-      - "TestDataIntegrity" # Constraints and validation
-      
-  - test_naming_convention: "test_<action>_<condition>_<expected_result>"
-  
-  - max_lines_per_test: 20
-  - max_tests_per_class: 10
+  - function_to_test: "get_connection"
+    description: "Tests permission denied on database directory"
+    scenario: "When user lacks permission to create database directory"
+    mocks:
+      - target: "get_database_path"
+        return_value: "/protected/db.sqlite"
+      - target: "os.path.dirname"
+        return_value: "/protected"
+      - target: "os.makedirs"
+        side_effect: "raises PermissionError('Permission denied: /protected')"
+    expected_behavior:
+      - "PermissionError is raised with original message"
+      - "Directory creation failure is properly propagated"
+      - "No partial database state is created"
 
-specific_fixes:
+  - function_to_test: "get_connection"
+    description: "Tests disk full error during connection"
+    scenario: "When disk is full and SQLite cannot create journal files"
+    mocks:
+      - target: "sqlite3.connect"
+        side_effect: "raises sqlite3.OperationalError('disk I/O error')"
+      - target: "get_database_path"
+        return_value: "/path/to/db.sqlite"
+      - target: "os.path.dirname"
+        return_value: "/path/to"
+      - target: "os.makedirs"
+        return_value: "None"
+    expected_behavior:
+      - "Raises RuntimeError about disk I/O failure"
+      - "Logger.critical called with disk space error context"
+      - "Connection object is never created"
 
-  remove_excessive_mocking:
-    - current: |
-        self.conn = Mock()
-        self.cursor = Mock()
-        self.conn.cursor.return_value = self.cursor
-    - fix: |
-        self.conn = sqlite3.connect(':memory:')
-        db_utils.create_recordings_table(self.conn)
-        # Use real database, only mock file I/O if needed
-    - rationale: "Use real in-memory database to test actual SQL execution"
+  - function_to_test: "get_connection"
+    description: "Tests successful connection with foreign keys enabled"
+    scenario: "Happy path - database connects successfully"
+    mocks:
+      - target: "sqlite3.connect"
+        return_value: "mock_connection_object"
+      - target: "get_database_path"
+        return_value: "/path/to/db.sqlite"
+      - target: "os.path.dirname"
+        return_value: "/path/to"
+      - target: "os.makedirs"
+        return_value: "None"
+    expected_behavior:
+      - "Returns connection object from sqlite3.connect"
+      - "Connection is configured with 30s timeout"
+      - "Foreign keys are enabled via PRAGMA"
+      - "check_same_thread is False for multi-threading support"
+      - "isolation_level is None for autocommit mode"
 
-  test_actual_behavior:
-    - current: |
-        def test_create_recording_success(self):
-            self.cursor.lastrowid = 7
-            new_id = db_utils.create_recording(self.conn, rec)
-            self.assertEqual(new_id, 7)
-            self.conn.cursor.assert_called_once()
-    - fix: |
-        def test_create_recording_inserts_data_and_returns_id(self):
-            rec = ("file.wav", "/tmp/file.wav", "2024-01-02T03:04:05", "10:00")
-            new_id = db_utils.create_recording(self.conn, rec)
-            
-            # Verify actual database state
-            cursor = self.conn.cursor()
-            cursor.execute("SELECT * FROM recordings WHERE id=?", (new_id,))
-            row = cursor.fetchone()
-            
-            self.assertIsNotNone(row)
-            self.assertEqual(row[1], "file.wav")  # filename
-            self.assertEqual(row[2], "/tmp/file.wav")  # file_path
-            self.assertGreater(new_id, 0)
-    - rationale: "Test actual database state changes, not mock interactions"
+  # Table Creation - SQL Injection and Error Cases
+  - function_to_test: "create_recordings_table"
+    description: "Tests SQL injection attempt in table creation"
+    scenario: "When malicious SQL is somehow injected into field constants"
+    mocks:
+      - target: "TABLE_RECORDINGS"
+        return_value: "recordings; DROP TABLE users; --"
+      - target: "mock_conn.cursor"
+        side_effect: "raises sqlite3.OperationalError('near DROP: syntax error')"
+    expected_behavior:
+      - "sqlite3.Error is caught and re-raised"
+      - "Logger.error records the SQL injection attempt"
+      - "No tables are created or dropped"
+      - "Database state remains unchanged"
 
-  add_error_scenarios:
-    - test_connection_timeout:
-        scenario: "Database locked by another process"
-        setup: "Create locked database file"
-        expected: "Raises RuntimeError with appropriate message after timeout"
-        
-    - test_sql_injection_prevention:
-        scenario: "Malicious input in search terms"
-        input: "'; DROP TABLE recordings; --"
-        expected: "Query executes safely without SQL injection"
-        
-    - test_transaction_rollback:
-        scenario: "Error during multi-step operation"
-        setup: "Start transaction, partial update, then error"
-        expected: "Database state unchanged after rollback"
-        
-    - test_concurrent_writes:
-        scenario: "Multiple threads writing simultaneously"
-        setup: "Use threading to simulate concurrent access"
-        expected: "All writes succeed or fail gracefully with proper locking"
+  - function_to_test: "create_recordings_table"
+    description: "Tests table creation with read-only database"
+    scenario: "When database is opened in read-only mode"
+    mocks:
+      - target: "mock_conn.cursor().execute"
+        side_effect: "raises sqlite3.OperationalError('attempt to write a readonly database')"
+    expected_behavior:
+      - "sqlite3.Error is raised with readonly message"
+      - "Logger.error logs the write attempt failure"
+      - "No partial table creation occurs"
 
-  add_edge_cases:
-    - test_empty_and_null_values:
-        cases:
-          - "Empty string for filename"
-          - "NULL for optional fields"
-          - "Very long strings (>1000 chars)"
-          - "Special characters in text fields"
-          - "Binary data in BLOB fields"
-          
-    - test_boundary_conditions:
-        cases:
-          - "Maximum integer ID value"
-          - "Zero-length duration"
-          - "Invalid date formats"
-          - "Duplicate file paths"
-          - "Non-existent recording IDs"
-          
-    - test_data_type_validation:
-        cases:
-          - "Non-integer IDs"
-          - "Non-string text fields"
-          - "Invalid BLOB data"
-          - "Malformed datetime strings"
+  - function_to_test: "create_recordings_table"
+    description: "Tests constraint conflict during index creation"
+    scenario: "When index already exists with different definition"
+    mocks:
+      - target: "mock_conn.cursor().execute"
+        side_effect: "[None, sqlite3.OperationalError('index idx_recording_filepath already exists')]"
+    expected_behavior:
+      - "Table creation succeeds but index creation fails"
+      - "sqlite3.Error is raised for the index conflict"
+      - "Logger.error contains both table and index status"
 
-  add_constraint_testing:
-    - test_unique_constraint:
-        scenario: "Insert duplicate file_path"
-        expected: "Raises DuplicatePathError"
-        verify: "First record remains, second insert fails"
-        
-    - test_foreign_key_cascade:
-        scenario: "Delete recording with folder associations"
-        expected: "Associated recording_folders entries deleted"
-        verify: "Check recording_folders table after deletion"
-        
-    - test_not_null_constraints:
-        scenario: "Insert without required fields"
-        expected: "sqlite3.IntegrityError raised"
-        verify: "No partial data inserted"
+  # CRUD Operations - Boundary and Error Cases
+  - function_to_test: "create_recording"
+    description: "Tests insertion with empty tuple"
+    scenario: "When recording_data is an empty tuple"
+    mocks:
+      - target: "mock_conn"
+        return_value: "connection_object"
+    expected_behavior:
+      - "Raises ValueError with message about minimum required fields"
+      - "No database operation is attempted"
+      - "Error message specifies exactly what fields are required"
 
-  improve_test_isolation:
-    - setup_method:
-        - "Create fresh in-memory database for each test"
-        - "Initialize required tables"
-        - "Clear any module-level state"
-        
-    - teardown_method:
-        - "Close database connection"
-        - "Reset any mocked external dependencies"
-        - "No shared state between tests"
+  - function_to_test: "create_recording"
+    description: "Tests insertion with None values in required fields"
+    scenario: "When filename or file_path is None"
+    mocks:
+      - target: "mock_conn.cursor().execute"
+        side_effect: "raises sqlite3.IntegrityError('NOT NULL constraint failed: recordings.filename')"
+    expected_behavior:
+      - "sqlite3.IntegrityError is caught and logged"
+      - "Raises appropriate error (not DuplicatePathError)"
+      - "Logger.error contains the constraint violation details"
 
-  add_performance_tests:
-    - test_bulk_insert_performance:
-        scenario: "Insert 1000 recordings"
-        measure: "Time taken and memory usage"
-        expected: "Completes in < 1 second"
-        
-    - test_search_with_large_dataset:
-        scenario: "Search in 10000 recordings"
-        measure: "Query execution time"
-        expected: "Returns results in < 100ms"
-        
-    - test_index_effectiveness:
-        scenario: "Query by file_path with and without index"
-        measure: "Compare execution plans"
-        expected: "Index reduces query time significantly"
+  - function_to_test: "create_recording"
+    description: "Tests duplicate path insertion handling"
+    scenario: "When inserting a recording with existing file_path"
+    mocks:
+      - target: "mock_conn.cursor().execute"
+        side_effect: "raises sqlite3.IntegrityError('UNIQUE constraint failed: recordings.file_path')"
+    expected_behavior:
+      - "Raises DuplicatePathError with the conflicting path"
+      - "Custom exception contains the exact path that failed"
+      - "Logger.error logs the duplicate path attempt"
+      - "Original IntegrityError is preserved in exception chain"
 
-new_test_cases_to_add:
-  TestDatabaseSetup:
-    - test_ensure_database_creates_all_tables
-    - test_ensure_database_handles_existing_database
-    - test_ensure_database_creates_config_file
-    - test_get_connection_creates_directory_if_missing
-    - test_get_connection_enables_foreign_keys
-    - test_get_connection_with_locked_database_times_out
-    
-  TestRecordingCRUD:
-    - test_create_recording_with_minimal_fields
-    - test_create_recording_with_all_fields
-    - test_create_recording_duplicate_path_raises_error
-    - test_update_recording_partial_fields
-    - test_update_recording_invalid_fields_ignored
-    - test_update_recording_nonexistent_id_succeeds_silently
-    - test_delete_recording_removes_from_database
-    - test_delete_recording_nonexistent_id_succeeds_silently
-    
-  TestQueryOperations:
-    - test_get_all_recordings_returns_ordered_list
-    - test_get_recording_by_id_returns_recording_object
-    - test_get_recording_by_id_handles_invalid_dates
-    - test_get_recording_by_id_nonexistent_returns_none
-    - test_recording_exists_finds_existing_path
-    - test_recording_exists_returns_false_for_missing
-    - test_search_recordings_matches_all_fields
-    - test_search_recordings_case_insensitive
-    - test_search_recordings_handles_special_characters
-    
-  TestErrorHandling:
-    - test_database_locked_error_handling
-    - test_corrupt_database_error_handling
-    - test_disk_full_error_handling
-    - test_invalid_sql_error_handling
-    - test_connection_lost_during_transaction
-    
-  TestDataIntegrity:
-    - test_unique_file_path_constraint
-    - test_foreign_key_relationships
-    - test_cascade_delete_behavior
-    - test_transaction_atomicity
-    - test_concurrent_access_integrity
+  - function_to_test: "create_recording"
+    description: "Tests insertion with extremely long strings"
+    scenario: "When field values exceed typical database limits (e.g., 1MB strings)"
+    mocks:
+      - target: "mock_conn.cursor().execute"
+        side_effect: "raises sqlite3.DataError('string or blob too big')"
+    expected_behavior:
+      - "sqlite3.Error is raised with size limit message"
+      - "Logger.error records the oversized data attempt"
+      - "No partial record is created"
 
-implementation_notes:
-  - "Use pytest.fixture for database setup if migrating to pytest"
-  - "Consider parameterized tests for similar scenarios"
-  - "Use context managers for database connections"
-  - "Add descriptive assertion messages for debugging"
-  - "Include docstrings explaining test purpose"
-  - "Use constants from app.constants for field names"
-  - "Test both success and failure paths for each operation"
+  - function_to_test: "create_recording"
+    description: "Tests concurrent insertion race condition"
+    scenario: "When two threads try to insert the same path simultaneously"
+    mocks:
+      - target: "mock_conn.cursor().lastrowid"
+        return_value: "None"
+      - target: "mock_conn.cursor().execute"
+        side_effect: "raises sqlite3.IntegrityError('UNIQUE constraint failed')"
+    expected_behavior:
+      - "Raises DuplicatePathError for the losing thread"
+      - "First thread succeeds and gets valid ID"
+      - "Database maintains consistency despite race condition"
 
-success_metrics:
-  - "Mock usage reduced to < 20% (currently ~100%)"
-  - "All public methods have error scenario tests"
-  - "All SQL constraints are validated"
-  - "Test execution time < 2 seconds"
-  - "Code coverage > 90% for db_utils.py"
-  - "No test exceeds 20 lines"
-  - "Clear separation between unit and integration tests"
+  - function_to_test: "create_recording"
+    description: "Tests successful insertion with padding"
+    scenario: "When recording_data has fewer than 7 fields"
+    mocks:
+      - target: "mock_conn.cursor().execute"
+        return_value: "None"
+      - target: "mock_conn.cursor().lastrowid"
+        return_value: "42"
+    expected_behavior:
+      - "Missing fields are padded with None values"
+      - "Exactly 7 values are inserted (including padded None)"
+      - "Returns the new recording ID (42)"
+      - "Logger.info logs successful creation with ID"
 
-migration_strategy:
-  phase_1: "Replace Mock() connections with in-memory SQLite"
-  phase_2: "Rewrite assertions to check database state"
-  phase_3: "Add missing error and edge case tests"
-  phase_4: "Add performance and concurrency tests"
-  phase_5: "Refactor to improve test organization and naming"
+  # Update Operations - Edge Cases
+  - function_to_test: "update_recording"
+    description: "Tests update with SQL injection in field names"
+    scenario: "When malicious SQL is attempted via kwargs keys"
+    mocks:
+      - target: "mock_conn"
+        return_value: "connection_object"
+    expected_behavior:
+      - "Invalid field names are filtered out completely"
+      - "Logger.warning logs each invalid field attempt"
+      - "Only whitelisted fields are included in UPDATE statement"
+      - "No SQL injection is possible through field names"
+
+  - function_to_test: "update_recording"
+    description: "Tests update on non-existent recording ID"
+    scenario: "When updating a recording that doesn't exist"
+    mocks:
+      - target: "mock_conn.cursor().execute"
+        return_value: "None"
+      - target: "mock_conn.cursor().rowcount"
+        return_value: "0"
+    expected_behavior:
+      - "Execute completes without error"
+      - "No rows are affected (rowcount = 0)"
+      - "Logger.info still logs the update attempt"
+      - "No exception is raised for missing record"
+
+  - function_to_test: "update_recording"
+    description: "Tests update violating unique constraint"
+    scenario: "When updating file_path to an existing path"
+    mocks:
+      - target: "mock_conn.cursor().execute"
+        side_effect: "raises sqlite3.IntegrityError('UNIQUE constraint failed')"
+    expected_behavior:
+      - "sqlite3.Error is raised with constraint message"
+      - "Logger.error logs the constraint violation"
+      - "Original record remains unchanged"
+      - "Database maintains referential integrity"
+
+  - function_to_test: "update_recording"
+    description: "Tests empty kwargs handling"
+    scenario: "When called with no fields to update"
+    mocks:
+      - target: "mock_conn"
+        return_value: "connection_object"
+    expected_behavior:
+      - "Returns immediately without database operation"
+      - "No SQL is generated or executed"
+      - "No logging occurs for empty update"
+
+  # Delete Operations - Cascading and Constraints
+  - function_to_test: "delete_recording"
+    description: "Tests deletion with foreign key constraint violation"
+    scenario: "When deleting would violate FK constraints (despite CASCADE)"
+    mocks:
+      - target: "mock_conn.cursor().execute"
+        side_effect: "raises sqlite3.IntegrityError('FOREIGN KEY constraint failed')"
+    expected_behavior:
+      - "sqlite3.Error is raised with FK constraint message"
+      - "Logger.error logs the constraint violation details"
+      - "Recording is not deleted"
+      - "Related records remain intact"
+
+  - function_to_test: "delete_recording"
+    description: "Tests deletion of non-existent recording"
+    scenario: "When attempting to delete ID that doesn't exist"
+    mocks:
+      - target: "mock_conn.cursor().execute"
+        return_value: "None"
+      - target: "mock_conn.cursor().rowcount"
+        return_value: "0"
+    expected_behavior:
+      - "Execute completes without error"
+      - "No rows are affected"
+      - "Logger.info still logs deletion attempt"
+      - "No exception for missing record"
+
+  - function_to_test: "delete_recording"
+    description: "Tests successful deletion with cascade"
+    scenario: "When deleting a recording with related records"
+    mocks:
+      - target: "mock_conn.cursor().execute"
+        return_value: "None"
+      - target: "mock_conn.cursor().rowcount"
+        return_value: "1"
+    expected_behavior:
+      - "Recording is deleted successfully"
+      - "Foreign key CASCADE removes related recording_folders entries"
+      - "Logger.info logs successful deletion with ID"
+      - "Commit is called to persist changes"
+
+  # Query Operations - Complex Cases
+  - function_to_test: "get_recording_by_id"
+    description: "Tests retrieval with malformed database record"
+    scenario: "When database record has fewer columns than expected"
+    mocks:
+      - target: "mock_conn.cursor().fetchone"
+        return_value: "(1, 'file.wav', '/path')"  # Missing columns
+    expected_behavior:
+      - "IndexError is caught when accessing missing columns"
+      - "Returns None or raises controlled exception"
+      - "Logger.error logs the malformed record issue"
+      - "No partial Recording object is created"
+
+  - function_to_test: "get_recording_by_id"
+    description: "Tests date parsing with invalid formats"
+    scenario: "When date_created contains 'pending' or invalid date string"
+    mocks:
+      - target: "mock_conn.cursor().fetchone"
+        return_value: "(1, 'f.wav', '/p', 'pending', 'd', 'r', 'p', b'rf', b'pf', 'o')"
+    expected_behavior:
+      - "Invalid date is replaced with current datetime"
+      - "Recording object is created with fallback date"
+      - "No exception is raised for date parsing"
+      - "All other fields are properly mapped"
+
+  - function_to_test: "get_recording_by_id"
+    description: "Tests handling of NULL/None values in optional fields"
+    scenario: "When transcript fields are NULL in database"
+    mocks:
+      - target: "mock_conn.cursor().fetchone"
+        return_value: "(1, 'f.wav', '/p', '2024-01-01', None, None, None, None, None, None)"
+    expected_behavior:
+      - "Recording object is created with None for optional fields"
+      - "No exceptions for None values"
+      - "Required fields are still validated"
+      - "Recording object is fully functional"
+
+  - function_to_test: "get_recording_by_id"
+    description: "Tests negative and zero IDs"
+    scenario: "When querying with invalid ID values"
+    mocks:
+      - target: "mock_conn.cursor().fetchone"
+        return_value: "None"
+    expected_behavior:
+      - "Query executes without error"
+      - "Returns None for non-existent ID"
+      - "No special handling for negative IDs"
+      - "Database handles ID validation"
+
+  # Search Operations - SQL Injection and Performance
+  - function_to_test: "search_recordings"
+    description: "Tests SQL injection via search term"
+    scenario: "When search term contains SQL metacharacters"
+    mocks:
+      - target: "mock_conn.cursor().execute"
+        return_value: "None"
+      - target: "mock_conn.cursor().fetchall"
+        return_value: "[]"
+    expected_behavior:
+      - "Search term is properly escaped with parameterized query"
+      - "% wildcards are added but SQL is not injectable"
+      - "Query executes safely even with '; DROP TABLE; in search"
+      - "Returns empty list for no matches"
+
+  - function_to_test: "search_recordings"
+    description: "Tests search with special regex characters"
+    scenario: "When search contains %, _, [, ] characters"
+    mocks:
+      - target: "mock_conn.cursor().execute"
+        return_value: "None"
+      - target: "mock_conn.cursor().fetchall"
+        return_value: "[(1, 'test%file.wav', '/path', '2024-01-01', '00:01', 'text_here', '', None, None, None)]"
+    expected_behavior:
+      - "Special characters are treated as literals in LIKE"
+      - "Proper escaping prevents regex interpretation"
+      - "Returns matches containing literal special characters"
+      - "No regex compilation errors"
+
+  - function_to_test: "search_recordings"
+    description: "Tests search performance with large result sets"
+    scenario: "When search matches thousands of records"
+    mocks:
+      - target: "mock_conn.cursor().fetchall"
+        return_value: "list of 10000 recording tuples"
+    expected_behavior:
+      - "All matching records are returned"
+      - "No arbitrary limit imposed on results"
+      - "Results are ordered by date_created DESC"
+      - "Memory usage scales with result size"
+
+  # Utility Functions - Edge Cases
+  - function_to_test: "recording_exists"
+    description: "Tests existence check with NULL path"
+    scenario: "When checking existence of None file_path"
+    mocks:
+      - target: "mock_conn.cursor().execute"
+        side_effect: "raises sqlite3.ProgrammingError('Incorrect number of bindings')"
+    expected_behavior:
+      - "sqlite3.Error is caught and re-raised"
+      - "Logger.error logs the NULL path issue"
+      - "Function doesn't return false positive"
+
+  - function_to_test: "recording_exists"
+    description: "Tests concurrent existence checks"
+    scenario: "When multiple threads check same path simultaneously"
+    mocks:
+      - target: "mock_conn.cursor().fetchone"
+        return_value: "None then (1,) on second call"
+    expected_behavior:
+      - "Each thread gets consistent result"
+      - "Index usage ensures fast lookup"
+      - "No race conditions in existence checking"
+      - "LIMIT 1 optimizes query performance"
+
+  # Database Initialization - Complex Scenarios
+  - function_to_test: "ensure_database_exists"
+    description: "Tests initialization with partially created schema"
+    scenario: "When some tables exist but others are missing"
+    mocks:
+      - target: "get_connection"
+        return_value: "mock_connection"
+      - target: "create_recordings_table"
+        return_value: "None"
+      - target: "create_folders_table"
+        side_effect: "raises sqlite3.OperationalError('table folders already exists')"
+      - target: "create_recording_folders_table"
+        return_value: "None"
+    expected_behavior:
+      - "Existing tables are not recreated"
+      - "Missing tables are created successfully"
+      - "Connection is closed even on partial failure"
+      - "Logger.debug logs successful verification"
+
+  - function_to_test: "ensure_database_exists"
+    description: "Tests config file creation failure"
+    scenario: "When config directory is not writable"
+    mocks:
+      - target: "get_connection"
+        return_value: "mock_connection"
+      - target: "os.path.exists"
+        return_value: "False"
+      - target: "create_config_file"
+        side_effect: "raises PermissionError('Cannot write to config directory')"
+    expected_behavior:
+      - "Tables are still created successfully"
+      - "PermissionError is propagated up"
+      - "Connection is closed in finally block"
+      - "Logger.error logs config creation failure"
+
+  - function_to_test: "ensure_database_exists"
+    description: "Tests connection failure during initialization"
+    scenario: "When get_connection fails"
+    mocks:
+      - target: "get_connection"
+        side_effect: "raises RuntimeError('Could not connect to database')"
+    expected_behavior:
+      - "RuntimeError is propagated without modification"
+      - "No table creation is attempted"
+      - "Logger.error logs initialization failure"
+      - "Finally block handles None connection safely"
+
+  # Config File Operations
+  - function_to_test: "create_config_file"
+    description: "Tests config creation with invalid JSON"
+    scenario: "When DEFAULT_CONFIG contains non-serializable objects"
+    mocks:
+      - target: "open"
+        return_value: "mock_file_handle"
+      - target: "json.dump"
+        side_effect: "raises TypeError('Object of type X is not JSON serializable')"
+    expected_behavior:
+      - "TypeError is caught and logged"
+      - "Logger.error contains serialization failure details"
+      - "Exception is re-raised for caller to handle"
+      - "File handle is properly closed"
+
+  - function_to_test: "create_config_file"
+    description: "Tests config creation with disk full"
+    scenario: "When disk has no space for config file"
+    mocks:
+      - target: "open"
+        return_value: "mock_file_handle"
+      - target: "json.dump"
+        side_effect: "raises OSError('No space left on device')"
+    expected_behavior:
+      - "OSError is caught and logged"
+      - "Logger.error logs disk space issue"
+      - "Exception is re-raised"
+      - "No partial config file remains"
+
+  # Transaction and Concurrency Tests
+  - function_to_test: "create_recording"
+    description: "Tests transaction rollback on error"
+    scenario: "When commit fails due to constraint violation"
+    mocks:
+      - target: "mock_conn.cursor().execute"
+        return_value: "None"
+      - target: "mock_conn.commit"
+        side_effect: "raises sqlite3.IntegrityError('CHECK constraint failed')"
+    expected_behavior:
+      - "IntegrityError triggers implicit rollback"
+      - "No partial data is persisted"
+      - "Logger.error logs the commit failure"
+      - "Database state remains consistent"
+
+  - function_to_test: "get_connection"
+    description: "Tests connection pool exhaustion"
+    scenario: "When too many connections are open simultaneously"
+    mocks:
+      - target: "sqlite3.connect"
+        side_effect: "raises sqlite3.OperationalError('too many open connections')"
+      - target: "get_database_path"
+        return_value: "/path/to/db.sqlite"
+    expected_behavior:
+      - "Raises RuntimeError with connection limit message"
+      - "Logger.critical logs the resource exhaustion"
+      - "Suggests connection pooling solution"
+      - "No orphaned connections remain"
+
+  # Folder Table Operations - Error Cases
+  - function_to_test: "create_folders_table"
+    description: "Tests folder table with circular reference"
+    scenario: "When parent_id creates a circular reference"
+    mocks:
+      - target: "mock_conn.cursor().execute"
+        side_effect: "raises sqlite3.IntegrityError('FOREIGN KEY constraint failed')"
+    expected_behavior:
+      - "sqlite3.Error is raised for circular reference"
+      - "Logger.error logs the constraint violation"
+      - "Table structure prevents circular dependencies"
+      - "Database maintains referential integrity"
+
+  - function_to_test: "create_recording_folders_table"
+    description: "Tests junction table with orphaned references"
+    scenario: "When creating junction entries for non-existent recordings"
+    mocks:
+      - target: "mock_conn.cursor().execute"
+        side_effect: "raises sqlite3.IntegrityError('FOREIGN KEY constraint failed')"
+    expected_behavior:
+      - "Foreign key constraints prevent orphaned entries"
+      - "sqlite3.Error is raised with FK details"
+      - "Logger.error logs the referential integrity issue"
+      - "Junction table remains consistent"
+
+  # Performance and Resource Tests
+  - function_to_test: "get_all_recordings"
+    description: "Tests retrieval with extremely large dataset"
+    scenario: "When table contains millions of recordings"
+    mocks:
+      - target: "mock_conn.cursor().fetchall"
+        side_effect: "raises sqlite3.OperationalError('out of memory')"
+    expected_behavior:
+      - "sqlite3.Error is caught and re-raised"
+      - "Logger.error logs memory exhaustion"
+      - "Suggests pagination or streaming approach"
+      - "No partial results are returned"
+
+  - function_to_test: "search_recordings"
+    description: "Tests search with database lock timeout"
+    scenario: "When search query times out due to lock"
+    mocks:
+      - target: "mock_conn.cursor().execute"
+        side_effect: "raises sqlite3.OperationalError('database is locked')"
+    expected_behavior:
+      - "sqlite3.Error is raised with lock message"
+      - "Logger.error logs the timeout details"
+      - "No partial results returned"
+      - "Connection remains valid for retry"

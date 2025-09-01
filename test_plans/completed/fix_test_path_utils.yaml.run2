@@ -1,0 +1,270 @@
+target_file: "app/path_utils.py"
+test_file: "app/tests/test_path_utils.py"
+dependencies_to_mock:
+  - "sys._MEIPASS"
+  - "sys.frozen"
+  - "sys.executable"
+  - "os.path.dirname"
+  - "os.path.abspath"
+  - "os.path.join"
+  - "os.path.normpath"
+  - "logging.getLogger"
+
+test_cases:
+  # Test get_execution_environment function
+  - function_to_test: "get_execution_environment"
+    description: "Detects PyInstaller environment when sys._MEIPASS exists"
+    scenario: "Application is running as a PyInstaller bundle with _MEIPASS attribute"
+    mocks:
+      - target: "sys"
+        attributes:
+          _MEIPASS: "/tmp/_MEI123456"
+          frozen: false
+          executable: "/usr/bin/python"
+    expected_behavior:
+      - "Returns 'pyinstaller' string"
+      - "Does not check sys.frozen or sys.executable"
+
+  - function_to_test: "get_execution_environment"
+    description: "Detects py2app environment when frozen and MacOS in executable"
+    scenario: "Application is running as a py2app bundle on macOS"
+    mocks:
+      - target: "sys"
+        attributes:
+          frozen: true
+          executable: "/Applications/Transcribrr.app/Contents/MacOS/transcribrr"
+        remove_attributes:
+          - "_MEIPASS"
+    expected_behavior:
+      - "Returns 'py2app' string"
+      - "Checks sys.frozen attribute is True"
+      - "Verifies 'MacOS' substring in sys.executable path"
+
+  - function_to_test: "get_execution_environment"
+    description: "Detects development environment when not bundled"
+    scenario: "Application is running from source code in development"
+    mocks:
+      - target: "sys"
+        attributes:
+          frozen: false
+          executable: "/usr/bin/python3"
+        remove_attributes:
+          - "_MEIPASS"
+    expected_behavior:
+      - "Returns 'development' string"
+      - "No _MEIPASS attribute exists"
+      - "sys.frozen is False"
+
+  - function_to_test: "get_execution_environment"
+    description: "Handles frozen non-Mac environment as development"
+    scenario: "Application has frozen=True but not on macOS (edge case)"
+    mocks:
+      - target: "sys"
+        attributes:
+          frozen: true
+          executable: "/usr/bin/transcribrr"
+        remove_attributes:
+          - "_MEIPASS"
+    expected_behavior:
+      - "Returns 'development' string"
+      - "frozen is True but 'MacOS' not in executable path"
+
+  # Test _get_base_resource_path helper function
+  - function_to_test: "_get_base_resource_path"
+    description: "Returns PyInstaller _MEIPASS path when in pyinstaller environment"
+    scenario: "Environment detector returns 'pyinstaller', should use sys._MEIPASS"
+    mocks:
+      - target: "env_detector"
+        return_value: "pyinstaller"
+      - target: "sys._MEIPASS"
+        value: "/tmp/_MEI987654"
+      - target: "logger.debug"
+        verify_called: true
+    expected_behavior:
+      - "Returns '/tmp/_MEI987654' path"
+      - "Logs debug message with PyInstaller path"
+      - "Does not call os.path operations"
+
+  - function_to_test: "_get_base_resource_path"
+    description: "Returns py2app bundle Resources path when in py2app environment"
+    scenario: "Environment detector returns 'py2app', should construct Resources path"
+    mocks:
+      - target: "env_detector"
+        return_value: "py2app"
+      - target: "sys.executable"
+        value: "/Applications/Transcribrr.app/Contents/MacOS/transcribrr"
+      - target: "os.path.dirname"
+        return_value: "/Applications/Transcribrr.app/Contents/MacOS"
+      - target: "os.path.normpath"
+        return_value: "/Applications/Transcribrr.app/Contents/Resources"
+      - target: "logger.debug"
+        verify_called: true
+    expected_behavior:
+      - "Returns normalized path to Resources directory"
+      - "Constructs path as parent of executable + 'Resources'"
+      - "Logs debug message with py2app bundle path"
+
+  - function_to_test: "_get_base_resource_path"
+    description: "Returns project root in development environment"
+    scenario: "Environment detector returns 'development', should use file location"
+    mocks:
+      - target: "env_detector"
+        return_value: "development"
+      - target: "__file__"
+        value: "/home/user/transcribrr/app/path_utils.py"
+      - target: "os.path.abspath"
+        return_value: "/home/user/transcribrr/app/path_utils.py"
+      - target: "os.path.dirname"
+        side_effect: "returns parent directory of input"
+        sequence:
+          - "/home/user/transcribrr/app"
+          - "/home/user/transcribrr"
+      - target: "logger.debug"
+        verify_called: true
+    expected_behavior:
+      - "Returns project root directory (two levels up from module)"
+      - "Calls os.path.dirname twice to get parent of parent"
+      - "Logs debug message with development path"
+
+  - function_to_test: "_get_base_resource_path"
+    description: "Uses default environment detector when none provided"
+    scenario: "No env_detector parameter passed, should use get_execution_environment"
+    mocks:
+      - target: "get_execution_environment"
+        return_value: "development"
+      - target: "__file__"
+        value: "/project/app/path_utils.py"
+      - target: "os.path operations"
+        return_value: "/project"
+    expected_behavior:
+      - "Calls get_execution_environment when env_detector is None"
+      - "Uses returned environment to determine path"
+      - "Returns appropriate base path"
+
+  # Test resource_path function (main public API)
+  - function_to_test: "resource_path"
+    description: "Returns base path when relative_path is None"
+    scenario: "Called without relative_path argument or with None"
+    mocks:
+      - target: "_get_base_resource_path"
+        return_value: "/app/resources"
+    expected_behavior:
+      - "Returns base resource path directly"
+      - "Does not call os.path.join"
+      - "Does not log relative path message"
+
+  - function_to_test: "resource_path"
+    description: "Joins relative path with base path"
+    scenario: "Called with relative path 'icons/logo.png'"
+    mocks:
+      - target: "_get_base_resource_path"
+        return_value: "/app/resources"
+      - target: "os.path.join"
+        return_value: "/app/resources/icons/logo.png"
+      - target: "logger.debug"
+        verify_called: true
+    expected_behavior:
+      - "Calls os.path.join with base and relative path"
+      - "Returns joined path '/app/resources/icons/logo.png'"
+      - "Logs debug message with relative and full path"
+
+  - function_to_test: "resource_path"
+    description: "Handles empty string relative path"
+    scenario: "Called with empty string as relative_path"
+    mocks:
+      - target: "_get_base_resource_path"
+        return_value: "/app/resources"
+      - target: "os.path.join"
+        return_value: "/app/resources"
+    expected_behavior:
+      - "Calls os.path.join with base and empty string"
+      - "Returns base path (os.path.join behavior)"
+      - "Logs debug message"
+
+  - function_to_test: "resource_path"
+    description: "Passes env_detector through to helper function"
+    scenario: "Custom env_detector provided as keyword argument"
+    mocks:
+      - target: "custom_detector"
+        return_value: "pyinstaller"
+      - target: "_get_base_resource_path"
+        verify_called_with:
+          env_detector: "custom_detector"
+        return_value: "/bundled/path"
+    expected_behavior:
+      - "Passes env_detector to _get_base_resource_path"
+      - "Uses detected environment to determine base path"
+      - "Returns appropriate resource path"
+
+  - function_to_test: "resource_path"
+    description: "Handles Unicode paths correctly"
+    scenario: "Relative path contains Unicode characters"
+    mocks:
+      - target: "_get_base_resource_path"
+        return_value: "/app/resources"
+      - target: "os.path.join"
+        return_value: "/app/resources/données/文件.txt"
+    expected_behavior:
+      - "Correctly joins Unicode path components"
+      - "Returns path with Unicode characters preserved"
+      - "Logs debug message with Unicode path"
+
+  - function_to_test: "resource_path"
+    description: "Handles path traversal sequences"
+    scenario: "Relative path contains .. traversal sequences"
+    mocks:
+      - target: "_get_base_resource_path"
+        return_value: "/app/resources"
+      - target: "os.path.join"
+        return_value: "/app/icons/logo.png"
+    expected_behavior:
+      - "Passes traversal path directly to os.path.join"
+      - "Does not normalize or validate the path"
+      - "Returns whatever os.path.join produces"
+
+  # Test integration scenarios
+  - function_to_test: "resource_path"
+    description: "Full PyInstaller bundle scenario"
+    scenario: "Complete flow when running as PyInstaller bundle"
+    mocks:
+      - target: "sys"
+        attributes:
+          _MEIPASS: "/tmp/_MEI123456"
+      - target: "os.path.join"
+        return_value: "/tmp/_MEI123456/icons/app.ico"
+    expected_behavior:
+      - "Detects PyInstaller environment"
+      - "Uses _MEIPASS as base path"
+      - "Returns bundled resource path"
+
+  - function_to_test: "resource_path"
+    description: "Full py2app bundle scenario"
+    scenario: "Complete flow when running as py2app bundle on macOS"
+    mocks:
+      - target: "sys"
+        attributes:
+          frozen: true
+          executable: "/Applications/MyApp.app/Contents/MacOS/myapp"
+      - target: "path operations"
+        return_value: "/Applications/MyApp.app/Contents/Resources/data.json"
+    expected_behavior:
+      - "Detects py2app environment"
+      - "Constructs Resources directory path"
+      - "Returns macOS bundle resource path"
+
+  - function_to_test: "resource_path"
+    description: "Full development environment scenario"
+    scenario: "Complete flow when running from source code"
+    mocks:
+      - target: "sys"
+        attributes:
+          frozen: false
+          executable: "/usr/bin/python3"
+      - target: "__file__"
+        value: "/home/dev/project/app/path_utils.py"
+      - target: "path operations"
+        return_value: "/home/dev/project/config.yaml"
+    expected_behavior:
+      - "Detects development environment"
+      - "Calculates project root from module location"
+      - "Returns development resource path"

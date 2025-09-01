@@ -354,5 +354,48 @@ class TestTranscriptionService(unittest.TestCase):
         self.assertEqual(out["text"], "base")
 
 
+class TestModelManagerDeviceSelection(unittest.TestCase):
+    def setUp(self):
+        _ensure_stubbed_heavy_modules()
+
+    def test_hw_accel_disabled_returns_cpu(self):
+        with patch("app.utils.ConfigManager") as CM:
+            inst = Mock(); inst.get.return_value = False
+            CM.instance.return_value = inst
+            mm = ModelManager()
+            self.assertEqual(mm.device, "cpu")
+
+    def test_cuda_selected_with_sufficient_memory(self):
+        import torch as torch_mod
+        torch_mod.cuda.is_available = lambda: True
+        torch_mod.cuda.get_device_properties = lambda *_: types.SimpleNamespace(total_memory=8 * 1024**3)
+        torch_mod.cuda.memory_allocated = lambda *_: 2 * 1024**3
+        with patch("app.utils.ConfigManager") as CM:
+            inst = Mock(); inst.get.return_value = True
+            CM.instance.return_value = inst
+            mm = ModelManager()
+            self.assertEqual(mm.device, "cuda")
+
+    def test_cuda_insufficient_memory_falls_back_cpu(self):
+        import torch as torch_mod
+        torch_mod.cuda.is_available = lambda: True
+        torch_mod.cuda.get_device_properties = lambda *_: types.SimpleNamespace(total_memory=2 * 1024**3)
+        torch_mod.cuda.memory_allocated = lambda *_: 1.5 * 1024**3
+        with patch("app.utils.ConfigManager") as CM:
+            inst = Mock(); inst.get.return_value = True
+            CM.instance.return_value = inst
+            mm = ModelManager()
+            self.assertEqual(mm.device, "cpu")
+
+    def test_get_free_gpu_memory_exception_returns_zero(self):
+        import torch as torch_mod
+        torch_mod.cuda.is_available = lambda: True
+        def boom(*_):
+            raise RuntimeError("cuda error")
+        torch_mod.cuda.get_device_properties = boom
+        mm = ModelManager.instance()
+        # Bypass __init__ device concerns by directly calling helper
+        self.assertEqual(mm._get_free_gpu_memory(), 0.0)
+
 if __name__ == "__main__":
     unittest.main()

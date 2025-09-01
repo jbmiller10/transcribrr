@@ -1,112 +1,391 @@
-# Cleaned up test plan for app/services/transcription_service.py
-# 
-# REMOVED ITEMS:
-# - Basic file validation tests (test_missing_file) - already implemented as test_transcribe_file_missing_file_raises
-# - API transcription success tests - already implemented as test__transcribe_with_api_success  
-# - API input validation tests - already implemented as test__transcribe_with_api_input_validation
-# - API empty response handling - already implemented as test__transcribe_with_api_empty_response_raises
-# - API exception wrapping - already implemented as test__transcribe_with_api_exception_wrapped
-# - Local transcription basic tests - already implemented as test__transcribe_locally_basic_and_string_result
-# - Local transcription pipeline exceptions - already implemented as test__transcribe_locally_pipeline_exception_wrapped
-# - Speaker detection success path - already implemented as test__add_speaker_detection_labels_chunks
-# - Speaker detection fallback on error - already implemented as test__transcribe_locally_with_speaker_detection_error_falls_back
-# - Speaker detection with no segments - already implemented as test__add_speaker_detection_no_segments_returns_original
-# - Device selection logic (MPS/CPU) - already implemented in multiple MPS-related tests
-# - API vs local method routing - already implemented in various path selection tests
-# - Module-level stubbing critique - this is an architectural issue, not missing test cases
-#
-# REMAINING GAPS: Only genuinely missing test scenarios are listed below
+---
+test_file: test_transcription_service.py
+current_score: 6/10
+target_score: 9/10
 
-target_file: "app/services/transcription_service.py"  
-test_file: "app/tests/test_transcription_service.py"
+critical_issues:
+  - issue: "Module-level stubbing (55 lines)"
+    severity: HIGH
+    description: "Lines 15-69 create module-level stubs for torch, transformers, openai, numpy, torchaudio, pyannote, and PyQt6"
+    impact: "Tests become tightly coupled to implementation details, break with refactoring"
+    
+  - issue: "Testing implementation details"
+    severity: HIGH
+    description: "Tests check mock calls (assert_called, assert_called_once) rather than behavior"
+    impact: "Tests pass even when actual behavior is broken"
+    
+  - issue: "Giant test setup"
+    severity: MEDIUM
+    description: "Complex setUp with multiple patchers and mock configurations"
+    impact: "Hard to understand test intent, difficult to maintain"
+    
+  - issue: "Complex fake implementations"
+    severity: MEDIUM
+    description: "Lines 176-273 contain elaborate fake OpenAI and Pyannote implementations"
+    impact: "Maintenance burden, unclear what's being tested"
 
-# Missing test coverage that should be added
-missing_test_cases:
-
-  file_validation_extended:
-    - test_permission_denied_file:
-        description: "Test handling of files that exist but can't be read due to permissions"
-        scenario: "Create file with restricted permissions and verify appropriate error"
-        
-    - test_directory_instead_of_file:
-        description: "Test error when path points to directory instead of file"
-        scenario: "Pass directory path to transcribe_file and verify error handling"
-        
-    - test_invalid_audio_format:
-        description: "Test with non-audio files (text, images) to verify format validation"
-        scenario: "Pass text/image files and verify appropriate format error"
-        
-    - test_corrupted_audio:
-        description: "Test with truncated/corrupted audio files"
-        scenario: "Create corrupted WAV files and verify graceful error handling"
-
-  api_error_scenarios:
-    - test_api_network_timeout:
-        description: "Test handling of network timeouts during API calls"
-        scenario: "Mock requests to timeout and verify appropriate error handling"
-        
-    - test_api_rate_limiting:
-        description: "Test handling of 429 rate limit responses"
-        scenario: "Mock 429 HTTP response and verify retry/error behavior"
-        
-    - test_api_authentication_errors:
-        description: "Test handling of 401/403 authentication errors"  
-        scenario: "Mock auth errors and verify appropriate error messages"
-        
-    - test_api_malformed_response:
-        description: "Test handling of malformed JSON responses"
-        scenario: "Mock invalid JSON response and verify parsing error handling"
-
-  local_transcription_gaps:
-    - test_memory_management:
-        description: "Test model caching and memory cleanup behavior"
-        scenario: "Verify models are cached and memory is cleaned up after transcription"
-        
-    - test_chunked_audio_processing:
-        description: "Test handling of very long audio files requiring chunking"
-        scenario: "Test with audio longer than model's context window"
-
-  speaker_detection_gaps:  
-    - test_overlapping_speakers:
-        description: "Test handling of segments with overlapping speakers"
-        scenario: "Create diarization output with overlapping time ranges"
-        
-    - test_missing_hf_auth:
-        description: "Test error when HuggingFace auth key is missing/invalid"
-        scenario: "Test speaker detection with no/invalid HF key"
-
-  concurrent_usage:
-    - test_simultaneous_transcriptions:
-        description: "Test multiple simultaneous transcription requests"
-        scenario: "Start multiple transcriptions concurrently and verify they don't interfere"
-
-# Test data quality improvements needed
-test_data_improvements:
-  - valid_audio_fixtures:
-      description: "Replace fake b'\\0\\0' with actual valid WAV data"
-      requirement: "Create minimal valid WAV files for realistic testing"
+refactoring_plan:
+  phase_1_immediate:
+    - action: "Extract dependency injection interface"
+      description: "Create a DependencyProvider interface to inject ML models"
+      implementation:
+        - Create app/services/ml_provider.py with MLProvider protocol
+        - Update TranscriptionService to accept provider in __init__
+        - Default to real provider, allow test provider injection
+      estimated_time: "2 hours"
       
-  - audio_format_variety:
-      description: "Test with different audio formats (MP3, FLAC, etc.)"
-      requirement: "Verify format support and conversion handling"
+    - action: "Create focused test doubles"
+      description: "Replace module stubbing with proper test doubles"
+      implementation:
+        - Create TestMLProvider class implementing protocol
+        - Create TestTranscriptionPipeline with configurable behavior
+        - Create TestOpenAIClient with predictable responses
+      estimated_time: "3 hours"
 
-# Architecture improvements (not test cases but testing approach)
-testing_approach_improvements:
-  - reduce_module_mocking:
-      description: "The 54-line _ensure_stubbed_heavy_modules function should be eliminated"
-      recommendation: "Mock only at service boundaries, not entire ML frameworks"
+  phase_2_restructure:
+    - action: "Split into multiple test classes"
+      description: "Group related tests by functionality"
+      new_structure:
+        - TestTranscriptionServiceLocalPath (local transcription tests)
+        - TestTranscriptionServiceAPIPath (API transcription tests)
+        - TestTranscriptionServiceSpeakerDetection (diarization tests)
+        - TestTranscriptionServiceErrorHandling (error scenarios)
+      estimated_time: "2 hours"
       
-  - focus_on_outcomes:
-      description: "Tests currently verify mock calls rather than actual behavior"
-      recommendation: "Test transcription outcomes and error conditions, not implementation details"
-      
-  - separate_test_classes:
-      description: "Split monolithic TestTranscriptionService into focused classes"
-      recommendation: "Create separate test classes for validation, local, API, and speaker detection"
+    - action: "Convert to behavior testing"
+      description: "Focus on observable outcomes, not internal calls"
+      changes:
+        - Replace mock.assert_called with result assertions
+        - Test actual transcription results match expected format
+        - Verify error messages and states, not logger calls
+      estimated_time: "3 hours"
 
-# Success criteria for remaining work
-success_criteria:
-  - "Add the 12 missing test scenarios listed above"
-  - "Replace fake audio data with valid WAV fixtures"
-  - "Achieve >90% line coverage of transcription_service.py"
-  - "Each new test method should be <20 lines and test outcomes, not mocks"
+  phase_3_simplify:
+    - action: "Use fixtures for common test data"
+      description: "Extract shared test data to reusable fixtures"
+      fixtures:
+        - valid_audio_file: returns path to test audio file
+        - transcription_result: returns standard result structure
+        - api_credentials: returns test API configuration
+      estimated_time: "1 hour"
+      
+    - action: "Implement builder pattern for test data"
+      description: "Create builders for complex test objects"
+      builders:
+        - TranscriptionResultBuilder for creating result variations
+        - AudioFileBuilder for different audio file scenarios
+        - ConfigBuilder for different service configurations
+      estimated_time: "2 hours"
+
+new_test_structure:
+  test_doubles: |
+    """Test doubles for transcription service testing."""
+    
+    class TestMLProvider:
+        """Test double for ML model provider."""
+        
+        def __init__(self):
+            self.device = "cpu"
+            self.pipeline_results = {}
+            self.errors_to_raise = {}
+            
+        def create_pipeline(self, model_id: str):
+            """Return test pipeline with configurable behavior."""
+            if model_id in self.errors_to_raise:
+                raise self.errors_to_raise[model_id]
+            
+            return TestTranscriptionPipeline(
+                self.pipeline_results.get(model_id, {"text": "default"})
+            )
+            
+        def set_result(self, model_id: str, result: dict):
+            """Configure expected result for model."""
+            self.pipeline_results[model_id] = result
+            
+        def set_error(self, model_id: str, error: Exception):
+            """Configure error to raise for model."""
+            self.errors_to_raise[model_id] = error
+    
+    class TestTranscriptionPipeline:
+        """Test double for transcription pipeline."""
+        
+        def __init__(self, result: dict):
+            self.result = result
+            self.call_count = 0
+            
+        def __call__(self, audio_path: str) -> dict:
+            self.call_count += 1
+            self.last_audio_path = audio_path
+            return self.result.copy()
+    
+    class TestOpenAIClient:
+        """Test double for OpenAI client."""
+        
+        def __init__(self, response_text: str = "test transcription"):
+            self.response_text = response_text
+            self.requests = []
+            
+        @property
+        def audio(self):
+            return self
+            
+        @property
+        def transcriptions(self):
+            return self
+            
+        def create(self, **kwargs):
+            self.requests.append(kwargs)
+            return type('Response', (), {'text': self.response_text})
+
+  test_organization: |
+    """Organized test structure by behavior."""
+    
+    class TestTranscriptionServiceLocalPath(unittest.TestCase):
+        """Test local transcription behavior."""
+        
+        def setUp(self):
+            self.ml_provider = TestMLProvider()
+            self.service = TranscriptionService(ml_provider=self.ml_provider)
+            self.audio_file = self.create_test_audio_file()
+            
+        def test_transcribes_audio_successfully(self):
+            # Given: ML provider configured with expected result
+            expected = {"text": "Hello world", "chunks": [...]}
+            self.ml_provider.set_result("whisper-base", expected)
+            
+            # When: transcribing audio file
+            result = self.service.transcribe_file(
+                self.audio_file,
+                model_id="whisper-base",
+                method="local"
+            )
+            
+            # Then: returns expected transcription
+            self.assertEqual(result["text"], "Hello world")
+            self.assertEqual(result["method"], "local")
+            self.assertIn("chunks", result)
+            
+        def test_handles_missing_file_gracefully(self):
+            # When: transcribing non-existent file
+            # Then: raises appropriate error
+            with self.assertRaises(FileNotFoundError) as ctx:
+                self.service.transcribe_file(
+                    "/nonexistent.wav",
+                    model_id="whisper-base",
+                    method="local"
+                )
+            self.assertIn("not found", str(ctx.exception))
+    
+    class TestTranscriptionServiceAPIPath(unittest.TestCase):
+        """Test API transcription behavior."""
+        
+        def setUp(self):
+            self.service = TranscriptionService()
+            self.audio_file = self.create_test_audio_file()
+            self.test_client = TestOpenAIClient()
+            
+        @patch('app.services.transcription_service.OpenAI')
+        def test_transcribes_via_api_successfully(self, mock_openai):
+            # Given: API client returns transcription
+            mock_openai.return_value = self.test_client
+            
+            # When: transcribing via API
+            result = self.service.transcribe_file(
+                self.audio_file,
+                model_id="whisper-1",
+                method="api",
+                openai_api_key="test-key"
+            )
+            
+            # Then: returns API transcription
+            self.assertEqual(result["text"], "test transcription")
+            self.assertEqual(result["method"], "api")
+            self.assertEqual(len(self.test_client.requests), 1)
+            
+        def test_rejects_insecure_api_url(self):
+            # When: using HTTP URL
+            # Then: raises security error
+            with self.assertRaises(ValueError) as ctx:
+                self.service._transcribe_with_api(
+                    self.audio_file,
+                    language="en",
+                    api_key="key",
+                    base_url="http://insecure.com"
+                )
+            self.assertIn("HTTPS", str(ctx.exception))
+
+  test_data_builders: |
+    """Builder pattern for test data creation."""
+    
+    class TranscriptionResultBuilder:
+        """Build transcription results for testing."""
+        
+        def __init__(self):
+            self.result = {
+                "text": "",
+                "chunks": [],
+                "method": "local"
+            }
+            
+        def with_text(self, text: str):
+            self.result["text"] = text
+            return self
+            
+        def with_chunks(self, chunks: list):
+            self.result["chunks"] = chunks
+            return self
+            
+        def with_speaker(self, speaker_id: str):
+            self.result["has_speaker_detection"] = True
+            for chunk in self.result["chunks"]:
+                chunk["speaker"] = speaker_id
+            return self
+            
+        def build(self):
+            return self.result.copy()
+    
+    class AudioFileFixture:
+        """Manage test audio files."""
+        
+        @staticmethod
+        def create_valid_file() -> str:
+            """Create valid test audio file."""
+            import tempfile
+            with tempfile.NamedTemporaryFile(
+                suffix=".wav", delete=False
+            ) as f:
+                f.write(b"RIFF....WAVEfmt ")  # Minimal WAV header
+                return f.name
+                
+        @staticmethod
+        def create_corrupt_file() -> str:
+            """Create corrupted audio file."""
+            import tempfile
+            with tempfile.NamedTemporaryFile(
+                suffix=".wav", delete=False
+            ) as f:
+                f.write(b"CORRUPTED")
+                return f.name
+
+quality_improvements:
+  - improvement: "Remove all module-level stubbing"
+    before: "55 lines of sys.modules manipulation"
+    after: "Dependency injection with test doubles"
+    benefit: "Tests remain valid after refactoring"
+    
+  - improvement: "Focus on behavior not implementation"
+    before: "mock.assert_called() checks"
+    after: "Assert on actual results and side effects"
+    benefit: "Tests catch real bugs"
+    
+  - improvement: "Simplify test setup"
+    before: "Complex setUp with multiple patchers"
+    after: "Simple dependency injection in __init__"
+    benefit: "Clear test intent, easier debugging"
+    
+  - improvement: "Use lightweight test doubles"
+    before: "Complex fake class hierarchies"
+    after: "Simple configurable test doubles"
+    benefit: "Easier to maintain and understand"
+
+testing_principles:
+  - "Test behavior, not implementation"
+  - "Use dependency injection over patching"
+  - "Keep test doubles simple and focused"
+  - "Group related tests in focused classes"
+  - "Use builders for complex test data"
+  - "Test error paths as thoroughly as happy paths"
+  - "Avoid testing framework code (PyQt, ML libraries)"
+  - "Make tests deterministic and fast"
+
+migration_strategy:
+  week_1:
+    - Add dependency injection to TranscriptionService
+    - Create test double implementations
+    - Write new behavior-focused tests alongside old ones
+    
+  week_2:
+    - Migrate all tests to new structure
+    - Remove module-level stubbing
+    - Delete old implementation-focused tests
+    
+  week_3:
+    - Add missing error scenario coverage
+    - Implement test data builders
+    - Document testing patterns for team
+
+success_metrics:
+  - "Zero module-level stubbing"
+  - "All tests < 30 lines"
+  - "Test file < 500 lines total"
+  - "Maximum 3 mocks per test"
+  - "100% error path coverage"
+  - "Tests run in < 1 second"
+  - "No test breaks on refactoring that preserves behavior"
+
+example_refactored_test: |
+  """Example of refactored test following new patterns."""
+  
+  class TestTranscriptionServiceErrors(unittest.TestCase):
+      """Test error handling behavior."""
+      
+      def setUp(self):
+          self.ml_provider = TestMLProvider()
+          self.service = TranscriptionService(ml_provider=self.ml_provider)
+          
+      def test_handles_corrupted_audio_gracefully(self):
+          # Given: ML provider will fail on corrupted audio
+          self.ml_provider.set_error(
+              "whisper-base",
+              IOError("Invalid audio format")
+          )
+          
+          # When: attempting to transcribe corrupted file
+          corrupt_file = AudioFileFixture.create_corrupt_file()
+          
+          # Then: wraps error with helpful message
+          with self.assertRaises(RuntimeError) as ctx:
+              self.service.transcribe_file(
+                  corrupt_file,
+                  model_id="whisper-base",
+                  method="local"
+              )
+          
+          error_msg = str(ctx.exception)
+          self.assertIn("Failed to transcribe", error_msg)
+          self.assertIn("Invalid audio format", error_msg)
+          
+      def test_falls_back_when_speaker_detection_fails(self):
+          # Given: successful transcription but speaker detection will fail
+          base_result = TranscriptionResultBuilder()\
+              .with_text("Hello world")\
+              .with_chunks([{"text": "Hello", "timestamp": (0, 1)}])\
+              .build()
+          self.ml_provider.set_result("whisper-base", base_result)
+          
+          # When: speaker detection requested but fails
+          with patch.object(
+              self.service,
+              '_add_speaker_detection',
+              side_effect=Exception("Diarization failed")
+          ):
+              result = self.service.transcribe_file(
+                  AudioFileFixture.create_valid_file(),
+                  model_id="whisper-base",
+                  method="local",
+                  speaker_detection=True
+              )
+          
+          # Then: returns base transcription without speakers
+          self.assertEqual(result["text"], "Hello world")
+          self.assertNotIn("has_speaker_detection", result)
+          self.assertIsNotNone(result.get("chunks"))
+
+notes:
+  - "This plan addresses all identified issues in the audit"
+  - "Focuses on making tests fast, reliable, and maintainable"
+  - "Prioritizes behavior testing over implementation details"
+  - "Provides clear migration path to avoid disruption"
+  - "Includes concrete examples of improved patterns"
+  - "Sets measurable success criteria"
+---

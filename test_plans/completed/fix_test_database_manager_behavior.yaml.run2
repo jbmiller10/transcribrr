@@ -1,0 +1,327 @@
+target_file: "app/DatabaseManager.py"
+test_file: "app/tests/test_database_manager_behavior.py"
+module_under_test: "DatabaseManager"
+class_under_test: "DatabaseManager"
+
+issues_to_fix:
+  - issue: "Excessive wait times"
+    current_state: "Tests use 3 second default timeouts via TEST_TIMEOUT env var"
+    solution: "Reduce all timeouts to 0.5s maximum, use threading.Event for deterministic waits"
+    
+  - issue: "Missing error cases"
+    current_state: "Only tests happy path scenarios, no error handling coverage"
+    solution: "Add comprehensive error scenario tests including database errors, invalid data, and concurrent operations"
+    
+  - issue: "Poor test data generation"
+    current_state: "Hardcoded simple test data like 'a.wav', 'b.wav'"
+    solution: "Create realistic test data factory with varied timestamps, durations, and transcript content"
+
+improvements_to_make:
+  - name: "Reduce timeout values"
+    description: "Change default timeout from 3.0s to 0.5s across all tests"
+    implementation: |
+      - Modify _Wait class to use 0.5s default timeout
+      - Remove TEST_TIMEOUT env var dependency
+      - Use Event.wait() with shorter timeouts
+      
+  - name: "Add test data factory"
+    description: "Create helper methods for generating realistic test data"
+    implementation: |
+      - Create _generate_recording_data() method with varied filenames
+      - Use realistic timestamps with proper formatting
+      - Generate varied duration formats (seconds, minutes, hours)
+      - Create diverse transcript content for search tests
+      
+  - name: "Improve assertion messages"
+    description: "Add descriptive messages to all assertions for better debugging"
+    implementation: |
+      - Add context to assertTrue/assertFalse calls
+      - Include actual vs expected values in messages
+      - Add timing information where relevant
+
+test_scenarios_to_add:
+  # Error Handling Tests
+  - scenario: "Database connection failure"
+    description: "Test behavior when database connection cannot be established"
+    test_method: "test_database_connection_failure_handled_gracefully"
+    setup: |
+      - Set invalid database path
+      - Attempt operations
+    assertions:
+      - Worker thread handles connection error
+      - Error signal is emitted
+      - Operations fail gracefully without crashes
+      
+  - scenario: "Duplicate file path error"
+    description: "Test handling of duplicate file paths in recordings"
+    test_method: "test_create_recording_with_duplicate_path_raises_error"
+    setup: |
+      - Create recording with specific path
+      - Attempt to create another with same path
+    assertions:
+      - DuplicatePathError is raised or handled
+      - First recording remains intact
+      - Error callback is invoked
+      
+  - scenario: "Invalid recording data"
+    description: "Test validation of malformed recording data"
+    test_method: "test_create_recording_with_invalid_data_formats"
+    setup: |
+      - Try various invalid data formats (None, wrong tuple size, invalid types)
+    assertions:
+      - Each invalid format is rejected
+      - Error callbacks are invoked
+      - Database remains consistent
+      
+  - scenario: "SQL injection prevention"
+    description: "Test that SQL injection attempts are blocked"
+    test_method: "test_search_recordings_prevents_sql_injection"
+    setup: |
+      - Use search terms with SQL injection attempts
+      - Search with special characters and quotes
+    assertions:
+      - Searches complete without SQL errors
+      - No unintended data modification
+      - Results are properly escaped
+      
+  - scenario: "Update non-existent recording"
+    description: "Test updating a recording that doesn't exist"
+    test_method: "test_update_nonexistent_recording_handles_gracefully"
+    setup: |
+      - Attempt to update with invalid ID
+    assertions:
+      - Operation completes without crash
+      - No data is modified
+      - Appropriate error or no-op behavior
+      
+  - scenario: "Delete non-existent recording"
+    description: "Test deleting a recording that doesn't exist"
+    test_method: "test_delete_nonexistent_recording_handles_gracefully"
+    setup: |
+      - Attempt to delete with invalid ID
+    assertions:
+      - Operation completes without crash
+      - No error raised (idempotent delete)
+      - Callback is invoked
+
+  # Concurrency Tests
+  - scenario: "Concurrent creates"
+    description: "Test multiple simultaneous create operations"
+    test_method: "test_concurrent_create_operations_all_succeed"
+    setup: |
+      - Launch 10 create operations simultaneously
+      - Use unique data for each
+    assertions:
+      - All operations complete
+      - All records are created
+      - No data corruption
+      
+  - scenario: "Concurrent updates to same record"
+    description: "Test race conditions in updates"
+    test_method: "test_concurrent_updates_to_same_record_serialize_correctly"
+    setup: |
+      - Create one recording
+      - Launch multiple updates to different fields simultaneously
+    assertions:
+      - All updates are applied
+      - Final state reflects all changes
+      - No updates are lost
+      
+  - scenario: "Mixed concurrent operations"
+    description: "Test various operation types running simultaneously"
+    test_method: "test_mixed_concurrent_operations_maintain_consistency"
+    setup: |
+      - Mix of creates, updates, deletes, searches running together
+    assertions:
+      - All operations complete
+      - Database remains consistent
+      - No deadlocks occur
+
+  # Edge Cases
+  - scenario: "Empty search term"
+    description: "Test searching with empty string"
+    test_method: "test_search_recordings_with_empty_term_returns_all"
+    setup: |
+      - Create several recordings
+      - Search with empty string ""
+    assertions:
+      - Returns all recordings or handles gracefully
+      - No SQL errors
+      
+  - scenario: "Unicode in data"
+    description: "Test handling of Unicode characters"
+    test_method: "test_unicode_characters_in_filenames_and_transcripts"
+    setup: |
+      - Create recordings with emoji, Chinese, Arabic text
+      - Search for Unicode terms
+    assertions:
+      - Data is stored correctly
+      - Searches work with Unicode
+      - No encoding errors
+      
+  - scenario: "Very long transcript"
+    description: "Test handling of large text data"
+    test_method: "test_very_long_transcript_stored_and_retrieved"
+    setup: |
+      - Create recording with 100KB+ transcript
+    assertions:
+      - Data is stored completely
+      - Can be retrieved intact
+      - Search works on long text
+      
+  - scenario: "Callback exceptions"
+    description: "Test behavior when callbacks raise exceptions"
+    test_method: "test_callback_exception_does_not_crash_worker"
+    setup: |
+      - Provide callback that raises exception
+    assertions:
+      - Worker thread continues running
+      - Exception is logged
+      - Subsequent operations still work
+
+  # Performance Tests
+  - scenario: "Bulk operations"
+    description: "Test performance with many records"
+    test_method: "test_bulk_create_and_list_performance"
+    setup: |
+      - Create 100 recordings rapidly
+      - List all recordings
+    assertions:
+      - All operations complete within 5 seconds
+      - Memory usage remains reasonable
+      - No timeouts occur
+      
+  - scenario: "Large search result set"
+    description: "Test search with many matches"
+    test_method: "test_search_with_many_matches_performs_well"
+    setup: |
+      - Create 100 recordings with common term
+      - Search for that term
+    assertions:
+      - Search completes within 1 second
+      - All matches are returned
+      - Results are properly formatted
+
+test_methods_to_modify:
+  - method: "test_create_recording_persists_to_database_and_appears_in_listing"
+    changes:
+      - Reduce wait timeout to 0.5s
+      - Use realistic test data from factory
+      - Add assertions for data integrity
+      - Verify all fields are stored correctly
+      
+  - method: "test_update_recording_modifies_fields_retrievable_by_id"
+    changes:
+      - Test updating multiple fields at once
+      - Verify only specified fields change
+      - Add edge cases (empty strings, None values)
+      
+  - method: "test_delete_recording_removes_from_database_permanently"
+    changes:
+      - Verify cascade behavior if foreign keys exist
+      - Test that get_by_id returns None after delete
+      - Check that listing doesn't include deleted record
+      
+  - method: "test_search_recordings_returns_matching_transcripts"
+    changes:
+      - Test case-insensitive search
+      - Test partial word matches
+      - Test search in filenames vs transcripts
+      - Add negative cases (no matches)
+
+helper_methods_to_add:
+  - name: "_generate_recording_data"
+    purpose: "Generate realistic test recording data"
+    parameters:
+      - index: "int - unique identifier for this record"
+      - with_transcript: "bool - whether to include transcript"
+    returns: "tuple of (filename, filepath, timestamp, duration, [transcript])"
+    
+  - name: "_create_bulk_recordings"
+    purpose: "Helper to create multiple recordings efficiently"
+    parameters:
+      - count: "int - number of recordings to create"
+      - pattern: "str - pattern for filenames"
+    returns: "list of recording IDs"
+    
+  - name: "_assert_recording_equals"
+    purpose: "Compare recording data with expected values"
+    parameters:
+      - actual: "Recording object or tuple"
+      - expected: "dict of expected field values"
+    
+  - name: "_wait_for_operations"
+    purpose: "Wait for multiple async operations to complete"
+    parameters:
+      - wait_objects: "list of _Wait objects"
+      - timeout: "float - max time to wait"
+    returns: "bool - True if all completed"
+
+constants_to_add:
+  - name: "DEFAULT_TIMEOUT"
+    value: 0.5
+    purpose: "Standard timeout for all async operations"
+    
+  - name: "BULK_TEST_SIZE"
+    value: 50
+    purpose: "Number of records for bulk operation tests"
+    
+  - name: "TEST_TIMESTAMPS"
+    value: |
+      [
+        "2024-01-01 00:00:00",
+        "2024-06-15 14:30:45", 
+        "2024-12-31 23:59:59"
+      ]
+    purpose: "Variety of timestamps for testing"
+    
+  - name: "TEST_DURATIONS"
+    value: |
+      [
+        "1s", "30s", "1m", "5m30s",
+        "1h", "1h30m", "2h15m45s"
+      ]
+    purpose: "Various duration formats to test"
+    
+  - name: "UNICODE_TEST_STRINGS"
+    value: |
+      [
+        "Hello 世界",
+        "مرحبا بالعالم",
+        "🎵 Music 🎶",
+        "Ñoño façade café"
+      ]
+    purpose: "Unicode test cases for internationalization"
+
+cleanup_improvements:
+  - name: "Ensure worker shutdown"
+    description: "Always stop worker thread even if test fails"
+    implementation: |
+      - Use try/finally in tearDown
+      - Add timeout to worker.wait()
+      - Force kill if shutdown hangs
+      
+  - name: "Database cleanup"
+    description: "Ensure test database is fully removed"
+    implementation: |
+      - Close all connections before removal
+      - Use shutil.rmtree with ignore_errors
+      - Clear any cached paths
+      
+  - name: "Reset singleton state"
+    description: "Clear any global state between tests"
+    implementation: |
+      - Reset DatabaseManager class variables
+      - Clear any module-level caches
+      - Restore environment variables
+
+expected_test_count: 25
+expected_coverage_increase: "+40%"
+estimated_execution_time: "< 10 seconds total"
+
+notes:
+  - "Focus on behavior rather than implementation details"
+  - "Use real SQLite in-memory/temp databases rather than mocking"
+  - "Ensure all async operations use deterministic synchronization"
+  - "Add performance benchmarks for critical operations"
+  - "Consider splitting into unit and integration test files if size grows"

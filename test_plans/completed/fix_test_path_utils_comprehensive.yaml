@@ -1,0 +1,392 @@
+target_file: "app/path_utils.py"
+test_file: "app/tests/test_path_utils.py"
+dependencies_to_mock:
+  - "sys._MEIPASS"
+  - "sys.frozen"
+  - "sys.executable"
+  - "os.path.dirname"
+  - "os.path.abspath"
+  - "os.path.join"
+  - "os.path.normpath"
+  - "logging.getLogger"
+
+test_cases:
+  # Test get_execution_environment() - all 3 environments
+  - function_to_test: "get_execution_environment"
+    description: "Tests PyInstaller environment detection via sys._MEIPASS"
+    scenario: "When running as a PyInstaller bundle, sys has _MEIPASS attribute"
+    mocks:
+      - target: "sys"
+        attributes:
+          _MEIPASS: "/tmp/_MEI123456"
+    expected_behavior:
+      - "Returns 'pyinstaller'"
+      - "Does not check sys.frozen or sys.executable"
+
+  - function_to_test: "get_execution_environment"
+    description: "Tests py2app environment detection via sys.frozen and MacOS in path"
+    scenario: "When running as a py2app bundle on macOS"
+    mocks:
+      - target: "sys"
+        attributes:
+          frozen: true
+          executable: "/Applications/TranscribrApp.app/Contents/MacOS/transcribrr"
+        remove_attributes: ["_MEIPASS"]
+    expected_behavior:
+      - "Returns 'py2app'"
+      - "Checks both sys.frozen and 'MacOS' in sys.executable"
+
+  - function_to_test: "get_execution_environment"
+    description: "Tests development environment as default fallback"
+    scenario: "When not running as any bundled application"
+    mocks:
+      - target: "sys"
+        attributes:
+          frozen: false
+          executable: "/usr/bin/python3"
+        remove_attributes: ["_MEIPASS"]
+    expected_behavior:
+      - "Returns 'development'"
+      - "Falls through both bundle checks"
+
+  - function_to_test: "get_execution_environment"
+    description: "Tests frozen attribute without MacOS path returns development"
+    scenario: "When sys.frozen is True but executable doesn't contain MacOS (edge case)"
+    mocks:
+      - target: "sys"
+        attributes:
+          frozen: true
+          executable: "/usr/local/bin/python"
+        remove_attributes: ["_MEIPASS"]
+    expected_behavior:
+      - "Returns 'development'"
+      - "Does not incorrectly identify as py2app"
+
+  # Test _get_base_resource_path() - all 3 environments with proper paths
+  - function_to_test: "_get_base_resource_path"
+    description: "Tests PyInstaller path resolution using sys._MEIPASS"
+    scenario: "PyInstaller environment with bundled resources"
+    mocks:
+      - target: "env_detector"
+        return_value: "pyinstaller"
+      - target: "sys._MEIPASS"
+        value: "/tmp/_MEI987654"
+      - target: "logger.debug"
+        verify_called_with: "Using PyInstaller _MEIPASS path: /tmp/_MEI987654"
+    expected_behavior:
+      - "Returns sys._MEIPASS value directly"
+      - "Logs debug message with PyInstaller path"
+      - "Does not call os.path functions"
+
+  - function_to_test: "_get_base_resource_path"
+    description: "Tests py2app path resolution to Resources directory"
+    scenario: "py2app bundle with standard macOS app structure"
+    mocks:
+      - target: "env_detector"
+        return_value: "py2app"
+      - target: "sys.executable"
+        value: "/Applications/Transcribrr.app/Contents/MacOS/transcribrr"
+      - target: "os.path.dirname"
+        return_value: "/Applications/Transcribrr.app/Contents/MacOS"
+      - target: "os.path.join"
+        return_value: "/Applications/Transcribrr.app/Contents/MacOS/../Resources"
+      - target: "os.path.normpath"
+        return_value: "/Applications/Transcribrr.app/Contents/Resources"
+      - target: "logger.debug"
+        verify_called_with: "Using py2app bundle path: /Applications/Transcribrr.app/Contents/Resources"
+    expected_behavior:
+      - "Constructs path from executable to Resources directory"
+      - "Normalizes path to remove '..' components"
+      - "Logs debug message with py2app path"
+
+  - function_to_test: "_get_base_resource_path"
+    description: "Tests development mode path resolution to project root"
+    scenario: "Development environment resolves to project root directory"
+    mocks:
+      - target: "env_detector"
+        return_value: "development"
+      - target: "__file__"
+        value: "/home/user/transcribrr/app/path_utils.py"
+      - target: "os.path.abspath"
+        return_value: "/home/user/transcribrr/app/path_utils.py"
+      - target: "os.path.dirname"
+        side_effect: "returns parent directory each time"
+        returns_sequence:
+          - "/home/user/transcribrr/app"
+          - "/home/user/transcribrr"
+      - target: "logger.debug"
+        verify_called_with: "Using development path: /home/user/transcribrr"
+    expected_behavior:
+      - "Goes up two directory levels from module file"
+      - "Returns project root directory"
+      - "Logs debug message with development path"
+
+  - function_to_test: "_get_base_resource_path"
+    description: "Tests None env_detector uses default get_execution_environment"
+    scenario: "When env_detector parameter is None, uses default function"
+    mocks:
+      - target: "get_execution_environment"
+        return_value: "development"
+      - target: "__file__"
+        value: "/test/app/path_utils.py"
+      - target: "os.path.abspath"
+        return_value: "/test/app/path_utils.py"
+      - target: "os.path.dirname"
+        returns_sequence:
+          - "/test/app"
+          - "/test"
+    expected_behavior:
+      - "Calls get_execution_environment when env_detector is None"
+      - "Proceeds with detected environment"
+
+  # Test resource_path() - main public function
+  - function_to_test: "resource_path"
+    description: "Tests returning base path when relative_path is None"
+    scenario: "Called without relative path argument"
+    mocks:
+      - target: "_get_base_resource_path"
+        return_value: "/app/resources"
+    expected_behavior:
+      - "Returns base resource path unchanged"
+      - "Does not call os.path.join"
+      - "Does not log debug message for relative path"
+
+  - function_to_test: "resource_path"
+    description: "Tests joining relative path with base path"
+    scenario: "Standard use case with relative path to resource"
+    mocks:
+      - target: "_get_base_resource_path"
+        return_value: "/app/resources"
+      - target: "os.path.join"
+        return_value: "/app/resources/icons/logo.png"
+      - target: "logger.debug"
+        verify_called_with: "Resource path for 'icons/logo.png': /app/resources/icons/logo.png"
+    expected_behavior:
+      - "Joins base path with relative path"
+      - "Returns full absolute path"
+      - "Logs debug message with resolved path"
+
+  - function_to_test: "resource_path"
+    description: "Tests empty string relative path handling"
+    scenario: "Empty string as relative path (edge case)"
+    mocks:
+      - target: "_get_base_resource_path"
+        return_value: "/base/path"
+      - target: "os.path.join"
+        return_value: "/base/path"
+    expected_behavior:
+      - "os.path.join handles empty string correctly"
+      - "Returns base path"
+      - "Logs debug message for empty string"
+
+  # Security and error cases
+  - function_to_test: "resource_path"
+    description: "Tests path traversal attempt with ../ sequences"
+    scenario: "Malicious input attempting directory traversal"
+    mocks:
+      - target: "_get_base_resource_path"
+        return_value: "/app/resources"
+      - target: "os.path.join"
+        return_value: "/app/resources/../../etc/passwd"
+    expected_behavior:
+      - "Does not sanitize or validate the path"
+      - "Passes traversal sequences directly to os.path.join"
+      - "Returns potentially dangerous path unchanged"
+      - "Security validation is caller's responsibility"
+
+  - function_to_test: "resource_path"
+    description: "Tests absolute path override behavior"
+    scenario: "When absolute path is provided as relative_path"
+    mocks:
+      - target: "_get_base_resource_path"
+        return_value: "/app/resources"
+      - target: "os.path.join"
+        return_value: "/etc/passwd"
+    expected_behavior:
+      - "os.path.join returns the absolute path unchanged"
+      - "Effectively ignores base path for absolute inputs"
+      - "Returns the absolute path as-is"
+
+  - function_to_test: "resource_path"
+    description: "Tests Windows absolute path handling"
+    scenario: "Windows drive letter path on Windows system"
+    mocks:
+      - target: "_get_base_resource_path"
+        return_value: "C:\\app\\resources"
+      - target: "os.path.join"
+        return_value: "D:\\other\\file.txt"
+    expected_behavior:
+      - "Handles Windows drive letters correctly"
+      - "Returns Windows absolute path unchanged"
+
+  - function_to_test: "resource_path"
+    description: "Tests Unicode path handling"
+    scenario: "Paths containing Unicode characters"
+    mocks:
+      - target: "_get_base_resource_path"
+        return_value: "/app/resources"
+      - target: "os.path.join"
+        return_value: "/app/resources/データ/ファイル.txt"
+    expected_behavior:
+      - "Handles Unicode characters without errors"
+      - "Preserves Unicode in returned path"
+      - "Logs debug message with Unicode preserved"
+
+  - function_to_test: "resource_path"
+    description: "Tests special characters in paths"
+    scenario: "Paths with spaces, quotes, and special characters"
+    mocks:
+      - target: "_get_base_resource_path"
+        return_value: "/app/resources"
+      - target: "os.path.join"
+        return_value: "/app/resources/my files/data & config/file's.txt"
+    expected_behavior:
+      - "Handles spaces and special characters"
+      - "Does not escape or quote paths"
+      - "Returns path with special characters intact"
+
+  # PyInstaller-specific error cases
+  - function_to_test: "_get_base_resource_path"
+    description: "Tests PyInstaller with missing _MEIPASS attribute"
+    scenario: "PyInstaller environment but sys._MEIPASS raises AttributeError"
+    mocks:
+      - target: "env_detector"
+        return_value: "pyinstaller"
+      - target: "sys._MEIPASS"
+        side_effect: "raises AttributeError"
+    expected_behavior:
+      - "Raises AttributeError"
+      - "Does not fall back to development mode"
+      - "Indicates corrupted PyInstaller environment"
+
+  - function_to_test: "_get_base_resource_path"
+    description: "Tests PyInstaller with None _MEIPASS value"
+    scenario: "PyInstaller environment but sys._MEIPASS is None"
+    mocks:
+      - target: "env_detector"
+        return_value: "pyinstaller"
+      - target: "sys._MEIPASS"
+        value: null
+    expected_behavior:
+      - "Returns None"
+      - "Logs debug message with None path"
+      - "Caller must handle None return value"
+
+  # py2app-specific error cases
+  - function_to_test: "_get_base_resource_path"
+    description: "Tests py2app with malformed executable path"
+    scenario: "py2app environment but sys.executable has unexpected structure"
+    mocks:
+      - target: "env_detector"
+        return_value: "py2app"
+      - target: "sys.executable"
+        value: "/malformed/path"
+      - target: "os.path.dirname"
+        return_value: "/malformed"
+      - target: "os.path.join"
+        return_value: "/malformed/../Resources"
+      - target: "os.path.normpath"
+        return_value: "/Resources"
+    expected_behavior:
+      - "Attempts to construct Resources path"
+      - "May return incorrect path outside app bundle"
+      - "Logs debug message with computed path"
+
+  # Permission and filesystem errors
+  - function_to_test: "resource_path"
+    description: "Tests path with no read permissions"
+    scenario: "Base path exists but has no read permissions"
+    mocks:
+      - target: "_get_base_resource_path"
+        return_value: "/restricted/path"
+      - target: "os.path.join"
+        return_value: "/restricted/path/file.txt"
+    expected_behavior:
+      - "Returns the path regardless of permissions"
+      - "Does not check filesystem permissions"
+      - "Permission errors occur when path is actually used"
+
+  - function_to_test: "resource_path"
+    description: "Tests extremely long path names"
+    scenario: "Path exceeding typical filesystem limits"
+    mocks:
+      - target: "_get_base_resource_path"
+        return_value: "/base"
+      - target: "os.path.join"
+        return_value: "/base/" + "a" * 5000
+    expected_behavior:
+      - "Returns the long path unchanged"
+      - "Does not validate path length"
+      - "Filesystem will reject when actually accessed"
+
+  # Edge cases with custom env_detector
+  - function_to_test: "resource_path"
+    description: "Tests with custom env_detector returning invalid value"
+    scenario: "Custom env_detector returns unexpected environment string"
+    mocks:
+      - target: "env_detector"
+        return_value: "unknown_environment"
+      - target: "__file__"
+        value: "/fallback/app/path_utils.py"
+      - target: "os.path.abspath"
+        return_value: "/fallback/app/path_utils.py"
+      - target: "os.path.dirname"
+        returns_sequence:
+          - "/fallback/app"
+          - "/fallback"
+    expected_behavior:
+      - "Falls through to development path logic"
+      - "Returns project root as fallback"
+      - "Logs development path debug message"
+
+  - function_to_test: "_get_base_resource_path"
+    description: "Tests env_detector raising exception"
+    scenario: "Custom env_detector throws exception during execution"
+    mocks:
+      - target: "env_detector"
+        side_effect: "raises RuntimeError('Detection failed')"
+    expected_behavior:
+      - "Exception propagates to caller"
+      - "Does not catch or handle exception"
+      - "Caller must handle env_detector failures"
+
+  # Network and UNC paths (Windows)
+  - function_to_test: "resource_path"
+    description: "Tests UNC network path on Windows"
+    scenario: "Windows UNC path as relative_path"
+    mocks:
+      - target: "_get_base_resource_path"
+        return_value: "C:\\app\\resources"
+      - target: "os.path.join"
+        return_value: "\\\\server\\share\\file.txt"
+    expected_behavior:
+      - "Returns UNC path from os.path.join"
+      - "UNC paths override local base path"
+
+  # Symlink and special file types
+  - function_to_test: "resource_path"
+    description: "Tests path to symlink target"
+    scenario: "Relative path points to a symlink"
+    mocks:
+      - target: "_get_base_resource_path"
+        return_value: "/app/resources"
+      - target: "os.path.join"
+        return_value: "/app/resources/link_to_file"
+    expected_behavior:
+      - "Returns path to symlink itself"
+      - "Does not resolve symlink target"
+      - "Symlink resolution happens at access time"
+
+  # Case sensitivity edge cases
+  - function_to_test: "resource_path"
+    description: "Tests case-sensitive path handling"
+    scenario: "Mixed case paths on case-sensitive filesystem"
+    mocks:
+      - target: "_get_base_resource_path"
+        return_value: "/App/Resources"
+      - target: "os.path.join"
+        return_value: "/App/Resources/Icons/Logo.PNG"
+    expected_behavior:
+      - "Preserves exact case of all path components"
+      - "Does not normalize or lowercase paths"
+      - "Returns case-sensitive path exactly"

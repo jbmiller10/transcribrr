@@ -1,230 +1,328 @@
-target_file: "/home/john/transcribrr/app/tests/test_busy_guard.py"
-test_subject: "app/ui_utils/busy_guard.py::BusyGuard"
+target_file: "app/ui_utils/busy_guard.py"
+test_file: "app/tests/test_busy_guard.py"
+dependencies_to_mock:
+  - "logging.getLogger"
+  - "uuid.uuid4"
+  - "PyQt6.QtWidgets.QWidget"
 
-identified_issues:
-  - issue: "Mockery Anti-Pattern"
-    description: "Entire feedback_manager is mocked without contract validation"
-    impact: "Tests don't verify actual behavior with real feedback manager"
-    
-  - issue: "Happy Path Only"
-    description: "No exception testing during cleanup phase"
-    impact: "Critical error paths in __exit__ are not tested"
-    
-  - issue: "Testing Implementation Details"
-    description: "Tests exact method call sequences instead of outcomes"
-    impact: "Tests are brittle and coupled to internal implementation"
-    
-  - issue: "Missing Edge Cases"
-    description: "No tests for concurrent usage, resource exhaustion, or complex error scenarios"
-    impact: "Robustness in production scenarios is not validated"
+test_cases:
+  # Basic Context Manager Behavior
+  - function_to_test: "BusyGuard.__enter__"
+    description: "Guard starts and coordinates UI feedback correctly"
+    scenario: "When entering context, guard disables UI and starts visual feedback"
+    mocks:
+      - target: "feedback_manager"
+        return_value: "mock with set_ui_busy, start_spinner, show_status methods"
+    expected_behavior:
+      - "UI elements are disabled via set_ui_busy(True, elements)"
+      - "Spinner starts if name provided"
+      - "Status message displays if provided"
+      - "Returns self for fluent usage"
 
-fix_plan:
-  phase_1_reduce_mocking:
-    description: "Replace full mocking with minimal protocol-based stubs"
-    tasks:
-      - task: "Create TestFeedbackManager stub"
-        details: |
-          - Implement FeedbackProtocol with real behavior tracking
-          - Store actual state changes (busy states, spinner states, progress values)
-          - Allow assertions on actual state rather than mock calls
-          - Example:
-            ```python
-            class TestFeedbackManager:
-                def __init__(self):
-                    self.busy_elements = set()
-                    self.active_spinners = set()
-                    self.progress_dialogs = {}
-                    self.status_messages = []
-                
-                def set_ui_busy(self, busy, ui_elements=None):
-                    if busy:
-                        self.busy_elements.update(ui_elements or [])
-                    else:
-                        self.busy_elements.difference_update(ui_elements or [])
-            ```
-          
-      - task: "Remove Mock imports"
-        details: "Replace unittest.mock with actual test doubles that implement the protocol"
-        
-      - task: "Test with real QWidget instances"
-        details: |
-          - Use headless Qt mode (QT_QPA_PLATFORM=offscreen)
-          - Create actual QPushButton instances instead of mocks
-          - Test actual widget.setEnabled() behavior
+  - function_to_test: "BusyGuard.__exit__"
+    description: "Guard cleans up all resources on normal exit"
+    scenario: "When exiting context normally, all UI feedback stops"
+    mocks:
+      - target: "feedback_manager"
+        return_value: "mock tracking stop_spinner, finish_progress calls"
+    expected_behavior:
+      - "Spinner stops if it was started"
+      - "Progress completes with success message"
+      - "UI re-enabled via finish_operation if supported"
+      - "Returns False to not suppress exceptions"
 
-  phase_2_test_actual_behavior:
-    description: "Focus on testing outcomes rather than method calls"
-    tasks:
-      - task: "Test state transitions"
-        details: |
-          - Verify that UI elements are actually disabled/enabled
-          - Check that spinner state is properly tracked
-          - Ensure progress values are correctly maintained
-          - Test that cleanup restores original state
-          
-      - task: "Test resource management"
-        details: |
-          - Verify unique operation IDs are generated
-          - Test that resources are cleaned up even on exceptions
-          - Validate that nested guards don't interfere
-          
-      - task: "Test error recovery"
-        details: |
-          - Verify partial setup is cleaned up on setup failure
-          - Test that cleanup errors don't mask original exceptions
-          - Ensure logging captures error information
+  # Error Path - Setup Failures
+  - function_to_test: "BusyGuard.__enter__"
+    description: "Partial setup failure triggers cleanup"
+    scenario: "When start_progress raises exception during setup"
+    mocks:
+      - target: "feedback_manager.start_progress"
+        side_effect: "raises RuntimeError('progress failed')"
+    expected_behavior:
+      - "Exception propagates to caller"
+      - "__exit__ called to clean up partial state"
+      - "Spinner stopped if it was started"
+      - "UI elements re-enabled"
 
-  phase_3_add_error_cases:
-    description: "Add comprehensive error and edge case testing"
-    test_cases_to_add:
-      - case: "test_setup_failure_with_cleanup"
-        scenario: "When feedback_manager.start_progress raises exception"
-        expected: "Partial setup is rolled back, exception is re-raised"
-        
-      - case: "test_cleanup_exception_handling"
-        scenario: "When stop_spinner raises during __exit__"
-        expected: "Original exception is not masked, error is logged"
-        
-      - case: "test_cancel_callback_exception"
-        scenario: "When user's cancel_callback raises exception"
-        expected: "Exception is caught, logged, cleanup continues"
-        
-      - case: "test_concurrent_guard_instances"
-        scenario: "Multiple BusyGuard instances for same spinner"
-        expected: "Each guard maintains independent state"
-        
-      - case: "test_resource_exhaustion"
-        scenario: "Creating many progress dialogs"
-        expected: "System handles resource limits gracefully"
-        
-      - case: "test_null_feedback_manager"
-        scenario: "BusyGuard with None feedback_manager"
-        expected: "Appropriate error handling or no-op behavior"
-        
-      - case: "test_invalid_spinner_name"
-        scenario: "Empty string or special characters in spinner name"
-        expected: "Graceful handling without crashes"
-        
-      - case: "test_progress_value_boundaries"
-        scenario: "Progress values < 0 or > maximum"
-        expected: "Values are clamped or handled appropriately"
-        
-      - case: "test_operation_id_uniqueness"
-        scenario: "Creating multiple guards with same operation name"
-        expected: "Each gets unique operation_id via UUID"
-        
-      - case: "test_cleanup_after_manual_cancel"
-        scenario: "User calls cancel() then context exits normally"
-        expected: "No double cleanup, state is consistent"
+  - function_to_test: "BusyGuard.__enter__"
+    description: "Missing spinner handled gracefully"
+    scenario: "When spinner name invalid, operation continues"
+    mocks:
+      - target: "feedback_manager.start_spinner"
+        return_value: "False"
+      - target: "logger.warning"
+        return_value: "mock logger"
+    expected_behavior:
+      - "Warning logged about missing spinner"
+      - "Operation continues without spinner"
+      - "Other UI feedback still works"
+      - "Context manager enters successfully"
 
-  phase_4_improve_structure:
-    description: "Reorganize tests for better maintainability"
-    tasks:
-      - task: "Split test class by functionality"
-        details: |
-          - TestBusyGuardBasicOperations (setup, teardown, basic flow)
-          - TestBusyGuardErrorHandling (exceptions, cleanup failures)  
-          - TestBusyGuardProgress (progress updates, cancellation)
-          - TestBusyGuardEdgeCases (concurrency, boundaries, invalid inputs)
-          
-      - task: "Use parameterized tests"
-        details: |
-          - Group similar test scenarios with different inputs
-          - Example: @parameterized.expand for different exception types
-          
-      - task: "Add descriptive docstrings"
-        details: |
-          - Each test should explain:
-            - What condition is being tested
-            - Why this test is important
-            - What failure would indicate
-            
-      - task: "Improve assertions"
-        details: |
-          - Replace assertTrue/assertFalse with specific assertions
-          - Add custom assertion messages for debugging
-          - Use assertIn, assertEqual, assertRaises appropriately
+  - function_to_test: "BusyGuard.__enter__"
+    description: "Status message error doesn't fail operation"
+    scenario: "When show_status raises exception"
+    mocks:
+      - target: "feedback_manager.show_status"
+        side_effect: "raises RuntimeError('status broken')"
+      - target: "logger.error"
+        return_value: "mock logger"
+    expected_behavior:
+      - "Error logged with traceback"
+      - "Setup continues despite status error"
+      - "Context manager enters successfully"
+      - "Other feedback mechanisms work"
 
-  phase_5_test_integration_points:
-    description: "Test interaction with real components"
-    tasks:
-      - task: "Test with actual Qt event loop"
-        details: |
-          - Use QTest.qWait() to test timing-dependent behavior
-          - Verify UI updates are processed correctly
-          
-      - task: "Test logging output"
-        details: |
-          - Capture log output and verify error messages
-          - Ensure debug logging provides useful information
-          
-      - task: "Test thread safety"
-        details: |
-          - Verify BusyGuard works correctly from worker threads
-          - Test concurrent access to feedback_manager
+  # Error Path - Cleanup Failures
+  - function_to_test: "BusyGuard.__exit__"
+    description: "Cleanup errors don't mask original exception"
+    scenario: "When stop_spinner fails during exception cleanup"
+    mocks:
+      - target: "feedback_manager.stop_spinner"
+        side_effect: "raises RuntimeError('stop failed')"
+      - target: "logger.error"
+        return_value: "mock logger"
+    expected_behavior:
+      - "Original ValueError propagates to caller"
+      - "Cleanup error logged but not raised"
+      - "Remaining cleanup attempted"
+      - "UI state eventually restored"
 
-implementation_order:
-  1: "Create TestFeedbackManager stub class"
-  2: "Replace all Mock() usage with TestFeedbackManager"
-  3: "Add error case tests one by one"
-  4: "Reorganize into multiple test classes"
-  5: "Add parameterized tests where appropriate"
-  6: "Add integration tests with Qt components"
+  - function_to_test: "BusyGuard.__exit__"
+    description: "Exception during operation triggers proper cleanup"
+    scenario: "When user code raises exception within context"
+    mocks:
+      - target: "feedback_manager"
+        return_value: "mock tracking close_progress, stop_spinner"
+    expected_behavior:
+      - "Progress closed (not finished) on exception"
+      - "Spinner stopped"
+      - "Exception info passed to __exit__"
+      - "User exception propagates"
 
-success_metrics:
-  - metric: "Mock usage reduction"
-    target: "< 20% of test code uses mocks"
-    current: "~80% is mock setup and verification"
-    
-  - metric: "Error case coverage"
-    target: "All public methods have error tests"
-    current: "Only happy path tested"
-    
-  - metric: "Test line count"
-    target: "< 300 lines total"
-    current: "170 lines"
-    
-  - metric: "Test execution time"
-    target: "< 1 second for all tests"
-    current: "Not measured"
-    
-  - metric: "Assertion quality"
-    target: "100% specific assertions with messages"
-    current: "Mix of assert_called and assertTrue"
+  # Progress Management
+  - function_to_test: "BusyGuard.update_progress"
+    description: "Progress updates only when dialog active"
+    scenario: "Calling update_progress with active progress dialog"
+    mocks:
+      - target: "feedback_manager.update_progress"
+        return_value: "None"
+    expected_behavior:
+      - "update_progress called on feedback_manager"
+      - "Operation ID, value, and message passed through"
+      - "No action if progress_started is False"
 
-example_improved_test:
-  description: "Example of improved test following the fix plan"
-  code: |
-    class TestBusyGuardErrorHandling(unittest.TestCase):
-        '''Tests for BusyGuard error handling and cleanup.'''
-        
-        def setUp(self):
-            '''Create test feedback manager with controllable failures.'''
-            self.feedback = TestFeedbackManager()
-            self.feedback.fail_on_stop_spinner = False
-            
-        def test_cleanup_exception_does_not_mask_original(self):
-            '''Verify cleanup errors don't hide the actual exception.
-            
-            When an exception occurs in the guarded block AND cleanup
-            also fails, the original exception should be raised, not
-            the cleanup exception.
-            '''
-            self.feedback.fail_on_stop_spinner = True
-            
-            with self.assertRaises(ValueError) as cm:
-                with BusyGuard(self.feedback, "Test", spinner="test"):
-                    # Spinner should be started
-                    self.assertIn("test", self.feedback.active_spinners)
-                    raise ValueError("Original error")
-            
-            # Original exception is raised
-            self.assertEqual(str(cm.exception), "Original error")
-            # Cleanup error was logged (check logs in integration test)
+  - function_to_test: "BusyGuard.__enter__"
+    description: "Indeterminate progress with maximum=0"
+    scenario: "Creating progress dialog with progress_maximum=0"
+    mocks:
+      - target: "feedback_manager.start_progress"
+        return_value: "None"
+    expected_behavior:
+      - "Progress starts with maximum=0"
+      - "Dialog shows indeterminate progress"
+      - "Updates still possible but show activity only"
 
-notes:
-  - "Focus on testing the actual BusyGuard behavior, not mock interactions"
-  - "Each test should validate a specific guarantee that BusyGuard provides"
-  - "Error cases are critical - this is a cleanup/resource management class"
-  - "Consider creating a separate integration test file for Qt-specific tests"
-  - "The TestFeedbackManager should be reusable across other test files"
+  # Cancellation Handling
+  - function_to_test: "BusyGuard.cancel"
+    description: "Cancel invokes callback once"
+    scenario: "Calling cancel with callback provided"
+    mocks:
+      - target: "cancel_callback"
+        return_value: "None"
+    expected_behavior:
+      - "Callback invoked exactly once"
+      - "Progress dialog closed immediately"
+      - "Status shows cancellation message"
+      - "Multiple cancel calls don't re-invoke callback"
+
+  - function_to_test: "BusyGuard.cancel"
+    description: "Cancel callback exception handled"
+    scenario: "When cancel callback raises exception"
+    mocks:
+      - target: "cancel_callback"
+        side_effect: "raises ValueError('cancel failed')"
+      - target: "logger.error"
+        return_value: "mock logger"
+    expected_behavior:
+      - "Exception logged with traceback"
+      - "Progress still closed"
+      - "Status still shows cancellation"
+      - "Guard remains usable"
+
+  - function_to_test: "BusyGuard.cancel"
+    description: "Cancel without callback works"
+    scenario: "Calling cancel when no callback provided"
+    mocks:
+      - target: "feedback_manager"
+        return_value: "mock with close_progress, show_status"
+    expected_behavior:
+      - "No exceptions raised"
+      - "Progress closed if active"
+      - "Cancellation status displayed"
+
+  # Result Capture
+  - function_to_test: "BusyGuard.set_result"
+    description: "Result stored and returned fluently"
+    scenario: "Setting result during operation"
+    mocks: []
+    expected_behavior:
+      - "Result stored in self.result"
+      - "Same value returned for chaining"
+      - "Result accessible after context exit"
+      - "Works with any type T"
+
+  # Operation Tracking
+  - function_to_test: "BusyGuard.__enter__"
+    description: "Optional operation tracking via start_operation"
+    scenario: "When feedback_manager has start_operation method"
+    mocks:
+      - target: "feedback_manager.start_operation"
+        return_value: "None"
+    expected_behavior:
+      - "start_operation called with operation_id"
+      - "_started_operation flag set"
+      - "Non-fatal if method missing"
+      - "Debug message if unavailable"
+
+  - function_to_test: "BusyGuard.__exit__"
+    description: "Operation finish called if started"
+    scenario: "When operation was tracked via start_operation"
+    mocks:
+      - target: "feedback_manager.finish_operation"
+        return_value: "None"
+    expected_behavior:
+      - "finish_operation called with operation_id"
+      - "Only called if _started_operation is True"
+      - "Errors logged but not raised"
+      - "UI state restoration attempted"
+
+  # Resource Cleanup Edge Cases
+  - function_to_test: "BusyGuard.__exit__"
+    description: "No cleanup attempted for unstarted components"
+    scenario: "When spinner/progress never started"
+    mocks:
+      - target: "feedback_manager"
+        return_value: "mock tracking method calls"
+    expected_behavior:
+      - "stop_spinner not called if spinner_started=False"
+      - "close_progress not called if progress_started=False"
+      - "Avoids unnecessary cleanup calls"
+
+  - function_to_test: "BusyGuard.__init__"
+    description: "Unique operation IDs generated"
+    scenario: "Creating multiple BusyGuard instances"
+    mocks:
+      - target: "uuid.uuid4"
+        return_value: "mock returning different hex values"
+    expected_behavior:
+      - "Each instance gets unique operation_id"
+      - "ID includes operation name (lowercased, underscored)"
+      - "ID includes UUID hex suffix"
+      - "IDs trackable across feedback operations"
+
+  # UI Element Management
+  - function_to_test: "BusyGuard.__enter__"
+    description: "Empty UI elements list handled correctly"
+    scenario: "When ui_elements is empty list or None"
+    mocks:
+      - target: "feedback_manager.set_ui_busy"
+        return_value: "None"
+    expected_behavior:
+      - "set_ui_busy not called for empty list"
+      - "ui_busy flag remains False"
+      - "Other feedback mechanisms still work"
+
+  - function_to_test: "BusyGuard.__enter__"
+    description: "Multiple UI elements disabled together"
+    scenario: "When multiple widgets provided in ui_elements"
+    mocks:
+      - target: "feedback_manager.set_ui_busy"
+        return_value: "None"
+    expected_behavior:
+      - "All elements passed to set_ui_busy"
+      - "Elements disabled as a group"
+      - "ui_busy flag set to True"
+
+  # Abnormal Termination
+  - function_to_test: "BusyGuard.__exit__"
+    description: "Handles KeyboardInterrupt during operation"
+    scenario: "When KeyboardInterrupt occurs in user code"
+    mocks:
+      - target: "feedback_manager"
+        return_value: "mock tracking cleanup calls"
+    expected_behavior:
+      - "All resources cleaned up"
+      - "Progress closed not finished"
+      - "KeyboardInterrupt propagates"
+      - "UI state restored"
+
+  - function_to_test: "BusyGuard.__exit__"
+    description: "Handles SystemExit during operation"
+    scenario: "When sys.exit() called in user code"
+    mocks:
+      - target: "feedback_manager"
+        return_value: "mock tracking cleanup calls"
+    expected_behavior:
+      - "Cleanup attempted before exit"
+      - "SystemExit propagates"
+      - "Resources released"
+
+  # Progress Dialog Configuration
+  - function_to_test: "BusyGuard.__init__"
+    description: "Default progress messages generated from operation name"
+    scenario: "When progress enabled without custom messages"
+    mocks: []
+    expected_behavior:
+      - "progress_title defaults to operation_name"
+      - "progress_message includes lowercased operation_name"
+      - "status_message includes lowercased operation_name"
+      - "Messages are grammatically correct"
+
+  - function_to_test: "BusyGuard.__enter__"
+    description: "Progress cancelable flag respected"
+    scenario: "When progress_cancelable=False"
+    mocks:
+      - target: "feedback_manager.start_progress"
+        return_value: "None"
+    expected_behavior:
+      - "cancelable=False passed to start_progress"
+      - "Dialog cannot be cancelled by user"
+      - "cancel_callback not used"
+
+  # Thread Safety Considerations
+  - function_to_test: "BusyGuard.cancel"
+    description: "Cancel idempotency prevents double callback"
+    scenario: "When cancel called multiple times rapidly"
+    mocks:
+      - target: "cancel_callback"
+        return_value: "None"
+    expected_behavior:
+      - "Callback invoked exactly once"
+      - "_cancel_invoked flag prevents re-entry"
+      - "Multiple close_progress calls safe"
+      - "Status message shown each time"
+
+  # Integration Points
+  - function_to_test: "BusyGuard.__enter__"
+    description: "All feedback mechanisms work together"
+    scenario: "When all features enabled simultaneously"
+    mocks:
+      - target: "feedback_manager"
+        return_value: "full mock implementation"
+    expected_behavior:
+      - "UI disabled, spinner started, progress shown, status displayed"
+      - "Operation tracked if supported"
+      - "All in correct order"
+      - "No interference between mechanisms"
+
+  - function_to_test: "BusyGuard.__exit__"
+    description: "Complete cleanup even with all features active"
+    scenario: "When exiting with all feedback active"
+    mocks:
+      - target: "feedback_manager"
+        return_value: "mock tracking all cleanup"
+    expected_behavior:
+      - "Spinner stopped, progress finished, operation finished"
+      - "Cleanup in reverse order of setup"
+      - "UI state fully restored"
+      - "No leaked resources"

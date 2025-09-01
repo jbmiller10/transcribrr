@@ -1,275 +1,325 @@
-target_file: app/models/recording.py
-test_file: app/tests/test_recording_model.py
-fix_plan_version: 1.0
-current_issues:
-  - "714 lines testing a 20-line dataclass"
-  - "Tests Python's dataclass implementation, not business logic"
-  - "Verifies trivial attribute access"
-  - "Tests with 100,000 character strings (unrealistic)"
-  - "No business validation rules being tested"
-  - "Excessive testing of Python language features"
+target_file: "app/models/recording.py"
+test_file: "app/tests/test_recording_model.py"
+dependencies_to_mock:
+  - "datetime.datetime.utcnow"
+  - "datetime.datetime.strptime"
 
-proposed_structure:
-  total_lines: 100-120
-  test_classes:
-    - name: "TestRecordingModel"
-      focus: "Business logic and data validation"
-      methods: 8-10
+test_cases:
+  # Edge Cases and Boundary Conditions for Validation Methods
+  - function_to_test: "Recording.validate_duration"
+    description: "Tests duration validation with zero boundary"
+    scenario: "When duration is exactly zero (boundary condition)"
+    mocks: []
+    expected_behavior:
+      - "No exception is raised for duration of 0.0"
+      - "Method completes successfully"
 
-specific_fixes:
+  - function_to_test: "Recording.validate_duration"
+    description: "Tests duration validation with negative infinity"
+    scenario: "When duration is negative infinity (extreme edge case)"
+    mocks: []
+    expected_behavior:
+      - "ValueError is raised with message containing 'Duration must be non-negative'"
+      - "Exception is raised before any processing"
 
-  1_remove_dataclass_internals_testing:
-    description: "Remove all tests that verify Python's dataclass behavior"
-    items_to_remove:
-      - test_initialization_with_required_fields (lines 22-61)
-      - test_initialization_with_all_fields (lines 62-99)
-      - test_type_validation_for_integer_id (lines 102-119)
-      - test_type_validation_for_float_duration (lines 120-136)
-      - test_field_access_via_dot_notation (lines 413-447)
-      - test_undefined_attribute_access (lines 448-465)
-      - test_field_order_preservation (lines 559-585)
-      - test_init_signature (lines 586-611)
-      - test_hashability_of_recording_instances (lines 323-344)
-      - test_repr_string_representation (lines 298-322)
-    rationale: "These test Python's dataclass implementation, not our business logic"
+  - function_to_test: "Recording.validate_duration"
+    description: "Tests duration validation with positive infinity"
+    scenario: "When duration is positive infinity (extreme edge case)"
+    mocks: []
+    expected_behavior:
+      - "No exception is raised for float('inf')"
+      - "Method accepts extreme positive values"
 
-  2_reduce_attribute_access_tests:
-    description: "Consolidate basic attribute tests into one concise test"
-    new_test:
-      name: "test_recording_creation"
-      lines: 10-15
-      purpose: "Verify Recording can be created with valid data"
-      implementation: |
-        def test_recording_creation(self):
-            """Test Recording creation with valid data."""
-            recording = Recording(
-                id=1,
-                filename="test.mp3",
-                file_path="/path/to/test.mp3",
-                date_created="2024-01-15 10:30:00",
-                duration=120.5,
-                raw_transcript="Test transcript"
-            )
-            self.assertEqual(recording.id, 1)
-            self.assertEqual(recording.filename, "test.mp3")
-            self.assertIsNone(recording.processed_text)  # Optional field
+  - function_to_test: "Recording.validate_duration"
+    description: "Tests duration validation with NaN"
+    scenario: "When duration is NaN (Not a Number)"
+    mocks: []
+    expected_behavior:
+      - "No exception raised (NaN > 0 is False, NaN < 0 is also False)"
+      - "Method handles NaN without crashing"
 
-  3_add_business_validation_tests:
-    description: "Add tests for actual business rules and validation"
-    new_tests:
-      - name: "test_invalid_duration_raises_error"
-        purpose: "Test that negative duration is rejected"
-        implementation: |
-          def test_invalid_duration_raises_error(self):
-              """Test that negative duration raises ValueError."""
-              with self.assertRaises(ValueError) as context:
-                  Recording.validate_duration(-30.5)
-              self.assertIn("Duration must be non-negative", str(context.exception))
-      
-      - name: "test_empty_filename_rejected"
-        purpose: "Test that empty filename is rejected"
-        implementation: |
-          def test_empty_filename_rejected(self):
-              """Test that empty filename raises ValueError."""
-              with self.assertRaises(ValueError) as context:
-                  Recording.validate_filename("")
-              self.assertIn("Filename cannot be empty", str(context.exception))
-      
-      - name: "test_invalid_file_path"
-        purpose: "Test file path validation"
-        implementation: |
-          def test_invalid_file_path(self):
-              """Test that invalid file path is rejected."""
-              with self.assertRaises(ValueError) as context:
-                  Recording.validate_file_path("../../../etc/passwd")
-              self.assertIn("Invalid file path", str(context.exception))
+  - function_to_test: "Recording.validate_filename"
+    description: "Tests filename validation with whitespace-only string"
+    scenario: "When filename contains only spaces, tabs, and newlines"
+    mocks: []
+    expected_behavior:
+      - "ValueError is raised with message 'Filename cannot be empty'"
+      - "Whitespace-only strings are treated as empty"
 
-  4_add_edge_cases_with_business_context:
-    description: "Add edge cases that matter for the application"
-    new_tests:
-      - name: "test_recording_with_pending_transcription"
-        purpose: "Test recording in pending state"
-        implementation: |
-          def test_recording_with_pending_transcription(self):
-              """Test recording with pending transcription state."""
-              recording = Recording(
-                  id=1,
-                  filename="pending.mp3",
-                  file_path="/path/pending.mp3",
-                  date_created="2024-01-15",
-                  duration=60.0
-              )
-              self.assertIsNone(recording.raw_transcript)
-              self.assertFalse(recording.is_transcribed())
-              self.assertEqual(recording.get_status(), "pending")
-      
-      - name: "test_recording_with_completed_transcription"
-        purpose: "Test recording with completed transcription"
-        implementation: |
-          def test_recording_with_completed_transcription(self):
-              """Test recording with completed transcription."""
-              recording = Recording(
-                  id=1,
-                  filename="complete.mp3",
-                  file_path="/path/complete.mp3",
-                  date_created="2024-01-15",
-                  duration=60.0,
-                  raw_transcript="Transcribed text",
-                  processed_text="Processed text"
-              )
-              self.assertTrue(recording.is_transcribed())
-              self.assertTrue(recording.is_processed())
-              self.assertEqual(recording.get_status(), "completed")
+  - function_to_test: "Recording.validate_filename"
+    description: "Tests filename validation with Unicode characters"
+    scenario: "When filename contains emojis, Chinese characters, RTL text"
+    mocks: []
+    expected_behavior:
+      - "No exception for valid Unicode filenames like '音楽.mp3' or '🎵recording.wav'"
+      - "Method accepts international character sets"
 
-  5_add_database_integration_helpers:
-    description: "Test methods that help with database operations"
-    new_tests:
-      - name: "test_to_database_tuple"
-        purpose: "Test conversion for database insertion"
-        implementation: |
-          def test_to_database_tuple(self):
-              """Test conversion to database tuple format."""
-              recording = Recording(
-                  id=1,
-                  filename="test.mp3",
-                  file_path="/path/test.mp3",
-                  date_created="2024-01-15",
-                  duration=60.0
-              )
-              db_tuple = recording.to_database_tuple()
-              self.assertEqual(len(db_tuple), 10)
-              self.assertEqual(db_tuple[0], 1)
-              self.assertEqual(db_tuple[1], "test.mp3")
-      
-      - name: "test_from_database_row"
-        purpose: "Test creation from database row"
-        implementation: |
-          def test_from_database_row(self):
-              """Test creating Recording from database row."""
-              db_row = (1, "test.mp3", "/path/test.mp3", "2024-01-15", 60.0,
-                       "Raw", "Processed", None, None, "source_1")
-              recording = Recording.from_database_row(db_row)
-              self.assertEqual(recording.id, 1)
-              self.assertEqual(recording.raw_transcript, "Raw")
+  - function_to_test: "Recording.validate_filename"
+    description: "Tests filename validation with control characters"
+    scenario: "When filename contains null bytes or other control characters"
+    mocks: []
+    expected_behavior:
+      - "No exception raised if strip() leaves valid characters"
+      - "Only raises ValueError if stripped result is empty"
 
-  6_add_error_handling_tests:
-    description: "Test error conditions and exception handling"
-    new_tests:
-      - name: "test_missing_required_fields"
-        purpose: "Test that missing required fields raise appropriate errors"
-        implementation: |
-          def test_missing_required_fields(self):
-              """Test that missing required fields raise TypeError."""
-              with self.assertRaises(TypeError) as context:
-                  Recording(filename="test.mp3")  # Missing id, file_path, etc.
-              self.assertIn("missing", str(context.exception).lower())
-      
-      - name: "test_malformed_date_format"
-        purpose: "Test date format validation"
-        implementation: |
-          def test_malformed_date_format(self):
-              """Test that malformed date raises ValueError."""
-              with self.assertRaises(ValueError) as context:
-                  Recording.validate_date_format("not-a-date")
-              self.assertIn("Invalid date format", str(context.exception))
+  - function_to_test: "Recording.validate_file_path"
+    description: "Tests path validation with directory traversal attempts"
+    scenario: "Various path traversal patterns like '../../../etc/passwd', '..\\..\\windows\\system32'"
+    mocks: []
+    expected_behavior:
+      - "ValueError raised with message 'Invalid file path'"
+      - "Both Unix and Windows path separators are checked"
+      - "Rejects any path containing '..' component"
 
-  7_remove_unrealistic_tests:
-    description: "Remove tests with unrealistic data"
-    items_to_remove:
-      - test_initialization_with_very_long_strings (lines 184-204)
-      - test_large_transcript_data (lines 535-556)
-    rationale: "100,000+ character strings are unrealistic and don't test business logic"
+  - function_to_test: "Recording.validate_file_path"
+    description: "Tests path validation with encoded traversal attempts"
+    scenario: "When path contains URL-encoded or obfuscated traversal like '.%2e/', '..;/', '.../'"
+    mocks: []
+    expected_behavior:
+      - "Path with literal '...' (three dots) is accepted"
+      - "URL-encoded patterns are not decoded (treated literally)"
+      - "Only explicit '..' components are rejected"
 
-  8_consolidate_equality_tests:
-    description: "Combine equality/inequality tests into one concise test"
-    new_test:
-      name: "test_recording_equality"
-      lines: 10-12
-      implementation: |
-        def test_recording_equality(self):
-            """Test Recording equality comparison."""
-            r1 = Recording(1, "test.mp3", "/path", "2024-01-15", 60.0)
-            r2 = Recording(1, "test.mp3", "/path", "2024-01-15", 60.0)
-            r3 = Recording(2, "test.mp3", "/path", "2024-01-15", 60.0)
-            self.assertEqual(r1, r2)
-            self.assertNotEqual(r1, r3)
+  - function_to_test: "Recording.validate_file_path"
+    description: "Tests path validation with extremely long paths"
+    scenario: "When path exceeds typical OS limits (260 chars on Windows, 4096 on Linux)"
+    mocks: []
+    expected_behavior:
+      - "No exception raised for long paths without '..'"
+      - "Validation only checks traversal, not OS limits"
 
-  9_add_practical_utility_methods:
-    description: "Test utility methods that would be useful in the application"
-    new_tests:
-      - name: "test_get_display_duration"
-        purpose: "Test formatting duration for display"
-        implementation: |
-          def test_get_display_duration(self):
-              """Test formatting duration for display."""
-              recording = Recording(1, "test.mp3", "/path", "2024-01-15", 125.5)
-              self.assertEqual(recording.get_display_duration(), "2:05")
-              
-              recording2 = Recording(2, "test.mp3", "/path", "2024-01-15", 3665.0)
-              self.assertEqual(recording2.get_display_duration(), "1:01:05")
-      
-      - name: "test_get_file_size_estimate"
-        purpose: "Test estimating file size from duration"
-        implementation: |
-          def test_get_file_size_estimate(self):
-              """Test estimating file size from duration."""
-              recording = Recording(1, "test.mp3", "/path", "2024-01-15", 60.0)
-              # Assuming 128kbps MP3
-              estimated_size = recording.estimate_file_size()
-              self.assertAlmostEqual(estimated_size, 960000, delta=1000)
+  - function_to_test: "Recording.validate_file_path"
+    description: "Tests path validation with special OS filenames"
+    scenario: "Windows reserved names like 'CON', 'PRN', 'AUX', 'NUL', 'COM1'"
+    mocks: []
+    expected_behavior:
+      - "No exception raised for Windows reserved names"
+      - "Validation only prevents directory traversal"
 
-  10_add_state_transition_tests:
-    description: "Test recording state transitions"
-    new_tests:
-      - name: "test_update_transcript"
-        purpose: "Test updating transcript fields"
-        implementation: |
-          def test_update_transcript(self):
-              """Test updating transcript fields."""
-              recording = Recording(1, "test.mp3", "/path", "2024-01-15", 60.0)
-              self.assertIsNone(recording.raw_transcript)
-              
-              recording.update_transcript("New transcript")
-              self.assertEqual(recording.raw_transcript, "New transcript")
-              self.assertIsNotNone(recording.transcribed_at)
-      
-      - name: "test_update_processed_text"
-        purpose: "Test updating processed text"
-        implementation: |
-          def test_update_processed_text(self):
-              """Test updating processed text."""
-              recording = Recording(1, "test.mp3", "/path", "2024-01-15", 60.0,
-                                  raw_transcript="Raw")
-              recording.update_processed_text("Processed")
-              self.assertEqual(recording.processed_text, "Processed")
-              self.assertIsNotNone(recording.processed_at)
+  - function_to_test: "Recording.validate_date_format"
+    description: "Tests date validation with ambiguous formats"
+    scenario: "Dates like '2024-13-01' (invalid month), '2024-02-30' (invalid day)"
+    mocks:
+      - target: "datetime.strptime"
+        side_effect: "raises ValueError for invalid dates"
+    expected_behavior:
+      - "ValueError raised with message 'Invalid date format'"
+      - "Strict date validation rejects impossible dates"
 
-summary:
-  current_lines: 714
-  target_lines: 100-120
-  lines_to_remove: ~600
-  new_meaningful_tests: 15-20
-  focus_areas:
-    - Business validation rules
-    - Practical utility methods
-    - Database integration helpers
-    - State transitions
-    - Error conditions
-  anti_patterns_fixed:
-    - Excessive testing of language features
-    - Unrealistic test data
-    - Missing error cases
-    - No business logic validation
+  - function_to_test: "Recording.validate_date_format"
+    description: "Tests date validation with timezone information"
+    scenario: "ISO8601 dates with timezone like '2024-01-15T10:30:00Z' or '2024-01-15+05:30'"
+    mocks:
+      - target: "datetime.strptime"
+        side_effect: "raises ValueError for unsupported format"
+    expected_behavior:
+      - "ValueError raised with message 'Invalid date format'"
+      - "Only accepts YYYY-MM-DD or YYYY-MM-DD HH:MM:SS formats"
 
-implementation_notes:
-  - "Most current tests should be deleted as they test Python's dataclass implementation"
-  - "Focus on testing business rules that the Recording model should enforce"
-  - "Add validation methods to the Recording model if they don't exist"
-  - "Test practical scenarios that occur in the application"
-  - "Keep tests concise and focused on behavior, not implementation"
-  - "Use realistic test data (reasonable string lengths, valid file paths)"
-  - "Test error conditions and edge cases that matter for the application"
+  - function_to_test: "Recording.validate_date_format"
+    description: "Tests date validation with edge dates"
+    scenario: "Extreme dates like '9999-12-31 23:59:59', '0001-01-01 00:00:00'"
+    mocks:
+      - target: "datetime.strptime"
+        return_value: "datetime object for valid extreme dates"
+    expected_behavior:
+      - "No exception for dates within datetime range"
+      - "Accepts any valid date that datetime can parse"
 
-priority: HIGH
-estimated_effort: "2-3 hours"
-risk: "Low - mostly deletion of unnecessary tests"
+  # Edge Cases for Helper Methods
+  - function_to_test: "_format_seconds"
+    description: "Tests duration formatting with negative values"
+    scenario: "When duration is negative (error condition that shouldn't happen)"
+    mocks: []
+    expected_behavior:
+      - "Returns '0:00' for negative values"
+      - "Defensive programming prevents negative display"
+
+  - function_to_test: "_format_seconds"
+    description: "Tests duration formatting with fractional seconds"
+    scenario: "Durations like 59.999, 3600.5, 0.1"
+    mocks: []
+    expected_behavior:
+      - "59.999 seconds formats as '0:59' (truncation)"
+      - "3600.5 seconds formats as '1:00:00'"
+      - "0.1 seconds formats as '0:00'"
+
+  - function_to_test: "_format_seconds"
+    description: "Tests duration formatting at time boundaries"
+    scenario: "Exact boundaries like 60, 3600, 86400 seconds"
+    mocks: []
+    expected_behavior:
+      - "60 seconds formats as '1:00'"
+      - "3600 seconds formats as '1:00:00'"
+      - "86400 seconds formats as '24:00:00'"
+
+  - function_to_test: "Recording.get_display_duration"
+    description: "Tests duration display with extreme values"
+    scenario: "Recording with duration of float('inf') or very large number"
+    mocks: []
+    expected_behavior:
+      - "OverflowError or extreme output for infinity"
+      - "Very large durations still format correctly"
+
+  - function_to_test: "Recording.estimate_file_size"
+    description: "Tests file size estimation with zero bitrate"
+    scenario: "When bitrate_kbps is 0 (edge case)"
+    mocks: []
+    expected_behavior:
+      - "Returns 0 bytes (0 bitrate means no data)"
+      - "No division by zero error"
+
+  - function_to_test: "Recording.estimate_file_size"
+    description: "Tests file size estimation with extreme bitrates"
+    scenario: "Bitrates like 1 kbps (very low) or 100000 kbps (extreme high)"
+    mocks: []
+    expected_behavior:
+      - "1 kbps for 60s returns 7500 bytes"
+      - "100000 kbps returns proportionally large size"
+      - "Calculation remains mathematically correct"
+
+  - function_to_test: "Recording.estimate_file_size"
+    description: "Tests file size estimation with negative duration"
+    scenario: "Recording with negative duration (shouldn't happen but defensive)"
+    mocks: []
+    expected_behavior:
+      - "Returns 0 bytes due to max(duration, 0)"
+      - "Defensive programming prevents negative file sizes"
+
+  # State Management and Side Effects
+  - function_to_test: "Recording.update_transcript"
+    description: "Tests transcript update with empty string"
+    scenario: "Updating transcript with empty string (edge case)"
+    mocks:
+      - target: "datetime.utcnow"
+        return_value: "datetime(2024, 1, 15, 10, 30, 0)"
+    expected_behavior:
+      - "raw_transcript is set to empty string"
+      - "transcribed_at is still set to current time"
+      - "Empty transcript is valid state"
+
+  - function_to_test: "Recording.update_transcript"
+    description: "Tests transcript update with very large text"
+    scenario: "Updating with multi-megabyte transcript (memory stress test)"
+    mocks:
+      - target: "datetime.utcnow"
+        return_value: "datetime(2024, 1, 15, 10, 30, 0)"
+    expected_behavior:
+      - "Large text is stored without truncation"
+      - "transcribed_at is set correctly"
+      - "No memory errors or limits hit"
+
+  - function_to_test: "Recording.update_transcript"
+    description: "Tests transcript update with special characters"
+    scenario: "Transcript containing null bytes, Unicode, control characters"
+    mocks:
+      - target: "datetime.utcnow"
+        return_value: "datetime(2024, 1, 15, 10, 30, 0)"
+    expected_behavior:
+      - "Special characters are preserved exactly"
+      - "No encoding errors or data corruption"
+      - "transcribed_at timestamp is set"
+
+  - function_to_test: "Recording.update_processed_text"
+    description: "Tests processed text update when raw transcript is None"
+    scenario: "Processing before transcription (unusual workflow)"
+    mocks:
+      - target: "datetime.utcnow"
+        return_value: "datetime(2024, 1, 15, 10, 30, 0)"
+    expected_behavior:
+      - "processed_text is set despite null raw_transcript"
+      - "processed_at timestamp is set"
+      - "No requirement for transcription before processing"
+
+  # Status Logic Edge Cases
+  - function_to_test: "Recording.get_status"
+    description: "Tests status with whitespace-only transcripts"
+    scenario: "raw_transcript is '   ' and processed_text is '\n\t'"
+    mocks: []
+    expected_behavior:
+      - "Returns 'completed' (bool('   ') is True)"
+      - "Whitespace is considered valid content"
+      - "Status based on truthiness, not content validity"
+
+  - function_to_test: "Recording.is_transcribed"
+    description: "Tests transcription check with empty vs None"
+    scenario: "Comparing empty string '' vs None for transcript"
+    mocks: []
+    expected_behavior:
+      - "Empty string returns False (bool('') is False)"
+      - "None returns False (bool(None) is False)"
+      - "Only non-empty strings return True"
+
+  # Database Serialization Edge Cases
+  - function_to_test: "Recording.to_database_tuple"
+    description: "Tests serialization with all None optional fields"
+    scenario: "Recording with only required fields set"
+    mocks: []
+    expected_behavior:
+      - "Returns 10-element tuple"
+      - "Optional fields are None in correct positions"
+      - "Order matches database schema exactly"
+
+  - function_to_test: "Recording.to_database_tuple"
+    description: "Tests serialization with special characters in fields"
+    scenario: "Fields containing quotes, backslashes, newlines"
+    mocks: []
+    expected_behavior:
+      - "Special characters preserved without escaping"
+      - "Tuple contains raw string values"
+      - "No SQL injection prevention at this layer"
+
+  - function_to_test: "Recording.from_database_row"
+    description: "Tests deserialization with wrong tuple length"
+    scenario: "Database row with 9 or 11 elements instead of 10"
+    mocks: []
+    expected_behavior:
+      - "IndexError raised for missing elements"
+      - "TypeError for excess elements if unpacking"
+      - "No silent data corruption"
+
+  - function_to_test: "Recording.from_database_row"
+    description: "Tests deserialization with wrong types"
+    scenario: "String ID instead of int, or int instead of string filename"
+    mocks: []
+    expected_behavior:
+      - "No type conversion or validation"
+      - "Recording created with whatever types provided"
+      - "Type errors surface later during usage"
+
+  - function_to_test: "Recording.from_database_row"
+    description: "Tests deserialization with None in required fields"
+    scenario: "Database row has None for id, filename, or other required fields"
+    mocks: []
+    expected_behavior:
+      - "Recording created with None values"
+      - "No validation during deserialization"
+      - "Invalid state allowed but may fail on use"
+
+  # Dataclass Behavior Edge Cases
+  - function_to_test: "Recording.__init__"
+    description: "Tests initialization with mixed positional and keyword args"
+    scenario: "Calling Recording with some positional, some keyword arguments"
+    mocks: []
+    expected_behavior:
+      - "Dataclass handles argument mixing correctly"
+      - "No duplicate argument errors"
+      - "Arguments map to correct fields"
+
+  - function_to_test: "Recording.__eq__"
+    description: "Tests equality with different optional field combinations"
+    scenario: "Two recordings with same required fields but different optional fields"
+    mocks: []
+    expected_behavior:
+      - "Equality based on all fields (dataclass default)"
+      - "Different transcripts make recordings unequal"
+      - "None vs empty string are not equal"
+
+  - function_to_test: "Recording.__hash__"
+    description: "Tests hashability for use in sets/dicts"
+    scenario: "Recording used as dictionary key or in set"
+    mocks: []
+    expected_behavior:
+      - "TypeError raised (dataclass with mutable fields)"
+      - "Recording is not hashable by default"
+      - "Cannot be used as dict key without frozen=True"

@@ -1,295 +1,356 @@
-target_file: "app/tests/test_utils.py"
-description: "Fix plan for test_utils.py to address excessive mocking and improve test quality"
+---
+# Test Improvement Plan for test_utils.py
+# Current Score: 5/10
+# Target Score: 8+/10
 
-# Issues identified from audit report
-identified_issues:
-  - issue: "Module-level stubbing of PyQt6 and torch (lines 19-62)"
-    severity: "CRITICAL"
-    impact: "Tests don't validate actual PyQt6 signal behavior or torch functionality"
-    
-  - issue: "Testing implementation details instead of behavior"
-    severity: "HIGH"
-    impact: "Tests are brittle and break with refactoring"
-    
-  - issue: "Excessive mocking of subprocess, os, and file operations"
-    severity: "HIGH"
-    impact: "Tests don't verify actual system interactions"
-    
-  - issue: "No error scenario testing for edge cases"
-    severity: "MEDIUM"
-    impact: "Missing coverage for malformed inputs, concurrent access, resource exhaustion"
-    
-  - issue: "Singleton state pollution in tearDown methods"
-    severity: "MEDIUM"
-    impact: "Tests may affect each other through shared state"
+test_file: app/tests/test_utils.py
+target_module: app/utils.py
+current_issues:
+  - Complex PyTorch module stubbing at module level
+  - Lack of dependency injection in production code
+  - Mocking at module level instead of function level
+  - Missing integration tests with real modules
+  - Module manipulation in sys.modules causing potential side effects
+  - Testing implementation details rather than behavior
+  - Poor test isolation between test methods
 
-# Refactoring strategy
-refactoring_approach:
-  phase_1_remove_excessive_mocking:
-    - action: "Remove module-level PyQt6 and torch stubbing"
-      rationale: "Use actual PyQt6 with headless mode (QT_QPA_PLATFORM=offscreen)"
-      implementation: |
-        - Set environment variable in test setUp
-        - Import actual PyQt6 modules
-        - Use real signal/slot mechanism
-        
-    - action: "Replace subprocess mocking with controlled execution"
-      rationale: "Test actual command execution with known commands"
-      implementation: |
-        - Use 'echo' or 'true/false' commands for testing
-        - Create temp executable scripts for complex scenarios
-        - Only mock for network-dependent operations
-        
-    - action: "Use real file operations with temp directories"
-      rationale: "Test actual file I/O behavior"
-      implementation: |
-        - Use tempfile.TemporaryDirectory() for isolated testing
-        - Create real test files and directories
-        - Verify actual file system state
+improvement_phases:
+  phase_1_refactor_production_code:
+    description: "Introduce dependency injection to make utils.py more testable"
+    priority: HIGH
+    timeline: "Week 1"
+    actions:
+      - action: "Create torch adapter pattern"
+        details:
+          - "Extract torch operations into a TorchAdapter class"
+          - "Make torch operations injectable via constructor/setter"
+          - "Provide default implementation that uses real torch if available"
+        code_changes:
+          file: app/utils.py
+          additions:
+            - |
+              class TorchAdapter:
+                  """Adapter for torch operations to enable testing."""
+                  def __init__(self, torch_module=None):
+                      self.torch = torch_module or self._get_torch()
+                  
+                  def _get_torch(self):
+                      try:
+                          import torch
+                          return torch
+                      except ImportError:
+                          return self._create_stub()
+                  
+                  def cuda_is_available(self):
+                      return self.torch.cuda.is_available()
+                  
+                  def mps_is_available(self):
+                      return self.torch.backends.mps.is_available()
 
-  phase_2_test_actual_behavior:
-    - action: "Rewrite file type detection tests"
-      implementation: |
-        - Test with actual file extensions and edge cases
-        - Test case-insensitive matching
-        - Test with compound extensions (.tar.gz)
-        - Test with no extension
-        - Test with Unicode filenames
-        
-    - action: "Rewrite FFmpeg checks with real subprocess calls"
-      implementation: |
-        - Test with actual 'which' command
-        - Test PATH manipulation
-        - Create mock ffmpeg script that returns version
-        - Test timeout handling with sleep command
-        
-    - action: "Rewrite URL validation with comprehensive patterns"
-      implementation: |
-        - Test all YouTube URL formats
-        - Test invalid URLs (malformed, non-YouTube)
-        - Test edge cases (empty, None, special characters)
-        - Test URL encoding issues
-        
-    - action: "Rewrite ConfigManager tests with real files"
-      implementation: |
-        - Use temporary config files
-        - Test concurrent access scenarios
-        - Test file corruption recovery
-        - Test permission errors
-        - Test disk full scenarios
+      - action: "Refactor subprocess operations"
+        details:
+          - "Create SubprocessRunner class for testable subprocess calls"
+          - "Inject subprocess runner into functions that need it"
+        code_changes:
+          file: app/utils.py
+          additions:
+            - |
+              class SubprocessRunner:
+                  """Wrapper for subprocess operations."""
+                  def run(self, *args, **kwargs):
+                      return subprocess.run(*args, **kwargs)
+                  
+                  def which(self, cmd):
+                      return shutil.which(cmd)
 
-  phase_3_add_missing_coverage:
-    - action: "Add error handling tests"
-      implementation: |
-        test_cases:
-          - "File permission errors during backup"
-          - "Disk full during config save"
-          - "Concurrent ConfigManager access"
-          - "Invalid JSON in config files"
-          - "Network timeouts in subprocess calls"
-          - "Unicode handling in all string operations"
+      - action: "Extract file system operations"
+        details:
+          - "Create FileSystemAdapter for file operations"
+          - "Enable injection of test doubles for file system access"
+        code_changes:
+          file: app/utils.py
+          additions:
+            - |
+              class FileSystemAdapter:
+                  """Adapter for file system operations."""
+                  def exists(self, path):
+                      return os.path.exists(path)
+                  
+                  def makedirs(self, path, **kwargs):
+                      return os.makedirs(path, **kwargs)
+                  
+                  def copy2(self, src, dst):
+                      return shutil.copy2(src, dst)
+
+  phase_2_create_test_infrastructure:
+    description: "Build proper test utilities and fixtures"
+    priority: HIGH
+    timeline: "Week 1"
+    actions:
+      - action: "Create test fixtures module"
+        details:
+          - "Build reusable test doubles for common dependencies"
+          - "Implement builder pattern for test data"
+        new_file: app/tests/fixtures/utils_fixtures.py
+        content: |
+          class FakeTorchModule:
+              """Lightweight fake torch module for testing."""
+              def __init__(self, cuda_available=False, mps_available=False):
+                  self.cuda = FakeCuda(cuda_available)
+                  self.backends = FakeBackends(mps_available)
           
-    - action: "Add edge case tests"
-      implementation: |
-        test_cases:
-          - "Empty strings, None values, special characters"
-          - "Very long file paths (>255 chars)"
-          - "Files with multiple dots in name"
-          - "Symbolic links and special files"
-          - "Cross-platform path separators"
-          
-    - action: "Add performance tests"
-      implementation: |
-        test_cases:
-          - "Large config file handling (>1MB)"
-          - "Cleanup with thousands of temp files"
-          - "Concurrent prompt updates"
+          class FakeSubprocessRunner:
+              """Test double for subprocess operations."""
+              def __init__(self):
+                  self.responses = {}
+                  self.calls = []
+              
+              def set_response(self, cmd, response):
+                  self.responses[cmd] = response
+              
+              def run(self, cmd, **kwargs):
+                  self.calls.append((cmd, kwargs))
+                  return self.responses.get(tuple(cmd), FakeCompletedProcess())
 
-# Test structure improvements
-structural_changes:
-  - change: "Split TestConfigManager into focused test classes"
-    new_classes:
-      - "TestConfigManagerSingleton"
-      - "TestConfigManagerPersistence"
-      - "TestConfigManagerConcurrency"
-      - "TestConfigManagerBackup"
-      
-  - change: "Split TestPromptManager into focused test classes"
-    new_classes:
-      - "TestPromptManagerCRUD"
-      - "TestPromptManagerImportExport"
-      - "TestPromptManagerValidation"
-      
-  - change: "Reduce test method size"
-    guidelines:
-      - "Max 15 lines per test method"
-      - "Single assertion focus per test"
-      - "Extract common setup to helper methods"
-      
-  - change: "Improve test naming"
-    convention: "test_{method}_{scenario}_{expected_outcome}"
-    examples:
-      - "test_is_video_file_with_uppercase_extension_returns_true"
-      - "test_create_backup_when_disk_full_returns_none"
-      - "test_config_manager_concurrent_writes_maintains_consistency"
+      - action: "Create integration test helpers"
+        details:
+          - "Build utilities for testing with real but isolated resources"
+          - "Temporary directory management for file operations"
+        new_file: app/tests/helpers/integration_helpers.py
+        content: |
+          class TempDirTestCase(unittest.TestCase):
+              """Base class for tests needing temporary directories."""
+              def setUp(self):
+                  self.temp_dir = tempfile.mkdtemp()
+                  self.addCleanup(shutil.rmtree, self.temp_dir)
+              
+              def temp_path(self, filename):
+                  return os.path.join(self.temp_dir, filename)
 
-# Specific test rewrites
-test_rewrites:
-  TestFileTypeDetection:
-    current_issues:
-      - "Only tests happy path"
-      - "No edge cases"
-    new_tests:
-      - "test_is_video_file_with_mixed_case_extensions"
-      - "test_is_video_file_with_no_extension"
-      - "test_is_video_file_with_double_extension"
-      - "test_is_audio_file_with_unicode_filename"
-      - "test_is_audio_file_with_null_input"
-      
-  TestFFmpegChecks:
-    current_issues:
-      - "Mocks entire subprocess module"
-      - "Doesn't test actual PATH manipulation"
-    new_approach: |
-      - Create a mock ffmpeg executable in temp directory
-      - Add temp directory to PATH
-      - Test actual subprocess execution
-      - Use timeout testing with real sleep command
-      
-  TestURLAndLanguage:
-    current_issues:
-      - "Limited URL pattern testing"
-      - "No malformed URL tests"
-    new_tests:
-      - "test_validate_url_with_special_characters"
-      - "test_validate_url_with_xss_attempt"
-      - "test_language_to_iso_with_None_input"
-      - "test_language_to_iso_with_partial_matches"
-      
-  TestBackupAndTimestamp:
-    current_issues:
-      - "All file operations mocked"
-      - "No actual backup verification"
-    new_approach: |
-      - Create real files in temp directory
-      - Perform actual backup operations
-      - Verify file content preservation
-      - Test cross-filesystem moves
-      - Test symbolic link handling
-      
-  TestSystemRequirements:
-    current_issues:
-      - "Mocks platform and torch entirely"
-      - "Doesn't test actual system detection"
-    new_approach: |
-      - Use actual platform module
-      - Mock only CUDA availability
-      - Test with real Python version detection
-      - Test actual FFmpeg detection
-      
-  TestTempCleanup:
-    current_issues:
-      - "Mocks file operations"
-      - "No concurrent cleanup testing"
-    new_approach: |
-      - Create real temp files with various ages
-      - Test actual deletion
-      - Test with files in use
-      - Test with permission errors
-      - Test cleanup during concurrent access
-      
-  TestConfigManager:
-    current_issues:
-      - "Complex mock setup"
-      - "Tests internal state directly"
-      - "No concurrency testing"
-    new_approach: |
-      - Use real config files in temp directory
-      - Test actual file persistence
-      - Add threading tests for concurrent access
-      - Test signal emission with real PyQt6
-      - Test atomic write operations
-      
-  TestPromptManager:
-    current_issues:
-      - "Heavy mocking of file operations"
-      - "No validation of prompt structure"
-    new_approach: |
-      - Use real prompt files
-      - Test import with malformed JSON
-      - Test export with special characters
-      - Test concurrent prompt updates
-      - Validate prompt normalization logic
+  phase_3_rewrite_unit_tests:
+    description: "Rewrite tests using proper isolation and dependency injection"
+    priority: HIGH
+    timeline: "Week 2"
+    test_categories:
+      - category: "File Type Detection Tests"
+        approach: "Pure unit tests - no mocking needed"
+        improvements:
+          - "Test edge cases: empty strings, None, special characters"
+          - "Test case sensitivity handling"
+          - "Add property-based testing for random extensions"
 
-# Implementation guidelines
-implementation_notes:
-  test_helpers:
-    - "Create a base test class with temp directory setup/teardown"
-    - "Helper to create test files with specific content"
-    - "Helper to create mock executables"
-    - "Helper to safely modify PATH for tests"
-    
-  fixtures:
-    - "Sample audio/video filenames with various extensions"
-    - "Valid and invalid YouTube URLs"
-    - "Sample config and prompt JSON data"
-    - "Mock ffmpeg version output"
-    
-  assertions:
-    - "Use specific assertions (assertEqual, assertIn, assertRaises)"
-    - "Add descriptive messages to all assertions"
-    - "Verify file content, not just existence"
-    - "Check for side effects (files created, logs written)"
-    
-  cleanup:
-    - "Always use try/finally or context managers for cleanup"
-    - "Reset singletons in tearDown"
-    - "Restore PATH and environment variables"
-    - "Clean temp files even on test failure"
+      - category: "FFmpeg Tests"
+        approach: "Use injected SubprocessRunner"
+        improvements:
+          - "Test with fake subprocess runner"
+          - "Verify command construction"
+          - "Test timeout handling"
+          - "Test permission errors separately"
+        example: |
+          def test_ensure_ffmpeg_available_with_injected_runner(self):
+              # Arrange
+              runner = FakeSubprocessRunner()
+              runner.set_response(['ffmpeg', '-version'], 
+                                  FakeCompletedProcess(returncode=0, stdout=b'ffmpeg version 4.4'))
+              
+              # Act
+              ok, msg = ensure_ffmpeg_available(subprocess_runner=runner)
+              
+              # Assert
+              self.assertTrue(ok)
+              self.assertIn('ffmpeg', msg.lower())
+              self.assertEqual(len(runner.calls), 1)
 
-# Success metrics
+      - category: "System Requirements Tests"
+        approach: "Use injected TorchAdapter"
+        improvements:
+          - "Test with various GPU configurations"
+          - "Test with missing torch module"
+          - "Test error handling for system info retrieval"
+        example: |
+          def test_check_system_requirements_with_cuda(self):
+              # Arrange
+              torch_adapter = TorchAdapter(FakeTorchModule(cuda_available=True))
+              
+              # Act
+              result = check_system_requirements(torch_adapter=torch_adapter)
+              
+              # Assert
+              self.assertIn('gpu_info', result)
+              self.assertTrue(result['gpu_info']['cuda_available'])
+
+      - category: "ConfigManager Tests"
+        approach: "Use temporary files for real I/O"
+        improvements:
+          - "Test with actual file system using temp directories"
+          - "Test concurrent access scenarios"
+          - "Test file corruption recovery"
+          - "Test signal emission with real Qt signals"
+        example: |
+          class TestConfigManagerIntegration(TempDirTestCase):
+              def test_config_persistence_across_instances(self):
+                  # Arrange
+                  config_path = self.temp_path('config.json')
+                  
+                  # Act - First instance
+                  cm1 = ConfigManager(config_path=config_path)
+                  cm1.set('key', 'value')
+                  del cm1  # Force cleanup
+                  
+                  # Act - Second instance
+                  cm2 = ConfigManager(config_path=config_path)
+                  
+                  # Assert
+                  self.assertEqual(cm2.get('key'), 'value')
+
+      - category: "PromptManager Tests"
+        approach: "Behavior-driven with real file operations"
+        improvements:
+          - "Test prompt validation rules"
+          - "Test import/export with various file formats"
+          - "Test merge conflict resolution"
+          - "Test concurrent modifications"
+
+  phase_4_add_integration_tests:
+    description: "Create comprehensive integration test suite"
+    priority: MEDIUM
+    timeline: "Week 2-3"
+    new_test_files:
+      - file: app/tests/integration/test_utils_integration.py
+        purpose: "Test utils.py with real dependencies"
+        test_scenarios:
+          - "Real torch module detection when available"
+          - "Real ffmpeg detection and execution"
+          - "Real file system operations with permissions"
+          - "Real configuration file management"
+          - "Performance benchmarks for critical operations"
+
+      - file: app/tests/integration/test_utils_system.py
+        purpose: "System-level integration tests"
+        test_scenarios:
+          - "Full system requirements check on actual hardware"
+          - "Cleanup operations with real temporary files"
+          - "Configuration migration between versions"
+          - "Prompt import from various sources"
+
+  phase_5_remove_anti_patterns:
+    description: "Eliminate existing test anti-patterns"
+    priority: HIGH
+    timeline: "Week 1-2"
+    actions:
+      - action: "Remove module-level sys.modules manipulation"
+        details:
+          - "Delete lines 18-40 that inject torch stub into sys.modules"
+          - "Use dependency injection instead"
+          - "Ensure no global state modification"
+
+      - action: "Replace mock.patch decorators with explicit injection"
+        details:
+          - "Remove @patch decorators throughout the file"
+          - "Use constructor/method injection for dependencies"
+          - "Make dependencies explicit in function signatures"
+
+      - action: "Eliminate testing of mock interactions"
+        details:
+          - "Remove assert_called_with verifications"
+          - "Test actual outcomes and state changes"
+          - "Focus on observable behavior"
+
+      - action: "Split giant test methods"
+        details:
+          - "Break down test methods > 20 lines"
+          - "One assertion focus per test method"
+          - "Clear Given-When-Then structure"
+
+  phase_6_establish_quality_gates:
+    description: "Implement automated quality checks"
+    priority: MEDIUM
+    timeline: "Week 3"
+    quality_metrics:
+      - metric: "Test method length"
+        limit: 25 lines
+        enforcement: "Pre-commit hook"
+      
+      - metric: "Mock count per test"
+        limit: 2
+        enforcement: "Code review checklist"
+      
+      - metric: "Test file length"
+        limit: 500 lines
+        enforcement: "CI/CD check"
+      
+      - metric: "Assertion clarity"
+        requirement: "All assertions must have descriptive messages"
+        enforcement: "Linting rule"
+
+  phase_7_documentation:
+    description: "Document testing patterns and guidelines"
+    priority: LOW
+    timeline: "Week 3"
+    deliverables:
+      - "Testing best practices guide for utils module"
+      - "Dependency injection patterns documentation"
+      - "Test data builder usage examples"
+      - "Integration test setup guide"
+
+expected_outcomes:
+  quality_improvement:
+    from_score: 5
+    to_score: 8.5
+    improvements:
+      - "No module-level stubbing"
+      - "Clear test boundaries"
+      - "Behavior-focused testing"
+      - "Proper test isolation"
+      - "Comprehensive coverage including error paths"
+  
+  maintainability:
+    - "Tests won't break with refactoring"
+    - "Clear what each test validates"
+    - "Easy to add new test cases"
+    - "Reduced test execution time"
+  
+  confidence:
+    - "Tests validate real behavior"
+    - "Integration tests catch system issues"
+    - "Error scenarios properly covered"
+    - "Performance characteristics verified"
+
+implementation_order:
+  week_1:
+    - "Phase 1: Refactor production code for dependency injection"
+    - "Phase 2: Create test infrastructure"
+    - "Phase 5: Begin removing anti-patterns"
+  
+  week_2:
+    - "Phase 3: Rewrite unit tests"
+    - "Phase 4: Add integration tests"
+    - "Phase 5: Complete anti-pattern removal"
+  
+  week_3:
+    - "Phase 6: Establish quality gates"
+    - "Phase 7: Documentation"
+    - "Final review and metrics validation"
+
 success_criteria:
-  - metric: "Mocking reduced to <20% of current level"
-    measurement: "Count of @patch decorators and Mock() calls"
-    
-  - metric: "Test file under 500 lines"
-    measurement: "Total line count after refactoring"
-    
-  - metric: "All public methods have error tests"
-    measurement: "Coverage report showing exception paths"
-    
-  - metric: "No test method exceeds 20 lines"
-    measurement: "Automated check in CI"
-    
-  - metric: "Tests run in <5 seconds"
-    measurement: "pytest timing report"
-    
-  - metric: "Zero test interdependencies"
-    measurement: "Tests pass when run in random order"
+  - "All tests pass without sys.modules manipulation"
+  - "No test uses more than 2 mocks"
+  - "Test file under 500 lines"
+  - "100% of public functions have tests"
+  - "All error paths have explicit test cases"
+  - "Integration tests cover all external dependencies"
+  - "Test execution time < 5 seconds for unit tests"
+  - "Clear separation between unit and integration tests"
 
-# Priority order
-implementation_priority:
-  1: "Remove module-level PyQt6/torch stubbing"
-  2: "Rewrite FFmpeg and file operation tests with real operations"
-  3: "Fix ConfigManager/PromptManager singleton pollution"
-  4: "Add error handling and edge case tests"
-  5: "Split large test classes"
-  6: "Add concurrency tests"
-  7: "Add performance tests"
-
-# Estimated effort
-effort_estimate:
-  total_hours: 8
-  breakdown:
-    - task: "Remove module-level mocking"
-      hours: 1
-    - task: "Rewrite file operation tests"
-      hours: 2
-    - task: "Fix singleton tests"
-      hours: 1
-    - task: "Add error/edge cases"
-      hours: 2
-    - task: "Refactor test structure"
-      hours: 1
-    - task: "Add concurrency tests"
-      hours: 1
+risks_and_mitigations:
+  - risk: "Breaking existing functionality during refactor"
+    mitigation: "Incremental changes with continuous test runs"
+  
+  - risk: "Resistance to dependency injection changes"
+    mitigation: "Demonstrate benefits with before/after metrics"
+  
+  - risk: "Integration tests may be slow"
+    mitigation: "Run integration tests separately in CI"
+  
+  - risk: "PyQt6 signal testing complexity"
+    mitigation: "Use Qt's built-in test utilities where possible"

@@ -1,0 +1,593 @@
+target_file: "app/db_utils.py"
+test_file: "app/tests/test_db_utils_unit.py"
+dependencies_to_mock:
+  - "app.constants.get_database_path"
+  - "app.constants.get_config_path"
+  - "os.path.exists"
+  - "os.makedirs"
+  - "os.path.dirname"
+  - "sqlite3.connect"
+  - "json.dump"
+  - "logging.getLogger"
+  - "app.models.recording.Recording"
+
+test_cases:
+  # === Connection Management Tests (Heavy Error Testing) ===
+  
+  - function_to_test: "get_connection"
+    description: "Tests successful database connection with proper pragmas"
+    scenario: "Happy path - database directory exists, connection succeeds"
+    mocks:
+      - target: "get_database_path"
+        return_value: "/test/db/database.sqlite"
+      - target: "os.path.dirname"
+        return_value: "/test/db"
+      - target: "os.makedirs"
+        return_value: None
+      - target: "sqlite3.connect"
+        return_value: "mock_connection"
+    expected_behavior:
+      - "Connection created with 30 second timeout"
+      - "check_same_thread=False and isolation_level=None set"
+      - "PRAGMA foreign_keys = ON executed"
+      - "Returns connection object"
+
+  - function_to_test: "get_connection"
+    description: "Tests connection failure with database lock"
+    scenario: "Database is locked by another process"
+    mocks:
+      - target: "sqlite3.connect"
+        side_effect: "raises sqlite3.OperationalError('database is locked')"
+      - target: "logger.critical"
+        return_value: None
+    expected_behavior:
+      - "Logs critical error with full path and exception details"
+      - "Raises RuntimeError with descriptive message"
+      - "Original sqlite3.Error preserved in exception chain"
+
+  - function_to_test: "get_connection"
+    description: "Tests connection with corrupted database file"
+    scenario: "Database file is corrupted/malformed"
+    mocks:
+      - target: "sqlite3.connect"
+        side_effect: "raises sqlite3.DatabaseError('file is not a database')"
+    expected_behavior:
+      - "Critical error logged with database path"
+      - "RuntimeError raised with clear message"
+      - "Does not attempt PRAGMA execution"
+
+  - function_to_test: "get_connection"
+    description: "Tests connection when directory creation fails"
+    scenario: "Permission denied creating database directory"
+    mocks:
+      - target: "os.makedirs"
+        side_effect: "raises PermissionError('Permission denied')"
+    expected_behavior:
+      - "PermissionError propagates to caller"
+      - "Database connection not attempted"
+      - "No misleading error messages"
+
+  - function_to_test: "get_connection"
+    description: "Tests connection with disk full error"
+    scenario: "Disk is full when creating database"
+    mocks:
+      - target: "sqlite3.connect"
+        side_effect: "raises sqlite3.OperationalError('disk I/O error')"
+    expected_behavior:
+      - "Critical error logged"
+      - "RuntimeError raised with I/O error details"
+
+  # === Table Creation Tests (Focus on Schema Violations) ===
+
+  - function_to_test: "create_recordings_table"
+    description: "Tests successful table and index creation"
+    scenario: "Happy path - table doesn't exist yet"
+    mocks:
+      - target: "conn.cursor"
+        return_value: "mock_cursor"
+      - target: "mock_cursor.execute"
+        return_value: None
+      - target: "conn.commit"
+        return_value: None
+    expected_behavior:
+      - "CREATE TABLE IF NOT EXISTS executed with correct schema"
+      - "UNIQUE constraint on file_path column"
+      - "Index created on file_path for performance"
+      - "Transaction committed successfully"
+
+  - function_to_test: "create_recordings_table"
+    description: "Tests table creation with syntax error in SQL"
+    scenario: "Malformed SQL statement (simulates typo/corruption)"
+    mocks:
+      - target: "cursor.execute"
+        side_effect: "raises sqlite3.OperationalError('near \"TABL\": syntax error')"
+      - target: "logger.error"
+        return_value: None
+    expected_behavior:
+      - "Error logged with full SQL context"
+      - "sqlite3.Error re-raised for caller handling"
+      - "No partial table creation"
+
+  - function_to_test: "create_recordings_table"
+    description: "Tests table creation when table is locked"
+    scenario: "Another transaction has exclusive lock on table"
+    mocks:
+      - target: "cursor.execute"
+        side_effect: "raises sqlite3.OperationalError('table recordings is locked')"
+    expected_behavior:
+      - "Error logged with lock information"
+      - "Exception propagates with original message"
+      - "No corrupted state left behind"
+
+  # === CRUD Operations - Create (SQL Injection & Boundary Tests) ===
+
+  - function_to_test: "create_recording"
+    description: "Tests recording creation with minimal valid data"
+    scenario: "Happy path - only required fields provided"
+    mocks:
+      - target: "cursor.execute"
+        return_value: None
+      - target: "cursor.lastrowid"
+        return_value: 42
+      - target: "conn.commit"
+        return_value: None
+    expected_behavior:
+      - "Recording created with 4 required fields"
+      - "NULL values for missing optional fields"
+      - "Returns new ID from lastrowid"
+      - "Info logged with filename and ID"
+
+  - function_to_test: "create_recording"
+    description: "Tests duplicate file_path constraint violation"
+    scenario: "Attempting to insert recording with existing file_path"
+    mocks:
+      - target: "cursor.execute"
+        side_effect: "raises sqlite3.IntegrityError('UNIQUE constraint failed: recordings.file_path')"
+      - target: "logger.error"
+        return_value: None
+    expected_behavior:
+      - "DuplicatePathError raised with specific path"
+      - "Error message includes duplicate path value"
+      - "Original IntegrityError preserved in exception chain"
+      - "Transaction rolled back automatically"
+
+  - function_to_test: "create_recording"
+    description: "Tests SQL injection attempt in recording data"
+    scenario: "Malicious SQL in filename field"
+    mocks:
+      - target: "recording_data"
+        return_value: ("'; DROP TABLE recordings; --", "/path", "2024-01-01", "10:00")
+    expected_behavior:
+      - "Parameterized query prevents SQL injection"
+      - "Malicious string stored as literal data"
+      - "No table drops or unexpected behavior"
+      - "Recording created normally with escaped data"
+
+  - function_to_test: "create_recording"
+    description: "Tests creation with insufficient data tuple"
+    scenario: "Recording data has less than 4 required fields"
+    mocks:
+      - target: "recording_data"
+        return_value: ("file.wav", "/path")  # Only 2 fields
+    expected_behavior:
+      - "ValueError raised immediately"
+      - "Message specifies missing required fields"
+      - "No database operations attempted"
+
+  - function_to_test: "create_recording"
+    description: "Tests creation with extremely long field values"
+    scenario: "Boundary test - 10MB strings in text fields"
+    mocks:
+      - target: "recording_data"
+        return_value: ("f.wav", "/p", "2024-01-01", "1:00", "x" * 10485760, "y" * 10485760)
+    expected_behavior:
+      - "SQLite handles large text fields"
+      - "No truncation or data loss"
+      - "Performance may degrade but no errors"
+
+  - function_to_test: "create_recording"
+    description: "Tests creation with null/None in required fields"
+    scenario: "None value in file_path (required UNIQUE field)"
+    mocks:
+      - target: "recording_data"
+        return_value: ("file.wav", None, "2024-01-01", "10:00")
+      - target: "cursor.execute"
+        side_effect: "raises sqlite3.IntegrityError('NOT NULL constraint failed')"
+    expected_behavior:
+      - "IntegrityError raised for NULL in NOT NULL field"
+      - "Error logged with constraint details"
+      - "No partial record created"
+
+  # === CRUD Operations - Read (Edge Cases & Corrupted Data) ===
+
+  - function_to_test: "get_recording_by_id"
+    description: "Tests retrieval with non-existent ID"
+    scenario: "ID doesn't exist in database"
+    mocks:
+      - target: "cursor.fetchone"
+        return_value: None
+    expected_behavior:
+      - "Returns None (not error)"
+      - "No exception raised"
+      - "Clean handling of missing records"
+
+  - function_to_test: "get_recording_by_id"
+    description: "Tests retrieval with negative ID"
+    scenario: "Boundary test - negative recording ID"
+    mocks:
+      - target: "recording_id"
+        return_value: -1
+      - target: "cursor.fetchone"
+        return_value: None
+    expected_behavior:
+      - "Query executes safely"
+      - "Returns None for non-existent negative ID"
+      - "No SQL errors from negative value"
+
+  - function_to_test: "get_recording_by_id"
+    description: "Tests retrieval with corrupted date field"
+    scenario: "Database has invalid date format 'pending' stored"
+    mocks:
+      - target: "cursor.fetchone"
+        return_value: (1, "f.wav", "/p", "pending", "10:00", None, None, None, None, None)
+    expected_behavior:
+      - "Handles invalid date gracefully"
+      - "Replaces with current ISO timestamp"
+      - "Recording object created successfully"
+      - "No exception raised to caller"
+
+  - function_to_test: "get_recording_by_id"
+    description: "Tests retrieval with missing columns in legacy database"
+    scenario: "Old database schema missing original_source_identifier column"
+    mocks:
+      - target: "cursor.fetchone"
+        return_value: (1, "f.wav", "/p", "2024-01-01", "10:00", None, None, None, None)
+    expected_behavior:
+      - "Handles missing column gracefully"
+      - "Sets original_source_identifier to None"
+      - "No index out of bounds error"
+
+  - function_to_test: "get_recording_by_id"
+    description: "Tests retrieval with SQL injection in ID parameter"
+    scenario: "Malicious SQL in recording_id parameter"
+    mocks:
+      - target: "recording_id"
+        return_value: "1 OR 1=1; DROP TABLE recordings; --"
+    expected_behavior:
+      - "Parameterized query prevents injection"
+      - "ID treated as literal value"
+      - "Query fails safely with type error or no results"
+
+  # === CRUD Operations - Update (Validation & Concurrency) ===
+
+  - function_to_test: "update_recording"
+    description: "Tests update with no fields provided"
+    scenario: "Empty kwargs - should be no-op"
+    mocks: []
+    expected_behavior:
+      - "Returns immediately without database access"
+      - "No SQL executed"
+      - "No errors raised"
+
+  - function_to_test: "update_recording"
+    description: "Tests update with invalid field names"
+    scenario: "Attempting to update non-existent columns"
+    mocks:
+      - target: "kwargs"
+        return_value: {"invalid_field": "value", "another_bad": "data"}
+      - target: "logger.warning"
+        return_value: None
+    expected_behavior:
+      - "Invalid fields filtered out"
+      - "Warning logged for each invalid field"
+      - "No SQL executed if no valid fields remain"
+
+  - function_to_test: "update_recording"
+    description: "Tests update with SQL injection in field values"
+    scenario: "Malicious SQL in raw_transcript field"
+    mocks:
+      - target: "kwargs"
+        return_value: {"raw_transcript": "'; DROP TABLE recordings; --"}
+      - target: "cursor.execute"
+        return_value: None
+    expected_behavior:
+      - "Parameterized query prevents injection"
+      - "Malicious string stored as literal data"
+      - "No table drops or unexpected behavior"
+
+  - function_to_test: "update_recording"
+    description: "Tests concurrent update causing lock timeout"
+    scenario: "Another transaction holding lock for > 30 seconds"
+    mocks:
+      - target: "cursor.execute"
+        side_effect: "raises sqlite3.OperationalError('database is locked')"
+    expected_behavior:
+      - "Error logged with recording ID and fields"
+      - "OperationalError propagates to caller"
+      - "Caller can retry or handle appropriately"
+
+  - function_to_test: "update_recording"
+    description: "Tests update on non-existent recording ID"
+    scenario: "ID doesn't exist - should succeed but affect 0 rows"
+    mocks:
+      - target: "cursor.execute"
+        return_value: None
+      - target: "cursor.rowcount"
+        return_value: 0
+    expected_behavior:
+      - "Update executes without error"
+      - "Affects 0 rows (silent success)"
+      - "Info still logged as if successful"
+
+  # === CRUD Operations - Delete (Cascade & Constraints) ===
+
+  - function_to_test: "delete_recording"
+    description: "Tests successful deletion"
+    scenario: "Happy path - recording exists and is deleted"
+    mocks:
+      - target: "cursor.execute"
+        return_value: None
+      - target: "conn.commit"
+        return_value: None
+    expected_behavior:
+      - "DELETE statement executed with ID parameter"
+      - "Transaction committed"
+      - "Info logged with deleted ID"
+
+  - function_to_test: "delete_recording"
+    description: "Tests deletion with foreign key constraint violation"
+    scenario: "Recording referenced by recording_folders without CASCADE"
+    mocks:
+      - target: "cursor.execute"
+        side_effect: "raises sqlite3.IntegrityError('FOREIGN KEY constraint failed')"
+    expected_behavior:
+      - "IntegrityError raised"
+      - "Error logged with recording ID"
+      - "Transaction rolled back automatically"
+
+  - function_to_test: "delete_recording"
+    description: "Tests deletion of non-existent recording"
+    scenario: "ID doesn't exist - should succeed silently"
+    mocks:
+      - target: "cursor.execute"
+        return_value: None
+      - target: "cursor.rowcount"
+        return_value: 0
+    expected_behavior:
+      - "Delete executes without error"
+      - "Affects 0 rows"
+      - "Info logged regardless"
+
+  # === Utility Functions (Search & Existence Checks) ===
+
+  - function_to_test: "recording_exists"
+    description: "Tests existence check with special characters in path"
+    scenario: "Path contains quotes and SQL wildcards"
+    mocks:
+      - target: "file_path"
+        return_value: "/path/with'quotes\"and%wildcards_"
+      - target: "cursor.fetchone"
+        return_value: (1,)
+    expected_behavior:
+      - "Special characters properly escaped"
+      - "Query uses index for performance"
+      - "Returns True for existing path"
+
+  - function_to_test: "recording_exists"
+    description: "Tests existence check with database error"
+    scenario: "Database corruption during query"
+    mocks:
+      - target: "cursor.execute"
+        side_effect: "raises sqlite3.DatabaseError('database disk image is malformed')"
+    expected_behavior:
+      - "Error logged with file path"
+      - "DatabaseError propagates to caller"
+      - "No false positive/negative returned"
+
+  - function_to_test: "search_recordings"
+    description: "Tests search with SQL wildcards in search term"
+    scenario: "User searches for literal % or _ characters"
+    mocks:
+      - target: "search_term"
+        return_value: "50%_discount"
+    expected_behavior:
+      - "Wildcards treated as literal characters"
+      - "Searches for actual '50%_discount' text"
+      - "LIKE pattern properly escaped"
+
+  - function_to_test: "search_recordings"
+    description: "Tests search with empty search term"
+    scenario: "Empty string search - matches all records"
+    mocks:
+      - target: "search_term"
+        return_value: ""
+      - target: "cursor.fetchall"
+        return_value: "all_records"
+    expected_behavior:
+      - "Pattern becomes '%%' (matches everything)"
+      - "Returns all recordings ordered by date"
+      - "No errors from empty pattern"
+
+  - function_to_test: "search_recordings"
+    description: "Tests search with very long search term"
+    scenario: "Search term is 1MB of text"
+    mocks:
+      - target: "search_term"
+        return_value: "x" * 1048576
+    expected_behavior:
+      - "Query executes but may be slow"
+      - "No buffer overflow or truncation"
+      - "Results based on actual matches"
+
+  # === Database Initialization (Config & Recovery) ===
+
+  - function_to_test: "ensure_database_exists"
+    description: "Tests full initialization of new database"
+    scenario: "Happy path - fresh install, no existing database"
+    mocks:
+      - target: "get_connection"
+        return_value: "mock_conn"
+      - target: "create_recordings_table"
+        return_value: None
+      - target: "create_folders_table"
+        return_value: None
+      - target: "create_recording_folders_table"
+        return_value: None
+      - target: "os.path.exists"
+        return_value: False
+      - target: "create_config_file"
+        return_value: None
+    expected_behavior:
+      - "All three tables created in order"
+      - "Config file created when missing"
+      - "Connection properly closed in finally block"
+      - "Debug message logged for success"
+
+  - function_to_test: "ensure_database_exists"
+    description: "Tests initialization with table creation failure"
+    scenario: "Disk full during table creation"
+    mocks:
+      - target: "create_recordings_table"
+        side_effect: "raises sqlite3.OperationalError('disk I/O error')"
+      - target: "mock_conn.close"
+        return_value: None
+    expected_behavior:
+      - "Error logged with full traceback"
+      - "Exception re-raised to caller"
+      - "Connection closed in finally block"
+      - "Partial initialization not hidden"
+
+  - function_to_test: "ensure_database_exists"
+    description: "Tests initialization when connection fails"
+    scenario: "Database locked during initialization"
+    mocks:
+      - target: "get_connection"
+        side_effect: "raises RuntimeError('Could not connect to database')"
+    expected_behavior:
+      - "RuntimeError propagates immediately"
+      - "No table creation attempted"
+      - "No attempt to close non-existent connection"
+
+  - function_to_test: "create_config_file"
+    description: "Tests config creation with permission denied"
+    scenario: "No write permission in config directory"
+    mocks:
+      - target: "open"
+        side_effect: "raises PermissionError('Permission denied')"
+      - target: "logger.error"
+        return_value: None
+    expected_behavior:
+      - "Error logged with permission details"
+      - "PermissionError re-raised"
+      - "No partial file created"
+
+  - function_to_test: "create_config_file"
+    description: "Tests config creation with disk full"
+    scenario: "Disk full while writing JSON"
+    mocks:
+      - target: "json.dump"
+        side_effect: "raises OSError('No space left on device')"
+    expected_behavior:
+      - "Error logged with disk space issue"
+      - "OSError propagates to caller"
+      - "File handle properly closed"
+
+  # === Concurrent Access & Transaction Tests ===
+
+  - function_to_test: "get_connection"
+    description: "Tests multiple concurrent connection attempts"
+    scenario: "Race condition - multiple threads connecting simultaneously"
+    mocks:
+      - target: "sqlite3.connect"
+        return_value: "different_connection_each_time"
+    expected_behavior:
+      - "Each thread gets independent connection"
+      - "check_same_thread=False allows cross-thread usage"
+      - "30 second timeout prevents deadlocks"
+
+  - function_to_test: "create_recording"
+    description: "Tests transaction rollback on error"
+    scenario: "Error occurs after partial insert"
+    mocks:
+      - target: "cursor.execute"
+        side_effect: "raises sqlite3.OperationalError after partial execution"
+    expected_behavior:
+      - "isolation_level=None means explicit transactions"
+      - "Error causes automatic rollback"
+      - "No partial data persisted"
+
+  # === Data Integrity & Corruption Tests ===
+
+  - function_to_test: "get_all_recordings"
+    description: "Tests retrieval with corrupted blob data"
+    scenario: "Binary blob fields contain invalid data"
+    mocks:
+      - target: "cursor.fetchall"
+        return_value: [(1, "f.wav", "/p", "2024-01-01", "10:00", None, None, "invalid_blob", None, None)]
+    expected_behavior:
+      - "Returns data as-is (caller handles validation)"
+      - "No decoding attempted in this function"
+      - "Error handling deferred to model layer"
+
+  - function_to_test: "get_recording_by_id"
+    description: "Tests handling of integer overflow in ID"
+    scenario: "ID value exceeds SQLite INTEGER range"
+    mocks:
+      - target: "recording_id"
+        return_value: 9223372036854775808  # Beyond 64-bit signed int
+      - target: "cursor.execute"
+        side_effect: "raises OverflowError('Python int too large')"
+    expected_behavior:
+      - "OverflowError caught and logged"
+      - "Error re-raised with context"
+      - "No database corruption"
+
+  # === Special Character & Encoding Tests ===
+
+  - function_to_test: "create_recording"
+    description: "Tests creation with Unicode and emoji in fields"
+    scenario: "Filename contains emoji and various Unicode"
+    mocks:
+      - target: "recording_data"
+        return_value: ("🎵 録音(レコーディング).wav", "/path/音楽", "2024-01-01", "10:00")
+    expected_behavior:
+      - "Unicode handled correctly by SQLite"
+      - "No encoding errors"
+      - "Data retrievable without corruption"
+
+  - function_to_test: "search_recordings"
+    description: "Tests search with Unicode search terms"
+    scenario: "Searching for Japanese characters"
+    mocks:
+      - target: "search_term"
+        return_value: "録音"
+      - target: "cursor.fetchall"
+        return_value: "matching_records"
+    expected_behavior:
+      - "Unicode search term handled correctly"
+      - "LIKE pattern works with Unicode"
+      - "Correct results returned"
+
+  # === Performance & Resource Tests ===
+
+  - function_to_test: "get_all_recordings"
+    description: "Tests retrieval with millions of records"
+    scenario: "Performance test - database has 10 million recordings"
+    mocks:
+      - target: "cursor.fetchall"
+        return_value: "huge_result_set"
+    expected_behavior:
+      - "Memory usage proportional to result size"
+      - "No arbitrary limits on result count"
+      - "Caller responsible for pagination"
+
+  - function_to_test: "create_recordings_table"
+    description: "Tests index creation on huge existing table"
+    scenario: "Adding index to table with millions of rows"
+    mocks:
+      - target: "cursor.execute"
+        return_value: None  # But takes long time
+    expected_behavior:
+      - "CREATE INDEX IF NOT EXISTS is idempotent"
+      - "May block other operations during creation"
+      - "Timeout handled by connection timeout setting"

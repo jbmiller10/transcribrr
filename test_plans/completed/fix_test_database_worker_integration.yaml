@@ -1,0 +1,274 @@
+target_file: "app/DatabaseManager.py"
+test_file: "app/tests/test_database_worker_integration.py"
+dependencies_to_mock:
+  - "app.secure.redact"
+  - "logging.getLogger"
+
+test_cases:
+  # Data Integrity & Business Outcomes
+  - function_to_test: "TestDatabaseWorkerWithRealSQLite.test_create_recording_persists_data"
+    description: "Verifies recording creation persists actual data to database"
+    scenario: "Create a recording and verify data integrity by querying database directly"
+    mocks: []
+    expected_behavior:
+      - "Recording is inserted with all provided fields intact"
+      - "Database row contains exact filename and file_path values"
+      - "Generated ID is a valid integer primary key"
+      - "Data persists across multiple database queries"
+
+  - function_to_test: "TestDatabaseWorkerWithRealSQLite.test_update_recording_modifies_data"
+    description: "Verifies updates actually modify database state"
+    scenario: "Update an existing recording and verify changes persist in database"
+    mocks: []
+    expected_behavior:
+      - "Updated field contains new value in database"
+      - "Other fields remain unchanged"
+      - "Update timestamp is recorded if applicable"
+      - "Changes visible in subsequent queries"
+
+  - function_to_test: "TestDatabaseWorkerWithRealSQLite.test_delete_recording_removes_data"
+    description: "Verifies deletion actually removes record from database"
+    scenario: "Delete a recording and verify it no longer exists in database"
+    mocks: []
+    expected_behavior:
+      - "Record count decreases by one"
+      - "Deleted record cannot be queried by ID"
+      - "Related records in junction tables are also deleted (CASCADE)"
+
+  # Critical Error Scenarios - Database Connection Failures
+  - function_to_test: "TestDatabaseWorkerWithRealSQLite.test_database_connection_lost_during_operation"
+    description: "Tests resilience when database connection is lost mid-operation"
+    scenario: "Close database connection during a write operation and verify recovery"
+    mocks: []
+    expected_behavior:
+      - "Worker attempts to reconnect to database"
+      - "Operation either completes after reconnection or fails gracefully"
+      - "No partial data is written (transaction rollback)"
+      - "Error is logged with appropriate context"
+
+  - function_to_test: "TestDatabaseWorkerWithRealSQLite.test_database_locked_timeout"
+    description: "Tests behavior when database is locked by another process"
+    scenario: "Hold exclusive lock on database from another connection and attempt operations"
+    mocks: []
+    expected_behavior:
+      - "Operation waits up to timeout period (30 seconds)"
+      - "If timeout exceeded, operation fails with clear error"
+      - "No data corruption occurs"
+      - "Worker remains operational for subsequent operations"
+
+  - function_to_test: "TestDatabaseWorkerWithRealSQLite.test_database_corruption_handling"
+    description: "Tests handling of corrupted database file"
+    scenario: "Corrupt database file structure and attempt operations"
+    mocks: []
+    expected_behavior:
+      - "Corruption is detected and logged"
+      - "Operation fails with appropriate error message"
+      - "Worker does not crash or hang"
+      - "Subsequent operations with valid database work correctly"
+
+  # Concurrency & Race Conditions
+  - function_to_test: "TestDatabaseWorkerWithRealSQLite.test_concurrent_writes_same_record"
+    description: "Tests data integrity with concurrent updates to same record"
+    scenario: "Queue multiple update operations for same record ID simultaneously"
+    mocks: []
+    expected_behavior:
+      - "All updates are applied sequentially"
+      - "Final state reflects last update in queue"
+      - "No data corruption or partial updates"
+      - "Each update completes or fails atomically"
+
+  - function_to_test: "TestDatabaseWorkerWithRealSQLite.test_concurrent_create_same_path"
+    description: "Tests handling of concurrent creates with same file_path"
+    scenario: "Queue multiple create operations with identical file_path"
+    mocks: []
+    expected_behavior:
+      - "First create succeeds and returns valid ID"
+      - "Subsequent creates fail with DuplicatePathError"
+      - "Only one record exists in database"
+      - "No constraint violations or database errors"
+
+  # Constraint Violations & Data Validation
+  - function_to_test: "TestDatabaseWorkerWithRealSQLite.test_unique_constraint_violation_no_side_effects"
+    description: "Verifies constraint violations don't cause side effects"
+    scenario: "Attempt to create duplicate file_path and verify no partial writes"
+    mocks: []
+    expected_behavior:
+      - "Operation fails cleanly without creating record"
+      - "No dataChanged signal emitted"
+      - "Database state unchanged"
+      - "Error logged at warning level, not error"
+
+  - function_to_test: "TestDatabaseWorkerWithRealSQLite.test_foreign_key_constraint_enforcement"
+    description: "Tests foreign key constraints are properly enforced"
+    scenario: "Attempt operations that would violate foreign key constraints"
+    mocks: []
+    expected_behavior:
+      - "Operations violating constraints are rejected"
+      - "Database maintains referential integrity"
+      - "Clear error messages indicate constraint type"
+      - "Related valid operations still succeed"
+
+  - function_to_test: "TestDatabaseWorkerWithRealSQLite.test_null_required_fields"
+    description: "Tests handling of null values in required fields"
+    scenario: "Attempt to create/update with null in NOT NULL columns"
+    mocks: []
+    expected_behavior:
+      - "Operation fails with constraint violation"
+      - "Error message identifies missing field"
+      - "No partial data written"
+      - "Database schema remains intact"
+
+  # Transaction Management
+  - function_to_test: "TestDatabaseWorkerWithRealSQLite.test_transaction_rollback_on_error"
+    description: "Verifies transactions rollback completely on errors"
+    scenario: "Execute multi-statement operation where second statement fails"
+    mocks: []
+    expected_behavior:
+      - "All changes from transaction are rolled back"
+      - "Database state matches pre-transaction state"
+      - "No orphaned or partial records exist"
+      - "Connection remains usable after rollback"
+
+  - function_to_test: "TestDatabaseWorkerWithRealSQLite.test_transaction_isolation"
+    description: "Tests transaction isolation between operations"
+    scenario: "Run long transaction while other operations queue"
+    mocks: []
+    expected_behavior:
+      - "Queued operations wait for transaction completion"
+      - "No dirty reads occur"
+      - "Each operation sees consistent database state"
+      - "Operations complete in queue order"
+
+  # Edge Cases & Boundary Conditions
+  - function_to_test: "TestDatabaseWorkerWithRealSQLite.test_empty_queue_processing"
+    description: "Tests worker behavior with empty queue"
+    scenario: "Run worker with no operations queued"
+    mocks: []
+    expected_behavior:
+      - "Worker polls queue without errors"
+      - "No spurious signals emitted"
+      - "Worker exits cleanly on sentinel"
+      - "No resource leaks"
+
+  - function_to_test: "TestDatabaseWorkerWithRealSQLite.test_malformed_operation_handling"
+    description: "Tests handling of malformed operations"
+    scenario: "Queue operations with missing required fields or invalid types"
+    mocks: []
+    expected_behavior:
+      - "Malformed operations are rejected"
+      - "Clear error messages identify problem"
+      - "Worker continues processing valid operations"
+      - "Queue state remains consistent"
+
+  - function_to_test: "TestDatabaseWorkerWithRealSQLite.test_extremely_large_data"
+    description: "Tests handling of very large data values"
+    scenario: "Create/update with maximum size text fields (near SQLite limits)"
+    mocks: []
+    expected_behavior:
+      - "Large data is stored correctly or rejected with clear error"
+      - "No truncation without warning"
+      - "Performance degrades gracefully"
+      - "Memory usage remains bounded"
+
+  # SQL Injection & Security
+  - function_to_test: "TestDatabaseWorkerWithRealSQLite.test_sql_injection_prevention"
+    description: "Verifies parameterized queries prevent SQL injection"
+    scenario: "Attempt operations with SQL injection payloads in user data"
+    mocks: []
+    expected_behavior:
+      - "Malicious SQL is treated as literal data"
+      - "No unintended queries execute"
+      - "Database structure remains unchanged"
+      - "Operations complete with escaped data"
+
+  # Query Execution Tests
+  - function_to_test: "TestDatabaseWorkerWithRealSQLite.test_execute_query_insert_returns_lastrowid"
+    description: "Verifies INSERT via execute_query returns correct lastrowid"
+    scenario: "Execute raw INSERT query and verify lastrowid matches created record"
+    mocks: []
+    expected_behavior:
+      - "lastrowid matches actual inserted record ID"
+      - "Record is queryable by returned ID"
+      - "All fields match provided values"
+
+  - function_to_test: "TestDatabaseWorkerWithRealSQLite.test_execute_query_select_returns_all_rows"
+    description: "Verifies SELECT returns complete result set"
+    scenario: "Execute SELECT query with multiple matching rows"
+    mocks: []
+    expected_behavior:
+      - "All matching rows are returned"
+      - "Column order matches query"
+      - "Data types are preserved"
+      - "No dataChanged signal for read-only query"
+
+  - function_to_test: "TestDatabaseWorkerWithRealSQLite.test_execute_query_update_affected_rows"
+    description: "Verifies UPDATE affects correct rows"
+    scenario: "Execute UPDATE with WHERE clause affecting multiple rows"
+    mocks: []
+    expected_behavior:
+      - "Only rows matching WHERE clause are updated"
+      - "Other rows remain unchanged"
+      - "Update count matches affected rows"
+
+  # Worker Lifecycle Tests
+  - function_to_test: "TestDatabaseWorkerWithRealSQLite.test_worker_shutdown_with_pending_operations"
+    description: "Tests graceful shutdown with operations still queued"
+    scenario: "Queue operations then immediately send shutdown sentinel"
+    mocks: []
+    expected_behavior:
+      - "Pending operations are processed before shutdown"
+      - "Database connection closed properly"
+      - "No operations lost or partially completed"
+      - "Resources cleaned up correctly"
+
+  - function_to_test: "TestDatabaseWorkerWithRealSQLite.test_worker_restart_after_critical_error"
+    description: "Tests worker can be restarted after critical failure"
+    scenario: "Cause critical error, then create new worker instance"
+    mocks: []
+    expected_behavior:
+      - "New worker instance starts successfully"
+      - "Database connection re-established"
+      - "Previous failed operations don't affect new instance"
+      - "Queue state is clean"
+
+  # Performance & Resource Management
+  - function_to_test: "TestDatabaseWorkerWithRealSQLite.test_memory_usage_with_large_queue"
+    description: "Tests memory usage with many queued operations"
+    scenario: "Queue thousands of operations and monitor memory"
+    mocks: []
+    expected_behavior:
+      - "Memory usage grows linearly with queue size"
+      - "No memory leaks during processing"
+      - "Completed operations are garbage collected"
+      - "Worker remains responsive"
+
+  - function_to_test: "TestDatabaseWorkerWithRealSQLite.test_connection_pool_exhaustion"
+    description: "Tests behavior when connection resources exhausted"
+    scenario: "Create multiple worker instances until connections fail"
+    mocks: []
+    expected_behavior:
+      - "Clear error when connections exhausted"
+      - "Existing workers continue functioning"
+      - "Connections released on worker shutdown"
+      - "System recovers when workers freed"
+
+  # Data Migration & Schema Changes
+  - function_to_test: "TestDatabaseWorkerWithRealSQLite.test_operation_with_missing_table"
+    description: "Tests operations when expected table doesn't exist"
+    scenario: "Drop recordings table and attempt operations"
+    mocks: []
+    expected_behavior:
+      - "Operations fail with clear 'no such table' error"
+      - "Worker doesn't crash"
+      - "create_table operation can recover schema"
+      - "Subsequent operations work after table creation"
+
+  - function_to_test: "TestDatabaseWorkerWithRealSQLite.test_operation_with_schema_mismatch"
+    description: "Tests operations with unexpected schema"
+    scenario: "Modify table schema (add/remove columns) and attempt operations"
+    mocks: []
+    expected_behavior:
+      - "Operations fail with clear schema error"
+      - "Error indicates specific column issue"
+      - "Worker remains operational"
+      - "Compatible operations still succeed"

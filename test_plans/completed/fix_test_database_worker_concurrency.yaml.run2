@@ -1,0 +1,291 @@
+# Test Plan: Fix test_database_worker_concurrency.py
+# Target: app/tests/test_database_worker_concurrency.py
+# Module Under Test: app.DatabaseManager.DatabaseWorker
+
+test_file: app/tests/test_database_worker_concurrency.py
+module_under_test: app.DatabaseManager.DatabaseWorker
+test_type: concurrency_testing
+
+# Issues Identified in Current Implementation
+issues_to_fix:
+  - issue: "Non-deterministic concurrent tests"
+    description: "Tests rely on timing and race conditions making them flaky"
+    severity: critical
+    
+  - issue: "Race conditions and shared mutable state"
+    description: "Two worker threads share the same file-based database without proper synchronization"
+    severity: critical
+    
+  - issue: "Uses file-based DB causing test interdependencies"
+    description: "Tests use actual filesystem database instead of in-memory, causing test pollution"
+    severity: high
+    
+  - issue: "Incomplete teardown"
+    description: "Workers may not properly stop, leaving threads running and resources uncleaned"
+    severity: medium
+    
+  - issue: "Missing error path coverage"
+    description: "Only tests one error case, missing many critical error scenarios"
+    severity: medium
+
+# Proposed Solution Strategy
+solution_approach:
+  design_philosophy: |
+    Transform from flaky concurrent integration tests to deterministic unit tests 
+    that verify thread safety and concurrent behavior through controlled synchronization
+    
+  key_changes:
+    - "Use in-memory SQLite database instead of file-based"
+    - "Implement proper synchronization primitives for predictable concurrency"
+    - "Mock time-sensitive operations to eliminate non-determinism"
+    - "Use threading events and barriers for controlled test execution"
+    - "Test one aspect of concurrency at a time with isolated scenarios"
+    
+  testing_strategy:
+    - "Unit test approach with minimal real dependencies"
+    - "Use threading.Event for controlled synchronization"
+    - "Mock Queue operations to control timing"
+    - "Verify thread safety through controlled interleaving"
+
+# Test Infrastructure Requirements
+test_infrastructure:
+  setup_requirements:
+    - "In-memory SQLite connection factory"
+    - "Thread synchronization helpers (Events, Barriers)"
+    - "Signal capture helpers for assertion"
+    - "Controlled queue mock for deterministic operation ordering"
+    
+  teardown_requirements:
+    - "Ensure all worker threads are properly stopped"
+    - "Close all database connections"
+    - "Clear any module-level state"
+    - "Reset environment variables if modified"
+
+# Mocking Strategy
+mocking_strategy:
+  dependencies_to_mock:
+    - target: "app.constants.get_database_path"
+      reason: "Force in-memory database usage"
+      mock_type: "return_value"
+      
+    - target: "app.db_utils.get_connection"
+      reason: "Provide thread-local in-memory connections"
+      mock_type: "side_effect with thread-local storage"
+      
+    - target: "queue.Queue (selectively)"
+      reason: "Control operation ordering and timing"
+      mock_type: "partial mock with synchronization hooks"
+      
+    - target: "time.sleep (if used)"
+      reason: "Eliminate actual waiting in tests"
+      mock_type: "no-op or instant return"
+
+  real_dependencies:
+    - "sqlite3 module (using in-memory mode)"
+    - "threading primitives (Event, Barrier, Lock)"
+    - "DatabaseWorker core logic"
+    - "db_utils SQL functions (with in-memory DB)"
+
+# Test Scenarios
+test_scenarios:
+  - name: "test_worker_thread_safety_with_concurrent_writes"
+    description: "Verify that concurrent write operations maintain data integrity"
+    setup:
+      - "Create two workers with separate in-memory connections"
+      - "Use threading.Barrier to synchronize operation start"
+      - "Queue identical insert operations on both workers"
+    execution:
+      - "Start both workers simultaneously using barrier"
+      - "Wait for both to complete with timeout"
+      - "Verify data integrity in shared database"
+    assertions:
+      - "All operations complete without errors"
+      - "No duplicate key violations"
+      - "Correct number of records inserted"
+      - "Proper signal emissions for each operation"
+      
+  - name: "test_queue_ordering_preserved_under_load"
+    description: "Verify operations are processed in FIFO order even with concurrent workers"
+    setup:
+      - "Create single worker with controlled queue"
+      - "Queue multiple operations with sequence numbers"
+    execution:
+      - "Process all operations"
+      - "Track completion order via signals"
+    assertions:
+      - "Operations complete in queue order"
+      - "No operations are skipped or duplicated"
+      
+  - name: "test_error_isolation_between_operations"
+    description: "Verify that errors in one operation don't affect others"
+    setup:
+      - "Queue mix of valid and invalid operations"
+      - "Use controlled ordering to interleave them"
+    execution:
+      - "Process all operations"
+      - "Capture both success and error signals"
+    assertions:
+      - "Valid operations complete successfully"
+      - "Invalid operations emit error signals"
+      - "Worker continues processing after errors"
+      
+  - name: "test_graceful_shutdown_with_pending_operations"
+    description: "Verify worker stops cleanly when requested"
+    setup:
+      - "Queue multiple long-running operations"
+      - "Start worker processing"
+    execution:
+      - "Set running=False after first operation"
+      - "Add sentinel to queue"
+      - "Wait for thread completion"
+    assertions:
+      - "Worker completes current operation"
+      - "Worker exits cleanly"
+      - "No hanging threads"
+      
+  - name: "test_connection_recovery_during_operation"
+    description: "Verify worker handles connection failures gracefully"
+    setup:
+      - "Mock connection to fail on specific operation"
+      - "Queue operations before and after failure"
+    execution:
+      - "Process operations with simulated failure"
+      - "Verify reconnection attempt"
+    assertions:
+      - "Error signal emitted for failed operation"
+      - "Subsequent operations succeed after recovery"
+      - "Proper logging of connection issues"
+
+# Specific Test Cases
+test_cases:
+  - test_name: "test_concurrent_inserts_with_synchronization"
+    description: "Replace flaky concurrent test with deterministic version"
+    changes:
+      - "Use in-memory database"
+      - "Add threading.Barrier for synchronized start"
+      - "Use threading.Event to control completion"
+      - "Remove reliance on timing"
+    mocks:
+      - "get_database_path -> return ':memory:'"
+      - "get_connection -> thread-local in-memory connections"
+    assertions:
+      - "Verify exact row count"
+      - "Check signal emission counts"
+      - "Validate data integrity"
+      
+  - test_name: "test_sql_injection_prevention"
+    description: "Verify parameterized queries prevent SQL injection"
+    changes:
+      - "New test case"
+      - "Test malicious input handling"
+    mocks:
+      - "In-memory database only"
+    assertions:
+      - "Malicious input is properly escaped"
+      - "No unintended SQL execution"
+      
+  - test_name: "test_transaction_rollback_on_error"
+    description: "Verify transactions roll back on error"
+    changes:
+      - "New test case"
+      - "Simulate mid-transaction failure"
+    mocks:
+      - "Controlled failure injection"
+    assertions:
+      - "No partial data persisted"
+      - "Database state unchanged"
+      
+  - test_name: "test_foreign_key_constraint_enforcement"
+    description: "Verify foreign key constraints are active"
+    changes:
+      - "New test case"
+      - "Test constraint violations"
+    mocks:
+      - "In-memory database with FK enabled"
+    assertions:
+      - "Constraint violations raise errors"
+      - "Referential integrity maintained"
+      
+  - test_name: "test_queue_overflow_handling"
+    description: "Verify behavior with queue limits"
+    changes:
+      - "New test case"
+      - "Test queue capacity limits"
+    mocks:
+      - "Queue with maxsize set"
+    assertions:
+      - "Appropriate error handling"
+      - "No data loss"
+
+# Implementation Guidelines
+implementation_notes:
+  critical_points:
+    - "Always use in-memory databases for isolation"
+    - "Never rely on sleep() or timing for synchronization"
+    - "Use threading primitives for controlled concurrency"
+    - "Each test must be completely independent"
+    - "Verify thread cleanup in tearDown"
+    
+  helper_functions:
+    - name: "create_in_memory_connection"
+      purpose: "Factory for thread-local in-memory SQLite connections"
+      
+    - name: "synchronized_worker_start"
+      purpose: "Start multiple workers with barrier synchronization"
+      
+    - name: "wait_for_operations"
+      purpose: "Wait for operations with timeout and proper cleanup"
+      
+    - name: "assert_database_state"
+      purpose: "Verify database contents match expectations"
+      
+  test_patterns:
+    - pattern: "Setup-Exercise-Verify-Teardown"
+      description: "Ensure complete test lifecycle"
+      
+    - pattern: "Thread-local storage"
+      description: "Isolate database connections per thread"
+      
+    - pattern: "Controlled concurrency"
+      description: "Use barriers and events for deterministic timing"
+
+# Success Criteria
+success_criteria:
+  - "All tests pass consistently (0% flakiness over 100 runs)"
+  - "Tests complete in under 1 second total"
+  - "No resource leaks (threads, connections, file handles)"
+  - "100% thread cleanup in tearDown"
+  - "Clear error messages on assertion failures"
+  - "Tests remain valid when DatabaseWorker implementation changes"
+
+# Risk Mitigation
+risk_mitigation:
+  - risk: "In-memory DB behaves differently than file DB"
+    mitigation: "Verify same SQLite version and pragma settings"
+    
+  - risk: "Thread synchronization adds complexity"
+    mitigation: "Use well-documented threading patterns"
+    
+  - risk: "Tests become too unit-focused and miss integration issues"
+    mitigation: "Keep separate integration test file for end-to-end scenarios"
+    
+  - risk: "Mock complexity obscures test intent"
+    mitigation: "Use helper functions to encapsulate mock setup"
+
+# Migration Path
+migration_steps:
+  1: "Create new test file with proper structure"
+  2: "Implement helper functions and fixtures"
+  3: "Port existing test cases with fixes"
+  4: "Add new test cases for missing coverage"
+  5: "Verify no flakiness with repeated runs"
+  6: "Delete or deprecate old test file"
+  7: "Update CI configuration if needed"
+
+# Documentation Requirements
+documentation:
+  - "Add docstrings explaining concurrency testing approach"
+  - "Document synchronization patterns used"
+  - "Explain why in-memory DB is used"
+  - "Provide examples of adding new concurrency tests"
+  - "Note any SQLite version requirements"

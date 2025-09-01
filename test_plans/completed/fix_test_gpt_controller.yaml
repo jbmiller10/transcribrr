@@ -1,249 +1,327 @@
-target_file: "app/controllers/gpt_controller.py"
-test_file: "app/tests/test_gpt_controller.py"
-current_issues:
-  file_size: "912 lines - excessive for testing a 377-line controller"
-  excessive_mocking:
-    - "Mocks PyQt6 signals and threading at module level"
-    - "Tests mock connections instead of actual behavior"
-    - "Verifies exact constructor parameters rather than outcomes"
-    - "Tests internal mock call sequences not business logic"
-  structural_problems:
-    - "Single monolithic test class with 50+ methods"
-    - "Tests like test_signal_emission_order span 50 lines"
-    - "Complex mock setups in setUp method"
-    - "Tests implementation details not behavior"
-  missing_coverage:
-    - "No tests for actual OpenAI API error handling"
-    - "No tests for thread lifecycle management"
-    - "No tests for concurrent operations conflicts"
-    - "No tests for resource cleanup on crashes"
-    - "No integration tests with real components"
+# Test Improvement Plan for test_gpt_controller.py
+# Target: Transform from 4/10 quality score to 8+/10
+# Current Issues: 912 lines, excessive mocking, testing implementation details
 
-fix_plan:
-  immediate_actions:
-    - action: "Reduce file size from 912 to ~300 lines maximum"
-      approach: "Focus only on core business logic tests"
+metadata:
+  current_file: app/tests/test_gpt_controller.py
+  target_class: app/controllers/gpt_controller.GPTController
+  current_lines: 911
+  current_test_count: 34
+  current_quality_score: 4/10
+  target_quality_score: 8/10
+  
+critical_issues:
+  - excessive_mocking:
+      description: "Too many mocks prevent real behavior validation"
+      current_state: "~129 mock-related lines, mocking Qt framework, API calls, threads"
+      impact: "Tests pass even when actual code is broken"
       
-    - action: "Remove excessive mocking"
-      changes:
-        - "Remove module-level PyQt6 mocking"
-        - "Use dependency injection for testable components"
-        - "Mock only external boundaries (OpenAI API, database)"
-        - "Test actual signal flow not mock connections"
+  - implementation_testing:
+      description: "Tests verify internal method calls rather than observable behavior"
+      examples:
+        - "Checking assert_called_with on mocks"
+        - "Verifying exact mock instantiation parameters"
+        - "Testing signal.emit() calls directly"
+      impact: "Tests break with refactoring even when behavior unchanged"
+      
+  - monolithic_structure:
+      description: "Single 911-line file testing all GPTController functionality"
+      impact: "Hard to navigate, maintain, and debug"
+      
+  - poor_test_isolation:
+      description: "setUp creates complex mock environment for all tests"
+      impact: "Tests are tightly coupled and hard to understand in isolation"
+
+refactoring_strategy:
+  phase_1_split_files:
+    description: "Break monolithic file into focused test modules"
+    new_structure:
+      - test_gpt_controller_init.py:
+          purpose: "Test initialization and configuration"
+          methods: ["__init__"]
+          estimated_lines: 50
+          
+      - test_gpt_controller_process.py:
+          purpose: "Test main processing functionality"
+          methods: ["process", "_on_process_completed", "_on_process_progress", "_on_process_error"]
+          estimated_lines: 200
+          
+      - test_gpt_controller_format.py:
+          purpose: "Test smart formatting functionality"
+          methods: ["smart_format", "_on_format_completed"]
+          estimated_lines: 150
+          
+      - test_gpt_controller_refine.py:
+          purpose: "Test refinement functionality"
+          methods: ["refine", "_on_refinement_completed"]
+          estimated_lines: 150
+          
+      - test_gpt_controller_thread_mgmt.py:
+          purpose: "Test thread management and cancellation"
+          methods: ["cancel", "_on_process_finished"]
+          estimated_lines: 100
+
+  phase_2_replace_mocks:
+    description: "Replace excessive mocking with lightweight test doubles"
+    test_doubles:
+      - FakeGPT4ProcessingThread:
+          purpose: "Simulate thread behavior without real API calls"
+          implementation: |
+            class FakeGPT4ProcessingThread:
+                def __init__(self, **kwargs):
+                    self.config = kwargs
+                    self.is_running = False
+                    self.completed = FakeSignal()
+                    self.error = FakeSignal()
+                    self.update_progress = FakeSignal()
+                    self.finished = FakeSignal()
+                    
+                def start(self):
+                    self.is_running = True
+                    # Simulate immediate completion for testing
+                    if self.config.get('should_fail'):
+                        self.error.emit("Test error")
+                    else:
+                        self.completed.emit("Processed text")
+                    self.finished.emit()
+                    
+                def stop(self):
+                    self.is_running = False
+                    
+      - FakeSignal:
+          purpose: "Simple signal implementation for testing"
+          implementation: |
+            class FakeSignal:
+                def __init__(self):
+                    self.callbacks = []
+                    self.emit_history = []
+                    
+                def connect(self, callback):
+                    self.callbacks.append(callback)
+                    
+                def emit(self, *args):
+                    self.emit_history.append(args)
+                    for callback in self.callbacks:
+                        callback(*args)
+                        
+      - FakeDBManager:
+          purpose: "In-memory database for testing"
+          implementation: |
+            class FakeDBManager:
+                def __init__(self):
+                    self.recordings = {}
+                    
+                def update_recording(self, recording_id, **kwargs):
+                    if recording_id not in self.recordings:
+                        self.recordings[recording_id] = {}
+                    self.recordings[recording_id].update(kwargs)
+                    return True
+                    
+                def get_recording(self, recording_id):
+                    return self.recordings.get(recording_id)
+                    
+      - TestRecording:
+          purpose: "Simple recording data object for testing"
+          implementation: |
+            class TestRecording:
+                def __init__(self, id=1, raw_transcript="test transcript", 
+                           processed_transcript=None):
+                    self.id = id
+                    self.raw_transcript = raw_transcript
+                    self.processed_transcript = processed_transcript
+
+  phase_3_behavior_testing:
+    description: "Focus on testing observable behavior rather than implementation"
+    principles:
+      - test_outcomes_not_calls: "Verify what happened, not how it happened"
+      - integration_over_isolation: "Test components working together when appropriate"
+      - real_data_flow: "Follow actual data through the system"
+      
+    test_patterns:
+      scenario_based:
+        description: "Write tests as user scenarios"
+        example: |
+          def test_processing_updates_recording_in_database(self):
+              # Given: A recording that needs processing
+              recording = TestRecording(id=1, raw_transcript="Hello world")
+              db = FakeDBManager()
+              controller = GPTController(db)
+              
+              # When: Processing completes successfully
+              controller.process(recording, "Format this", config={}, 
+                               busy_guard_callback=lambda **k: FakeBusyGuard())
+              
+              # Then: Recording is updated in database with processed text
+              updated = db.get_recording(1)
+              self.assertIsNotNone(updated.get('processed_transcript'))
+              self.assertIn("Formatted", updated['processed_transcript'])
+              
+      state_verification:
+        description: "Verify state changes rather than method calls"
+        example: |
+          def test_cancel_stops_running_thread(self):
+              # Given: A running processing thread
+              controller = GPTController(FakeDBManager())
+              thread = controller.start_processing(...)
+              self.assertTrue(thread.is_running)
+              
+              # When: Cancel is called
+              controller.cancel("process")
+              
+              # Then: Thread is stopped
+              self.assertFalse(thread.is_running)
+              
+      error_scenario:
+        description: "Test error handling through actual error conditions"
+        example: |
+          def test_handles_api_failure_gracefully(self):
+              # Given: API will fail
+              controller = GPTController(FakeDBManager())
+              controller._Thread = lambda **k: FailingThread()
+              
+              # When: Processing is attempted
+              result = controller.process(recording, prompt, config, guard)
+              
+              # Then: Error is handled and logged
+              self.assertFalse(result)
+              self.assertEqual(controller.last_error, "API connection failed")
+
+  phase_4_test_utilities:
+    description: "Create shared test utilities and fixtures"
+    utilities:
+      - test_fixtures.py:
+          purpose: "Common test data and builders"
+          contents:
+            - RecordingBuilder: "Create test recordings with various states"
+            - ConfigBuilder: "Create test configurations"
+            - PromptBuilder: "Create test prompts"
+            
+      - test_helpers.py:
+          purpose: "Helper functions for common test operations"
+          contents:
+            - wait_for_signal: "Wait for Qt signal emission"
+            - assert_thread_stopped: "Verify thread cleanup"
+            - create_test_controller: "Factory for test controllers"
+
+implementation_steps:
+  week_1:
+    - task: "Create new test file structure"
+      actions:
+        - "Create 5 new test files as specified"
+        - "Create test_fixtures.py and test_helpers.py"
+        - "Move existing tests to appropriate new files"
         
-    - action: "Split into focused test files"
-      new_structure:
-        - "test_gpt_controller_validation.py - Input validation tests"
-        - "test_gpt_controller_processing.py - Core processing logic"
-        - "test_gpt_controller_error_handling.py - Error scenarios"
-        - "test_gpt_controller_integration.py - Component integration"
+    - task: "Implement test doubles"
+      actions:
+        - "Create FakeGPT4ProcessingThread"
+        - "Create FakeSignal"
+        - "Create FakeDBManager"
+        - "Create TestRecording"
+        
+  week_2:
+    - task: "Refactor process() tests"
+      actions:
+        - "Remove all @patch decorators"
+        - "Use test doubles instead of mocks"
+        - "Focus on behavior verification"
+        - "Add integration tests with FakeDBManager"
+        
+    - task: "Refactor smart_format() tests"
+      actions:
+        - "Create formatting-specific test scenarios"
+        - "Test actual HTML output validation"
+        - "Remove mock verification"
+        
+  week_3:
+    - task: "Refactor refine() tests"
+      actions:
+        - "Test refinement workflow end-to-end"
+        - "Verify database updates"
+        - "Test error scenarios with real errors"
+        
+    - task: "Add missing test coverage"
+      actions:
+        - "Add concurrent processing tests"
+        - "Add signal emission tests"
+        - "Add thread cleanup tests"
+        
+    - task: "Documentation and cleanup"
+      actions:
+        - "Add docstrings to all test methods"
+        - "Remove unused imports"
+        - "Update test naming for clarity"
 
-  refactored_test_structure:
-    test_gpt_controller.py:
-      description: "Core unit tests for GPTController business logic"
-      max_lines: 300
-      test_classes:
-        - class: "TestGPTControllerInitialization"
-          focus: "Constructor and dependency injection"
-          tests:
-            - "test_init_with_db_manager"
-            - "test_init_stores_dependencies"
-            
-        - class: "TestGPTProcessing"
-          focus: "Core process method behavior"
-          tests:
-            - "test_process_validates_required_inputs"
-            - "test_process_creates_thread_with_config"
-            - "test_process_handles_api_key_retrieval"
-            - "test_process_manages_thread_lifecycle"
-            
-        - class: "TestSmartFormat"
-          focus: "Smart formatting behavior"
-          tests:
-            - "test_smart_format_uses_mini_model"
-            - "test_smart_format_validates_text_input"
-            - "test_smart_format_applies_html_formatting"
-            
-        - class: "TestRefinement"
-          focus: "Text refinement logic"
-          tests:
-            - "test_refine_builds_message_chain"
-            - "test_refine_preserves_original_transcript"
-            - "test_refine_validates_all_inputs"
-
-  testing_approach:
-    principle: "Test behavior not implementation"
+success_metrics:
+  code_quality:
+    - max_file_lines: 250
+    - max_test_method_lines: 25
+    - max_mocks_per_test: 2
+    - min_assertion_clarity: "All assertions have descriptive messages"
     
-    good_test_example:
-      name: "test_process_handles_api_errors"
-      approach: |
+  test_quality:
+    - behavior_focus: "80% of tests verify behavior not implementation"
+    - real_integration: "50% of tests use real components (test doubles)"
+    - error_coverage: "All error paths have explicit tests"
+    - documentation: "All tests have clear Given/When/Then structure"
+    
+  maintainability:
+    - refactor_resilience: "Tests survive internal refactoring"
+    - debugging_ease: "Failed tests clearly indicate the problem"
+    - isolation: "Tests can run independently"
+    - speed: "All tests complete in < 5 seconds"
+
+example_refactored_test:
+  before: |
+    @patch('app.controllers.gpt_controller.logger')
+    @patch('app.controllers.gpt_controller.get_api_key')
+    @patch('app.controllers.gpt_controller.GPT4ProcessingThread')
+    def test_process_successful(self, mock_thread, mock_api, mock_logger):
+        mock_api.return_value = 'key'
+        mock_thread_instance = Mock()
+        mock_thread.return_value = mock_thread_instance
+        
+        result = self.controller.process(...)
+        
+        mock_thread.assert_called_once_with(...)
+        mock_thread_instance.start.assert_called_once()
+        
+  after: |
+    def test_process_updates_recording_with_gpt_response(self):
+        """
+        Given: A recording with raw transcript needing processing
+        When: GPT processing completes successfully  
+        Then: Recording is updated with processed transcript
+        """
         # Arrange
-        controller = GPTController(mock_db)
-        controller.get_api_key = lambda _: "test-key"
-        mock_thread = Mock()
-        mock_thread.start = Mock(side_effect=Exception("API Error"))
-        controller._Thread = Mock(return_value=mock_thread)
+        recording = TestRecording(id=1, raw_transcript="Hello world")
+        db = FakeDBManager()
+        controller = GPTController(db)
+        controller._Thread = FakeGPT4ProcessingThread
         
         # Act
-        result = controller.process(recording, prompt, config, callback)
+        success = controller.process(
+            recording=recording,
+            prompt="Format this text",
+            config={'gpt_model': 'gpt-4o'},
+            busy_guard_callback=lambda **k: FakeBusyGuard()
+        )
         
         # Assert
-        assert result is False  # Process failed
-        assert "API Error" in controller.logger.error.call_args[0][0]
-        assert len(controller.threads) == 0  # Thread cleaned up
-        
-    bad_test_example:
-      name: "test_signal_connections"
-      problem: "Tests mock connections not actual behavior"
-      current: |
-        # This tests implementation details
-        mock_thread.completed.connect.assert_called_once()
-        mock_thread.error.connect.assert_called_once()
-        # Verifies HOW not WHAT
-        
-  new_test_scenarios:
-    error_handling:
-      - "API key rotation during processing"
-      - "Thread crash with cleanup verification"
-      - "Database write failures during completion"
-      - "Callback exceptions don't crash controller"
-      - "Network timeout handling"
-      
-    edge_cases:
-      - "Very large transcripts (>100k chars)"
-      - "Empty/whitespace-only inputs"
-      - "Unicode and special characters in text"
-      - "Concurrent operations on same recording"
-      - "Thread cancellation during database write"
-      
-    resource_management:
-      - "Thread cleanup on controller deletion"
-      - "Busy guard lifecycle management"
-      - "Memory usage with multiple threads"
-      - "Signal disconnection on thread completion"
+        self.assertTrue(success, "Processing should start successfully")
+        updated_recording = db.get_recording(1)
+        self.assertIsNotNone(
+            updated_recording.get('processed_transcript'),
+            "Database should contain processed transcript"
+        )
+        self.assertIn(
+            "Processed text",
+            updated_recording['processed_transcript'],
+            "Processed text should match GPT response"
+        )
 
-  mock_reduction_strategy:
-    current_mocks: 15
-    target_mocks: 4
-    
-    keep_mocking:
-      - "OpenAI API calls (external service)"
-      - "Database operations (I/O boundary)"
-      - "get_api_key (security boundary)"
-      - "Thread.start() (async boundary)"
-      
-    stop_mocking:
-      - "PyQt6 signals - use real signal mechanism"
-      - "QObject - use real inheritance"
-      - "Recording model - use real dataclass"
-      - "Config dictionaries - use real dicts"
-      - "Callbacks - use real functions"
-      - "Thread connections - test actual connections"
-      
-  test_helpers:
-    fixtures:
-      - name: "create_test_recording"
-        purpose: "Factory for valid Recording objects"
-        
-      - name: "create_gpt_controller"
-        purpose: "Factory with injectable dependencies"
-        
-      - name: "mock_openai_response"
-        purpose: "Simulate API responses consistently"
-        
-    assertions:
-      - name: "assert_thread_created"
-        checks:
-          - "Thread exists in controller.threads"
-          - "Thread has correct configuration"
-          - "Busy guard is active"
-          
-      - name: "assert_thread_cleaned_up"
-        checks:
-          - "Thread removed from controller.threads"
-          - "Busy guard released"
-          - "Signals disconnected"
-
-  quality_metrics:
-    target:
-      - "Test file < 300 lines"
-      - "No test method > 20 lines"
-      - "Mock usage < 30% of test code"
-      - "100% of public methods tested"
-      - "All error paths covered"
-      - "Test execution < 2 seconds"
-      
-    avoid:
-      - "Testing mock.assert_called_with()"
-      - "Verifying internal state directly"
-      - "Testing Python/Qt framework behavior"
-      - "Complex mock configuration"
-      - "Monolithic test classes"
-
-  implementation_order:
-    week_1:
-      - "Remove module-level mocking"
-      - "Split into focused test files"
-      - "Reduce each file to <300 lines"
-      
-    week_2:
-      - "Add missing error scenarios"
-      - "Add edge case tests"
-      - "Implement test helpers"
-      
-    week_3:
-      - "Add integration tests"
-      - "Performance benchmarks"
-      - "Documentation"
-
-  example_refactored_test:
-    description: "Example of properly focused behavior test"
-    # Completed: Added behavior tests for process, smart_format, refine, errors, and cancel.
-    code: |
-      class TestGPTProcessing(unittest.TestCase):
-          def setUp(self):
-              self.db_manager = Mock()
-              self.controller = GPTController(self.db_manager)
-              self.controller.get_api_key = Mock(return_value="test-key")
-              
-          def test_process_validates_recording_has_transcript(self):
-              """Process should fail gracefully when recording lacks transcript."""
-              # Arrange
-              empty_recording = Recording(id=1, raw_transcript="")
-              
-              # Act
-              result = self.controller.process(
-                  empty_recording, 
-                  "prompt", 
-                  {}, 
-                  Mock()
-              )
-              
-              # Assert
-              self.assertFalse(result)
-              self.assertEqual(len(self.controller.threads), 0)
-              
-          def test_process_handles_thread_creation_failure(self):
-              """Process should handle thread creation exceptions."""
-              # Arrange
-              recording = Recording(id=1, raw_transcript="test")
-              self.controller._Thread = Mock(side_effect=MemoryError())
-              
-              # Act & Assert
-              with self.assertLogs('transcribrr', level='ERROR'):
-                  result = self.controller.process(
-                      recording,
-                      "prompt",
-                      {},
-                      Mock()
-                  )
-                  
-              self.assertFalse(result)
-              self.assertEqual(len(self.controller.threads), 0)
-
-success_criteria:
-  - "Tests complete in < 2 seconds"
-  - "No false positives on CI"
-  - "Clear failure messages"
-  - "Easy to add new test cases"
-  - "Maintainable alongside production code"
+notes:
+  - "Consider using pytest instead of unittest for better fixtures and parametrization"
+  - "Add performance benchmarks to ensure tests remain fast"
+  - "Consider property-based testing for complex scenarios"
+  - "Document the test double interfaces for team understanding"
+  - "Create a test style guide for consistency across the codebase"

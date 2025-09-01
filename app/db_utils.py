@@ -257,13 +257,18 @@ def create_recording(conn: sqlite3.Connection, recording_data: Tuple) -> int:
             f"Created recording '{data_to_insert[0]}' with ID {new_id}")
         return new_id
     except sqlite3.IntegrityError as e:
-        # Handle potential UNIQUE constraint violation on file_path
-        logger.error(
-            f"Error creating recording (duplicate path '{data_to_insert[1]}'): {e}",
-            exc_info=True,
-        )
-        # Raise custom exception with the path that caused the error
-        raise DuplicatePathError(data_to_insert[1]) from e
+        # Handle potential UNIQUE constraint violation on file_path specifically
+        msg = str(e)
+        if "UNIQUE constraint failed" in msg and FIELD_FILE_PATH in msg:
+            logger.error(
+                f"Error creating recording (duplicate path '{data_to_insert[1]}'): {e}",
+                exc_info=True,
+            )
+            # Raise custom exception with the path that caused the error
+            raise DuplicatePathError(data_to_insert[1]) from e
+        # For other integrity errors, log and re-raise the original exception
+        logger.error("Integrity error creating recording: %s", e, exc_info=True)
+        raise
     except sqlite3.Error as e:
         logger.error(f"Error creating recording: {e}", exc_info=True)
         raise

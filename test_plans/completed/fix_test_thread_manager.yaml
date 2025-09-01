@@ -1,58 +1,306 @@
-# Cleaned up ThreadManager test plan
-# 
-# ANALYSIS SUMMARY:
-# After reviewing existing test files, most improvements suggested in the original plan 
-# have already been implemented across multiple test files:
-#
-# ALREADY IMPLEMENTED:
-# - test_thread_manager_v2.py and test_thread_manager_real.py both use real objects instead of mocks
-# - Both newer test files avoid mocking weakref and use minimal thread stubs  
-# - Signal connection and auto-unregistration behavior is tested in both files
-# - Thread cancellation with various timeout scenarios is covered
-# - Concurrent operation testing exists in test_thread_manager_real.py
-# - Error condition testing (threads without cancel method) is implemented
-# - Edge cases like duplicate registration and rapid operations are covered
-# - Thread launcher functionality is comprehensively tested in test_thread_launcher.py
-#
-# REMAINING GAPS:
-# The following test scenarios from the original plan are NOT yet implemented 
-# in any of the existing test files:
+# Test Improvement Plan for test_thread_manager.py
+# Current Score: 6/10
+# Target Score: 9/10
 
-target_file: "app/ThreadManager.py"
-test_files: 
-  - "app/tests/test_thread_manager.py"
-  - "app/tests/test_thread_manager_v2.py" 
-  - "app/tests/test_thread_manager_real.py"
-  - "app/tests/test_thread_launcher.py"
+test_file: "app/tests/test_thread_manager.py"
+current_issues:
+  - "620 lines of excessive mocking (weakref, QThread internals)"
+  - "Tests implementation details instead of behavior"
+  - "Monolithic test class with unclear boundaries"
+  - "Complex mock setups that obscure test intent"
+  - "Testing singleton pattern implementation rather than thread management behavior"
 
-# Missing test scenarios that should be added
-missing_test_coverage:
-  error_conditions:
-    - "Thread registration when thread.finished signal doesn't exist or is None"
-    - "Thread registration with None or completely invalid thread object" 
-    - "Unregister thread during active cancellation process"
-    - "Cancel thread that raises exception in isRunning() method"
-    - "Thread with broken wait() method that raises exceptions"
+improvement_goals:
+  - "Reduce file to under 400 lines through focused test classes"
+  - "Replace mocks with lightweight test doubles (FakeQThread)"
+  - "Test observable behavior and outcomes"
+  - "Clear separation of concerns across test classes"
+  - "Improve test readability and maintainability"
+
+# Phase 1: Create Test Infrastructure
+test_infrastructure:
+  fake_qthread_implementation:
+    description: "Create a lightweight fake QThread for testing"
+    location: "app/tests/test_utils.py or inline"
+    implementation: |
+      class FakeQThread:
+          """Lightweight test double for QThread."""
+          def __init__(self, name="TestThread"):
+              self.name = name
+              self._running = False
+              self._finished_callbacks = []
+              self._cancel_called = False
+              self._cancel_error = None
+              self.finished = self  # Acts as its own signal
+              
+          def connect(self, callback):
+              """Simulate signal connection."""
+              self._finished_callbacks.append(callback)
+              
+          def emit_finished(self):
+              """Trigger finished signal."""
+              for callback in self._finished_callbacks:
+                  callback()
+                  
+          def isRunning(self):
+              return self._running
+              
+          def start(self):
+              self._running = True
+              
+          def wait(self, timeout):
+              """Simulate wait with configurable behavior."""
+              if self._running:
+                  self._running = False
+                  return True
+              return False
+              
+          def cancel(self):
+              """Simulate cancellation."""
+              if self._cancel_error:
+                  raise self._cancel_error
+              self._cancel_called = True
+              self._running = False
+
+  test_fixtures:
+    description: "Common test fixtures and builders"
+    implementation: |
+      class ThreadManagerTestBase(unittest.TestCase):
+          """Base class with common test utilities."""
+          
+          def setUp(self):
+              # Reset singleton for test isolation
+              ThreadManager._instance = None
+              self.manager = ThreadManager.instance()
+              self.manager._active_threads.clear()
+              
+          def tearDown(self):
+              ThreadManager._instance = None
+              
+          def create_fake_thread(self, name="TestThread", running=False):
+              """Factory for creating test threads."""
+              thread = FakeQThread(name)
+              if running:
+                  thread.start()
+              return thread
+              
+          def register_threads(self, count=3, running=False):
+              """Helper to register multiple threads."""
+              threads = []
+              for i in range(count):
+                  thread = self.create_fake_thread(f"Thread{i}", running)
+                  self.manager.register_thread(thread)
+                  threads.append(thread)
+              return threads
+
+# Phase 2: Restructure into Focused Test Classes
+new_test_structure:
+  test_singleton_behavior:
+    file: "test_thread_manager_singleton.py"
+    lines: ~80
+    focus: "Singleton pattern behavior only"
+    test_cases:
+      - "test_singleton_returns_same_instance"
+      - "test_singleton_initialization"
+      - "test_singleton_thread_safety"  # New: concurrent access
+    implementation_notes:
+      - "No mocking required"
+      - "Test observable singleton behavior"
+      - "Include thread-safety verification"
+
+  test_thread_registration:
+    file: "test_thread_manager_registration.py"
+    lines: ~120
+    focus: "Thread registration and lifecycle"
+    test_cases:
+      - "test_register_single_thread"
+      - "test_register_multiple_threads"
+      - "test_duplicate_registration_ignored"
+      - "test_auto_unregister_on_finished"
+      - "test_manual_unregister"
+      - "test_unregister_non_existent_thread"
+    implementation_notes:
+      - "Use FakeQThread exclusively"
+      - "Test behavior through public interface"
+      - "Verify thread tracking state changes"
+
+  test_thread_management:
+    file: "test_thread_manager_operations.py"
+    lines: ~100
+    focus: "Thread management operations"
+    test_cases:
+      - "test_get_active_threads_returns_copy"
+      - "test_get_active_threads_empty"
+      - "test_get_active_threads_filters_finished"
+      - "test_concurrent_thread_operations"
+    implementation_notes:
+      - "Focus on thread collection management"
+      - "Test thread-safe operations"
+      - "Verify data integrity"
+
+  test_thread_cancellation:
+    file: "test_thread_manager_cancellation.py"
+    lines: ~100
+    focus: "Thread cancellation behavior"
+    test_cases:
+      - "test_cancel_running_threads"
+      - "test_cancel_with_no_threads"
+      - "test_cancel_threads_without_cancel_method"
+      - "test_cancel_with_exception"
+      - "test_cancel_with_timeout"
+      - "test_cancel_custom_timeout"
+    implementation_notes:
+      - "Use FakeQThread with configurable behavior"
+      - "Test error handling paths"
+      - "Verify timeout behavior"
+
+# Phase 3: Refactoring Steps
+refactoring_steps:
+  step_1:
+    action: "Create test infrastructure"
+    tasks:
+      - "Implement FakeQThread in test_utils.py"
+      - "Create ThreadManagerTestBase class"
+      - "Add thread factory methods"
+    estimated_time: "30 minutes"
+
+  step_2:
+    action: "Split monolithic test file"
+    tasks:
+      - "Create 4 new focused test files"
+      - "Move tests to appropriate files"
+      - "Remove redundant tests"
+    estimated_time: "45 minutes"
+
+  step_3:
+    action: "Replace mocks with fakes"
+    tasks:
+      - "Remove all weakref mocking"
+      - "Replace MagicMock threads with FakeQThread"
+      - "Remove logger patching where not essential"
+    estimated_time: "60 minutes"
+
+  step_4:
+    action: "Refactor to behavior testing"
+    tasks:
+      - "Remove assert_called_with verifications"
+      - "Add behavior-based assertions"
+      - "Test outcomes not method calls"
+    estimated_time: "45 minutes"
+
+  step_5:
+    action: "Add missing test scenarios"
+    tasks:
+      - "Add thread-safety tests"
+      - "Add integration scenarios"
+      - "Add edge case coverage"
+    estimated_time: "30 minutes"
+
+# Phase 4: Example Refactored Tests
+example_refactored_tests:
+  before_excessive_mocking: |
+    def test_register_thread_success(self):
+        # Complex mock setup
+        mock_thread = MagicMock()
+        mock_thread.__class__.__name__ = "TestThread"
+        mock_thread.finished = MagicMock()
+        
+        with patch('weakref.ref') as mock_weakref:
+            mock_weak_ref = MagicMock()
+            mock_weakref.return_value = mock_weak_ref
+            
+            self.thread_manager.register_thread(mock_thread)
+        
+        # Testing implementation details
+        mock_weakref.assert_called_once_with(mock_thread)
+        mock_thread.finished.connect.assert_called_once()
+
+  after_behavior_focused: |
+    def test_register_thread_tracks_active_thread(self):
+        """Thread registration adds thread to active tracking."""
+        # Simple fake thread
+        thread = self.create_fake_thread("Worker")
+        
+        # Register thread
+        self.manager.register_thread(thread)
+        
+        # Verify behavior
+        active = self.manager.get_active_threads()
+        self.assertIn(thread, active)
+        self.assertEqual(len(active), 1)
+        
+    def test_thread_auto_unregisters_on_finish(self):
+        """Finished threads are automatically removed from tracking."""
+        thread = self.create_fake_thread("Worker")
+        
+        # Register and verify tracked
+        self.manager.register_thread(thread)
+        self.assertEqual(len(self.manager.get_active_threads()), 1)
+        
+        # Simulate thread finishing
+        thread.emit_finished()
+        
+        # Verify automatically unregistered
+        self.assertEqual(len(self.manager.get_active_threads()), 0)
+
+# Phase 5: Quality Metrics
+success_metrics:
+  code_quality:
+    - "File size < 400 lines per test file"
+    - "No weakref mocking"
+    - "Maximum 2 mocks per test method"
+    - "All tests < 20 lines"
     
-  extreme_edge_cases:
-    - "Thread garbage collected during the cancellation process itself"
-    - "Singleton access from multiple threads simultaneously with race conditions"
-    - "Thread that completes between cancel() call and wait() call"
-    - "Memory leak verification - ensure weak references actually allow garbage collection"
-    - "Signal disconnection verification when thread is deleted/garbage collected"
+  test_quality:
+    - "100% behavior-based assertions"
+    - "Clear Given-When-Then structure"
+    - "Descriptive test names"
+    - "No implementation detail testing"
     
-  resource_management:
-    - "Test cleanup behavior when ThreadManager singleton itself is deleted"
-    - "Verify signal disconnection on thread deletion prevents memory leaks"
-    - "Test behavior with thread hierarchy (parent/child threads)"
+  coverage:
+    - "All public methods tested"
+    - "Error paths covered"
+    - "Edge cases included"
+    - "Thread-safety verified"
 
-# Implementation notes:
-# - The existing test_thread_manager.py could be simplified by removing excessive mocking
-# - Consider consolidating test_thread_manager_v2.py and test_thread_manager_real.py as they overlap significantly
-# - Focus new tests on the specific missing scenarios listed above
-# - All other scenarios from the original plan are already well covered
+# Phase 6: Implementation Timeline
+timeline:
+  week_1:
+    - "Create test infrastructure (Day 1)"
+    - "Split test file into 4 files (Day 2-3)"
+    - "Replace mocks with fakes (Day 4-5)"
+    
+  week_2:
+    - "Refactor to behavior testing (Day 1-2)"
+    - "Add missing scenarios (Day 3)"
+    - "Code review and cleanup (Day 4)"
+    - "Documentation update (Day 5)"
 
-# Expected work:
-# - Add ~10-15 new focused test methods covering the missing edge cases above
-# - Consider refactoring existing test_thread_manager.py to use less mocking (optional)
-# - Most of the original 400+ line rewrite is not needed since better tests already exist
+# Phase 7: Validation Checklist
+validation_checklist:
+  - "[ ] All tests pass without Qt installed"
+  - "[ ] No direct testing of private methods"
+  - "[ ] Each test has single clear purpose"
+  - "[ ] Test names describe behavior not implementation"
+  - "[ ] No complex mock configurations"
+  - "[ ] Tests are readable without checking implementation"
+  - "[ ] Error scenarios properly covered"
+  - "[ ] Thread-safety verified where applicable"
+  - "[ ] Test execution time < 1 second total"
+  - "[ ] Clear separation between test classes"
+
+# Additional Notes
+notes:
+  - "Consider using pytest instead of unittest for better fixtures"
+  - "Add property-based tests for thread registration/unregistration"
+  - "Consider adding performance benchmarks for large thread counts"
+  - "Document the test double pattern for team adoption"
+  - "Create integration tests with real QThread in separate file"
+
+estimated_improvement:
+  current_score: 6
+  target_score: 9
+  improvement_areas:
+    - "Reduction in complexity: +1.5 points"
+    - "Behavior-focused testing: +1 point"
+    - "Better test organization: +0.5 points"

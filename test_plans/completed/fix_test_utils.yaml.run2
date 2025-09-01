@@ -1,0 +1,549 @@
+target_file: "app/utils.py"
+test_file: "app/tests/test_utils.py"
+
+issues_to_fix:
+  - "Elaborate torch module stubbing at module level (lines 19-41)"
+  - "Tests implementation details like JSON formatting parameters (indent=4, sort_keys)"
+  - "Complex mock setup obscures test intent"
+  - "Module-level stubbing makes tests brittle and hard to understand"
+  - "Tests verify mock method calls rather than actual behavior"
+
+refactoring_strategy:
+  mocking_approach:
+    - "Mock at function boundaries, not module level"
+    - "Use @patch decorators for torch-related functions only when needed"
+    - "Remove module-level torch stub injection"
+    - "Mock specific torch functions in individual test methods"
+  
+  test_focus:
+    - "Test observable behavior and return values"
+    - "Avoid testing JSON formatting parameters"
+    - "Focus on data integrity, not implementation details"
+    - "Test error handling and edge cases"
+  
+  simplification:
+    - "Reduce mock complexity by mocking only what's necessary"
+    - "Use clear, descriptive mock setups"
+    - "Group related mocks using patch.multiple when appropriate"
+
+dependencies_to_mock:
+  - "subprocess.run"
+  - "shutil.which"
+  - "shutil.copy2"
+  - "os.path.exists"
+  - "os.makedirs"
+  - "os.remove"
+  - "os.access"
+  - "glob.glob"
+  - "time.time"
+  - "datetime.datetime.now"
+  - "json.load"
+  - "json.dump"
+  - "torch.cuda.is_available"
+  - "torch.backends.mps.is_available"
+  - "torch.cuda.device_count"
+  - "platform.system"
+  - "platform.version"
+  - "platform.python_version"
+
+test_cases:
+  # File Type Detection Tests
+  - function_to_test: "is_video_file"
+    description: "Tests video file extension detection"
+    scenario: "Verify correct identification of video files by extension"
+    mocks: []
+    expected_behavior:
+      - "Returns True for all supported video extensions (case-insensitive)"
+      - "Returns False for non-video extensions"
+      - "Handles mixed case extensions correctly"
+
+  - function_to_test: "is_audio_file"
+    description: "Tests audio file extension detection"
+    scenario: "Verify correct identification of audio files by extension"
+    mocks: []
+    expected_behavior:
+      - "Returns True for all supported audio extensions (case-insensitive)"
+      - "Returns False for non-audio extensions"
+      - "Handles mixed case extensions correctly"
+
+  # FFmpeg Tests
+  - function_to_test: "ensure_ffmpeg_available"
+    description: "Tests FFmpeg availability check - success path"
+    scenario: "When FFmpeg is installed and accessible"
+    mocks:
+      - target: "shutil.which"
+        return_value: "/usr/bin/ffmpeg"
+      - target: "os.path.exists"
+        return_value: "True"
+      - target: "os.access"
+        return_value: "True"
+      - target: "subprocess.run"
+        return_value: "Mock object with returncode=0, stdout=b'ffmpeg version 4.4'"
+    expected_behavior:
+      - "Returns tuple (True, message)"
+      - "Message contains 'ffmpeg' indicating success"
+      - "Verifies FFmpeg executable is found and runnable"
+
+  - function_to_test: "ensure_ffmpeg_available"
+    description: "Tests FFmpeg availability check - not found"
+    scenario: "When FFmpeg is not installed on the system"
+    mocks:
+      - target: "shutil.which"
+        return_value: "None"
+      - target: "os.path.exists"
+        return_value: "False"
+    expected_behavior:
+      - "Returns tuple (False, message)"
+      - "Message indicates FFmpeg not found"
+      - "Provides helpful error message for user"
+
+  - function_to_test: "check_ffmpeg"
+    description: "Tests simple FFmpeg check - success"
+    scenario: "When FFmpeg command executes successfully"
+    mocks:
+      - target: "subprocess.run"
+        return_value: "Mock object with returncode=0"
+    expected_behavior:
+      - "Returns True when FFmpeg runs successfully"
+      - "Captures FFmpeg output without errors"
+
+  - function_to_test: "check_ffmpeg"
+    description: "Tests simple FFmpeg check - not found"
+    scenario: "When FFmpeg executable is not found"
+    mocks:
+      - target: "subprocess.run"
+        side_effect: "FileNotFoundError"
+    expected_behavior:
+      - "Returns False when FFmpeg not found"
+      - "Handles FileNotFoundError gracefully"
+
+  - function_to_test: "check_ffmpeg"
+    description: "Tests simple FFmpeg check - unexpected error"
+    scenario: "When FFmpeg command fails with unexpected error"
+    mocks:
+      - target: "subprocess.run"
+        side_effect: "RuntimeError"
+    expected_behavior:
+      - "Returns False on unexpected errors"
+      - "Handles all exceptions safely"
+
+  # URL and Language Tests
+  - function_to_test: "validate_url"
+    description: "Tests YouTube URL validation"
+    scenario: "Verify correct validation of various YouTube URL formats"
+    mocks: []
+    expected_behavior:
+      - "Returns True for valid YouTube URLs (youtube.com, youtu.be)"
+      - "Returns True for mobile and embed URLs"
+      - "Returns True for YouTube Shorts URLs"
+      - "Returns False for non-YouTube URLs"
+
+  - function_to_test: "language_to_iso"
+    description: "Tests language name to ISO code conversion"
+    scenario: "Convert language names to ISO 639-1 codes"
+    mocks: []
+    expected_behavior:
+      - "Returns correct ISO code for known languages"
+      - "Handles case variations (English, ENGLISH, english)"
+      - "Strips whitespace from input"
+      - "Returns 'en' as default for unknown languages"
+
+  # Backup and Timestamp Tests
+  - function_to_test: "create_backup"
+    description: "Tests backup creation - success path"
+    scenario: "Successfully create a backup of an existing file"
+    mocks:
+      - target: "os.path.exists"
+        return_value: "True"
+      - target: "os.makedirs"
+        return_value: "None"
+      - target: "shutil.copy2"
+        return_value: "None"
+      - target: "get_timestamp"
+        return_value: "20240101_120000"
+    expected_behavior:
+      - "Returns backup file path with timestamp"
+      - "Backup filename includes original name and timestamp"
+      - "Creates backup directory if needed"
+      - "Copies file to backup location"
+
+  - function_to_test: "create_backup"
+    description: "Tests backup creation - file not found"
+    scenario: "Attempt to backup a non-existent file"
+    mocks:
+      - target: "os.path.exists"
+        return_value: "False"
+    expected_behavior:
+      - "Returns None when source file doesn't exist"
+      - "Doesn't attempt to copy non-existent file"
+
+  - function_to_test: "create_backup"
+    description: "Tests backup creation - copy failure"
+    scenario: "When file copy operation fails"
+    mocks:
+      - target: "os.path.exists"
+        return_value: "True"
+      - target: "shutil.copy2"
+        side_effect: "IOError"
+    expected_behavior:
+      - "Returns None when copy fails"
+      - "Handles IOError gracefully"
+      - "Logs error appropriately"
+
+  - function_to_test: "get_timestamp"
+    description: "Tests timestamp generation"
+    scenario: "Generate formatted timestamp string"
+    mocks:
+      - target: "datetime.datetime.now"
+        return_value: "Mock datetime with strftime returning '20240101_123045'"
+    expected_behavior:
+      - "Returns timestamp in YYYYMMDD_HHMMSS format"
+      - "Uses current datetime"
+
+  # System Requirements Tests
+  - function_to_test: "check_system_requirements"
+    description: "Tests system requirements check - CPU only"
+    scenario: "System with CPU-only setup (no CUDA/MPS)"
+    mocks:
+      - target: "platform.system"
+        return_value: "Linux"
+      - target: "platform.version"
+        return_value: "5.15.0"
+      - target: "platform.python_version"
+        return_value: "3.11.7"
+      - target: "check_ffmpeg"
+        return_value: "True"
+      - target: "torch.cuda.is_available"
+        return_value: "False"
+      - target: "torch.backends.mps.is_available"
+        return_value: "False"
+    expected_behavior:
+      - "Returns dict with system information"
+      - "Contains 'os', 'python_version', 'ffmpeg_installed' keys"
+      - "Issues list mentions CPU-only or lack of GPU acceleration"
+      - "ffmpeg_installed is True"
+
+  - function_to_test: "check_system_requirements"
+    description: "Tests system requirements check - with CUDA"
+    scenario: "System with CUDA GPU available"
+    mocks:
+      - target: "platform.system"
+        return_value: "Linux"
+      - target: "platform.version"
+        return_value: "5.15.0"
+      - target: "platform.python_version"
+        return_value: "3.11.7"
+      - target: "check_ffmpeg"
+        return_value: "True"
+      - target: "torch.cuda.is_available"
+        return_value: "True"
+      - target: "torch.cuda.device_count"
+        return_value: "1"
+      - target: "torch.cuda.get_device_name"
+        return_value: "NVIDIA GeForce RTX 3080"
+      - target: "torch.cuda.get_device_properties"
+        return_value: "Mock object with total_memory=10737418240"
+    expected_behavior:
+      - "Returns dict with GPU information"
+      - "Contains 'gpu_available' as True"
+      - "Includes GPU name and memory information"
+      - "Issues list is empty or minimal"
+
+  # Temp File Cleanup Tests
+  - function_to_test: "cleanup_temp_files"
+    description: "Tests temp file cleanup - deletes old files"
+    scenario: "Delete temporary files older than specified age"
+    mocks:
+      - target: "glob.glob"
+        return_value: "['/tmp/transcribrr_temp_1', '/tmp/transcribrr_temp_2']"
+      - target: "os.path.isfile"
+        return_value: "True"
+      - target: "os.path.getmtime"
+        return_value: "0"
+      - target: "time.time"
+        return_value: "172800"  # 2 days in seconds
+      - target: "os.remove"
+        return_value: "None"
+    expected_behavior:
+      - "Returns count of deleted files (2)"
+      - "Deletes files older than max_age_days"
+      - "Calls os.remove for each old file"
+
+  - function_to_test: "cleanup_temp_files"
+    description: "Tests temp file cleanup - keeps recent files"
+    scenario: "Don't delete files newer than specified age"
+    mocks:
+      - target: "glob.glob"
+        return_value: "['/tmp/transcribrr_temp_1']"
+      - target: "os.path.isfile"
+        return_value: "True"
+      - target: "os.path.getmtime"
+        return_value: "50"
+      - target: "time.time"
+        return_value: "100"
+    expected_behavior:
+      - "Returns 0 (no files deleted)"
+      - "Doesn't delete files within age limit"
+      - "os.remove not called"
+
+  - function_to_test: "cleanup_temp_files"
+    description: "Tests temp file cleanup - permission error"
+    scenario: "Handle permission errors when deleting files"
+    mocks:
+      - target: "glob.glob"
+        return_value: "['/tmp/transcribrr_temp_1']"
+      - target: "os.path.isfile"
+        return_value: "True"
+      - target: "os.path.getmtime"
+        return_value: "0"
+      - target: "time.time"
+        return_value: "172800"
+      - target: "os.remove"
+        side_effect: "PermissionError"
+    expected_behavior:
+      - "Returns 0 (deletion failed)"
+      - "Handles PermissionError gracefully"
+      - "Continues processing other files"
+      - "Logs error appropriately"
+
+  # ConfigManager Tests
+  - function_to_test: "ConfigManager.instance"
+    description: "Tests ConfigManager singleton pattern"
+    scenario: "Ensure only one instance exists"
+    mocks:
+      - target: "os.makedirs"
+        return_value: "None"
+      - target: "os.path.exists"
+        return_value: "False"
+    expected_behavior:
+      - "Returns same instance on multiple calls"
+      - "Creates config directory if needed"
+      - "Initializes with default configuration"
+
+  - function_to_test: "ConfigManager._load_config"
+    description: "Tests config loading - success"
+    scenario: "Load existing configuration file"
+    mocks:
+      - target: "os.path.exists"
+        return_value: "True"
+      - target: "json.load"
+        return_value: "{'key': 'value', 'setting': 123}"
+    expected_behavior:
+      - "Loads configuration from file"
+      - "Merges with defaults"
+      - "Config accessible via get() method"
+
+  - function_to_test: "ConfigManager._load_config"
+    description: "Tests config loading - missing file"
+    scenario: "Initialize with defaults when config file doesn't exist"
+    mocks:
+      - target: "os.path.exists"
+        return_value: "False"
+    expected_behavior:
+      - "Creates new config with defaults"
+      - "Saves default config to file"
+      - "Returns default configuration"
+
+  - function_to_test: "ConfigManager._load_config"
+    description: "Tests config loading - corrupt JSON"
+    scenario: "Handle corrupted configuration file"
+    mocks:
+      - target: "os.path.exists"
+        return_value: "True"
+      - target: "json.load"
+        side_effect: "json.JSONDecodeError"
+    expected_behavior:
+      - "Falls back to default configuration"
+      - "Logs error about corrupt config"
+      - "Continues operation with defaults"
+
+  - function_to_test: "ConfigManager.set"
+    description: "Tests setting configuration values"
+    scenario: "Set and update configuration values"
+    mocks:
+      - target: "_save_config"
+        return_value: "None"
+    expected_behavior:
+      - "Updates configuration value"
+      - "Saves to file when value changes"
+      - "Doesn't save when value unchanged"
+      - "Emits config_updated signal with changes"
+
+  - function_to_test: "ConfigManager.update"
+    description: "Tests bulk configuration updates"
+    scenario: "Update multiple configuration values at once"
+    mocks:
+      - target: "_save_config"
+        return_value: "None"
+    expected_behavior:
+      - "Updates multiple values atomically"
+      - "Saves configuration once"
+      - "Emits signal with all changes"
+
+  - function_to_test: "ConfigManager.get"
+    description: "Tests getting configuration values"
+    scenario: "Retrieve configuration values with defaults"
+    mocks: []
+    expected_behavior:
+      - "Returns value for existing keys"
+      - "Returns default for missing keys"
+      - "Doesn't modify configuration on get"
+
+  - function_to_test: "ConfigManager.get_all"
+    description: "Tests getting all configuration"
+    scenario: "Retrieve complete configuration copy"
+    mocks: []
+    expected_behavior:
+      - "Returns dictionary copy of configuration"
+      - "Returned dict is not the internal config object"
+      - "Modifications to returned dict don't affect config"
+
+  - function_to_test: "ConfigManager.create_backup"
+    description: "Tests configuration backup"
+    scenario: "Create backup of configuration file"
+    mocks:
+      - target: "create_backup"
+        return_value: "/path/to/backup.json"
+    expected_behavior:
+      - "Calls create_backup with config file path"
+      - "Returns backup file path"
+
+  # PromptManager Tests
+  - function_to_test: "PromptManager.instance"
+    description: "Tests PromptManager singleton pattern"
+    scenario: "Ensure only one instance exists"
+    mocks:
+      - target: "os.makedirs"
+        return_value: "None"
+      - target: "os.path.exists"
+        return_value: "False"
+    expected_behavior:
+      - "Returns same instance on multiple calls"
+      - "Creates prompts directory if needed"
+      - "Initializes with default prompts"
+
+  - function_to_test: "PromptManager._load_prompts"
+    description: "Tests prompt loading and normalization"
+    scenario: "Load and normalize various prompt formats"
+    mocks:
+      - target: "os.path.exists"
+        return_value: "True"
+      - target: "json.load"
+        return_value: "{'old_style': 'text only', 'new_style': {'text': 'hello', 'category': 'Custom'}}"
+    expected_behavior:
+      - "Loads prompts from file"
+      - "Normalizes old-style string prompts to dict format"
+      - "Preserves new-style dict prompts"
+      - "Merges with default prompts"
+      - "Sets 'General' category for prompts without category"
+
+  - function_to_test: "PromptManager._normalize_prompts"
+    description: "Tests prompt normalization logic"
+    scenario: "Normalize various prompt formats and handle invalid data"
+    mocks: []
+    expected_behavior:
+      - "Converts string prompts to dict with 'General' category"
+      - "Preserves dict prompts with existing category"
+      - "Skips invalid prompt entries (non-string, non-dict)"
+      - "Doesn't raise exceptions on invalid data"
+
+  - function_to_test: "PromptManager.add_prompt"
+    description: "Tests adding new prompts"
+    scenario: "Add valid and invalid prompts"
+    mocks:
+      - target: "_save_prompts"
+        return_value: "None"
+    expected_behavior:
+      - "Returns True for valid prompt with name and text"
+      - "Returns False for empty name or text"
+      - "Trims whitespace from inputs"
+      - "Saves prompts after successful add"
+      - "Emits prompts_changed signal"
+
+  - function_to_test: "PromptManager.update_prompt"
+    description: "Tests updating existing prompts"
+    scenario: "Update prompt text and category"
+    mocks:
+      - target: "_save_prompts"
+        return_value: "None"
+    expected_behavior:
+      - "Returns True when updating existing prompt"
+      - "Returns False for non-existent prompt"
+      - "Updates text and category"
+      - "Saves changes and emits signal"
+
+  - function_to_test: "PromptManager.delete_prompt"
+    description: "Tests deleting prompts"
+    scenario: "Delete existing and non-existent prompts"
+    mocks:
+      - target: "_save_prompts"
+        return_value: "None"
+    expected_behavior:
+      - "Returns True when deleting existing prompt"
+      - "Returns False for non-existent prompt"
+      - "Removes prompt from collection"
+      - "Saves changes and emits signal"
+
+  - function_to_test: "PromptManager.import_prompts_from_file"
+    description: "Tests importing prompts - success"
+    scenario: "Import prompts from JSON file with merge option"
+    mocks:
+      - target: "json.load"
+        return_value: "{'imported': {'text': 'new prompt', 'category': 'Import'}}"
+      - target: "_save_prompts"
+        return_value: "None"
+    expected_behavior:
+      - "Returns (True, success_message)"
+      - "Merges imported prompts with existing when merge=True"
+      - "Replaces all prompts when merge=False"
+      - "Normalizes imported prompts"
+      - "Saves and emits signal"
+
+  - function_to_test: "PromptManager.import_prompts_from_file"
+    description: "Tests importing prompts - invalid JSON"
+    scenario: "Handle corrupted import file"
+    mocks:
+      - target: "json.load"
+        side_effect: "json.JSONDecodeError"
+    expected_behavior:
+      - "Returns (False, error_message)"
+      - "Error message mentions invalid JSON"
+      - "Doesn't modify existing prompts"
+      - "Doesn't emit signal"
+
+  - function_to_test: "PromptManager.export_prompts_to_file"
+    description: "Tests exporting prompts - success"
+    scenario: "Export prompts to JSON file"
+    mocks:
+      - target: "os.makedirs"
+        return_value: "None"
+      - target: "json.dump"
+        return_value: "None"
+    expected_behavior:
+      - "Returns (True, success_message)"
+      - "Creates parent directory if needed"
+      - "Writes prompts to file in JSON format"
+      - "Success message confirms export"
+
+  - function_to_test: "PromptManager.export_prompts_to_file"
+    description: "Tests exporting prompts - write failure"
+    scenario: "Handle file write errors during export"
+    mocks:
+      - target: "open"
+        side_effect: "IOError"
+    expected_behavior:
+      - "Returns (False, error_message)"
+      - "Error message indicates export failure"
+      - "Handles IOError gracefully"
+
+test_structure_improvements:
+  - "Remove module-level torch stubbing (lines 19-41)"
+  - "Use @patch decorators at test method level for torch functions"
+  - "Simplify mock setups by using patch.multiple where appropriate"
+  - "Focus assertions on return values and behavior, not mock calls"
+  - "Remove tests that verify JSON formatting parameters"
+  - "Group related tests into clear test classes"
+  - "Use descriptive test method names that explain the scenario"
+  - "Add docstrings to complex test methods"
+  - "Create helper methods for common mock setups if needed"
+  - "Ensure proper tearDown for singleton instances"

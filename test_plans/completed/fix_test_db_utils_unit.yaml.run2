@@ -1,0 +1,269 @@
+target_file: "app/db_utils.py"
+test_file: "app/tests/test_db_utils_unit.py"
+dependencies_to_mock:
+  - "sqlite3.connect"
+  - "os.makedirs"
+  - "os.path.exists"
+  - "os.path.dirname"
+  - "json.dump"
+  - "app.constants.get_database_path"
+  - "app.constants.get_config_path"
+  - "logging.getLogger"
+
+test_cases:
+  # ===== TestDbUtilsCRUD Improvements =====
+  - function_to_test: "TestDbUtilsCRUD.test_create_recording_inserts_data_and_returns_id"
+    description: "Improve data type consistency - use numeric duration instead of string"
+    scenario: "Recording creation should use consistent numeric types for duration"
+    current_issue: "Uses string duration '10:00' instead of numeric seconds"
+    improvement:
+      - "Change duration from '10:00' to 600 (numeric seconds)"
+      - "Update test data to use consistent numeric format"
+      - "Add assertion for duration type consistency"
+    mocks:
+      - target: "None - uses in-memory SQLite"
+        return_value: "Real database behavior"
+    expected_behavior:
+      - "Duration stored as integer seconds (600)"
+      - "Retrieved duration is numeric type"
+      - "Recording ID is positive integer"
+
+  - function_to_test: "TestDbUtilsCRUD.test_create_recording_handles_sql_errors"
+    description: "Add test for SQL execution errors during record creation"
+    scenario: "When cursor.execute fails with sqlite3.OperationalError"
+    current_issue: "Missing test for SQL execution failures"
+    mocks:
+      - target: "cursor.execute"
+        side_effect: "raises sqlite3.OperationalError('database is locked')"
+    expected_behavior:
+      - "OperationalError is propagated up"
+      - "Error is logged with context information"
+      - "Connection remains in valid state for retry"
+
+  - function_to_test: "TestDbUtilsCRUD.test_update_recording_with_null_bytes"
+    description: "Test handling of null bytes in text fields"
+    scenario: "When transcript contains null bytes (\\x00)"
+    current_issue: "No test for special characters that SQLite may reject"
+    mocks:
+      - target: "None - uses in-memory SQLite"
+        return_value: "Real database behavior"
+    expected_behavior:
+      - "Null bytes are either filtered or cause appropriate error"
+      - "Database integrity is maintained"
+      - "Error is logged if rejection occurs"
+
+  # ===== TestDbUtilsQueries Improvements =====
+  - function_to_test: "TestDbUtilsQueries.test_get_all_recordings"
+    description: "Improve test data constants and add duration consistency"
+    scenario: "Test should use well-defined test data constants"
+    current_issue: "Uses inline string literals for test data"
+    improvement:
+      - "Define TEST_RECORDING_1 and TEST_RECORDING_2 constants at class level"
+      - "Use numeric durations (60, 120) instead of strings"
+      - "Add assertions for record ordering"
+    mocks:
+      - target: "None - uses in-memory SQLite"
+        return_value: "Real database behavior"
+    expected_behavior:
+      - "Records returned in descending date order"
+      - "All fields populated correctly"
+      - "Duration values are numeric"
+
+  - function_to_test: "TestDbUtilsQueries.test_get_recording_by_id_maps_fields"
+    description: "Use consistent numeric duration and improve test constants"
+    scenario: "Field mapping should handle numeric durations consistently"
+    current_issue: "Uses string duration '00:10' instead of numeric"
+    improvement:
+      - "Change duration to 600 (10 minutes in seconds)"
+      - "Extract test data to named constants"
+      - "Add type assertions for numeric fields"
+    mocks:
+      - target: "None - uses in-memory SQLite"
+        return_value: "Real database behavior"
+    expected_behavior:
+      - "Duration mapped as integer seconds"
+      - "All fields correctly typed"
+      - "Recording object has consistent numeric duration"
+
+  - function_to_test: "TestDbUtilsQueries.test_search_recordings_with_special_chars"
+    description: "Add test for SQL special characters in search"
+    scenario: "Search term contains SQL wildcards (%, _) or quotes"
+    current_issue: "No test for SQL metacharacter handling in search"
+    mocks:
+      - target: "None - uses in-memory SQLite"
+        return_value: "Real database behavior"
+    expected_behavior:
+      - "Special characters are properly escaped"
+      - "Search works correctly with %, _, and quotes"
+      - "No SQL injection vulnerability"
+
+  - function_to_test: "TestDbUtilsQueries.test_recording_exists_with_concurrent_access"
+    description: "Test recording_exists under simulated concurrent access"
+    scenario: "Multiple threads checking existence simultaneously"
+    current_issue: "No concurrency testing for read operations"
+    mocks:
+      - target: "None - uses in-memory SQLite with threading"
+        return_value: "Real database behavior"
+    expected_behavior:
+      - "Thread-safe read operations"
+      - "Consistent results across threads"
+      - "No database lock errors"
+
+  # ===== TestEnsureDatabaseExists Improvements =====
+  - function_to_test: "TestEnsureDatabaseExists.test_ensure_database_handles_permission_error"
+    description: "Add test for filesystem permission errors"
+    scenario: "When os.makedirs fails due to permissions"
+    current_issue: "No test for filesystem permission failures"
+    mocks:
+      - target: "os.makedirs"
+        side_effect: "raises PermissionError('Permission denied')"
+      - target: "get_database_path"
+        return_value: "/restricted/path/db.sqlite"
+    expected_behavior:
+      - "PermissionError is caught and re-raised as RuntimeError"
+      - "Error logged with appropriate context"
+      - "Cleanup attempted despite error"
+
+  - function_to_test: "TestEnsureDatabaseExists.test_ensure_database_handles_corrupted_db"
+    description: "Test behavior with corrupted database file"
+    scenario: "When existing database file is corrupted"
+    current_issue: "No test for corrupted database recovery"
+    mocks:
+      - target: "sqlite3.connect"
+        side_effect: "raises sqlite3.DatabaseError('database disk image is malformed')"
+      - target: "get_database_path"
+        return_value: "/tmp/corrupted.db"
+    expected_behavior:
+      - "DatabaseError is caught and logged"
+      - "Appropriate error message for user"
+      - "System attempts recovery or safe mode"
+
+  # ===== Additional Error Handling Tests =====
+  - function_to_test: "db_utils.create_recording"
+    description: "Test with extremely long file paths"
+    scenario: "File path exceeds SQLite's column size limit"
+    current_issue: "No boundary testing for field lengths"
+    mocks:
+      - target: "None - uses in-memory SQLite"
+        return_value: "Real database behavior"
+    expected_behavior:
+      - "Long paths either stored correctly or raise appropriate error"
+      - "Error message indicates field length issue"
+      - "Database constraint enforced"
+
+  - function_to_test: "db_utils.get_recording_by_id"
+    description: "Test with negative and zero IDs"
+    scenario: "When recording_id is 0, -1, or other invalid values"
+    current_issue: "No validation of ID parameter"
+    mocks:
+      - target: "None - uses in-memory SQLite"
+        return_value: "Real database behavior"
+    expected_behavior:
+      - "Returns None for invalid IDs"
+      - "No SQL errors raised"
+      - "Handles edge cases gracefully"
+
+  - function_to_test: "db_utils.delete_recording"
+    description: "Test cascade behavior with foreign key constraints"
+    scenario: "When recording has associated folder relationships"
+    current_issue: "No test for cascade delete behavior"
+    mocks:
+      - target: "None - uses in-memory SQLite"
+        return_value: "Real database behavior with FK enabled"
+    expected_behavior:
+      - "Associated recording_folders entries deleted"
+      - "Foreign key constraints enforced"
+      - "Transaction completes successfully"
+
+  - function_to_test: "db_utils.update_recording"
+    description: "Test SQL injection prevention in update"
+    scenario: "When field names contain SQL injection attempts"
+    current_issue: "No test for SQL injection in dynamic field updates"
+    mocks:
+      - target: "None - uses in-memory SQLite"
+        return_value: "Real database behavior"
+    expected_behavior:
+      - "Malicious field names filtered out"
+      - "Warning logged for invalid fields"
+      - "Valid fields still updated correctly"
+
+# ===== Test Data Constants to Add =====
+test_data_constants:
+  - name: "VALID_DURATION_SECONDS"
+    value: 600
+    description: "Standard test duration in seconds (10 minutes)"
+  
+  - name: "TEST_RECORDING_DATA"
+    value: |
+      {
+        'filename': 'test_recording.wav',
+        'file_path': '/test/path/recording.wav',
+        'date_created': '2024-01-15T10:30:00',
+        'duration': 600,  # seconds
+        'raw_transcript': 'Test transcript content',
+        'processed_text': 'Processed test content'
+      }
+    description: "Standard test recording data with numeric duration"
+  
+  - name: "MALFORMED_DATES"
+    value: "['pending', 'None', '', 'invalid-date', '2024-13-45']"
+    description: "Invalid date formats for error testing"
+  
+  - name: "SQL_INJECTION_PATTERNS"
+    value: |
+      [
+        "'; DROP TABLE recordings; --",
+        "1' OR '1'='1",
+        "admin'--",
+        "' UNION SELECT * FROM recordings--"
+      ]
+    description: "SQL injection test patterns"
+
+# ===== Test Improvements Summary =====
+improvements_summary:
+  consistency_fixes:
+    - "Replace all string durations ('00:10') with numeric seconds (600)"
+    - "Use consistent test data constants instead of inline literals"
+    - "Standardize assertion messages across all tests"
+  
+  error_coverage_additions:
+    - "Add SQL error handling tests for all CRUD operations"
+    - "Add filesystem permission error tests"
+    - "Add database corruption handling tests"
+    - "Add SQL injection prevention tests"
+  
+  structural_improvements:
+    - "Extract common test data to class-level constants"
+    - "Add docstrings explaining test scenarios"
+    - "Group related tests with clear section comments"
+    - "Add type assertions for numeric fields"
+  
+  minor_enhancements:
+    - "Add boundary tests for field lengths"
+    - "Add concurrent access simulation tests"
+    - "Add cascade delete verification"
+    - "Improve test method naming for clarity"
+
+implementation_priority:
+  high:
+    - "Fix duration data type consistency (string to numeric)"
+    - "Add SQL error handling tests"
+    - "Define test data constants"
+  
+  medium:
+    - "Add permission and corruption error tests"
+    - "Add SQL injection tests"
+    - "Improve assertion messages"
+  
+  low:
+    - "Add concurrent access tests"
+    - "Add field length boundary tests"
+    - "Refactor test organization"
+
+expected_outcome:
+  - "All durations use consistent numeric format (seconds as integers)"
+  - "Comprehensive SQL error coverage for database operations"
+  - "Well-defined test data constants reduce magic values"
+  - "Clear test structure with descriptive names and documentation"
+  - "Complete error path coverage including edge cases"
+  - "Improved maintainability through consistent patterns"
