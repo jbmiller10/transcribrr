@@ -1,5 +1,5 @@
 target_file: "app/ThreadManager.py"
-test_file: "app/tests/test_thread_manager_v2.py"
+test_file: "app/tests/test_thread_manager.py"
 
 dependencies_to_mock:
   - "logging.getLogger"

@@ -47,9 +47,8 @@ class TestFolderManagerBehavior(unittest.TestCase):
         self.prev_cache = getattr(_const, "_USER_DATA_DIR_CACHE", None)
         _const._USER_DATA_DIR_CACHE = None
 
-        # Reset FolderManager singleton
-        FolderManager._instance = None
-        FolderManager._db_manager_attached = False
+        # Reset FolderManager singleton via public test helper
+        FolderManager.reset_for_tests()
 
         # Real DB manager and folder manager
         self.dbm = DatabaseManager(parent=None)
@@ -59,8 +58,7 @@ class TestFolderManagerBehavior(unittest.TestCase):
         try:
             self.dbm.shutdown()
         finally:
-            FolderManager._instance = None
-            FolderManager._db_manager_attached = False
+            FolderManager.reset_for_tests()
             if self.prev_env is None:
                 os.environ.pop("TRANSCRIBRR_USER_DATA_DIR", None)
             else:
@@ -72,22 +70,40 @@ class TestFolderManagerBehavior(unittest.TestCase):
         c = sqlite3.connect(get_database_path())
         c.execute("PRAGMA foreign_keys = ON")
         return c
+    
+    def _create_folder_sync(self, name: str, parent_id: int | None = None) -> tuple[bool, int | None]:
+        """Helper to create a folder synchronously and return (success, folder_id)."""
+        w = _Wait()
+        success = self.fm.create_folder(name, parent_id=parent_id, callback=w.cb)
+        if not success:
+            return False, None
+        self.assertTrue(w.wait(), f"create folder '{name}' callback not called")
+        return w.args[0], w.args[1] if len(w.args) > 1 else None
+    
+    def _create_recording_sync(self, filename: str) -> int:
+        """Helper to create a recording synchronously and return recording_id."""
+        w = _Wait()
+        rec_tuple = (filename, f"{self.tmp}/{filename}", "2024-01-01 00:00:00", "1s")
+        self.dbm.create_recording(rec_tuple, w.cb)
+        self.assertTrue(w.wait(), f"create recording '{filename}' callback not called")
+        return w.args[0]
+    
+    def _add_recording_to_folder_sync(self, recording_id: int, folder_id: int) -> bool:
+        """Helper to add a recording to a folder synchronously."""
+        w = _Wait()
+        self.fm.add_recording_to_folder(recording_id, folder_id, callback=lambda ok, _m: w.cb(ok))
+        self.assertTrue(w.wait(), "add recording to folder callback not called")
+        return w.args[0]
 
     def test_should_create_hierarchical_folder_structure_with_parent_child_relationship(self):
-        w1 = _Wait()
-        self.assertTrue(
-            self.fm.create_folder("Root", parent_id=None, callback=w1.cb)
-        )
-        self.assertTrue(w1.wait(), "root create callback not called")
-        self.assertEqual(w1.args[0], True)
-        root_id = w1.args[1]
-
-        w2 = _Wait()
-        self.assertTrue(
-            self.fm.create_folder("Child", parent_id=root_id, callback=w2.cb)
-        )
-        self.assertTrue(w2.wait(), "child create callback not called")
-        child_id = w2.args[1]
+        # Use helper methods to reduce setup duplication
+        success, root_id = self._create_folder_sync("Root", parent_id=None)
+        self.assertTrue(success)
+        self.assertIsNotNone(root_id)
+        
+        success, child_id = self._create_folder_sync("Child", parent_id=root_id)
+        self.assertTrue(success)
+        self.assertIsNotNone(child_id)
 
         # Check DB content
         with self._conn() as c:
@@ -102,10 +118,9 @@ class TestFolderManagerBehavior(unittest.TestCase):
         self.assertIn(child, parent["children"])  # type: ignore[index]
 
     def test_should_persist_folder_rename_to_database_and_update_memory_cache(self):
-        w = _Wait()
-        self.fm.create_folder("Old", callback=w.cb)
-        self.assertTrue(w.wait())
-        fid = w.args[1]
+        success, fid = self._create_folder_sync("Old")
+        self.assertTrue(success)
+        self.assertIsNotNone(fid)
 
         done = _Wait()
         def on_rename_complete(success: bool, msg: str) -> None:  # noqa: ANN001
@@ -121,22 +136,17 @@ class TestFolderManagerBehavior(unittest.TestCase):
         self.assertEqual(name, "New")
 
     def test_should_associate_recording_with_folder_and_retrieve_via_query(self):
-        # Create a folder and a recording
-        w = _Wait()
-        self.fm.create_folder("R", callback=w.cb)
-        self.assertTrue(w.wait())
-        fid = w.args[1]
-
-        wr = _Wait()
-        self.dbm.create_recording(("a.wav", f"{self.tmp}/a.wav", "2024-01-01 00:00:00", "1s"), wr.cb)
-        self.assertTrue(wr.wait())
-        rid = wr.args[0]
-
+        # Use helper methods to reduce setup duplication
+        success, fid = self._create_folder_sync("R")
+        self.assertTrue(success)
+        self.assertIsNotNone(fid)
+        
+        rid = self._create_recording_sync("a.wav")
+        self.assertIsNotNone(rid)
+        
         # Add association
-        wa = _Wait()
-        self.fm.add_recording_to_folder(rid, fid, callback=lambda ok, _m: wa.cb(ok))
-        self.assertTrue(wa.wait())
-        self.assertTrue(wa.args[0])
+        success = self._add_recording_to_folder_sync(rid, fid)
+        self.assertTrue(success)
 
         # Query via FolderManager API
         wq = _Wait()
@@ -148,10 +158,9 @@ class TestFolderManagerBehavior(unittest.TestCase):
         self.assertIn("a.wav", filenames)
 
     def test_should_delete_folder_from_database_and_memory_when_requested(self):
-        w = _Wait()
-        self.fm.create_folder("DelMe", callback=w.cb)
-        self.assertTrue(w.wait())
-        fid = w.args[1]
+        success, fid = self._create_folder_sync("DelMe")
+        self.assertTrue(success)
+        self.assertIsNotNone(fid)
 
         wd = _Wait()
         self.fm.delete_folder(fid, callback=lambda ok, _msg: wd.cb(ok))
@@ -163,26 +172,27 @@ class TestFolderManagerBehavior(unittest.TestCase):
         self.assertEqual(cnt, 0)
 
     def test_should_reject_duplicate_folder_name_at_same_hierarchy_level(self):
-        w1 = _Wait()
-        self.assertTrue(self.fm.create_folder("Dup", callback=w1.cb))
-        self.assertTrue(w1.wait())
+        # First folder creation should succeed
+        success, fid = self._create_folder_sync("Dup")
+        self.assertTrue(success)
+        self.assertIsNotNone(fid)
+        
+        # Attempt duplicate name at same level - should fail immediately
         dup = _Wait()
-        # Attempt duplicate name at same level
         ok = self.fm.create_folder("Dup", callback=lambda ok, _msg: dup.cb(ok))
         self.assertFalse(ok)  # immediate False
         self.assertTrue(dup.wait())
         self.assertFalse(dup.args[0])
 
     def test_should_reject_rename_when_target_name_exists_at_same_level(self):
-        # Create two siblings
-        a = _Wait()
-        b = _Wait()
-        self.fm.create_folder("A", callback=a.cb)
-        self.fm.create_folder("B", callback=b.cb)
-        self.assertTrue(a.wait(), "create A callback not called")
-        self.assertTrue(b.wait(), "create B callback not called")
-        aid = a.args[1]
-        bid = b.args[1]
+        # Create two siblings using helper methods
+        success_a, aid = self._create_folder_sync("A")
+        self.assertTrue(success_a)
+        self.assertIsNotNone(aid)
+        
+        success_b, bid = self._create_folder_sync("B")
+        self.assertTrue(success_b)
+        self.assertIsNotNone(bid)
         done = _Wait()
         ok = self.fm.rename_folder(bid, "A", callback=lambda ok, _m: done.cb(ok))
         self.assertFalse(ok)
@@ -190,16 +200,14 @@ class TestFolderManagerBehavior(unittest.TestCase):
         self.assertFalse(done.args[0])
 
     def test_should_cascade_delete_child_folders_when_parent_deleted(self):
-        # Create parent and child, then delete parent
-        p = _Wait()
-        self.fm.create_folder("P", callback=p.cb)
-        self.assertTrue(p.wait(), "parent create callback not called")
-        pid = p.args[1]
-
-        c = _Wait()
-        self.fm.create_folder("C", parent_id=pid, callback=c.cb)
-        self.assertTrue(c.wait(), "child create callback not called")
-        cid = c.args[1]
+        # Create parent and child using helper methods
+        success_p, pid = self._create_folder_sync("P")
+        self.assertTrue(success_p)
+        self.assertIsNotNone(pid)
+        
+        success_c, cid = self._create_folder_sync("C", parent_id=pid)
+        self.assertTrue(success_c)
+        self.assertIsNotNone(cid)
 
         d = _Wait()
         self.fm.delete_folder(pid, callback=lambda ok, _m: d.cb(ok))
@@ -218,20 +226,16 @@ class TestFolderManagerBehavior(unittest.TestCase):
         self.assertIsNone(self.fm.get_folder_by_id(cid))
 
     def test_should_disassociate_recording_from_folder_on_removal(self):
-        # Seed folder + recording and association, then remove
-        f = _Wait()
-        self.fm.create_folder("F", callback=f.cb)
-        self.assertTrue(f.wait(), "folder create callback not called")
-        fid = f.args[1]
-        r = _Wait()
-        from_rec = ("g.wav", f"{self.tmp}/g.wav", "2024-01-01 00:00:00", "1s")
-        self.dbm.create_recording(from_rec, r.cb)
-        self.assertTrue(r.wait(), "recording create callback not called")
-        rid = r.args[0]
-        a = _Wait()
-        self.fm.add_recording_to_folder(rid, fid, callback=lambda ok, _m: a.cb(ok))
-        self.assertTrue(a.wait(), "add association callback not called")
-        self.assertTrue(a.args[0])
+        # Use helper methods to set up folder, recording and association
+        success, fid = self._create_folder_sync("F")
+        self.assertTrue(success)
+        self.assertIsNotNone(fid)
+        
+        rid = self._create_recording_sync("g.wav")
+        self.assertIsNotNone(rid)
+        
+        success = self._add_recording_to_folder_sync(rid, fid)
+        self.assertTrue(success)
 
         rm = _Wait()
         self.fm.remove_recording_from_folder(rid, fid, callback=lambda ok, _m: rm.cb(ok))
@@ -247,25 +251,33 @@ class TestFolderManagerBehavior(unittest.TestCase):
         self.assertNotIn(rid, ids)
 
     def test_should_return_all_folders_containing_specific_recording(self):
-        # Seed folder + recording + association
-        f = _Wait(); self.fm.create_folder("F", callback=f.cb); self.assertTrue(f.wait()); fid = f.args[1]
-        r = _Wait(); self.dbm.create_recording(("h.wav", f"{self.tmp}/h.wav", "2024-01-01 00:00:00", "1s"), r.cb); self.assertTrue(r.wait()); rid = r.args[0]
-        okw = _Wait(); self.fm.add_recording_to_folder(rid, fid, callback=lambda ok, _m: okw.cb(ok)); self.assertTrue(okw.wait()); self.assertTrue(okw.args[0])
+        # Use helper methods for cleaner setup
+        success, fid = self._create_folder_sync("F")
+        self.assertTrue(success)
+        self.assertIsNotNone(fid)
+        
+        rid = self._create_recording_sync("h.wav")
+        self.assertIsNotNone(rid)
+        
+        success = self._add_recording_to_folder_sync(rid, fid)
+        self.assertTrue(success)
 
-        wq = _Wait(); self.fm.get_folders_for_recording(rid, callback=lambda ok, res: wq.cb(ok, res)); self.assertTrue(wq.wait()); self.assertTrue(wq.args[0])
+        wq = _Wait()
+        self.fm.get_folders_for_recording(rid, callback=lambda ok, res: wq.cb(ok, res))
+        self.assertTrue(wq.wait())
+        self.assertTrue(wq.args[0])
         fids = [row[0] for row in wq.args[1]]
         self.assertIn(fid, fids)
 
     def test_should_preserve_folder_structure_through_export_import_cycle(self):
-        # Create a small structure
-        p = _Wait()
-        self.fm.create_folder("P", callback=p.cb)
-        self.assertTrue(p.wait(), "parent create callback not called")
-        pid = p.args[1]
-        c = _Wait()
-        self.fm.create_folder("C", parent_id=pid, callback=c.cb)
-        self.assertTrue(c.wait(), "child create callback not called")
-        cid = c.args[1]
+        # Create a small structure using helper methods
+        success_p, pid = self._create_folder_sync("P")
+        self.assertTrue(success_p)
+        self.assertIsNotNone(pid)
+        
+        success_c, cid = self._create_folder_sync("C", parent_id=pid)
+        self.assertTrue(success_c)
+        self.assertIsNotNone(cid)
         s = self.fm.export_folder_structure()
 
         # Clear via import empty first
@@ -298,38 +310,50 @@ class TestFolderManagerSingletonAndEdgeCases(unittest.TestCase):
         # Reset singleton
         FolderManager._instance = None
         FolderManager._db_manager_attached = False
+        # Track created DatabaseManagers for cleanup
+        self.db_managers = []
 
     def tearDown(self) -> None:
         try:
-            if FolderManager._instance and getattr(FolderManager._instance, 'db_manager', None):
-                FolderManager._instance.db_manager.shutdown()
+            inst = getattr(FolderManager, '_instance', None)
+            if inst and getattr(inst, 'db_manager', None):
+                inst.db_manager.shutdown()
         finally:
-            FolderManager._instance = None
-            FolderManager._db_manager_attached = False
+            # Shutdown all tracked DatabaseManagers
+            for dbm in self.db_managers:
+                try:
+                    dbm.shutdown()
+                except Exception:
+                    pass
+            FolderManager.reset_for_tests()
             if self.prev_env is None:
                 os.environ.pop("TRANSCRIBRR_USER_DATA_DIR", None)
             else:
                 os.environ["TRANSCRIBRR_USER_DATA_DIR"] = self.prev_env
             _const._USER_DATA_DIR_CACHE = self.prev_cache
             shutil.rmtree(self.tmp, ignore_errors=True)
+    
+    def _create_db_manager(self) -> DatabaseManager:
+        """Helper to create and track a DatabaseManager for proper cleanup."""
+        dbm = DatabaseManager(parent=None)
+        self.db_managers.append(dbm)
+        return dbm
 
     def test_instance_without_db_manager_raises(self):
         with self.assertRaises(RuntimeError):
             FolderManager.instance()
 
     def test_instance_returns_same_and_warns_on_different_manager(self):
-        a = DatabaseManager(parent=None)
+        a = self._create_db_manager()
         fm1 = FolderManager.instance(db_manager=a)
         with self.assertLogs('transcribrr', level='WARNING') as cm:
-            b = DatabaseManager(parent=None)
+            b = self._create_db_manager()
             fm2 = FolderManager.instance(db_manager=b)
-            b.shutdown()
         self.assertIs(fm1, fm2)
         self.assertTrue(any('Different DatabaseManager instance provided' in msg for msg in cm.output))
-        a.shutdown()
 
     def test_get_recordings_not_in_folders_without_callback_warns(self):
-        a = DatabaseManager(parent=None)
+        a = self._create_db_manager()
         fm = FolderManager.instance(db_manager=a)
         # Force synchronous execution of the callback to capture logs deterministically
         orig = fm.db_manager.execute_query
@@ -341,30 +365,27 @@ class TestFolderManagerSingletonAndEdgeCases(unittest.TestCase):
             fm.get_recordings_not_in_folders(None)  # type: ignore[arg-type]
         fm.db_manager.execute_query = orig
         self.assertTrue(any('without a callback' in msg for msg in cm.output))
-        a.shutdown()
 
     def test_rename_nonexistent_folder_returns_false(self):
-        a = DatabaseManager(parent=None)
+        a = self._create_db_manager()
         fm = FolderManager.instance(db_manager=a)
         done = _Wait()
         ok = fm.rename_folder(9999, 'X', callback=lambda ok, _m: done.cb(ok))
         self.assertFalse(ok)
         self.assertTrue(done.wait())
         self.assertFalse(done.args[0])
-        a.shutdown()
 
     def test_delete_nonexistent_folder_returns_false(self):
-        a = DatabaseManager(parent=None)
+        a = self._create_db_manager()
         fm = FolderManager.instance(db_manager=a)
         done = _Wait()
         ok = fm.delete_folder(9999, callback=lambda ok, _m: done.cb(ok))
         self.assertFalse(ok)
         self.assertTrue(done.wait())
         self.assertFalse(done.args[0])
-        a.shutdown()
 
     def test_create_folder_error_when_no_id(self):
-        a = DatabaseManager(parent=None)
+        a = self._create_db_manager()
         fm = FolderManager.instance(db_manager=a)
         # Monkeypatch execute_query to immediately call callback with None
         orig = fm.db_manager.execute_query
@@ -377,4 +398,3 @@ class TestFolderManagerSingletonAndEdgeCases(unittest.TestCase):
         self.assertTrue(done.wait())
         self.assertFalse(done.args[0])
         fm.db_manager.execute_query = orig  # restore
-        a.shutdown()

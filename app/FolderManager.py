@@ -90,6 +90,11 @@ class FolderManager:
             cls._instance = None
             cls._db_manager_attached = False
 
+    @classmethod
+    def reset_for_tests(cls) -> None:  # pragma: no cover - test helper
+        """Public test-only reset to avoid touching private attributes in tests."""
+        cls._reset_for_testing()
+
     def attach_db_manager(self, db_manager: DatabaseManager):
         """
         Attach a DatabaseManager instance to the FolderManager.

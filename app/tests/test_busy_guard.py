@@ -33,8 +33,9 @@ class TestBusyGuardUIStateManagement(unittest.TestCase):
     def test_handles_empty_ui_element_list(self):
         feedback = StatefulFeedback(valid_spinners={TEST_SPINNER_NAME})
         with BusyGuard(feedback, TEST_OPERATION_NAME, ui_elements=[], spinner=TEST_SPINNER_NAME):
-            self.assertTrue(feedback.ui_busy is False or isinstance(feedback.ui_busy, bool))
-        # No UI state changes should leave ui_busy False
+            # Even without explicit elements, operation start sets busy state
+            self.assertTrue(feedback.ui_busy)
+        # After exit, busy state is restored
         self.assertFalse(feedback.ui_busy)
 
     def test_ui_state_restored_after_exception(self):

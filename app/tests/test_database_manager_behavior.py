@@ -13,13 +13,18 @@ import sqlite3
 import tempfile
 import threading
 import unittest
+from unittest import mock
 
 from app.DatabaseManager import DatabaseManager
 from app.constants import get_database_path
 import app.constants as _const
 
 
-DEFAULT_TIMEOUT = 0.5
+try:
+    # Allow override via environment, default to a tighter 0.3s to keep failures fast
+    DEFAULT_TIMEOUT = float(os.getenv("TEST_TIMEOUT", "0.3"))
+except Exception:
+    DEFAULT_TIMEOUT = 0.3
 
 
 class _Wait:
@@ -40,15 +45,31 @@ class _Wait:
         return self.evt.wait(DEFAULT_TIMEOUT if timeout is None else timeout)
 
 
-class TestDatabaseManagerBehavior(unittest.TestCase):
-    def setUp(self) -> None:
-        # Fresh user data dir -> fresh DB per test
-        self.tmp = tempfile.mkdtemp(prefix="transcribrr_mgr_")
+class _DatabaseTestBase(unittest.TestCase):
+    """Base class for database tests with common setup/teardown."""
+    
+    def _setup_test_environment(self, prefix: str = "transcribrr_mgr_") -> None:
+        """Set up isolated test environment with temp directory and env vars."""
+        self.tmp = tempfile.mkdtemp(prefix=prefix)
         self.prev = os.environ.get("TRANSCRIBRR_USER_DATA_DIR")
         os.environ["TRANSCRIBRR_USER_DATA_DIR"] = self.tmp
         # Reset cached user data dir to honor env override
         self.prev_cache = getattr(_const, "_USER_DATA_DIR_CACHE", None)
         _const._USER_DATA_DIR_CACHE = None
+    
+    def _teardown_test_environment(self) -> None:
+        """Clean up test environment."""
+        if self.prev is None:
+            os.environ.pop("TRANSCRIBRR_USER_DATA_DIR", None)
+        else:
+            os.environ["TRANSCRIBRR_USER_DATA_DIR"] = self.prev
+        _const._USER_DATA_DIR_CACHE = self.prev_cache
+        shutil.rmtree(self.tmp, ignore_errors=True)
+
+
+class TestDatabaseManagerBehavior(_DatabaseTestBase):
+    def setUp(self) -> None:
+        self._setup_test_environment()
         self.mgr = DatabaseManager(parent=None)
 
     def tearDown(self) -> None:
@@ -56,12 +77,7 @@ class TestDatabaseManagerBehavior(unittest.TestCase):
             # Stop worker thread
             self.mgr.shutdown()
         finally:
-            if self.prev is None:
-                os.environ.pop("TRANSCRIBRR_USER_DATA_DIR", None)
-            else:
-                os.environ["TRANSCRIBRR_USER_DATA_DIR"] = self.prev
-            _const._USER_DATA_DIR_CACHE = self.prev_cache
-            shutil.rmtree(self.tmp, ignore_errors=True)
+            self._teardown_test_environment()
 
     def _conn(self) -> sqlite3.Connection:
         c = sqlite3.connect(get_database_path())
@@ -153,7 +169,7 @@ class TestDatabaseManagerBehavior(unittest.TestCase):
 
         # Capture error signal
         err_evt = _Wait()
-        self.mgr.worker.error_occurred.connect(lambda *_: err_evt.cb(True))
+        self.mgr.worker.error_occurred.connect(lambda etype, msg: err_evt.cb(etype, msg))
 
         self.mgr.create_recording(data, w1.cb)
         self.assertTrue(w1.wait(), "initial create did not callback")
@@ -162,6 +178,8 @@ class TestDatabaseManagerBehavior(unittest.TestCase):
         # Second with same path triggers error signal; callback may not be invoked on error
         self.mgr.create_recording(data, w2.cb)
         self.assertTrue(err_evt.wait(), "expected error signal on duplicate path")
+        etype, _msg = err_evt.payload if isinstance(err_evt.payload, tuple) else (err_evt.payload, None)
+        self.assertIn(etype, {"Duplicate path", "Duplicate path error"})
 
         # Verify only one row exists
         with self._conn() as c:
@@ -173,16 +191,21 @@ class TestDatabaseManagerBehavior(unittest.TestCase):
         bad = ("x.wav", f"{self.tmp}/x.wav")  # missing fields
         # Hook error signal to ensure it's emitted
         err_evt = _Wait()
-        self.mgr.worker.error_occurred.connect(lambda *_: err_evt.cb(True))
+        self.mgr.worker.error_occurred.connect(lambda etype, msg: err_evt.cb(etype, msg))
         self.mgr.create_recording(bad, None)
         self.assertTrue(err_evt.wait(), "no error signal for invalid data")
+        etype, _msg = err_evt.payload if isinstance(err_evt.payload, tuple) else (err_evt.payload, None)
+        # db_utils raises ValueError, worker wraps as RuntimeError -> 'Runtime error'
+        self.assertEqual(etype, "Runtime error")
 
     def test_create_recording_with_none_in_required_field_emits_error(self):
         data = (None, f"{self.tmp}/z.wav", "2024-01-01 00:00:00", "1s")
         err_evt = _Wait()
-        self.mgr.worker.error_occurred.connect(lambda *_: err_evt.cb(True))
+        self.mgr.worker.error_occurred.connect(lambda etype, msg: err_evt.cb(etype, msg))
         self.mgr.create_recording(data, None)
         self.assertTrue(err_evt.wait(), "expected error on NOT NULL violation")
+        etype, _msg = err_evt.payload if isinstance(err_evt.payload, tuple) else (err_evt.payload, None)
+        self.assertEqual(etype, "Runtime error")
 
     def test_update_nonexistent_recording_handles_gracefully(self):
         """Updating a non-existent id should not crash and completes callback."""
@@ -259,24 +282,15 @@ class TestDatabaseManagerBehavior(unittest.TestCase):
         self.assertTrue(wupd.wait())
 
 
-class TestDatabaseManagerInitFailure(unittest.TestCase):
+class TestDatabaseManagerInitFailure(_DatabaseTestBase):
     def setUp(self) -> None:
-        self.tmp = tempfile.mkdtemp(prefix="transcribrr_mgr_fail_")
-        self.prev = os.environ.get("TRANSCRIBRR_USER_DATA_DIR")
-        os.environ["TRANSCRIBRR_USER_DATA_DIR"] = self.tmp
-        self.prev_cache = getattr(_const, "_USER_DATA_DIR_CACHE", None)
-        _const._USER_DATA_DIR_CACHE = None
+        self._setup_test_environment(prefix="transcribrr_mgr_fail_")
 
     def tearDown(self) -> None:
-        if self.prev is None:
-            os.environ.pop("TRANSCRIBRR_USER_DATA_DIR", None)
-        else:
-            os.environ["TRANSCRIBRR_USER_DATA_DIR"] = self.prev
-        _const._USER_DATA_DIR_CACHE = self.prev_cache
-        shutil.rmtree(self.tmp, ignore_errors=True)
+        self._teardown_test_environment()
 
     def test_init_connection_failure_raises_runtimeerror(self):
         # Simulate sqlite connection failure deep in db_utils.get_connection
-        with unittest.mock.patch("app.db_utils.sqlite3.connect", side_effect=sqlite3.OperationalError("database is locked")):
+        with mock.patch("app.db_utils.sqlite3.connect", side_effect=sqlite3.OperationalError("database is locked")):
             with self.assertRaises(RuntimeError):
                 DatabaseManager(parent=None)

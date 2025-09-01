@@ -45,17 +45,27 @@ class TestDatabaseWorkerWithRealSQLite(unittest.TestCase):
         # Real in-memory database
         self.conn = create_test_database()
 
-        # Create worker and swap in our connection
-        self.worker = DatabaseWorker(parent=None)
-        self.worker.conn = self.conn
-
-        # Replace signals with lightweight captures
+        # Prepare signal adapters (capture objects) and inject at construction
         self.op_complete = _Capture()
         self.data_changed = _Capture()
-        self.worker.operation_complete = self.op_complete
-        self.worker.dataChanged = self.data_changed
         self.err_capture = _Capture()
-        self.worker.error_occurred = self.err_capture
+        try:
+            import types as _types
+            _signals = _types.SimpleNamespace(
+                operation_complete=self.op_complete,
+                dataChanged=self.data_changed,
+                error_occurred=self.err_capture,
+            )
+            self.worker = DatabaseWorker(parent=None, signals=_signals)
+        except TypeError:
+            # Backward-compat if constructor doesn't yet accept signals
+            self.worker = DatabaseWorker(parent=None)
+            self.worker.operation_complete = self.op_complete
+            self.worker.dataChanged = self.data_changed
+            self.worker.error_occurred = self.err_capture
+
+        # Swap in our connection
+        self.worker.conn = self.conn
 
     def tearDown(self) -> None:
         # Ensure connection closed if still open
@@ -69,6 +79,24 @@ class TestDatabaseWorkerWithRealSQLite(unittest.TestCase):
         # Push sentinel to ensure the loop terminates after the operation
         self.worker.operations_queue.put(None)
         self.worker.run()
+    
+    def _create_test_recording(self, filename: str = "test.wav", path: str = "/tmp/test.wav", 
+                               date: str = "2024-01-01 00:00:00", duration: str = "1s") -> int:
+        """Helper to create a test recording with default values."""
+        return db_create_recording(self.conn, (filename, path, date, duration))
+    
+    def _setup_completion_capture(self, callback):
+        """Helper to setup operation completion callback."""
+        self.worker.operation_complete.emit = callback  # type: ignore[attr-defined]
+    
+    def _assert_signal_emitted(self, signal_capture: _Capture, min_calls: int = 1, 
+                              message: str = "Signal should have been emitted"):
+        """Helper to assert a signal was emitted at least min_calls times."""
+        self.assertGreaterEqual(len(signal_capture.calls), min_calls, message)
+    
+    def _assert_no_signal(self, signal_capture: _Capture, message: str = "Signal should not have been emitted"):
+        """Helper to assert a signal was not emitted."""
+        self.assertEqual(len(signal_capture.calls), 0, message)
 
     def test_create_recording_persists_data(self):
         """Recording is inserted and can be queried with expected fields."""
@@ -100,10 +128,8 @@ class TestDatabaseWorkerWithRealSQLite(unittest.TestCase):
 
     def test_update_recording_modifies_data(self):
         """Updates via worker persist to the database."""
-        # Seed a record directly
-        rec_id = db_create_recording(
-            self.conn, ("b.wav", "/tmp/b.wav", "2024-01-01 00:00:00", "10s")
-        )
+        # Seed a record directly using helper
+        rec_id = self._create_test_recording("b.wav", "/tmp/b.wav", "2024-01-01 00:00:00", "10s")
 
         # Enqueue update: change raw_transcript
         self.worker.add_operation(
@@ -121,18 +147,16 @@ class TestDatabaseWorkerWithRealSQLite(unittest.TestCase):
             row = cur.fetchone()
             self.assertEqual(row[0], "hello")
 
-        self.worker.operation_complete.emit = on_complete  # type: ignore[attr-defined]
+        self._setup_completion_capture(on_complete)
 
         self._run_single()
 
         self.assertTrue(called["ok"])
-        self.assertGreaterEqual(len(self.data_changed.calls), 1)
+        self._assert_signal_emitted(self.data_changed, message="dataChanged should emit after update")
 
     def test_delete_recording_removes_data(self):
         """Deleting a record removes it from the table."""
-        rec_id = db_create_recording(
-            self.conn, ("c.wav", "/tmp/c.wav", "2024-01-01 00:00:00", "1s")
-        )
+        rec_id = self._create_test_recording("c.wav", "/tmp/c.wav")
 
         self.worker.add_operation("delete_recording", "op_del", [rec_id])
 
@@ -142,17 +166,15 @@ class TestDatabaseWorkerWithRealSQLite(unittest.TestCase):
             )
             self.assertEqual(cur.fetchone()[0], 0)
 
-        self.worker.operation_complete.emit = on_complete  # type: ignore[attr-defined]
+        self._setup_completion_capture(on_complete)
 
         self._run_single()
-        self.assertGreaterEqual(len(self.data_changed.calls), 1)
+        self._assert_signal_emitted(self.data_changed, message="dataChanged should emit after delete")
 
     def test_unique_constraint_violation_logged_and_no_datachange(self):
         """Duplicate file_path should not trigger dataChanged and returns None result."""
-        # Seed a record with a path
-        db_create_recording(
-            self.conn, ("d.wav", "/tmp/dup.wav", "2024-01-01 00:00:00", "1s")
-        )
+        # Seed a record with a path using helper
+        self._create_test_recording("d.wav", "/tmp/dup.wav")
 
         # Clear any previous dataChanged emissions
         self.data_changed.calls.clear()
@@ -163,8 +185,8 @@ class TestDatabaseWorkerWithRealSQLite(unittest.TestCase):
 
         # Do not expect a completion emission for duplicate errors
         self._run_single()
-        self.assertEqual(len(self.op_complete.calls), 0)
-        self.assertEqual(len(self.data_changed.calls), 0)
+        self._assert_no_signal(self.op_complete, "Duplicate should not trigger completion")
+        self._assert_no_signal(self.data_changed, "Duplicate should not trigger data change")
 
     def test_execute_query_insert_returns_lastrowid_and_datachange(self):
         """INSERT via execute_query returns lastrowid and triggers dataChanged."""
@@ -204,10 +226,8 @@ class TestDatabaseWorkerWithRealSQLite(unittest.TestCase):
 
     def test_execute_query_select_no_datachange(self):
         """SELECT via execute_query does not emit dataChanged and returns rows."""
-        # Seed
-        rid = db_create_recording(
-            self.conn, ("f.wav", "/tmp/f.wav", "2024-01-01 00:00:00", "1s")
-        )
+        # Seed using helper
+        rid = self._create_test_recording("f.wav", "/tmp/f.wav")
         self.data_changed.calls.clear()
 
         op_id = "exec_sel"
@@ -221,32 +241,63 @@ class TestDatabaseWorkerWithRealSQLite(unittest.TestCase):
             seen["oid"] = oid
             seen["rows"] = result
 
-        self.worker.operation_complete.emit = on_complete  # type: ignore[attr-defined]
+        self._setup_completion_capture(on_complete)
         self._run_single()
 
         self.assertEqual(seen.get("oid"), op_id)
         self.assertEqual(seen.get("rows"), [(rid, "f.wav")])
-        self.assertEqual(len(self.data_changed.calls), 0)
+        self._assert_no_signal(self.data_changed, "SELECT should not trigger dataChanged")
 
     def test_empty_queue_processing(self):
-        """Running with only sentinel should not emit signals or error."""
-        # Ensure no operations queued, just stop
+        """Running with only sentinel should terminate cleanly without processing operations."""
+        # Track that the worker processes the queue and terminates properly
+        initial_queue_size = self.worker.operations_queue.qsize()
+        
+        # Ensure no operations queued, just stop sentinel
         self.worker.operations_queue.put(None)
+        
+        # Run should process the sentinel and exit
         self.worker.run()
-        self.assertEqual(len(self.op_complete.calls), 0)
-        self.assertEqual(len(self.data_changed.calls), 0)
-        self.assertEqual(len(self.err_capture.calls), 0)
+        
+        # Verify queue was processed (sentinel consumed)
+        self.assertEqual(self.worker.operations_queue.qsize(), initial_queue_size, 
+                        "Queue should be back to initial size after processing sentinel")
+        
+        # No operations means no signals should be emitted
+        self._assert_no_signal(self.op_complete, "No operations should complete")
+        self._assert_no_signal(self.data_changed, "No data changes should occur")
+        self._assert_no_signal(self.err_capture, "No errors should occur")
 
     def test_malformed_operation_handling(self):
-        """Malformed operation (missing 'type') should emit error and continue."""
-        # Directly inject a malformed dict into queue
-        self.worker.operations_queue.put({})
-        self.worker.operations_queue.put(None)
-        self.worker.run()
-        # Expect an error emission with 'invalid_operation'
-        self.assertTrue(any(call and call[0] == 'invalid_operation' for call in self.err_capture.calls))
-        # No completion for malformed op
-        self.assertEqual(len(self.op_complete.calls), 0)
+        """Malformed operation (missing 'type') should emit error and continue processing."""
+        # Add a valid operation after the malformed one to verify continued processing
+        self.worker.operations_queue.put({})  # Malformed - missing 'type'
+        
+        # Add valid operation to verify worker continues after error
+        valid_payload = ("valid.wav", "/tmp/valid.wav", "2024-01-01 00:00:00", "1s")
+        self.worker.add_operation("create_recording", "valid_op", [valid_payload])
+        
+        # Track successful processing
+        processed_valid = {"completed": False}
+        
+        def on_complete(op_id, result):  # noqa: ANN001
+            if op_id == "valid_op":
+                processed_valid["completed"] = True
+                processed_valid["result"] = result
+        
+        self._setup_completion_capture(on_complete)
+        
+        self._run_single()
+        
+        # Verify error was emitted for malformed operation
+        self.assertTrue(any(call and call[0] == 'invalid_operation' for call in self.err_capture.calls),
+                       "Error should be emitted for malformed operation")
+        
+        # Verify worker continued and processed valid operation
+        self.assertTrue(processed_valid["completed"], 
+                       "Worker should continue processing after malformed operation")
+        self.assertIsInstance(processed_valid.get("result"), int,
+                            "Valid operation should complete successfully")
 
     def test_concurrent_create_same_path_sequential_queue(self):
         """Two creates with same path: first succeeds, second rejected."""
@@ -271,7 +322,7 @@ class TestDatabaseWorkerWithRealSQLite(unittest.TestCase):
 
     def test_extremely_large_data_reasonable(self):
         """Insert reasonably large text to ensure handling without slowdown."""
-        big = "x" * (1024 * 1024)  # 1MB
+        big = "x" * (256 * 1024)  # 256KB to keep unit tests fast
         payload = ("big.wav", "/tmp/big.wav", "2024-01-01 00:00:00", "1s", big, big)
         self.worker.add_operation("create_recording", "op_big", [payload])
         seen = {}
@@ -290,13 +341,16 @@ class TestDatabaseWorkerWithRealSQLite(unittest.TestCase):
 
     def test_execute_query_update_affected_rows(self):
         """UPDATE should change only matching rows."""
+        # Create test records using helper
         ids = [
-            db_create_recording(self.conn, (f"u{i}.wav", f"/tmp/u{i}.wav", "2024-01-01 00:00:00", "1s"))
+            self._create_test_recording(f"u{i}.wav", f"/tmp/u{i}.wav")
             for i in range(3)
         ]
+        
         sql = "UPDATE recordings SET duration=? WHERE id IN (?, ?)"
         params = ("2s", ids[0], ids[1])
         self.worker.add_operation("execute_query", "op_upd", [sql, params])
+        
         seen = {}
 
         def on_complete(oid, _):  # noqa: ANN001
@@ -306,12 +360,14 @@ class TestDatabaseWorkerWithRealSQLite(unittest.TestCase):
                 ).fetchall()
                 seen["rows"] = rows
 
-        self.worker.operation_complete.emit = on_complete  # type: ignore[attr-defined]
+        self._setup_completion_capture(on_complete)
         self._run_single()
+        
         rows = seen.get("rows")
-        self.assertEqual(rows[0][1], "2s")
-        self.assertEqual(rows[1][1], "2s")
-        self.assertEqual(rows[2][1], "1s")
+        # Verify only the first two records were updated
+        self.assertEqual(rows[0][1], "2s", "First record should be updated")
+        self.assertEqual(rows[1][1], "2s", "Second record should be updated")
+        self.assertEqual(rows[2][1], "1s", "Third record should remain unchanged")
 
 
 if __name__ == "__main__":

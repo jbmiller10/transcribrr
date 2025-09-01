@@ -1,4 +1,4 @@
-target_file: "app/tests/test_thread_manager_v2.py"
+target_file: "app/tests/test_thread_manager.py"
 quality_score: 
   current: 6.5
   target: 9.0

@@ -32,6 +32,13 @@ class TestResourcePathBehavior(unittest.TestCase):
             os.path.normpath(base),
         )
 
+    def test_real_fs_join_to_specific_icon_exists(self):
+        # Using development env, joining a known icon should point to a real file
+        base = resource_path(env_detector=lambda: "development")
+        icon_path = resource_path(os.path.join("icons", "test.svg"), env_detector=lambda: "development")
+        self.assertTrue(icon_path.startswith(base))
+        self.assertTrue(os.path.isfile(icon_path), f"Expected icon file at {icon_path}")
+
     def test_absolute_path_is_preserved(self):
         # If an absolute path is passed, os.path.join returns the absolute path
         abs_path = "/tmp/abs/file.txt" if os.name != "nt" else "C:/abs/file.txt"

@@ -177,7 +177,7 @@ class DatabaseWorker(QThread):
         pyqtSignal()
     )  # Basic signal with no parameters - parameters added by DatabaseManager
 
-    def __init__(self, parent=None):
+    def __init__(self, parent=None, signals=None):
         # Accept arbitrary parent types in tests; only real QObject is valid.
         try:
             valid_parent = parent if isinstance(parent, QObject) else None
@@ -194,6 +194,19 @@ class DatabaseWorker(QThread):
             self.conn.execute("PRAGMA foreign_keys = ON")
         except Exception:
             # Defer connection health handling to run() where reconnection logic exists
+            pass
+
+        # Optionally override signals for test adapters
+        try:
+            if signals is not None:
+                if hasattr(signals, "operation_complete"):
+                    self.operation_complete = signals.operation_complete  # type: ignore[assignment]
+                if hasattr(signals, "error_occurred"):
+                    self.error_occurred = signals.error_occurred  # type: ignore[assignment]
+                if hasattr(signals, "dataChanged"):
+                    self.dataChanged = signals.dataChanged  # type: ignore[assignment]
+        except Exception:
+            # Stay resilient in production; tests will surface setup issues
             pass
 
         # Make queue methods patch-friendly in tests while delegating to the

@@ -1,9 +1,9 @@
-# Test Improvement Plan for test_thread_manager_v2.py
+# Test Improvement Plan for test_thread_manager.py
 # Current Score: 7/10
 # Target Score: 9.5/10
 
 target_file: "app/ThreadManager.py"
-test_file: "app/tests/test_thread_manager_v2.py"
+test_file: "app/tests/test_thread_manager.py"
 
 current_issues:
   - "Non-deterministic concurrency test in test_unregister_during_cancel"
