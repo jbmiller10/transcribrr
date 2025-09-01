@@ -1,0 +1,313 @@
+test_file: test_folder_manager.py
+current_score: 5/10
+priority: HIGH
+
+identified_issues:
+  - issue: "Testing Implementation Details"
+    description: "Tests access private attributes (_instance, _db_manager_attached) instead of testing observable behavior"
+    severity: HIGH
+    examples:
+      - "Line 41-42: Direct manipulation of FolderManager._instance and _db_manager_attached"
+      - "Line 87-90: Testing private _db_manager_attached flag"
+      - "Line 113-114: Resetting private singleton state"
+  
+  - issue: "Excessive DatabaseManager Mocking"
+    description: "Uses Mock(spec=DatabaseManager) throughout, preventing real database behavior testing"
+    severity: HIGH
+    examples:
+      - "Line 28-29: Mock(spec=DatabaseManager) instead of real test database"
+      - "Line 231-245: Complex execute_query stub that simulates database responses"
+  
+  - issue: "State Pollution Between Tests"
+    description: "Manual singleton cleanup in tearDown indicates poor test isolation"
+    severity: MEDIUM
+    examples:
+      - "Line 41-42: Manual reset of singleton state"
+      - "Line 250-251: Repeated singleton cleanup"
+      - "Line 162-163: Reset singleton state in middle of test"
+  
+  - issue: "Complex Test Setup"
+    description: "Tests have hidden dependencies and complex mock setup that obscures test intent"
+    severity: MEDIUM
+    examples:
+      - "Line 232-245: Complex execute_query stub with self._next_result pattern"
+      - "Line 49-57: Custom log handler creation"
+
+refactoring_strategy:
+  phase_1_restructure:
+    - action: "Split into focused test files"
+      details:
+        - "test_folder_manager_singleton.py: Test singleton pattern behavior"
+        - "test_folder_manager_operations.py: Test folder operations"
+        - "test_folder_manager_integration.py: Test with real database"
+    
+    - action: "Remove private attribute testing"
+      details:
+        - "Replace _instance checks with id() comparisons"
+        - "Replace _db_manager_attached checks with behavior verification"
+        - "Use factory methods for clean instance creation"
+  
+  phase_2_improve_isolation:
+    - action: "Implement proper test isolation"
+      details:
+        - "Create FolderManagerTestCase base class with proper setup/teardown"
+        - "Use context managers for singleton lifecycle"
+        - "Implement reset_singleton() helper method"
+    
+    - action: "Replace mocks with test doubles"
+      details:
+        - "Create InMemoryDatabaseManager for testing"
+        - "Use SQLite :memory: database for integration tests"
+        - "Create FakeDatabaseManager with predictable behavior"
+  
+  phase_3_simplify_tests:
+    - action: "Simplify test setup"
+      details:
+        - "Remove _next_result pattern"
+        - "Use builder pattern for test data"
+        - "Create descriptive helper methods"
+    
+    - action: "Focus on behavior testing"
+      details:
+        - "Test public API only"
+        - "Verify outcomes not method calls"
+        - "Use Given-When-Then structure"
+
+new_test_structure:
+  test_folder_manager_singleton.py:
+    TestFolderManagerSingleton:
+      - test_returns_same_instance_on_multiple_calls
+      - test_requires_database_manager_on_first_call
+      - test_accepts_database_manager_only_once
+      - test_thread_safe_initialization
+      - test_prevents_direct_instantiation
+    
+    implementation: |
+      class TestFolderManagerSingleton(unittest.TestCase):
+          def setUp(self):
+              self.reset_singleton()
+              self.db = InMemoryDatabaseManager()
+          
+          def tearDown(self):
+              self.reset_singleton()
+          
+          def reset_singleton(self):
+              """Clean singleton state without accessing private attributes"""
+              # Use reflection or factory method instead
+              FolderManager._reset_for_testing()
+          
+          def test_returns_same_instance_on_multiple_calls(self):
+              # Given: FolderManager not yet initialized
+              # When: Multiple calls to instance()
+              first = FolderManager.instance(db_manager=self.db)
+              second = FolderManager.instance()
+              
+              # Then: Same object returned
+              self.assertEqual(id(first), id(second))
+  
+  test_folder_manager_operations.py:
+    TestFolderOperations:
+      - test_create_folder_adds_to_structure
+      - test_create_folder_rejects_duplicates
+      - test_rename_folder_updates_name
+      - test_delete_folder_removes_from_structure
+      - test_add_recording_creates_association
+      - test_get_recordings_returns_list
+    
+    implementation: |
+      class TestFolderOperations(unittest.TestCase):
+          def setUp(self):
+              self.db = FakeDatabaseManager()
+              self.fm = self.create_folder_manager(self.db)
+          
+          def create_folder_manager(self, db):
+              """Factory method for clean instance creation"""
+              FolderManager._reset_for_testing()
+              return FolderManager.instance(db_manager=db)
+          
+          def test_create_folder_adds_to_structure(self):
+              # Given: Empty folder structure
+              # When: Creating a new folder
+              result = self.fm.create_folder("Documents")
+              
+              # Then: Folder exists in structure
+              self.assertTrue(result)
+              folder = self.fm.get_folder_by_name("Documents")
+              self.assertIsNotNone(folder)
+              self.assertEqual(folder['name'], "Documents")
+  
+  test_folder_manager_integration.py:
+    TestFolderManagerIntegration:
+      - test_folder_persistence_across_instances
+      - test_folder_hierarchy_operations
+      - test_recording_folder_associations
+      - test_concurrent_operations
+      - test_export_import_cycle
+    
+    implementation: |
+      class TestFolderManagerIntegration(unittest.TestCase):
+          def setUp(self):
+              # Use real SQLite in-memory database
+              self.db = DatabaseManager(":memory:")
+              self.db.init_database()
+              self.fm = self.create_folder_manager(self.db)
+          
+          def test_folder_persistence_across_instances(self):
+              # Given: Folder created in one instance
+              self.fm.create_folder("Persistent")
+              
+              # When: Creating new instance with same database
+              new_fm = self.create_folder_manager(self.db)
+              new_fm.load_folders()
+              
+              # Then: Folder exists in new instance
+              folder = new_fm.get_folder_by_name("Persistent")
+              self.assertIsNotNone(folder)
+
+test_helpers:
+  InMemoryDatabaseManager:
+    description: "Lightweight in-memory SQLite database for testing"
+    implementation: |
+      class InMemoryDatabaseManager:
+          def __init__(self):
+              self.conn = sqlite3.connect(":memory:")
+              self.init_schema()
+          
+          def init_schema(self):
+              # Create necessary tables
+              self.conn.execute('''
+                  CREATE TABLE folders (
+                      id INTEGER PRIMARY KEY,
+                      name TEXT NOT NULL,
+                      parent_id INTEGER,
+                      created_at TEXT
+                  )
+              ''')
+          
+          def execute_query(self, query, params=None, callback=None):
+              cursor = self.conn.execute(query, params or [])
+              result = cursor.fetchall()
+              if callback:
+                  callback(result)
+              return result
+  
+  FakeDatabaseManager:
+    description: "Predictable fake implementation for unit testing"
+    implementation: |
+      class FakeDatabaseManager:
+          def __init__(self):
+              self.folders = []
+              self.recordings = {}
+              self.next_id = 1
+          
+          def execute_query(self, query, params=None, callback=None):
+              # Simple pattern matching for common queries
+              if "INSERT INTO folders" in query:
+                  folder_id = self.next_id
+                  self.next_id += 1
+                  if callback:
+                      callback(folder_id)
+                  return folder_id
+              elif "SELECT * FROM folders" in query:
+                  if callback:
+                      callback(self.folders)
+                  return self.folders
+  
+  TestDataBuilder:
+    description: "Builder pattern for test data creation"
+    implementation: |
+      class TestDataBuilder:
+          @staticmethod
+          def folder(**kwargs):
+              defaults = {
+                  'id': 1,
+                  'name': 'Test Folder',
+                  'parent_id': None,
+                  'created_at': '2024-01-01',
+                  'children': []
+              }
+              defaults.update(kwargs)
+              return defaults
+          
+          @staticmethod
+          def folder_hierarchy():
+              root = TestDataBuilder.folder(id=1, name='Root')
+              child = TestDataBuilder.folder(id=2, name='Child', parent_id=1)
+              root['children'].append(child)
+              return [root, child]
+
+implementation_steps:
+  week_1:
+    - task: "Create test helper module"
+      steps:
+        - "Create app/tests/helpers/test_doubles.py"
+        - "Implement InMemoryDatabaseManager"
+        - "Implement FakeDatabaseManager"
+        - "Implement TestDataBuilder"
+    
+    - task: "Refactor singleton tests"
+      steps:
+        - "Create test_folder_manager_singleton.py"
+        - "Move singleton-specific tests"
+        - "Remove private attribute access"
+        - "Use factory methods"
+  
+  week_2:
+    - task: "Refactor operation tests"
+      steps:
+        - "Create test_folder_manager_operations.py"
+        - "Replace mocks with FakeDatabaseManager"
+        - "Simplify test setup"
+        - "Focus on behavior verification"
+    
+    - task: "Add integration tests"
+      steps:
+        - "Create test_folder_manager_integration.py"
+        - "Use real SQLite :memory: database"
+        - "Test full workflows"
+        - "Add concurrency tests"
+  
+  week_3:
+    - task: "Clean up and optimize"
+      steps:
+        - "Delete old test_folder_manager.py"
+        - "Run coverage analysis"
+        - "Add missing test cases"
+        - "Document test strategy"
+
+expected_improvements:
+  - metric: "Test execution speed"
+    current: "~2s"
+    target: "<0.5s"
+    rationale: "Removing excessive mocking reduces setup overhead"
+  
+  - metric: "Test maintainability"
+    current: "510 lines, complex setup"
+    target: "~300 lines total across 3 files"
+    rationale: "Focused files with clear responsibilities"
+  
+  - metric: "Test reliability"
+    current: "Brittle due to implementation coupling"
+    target: "Stable behavior-based tests"
+    rationale: "Testing public API prevents breakage on refactoring"
+  
+  - metric: "Code coverage"
+    current: "Unknown due to mock usage"
+    target: ">90% real code coverage"
+    rationale: "Integration tests with real database ensure actual coverage"
+
+quality_gates:
+  - "No access to private attributes (_, __)"
+  - "Maximum 3 mocks per test method"
+  - "All tests use Given-When-Then structure"
+  - "Test methods under 20 lines"
+  - "Clear separation of unit/integration tests"
+  - "No state pollution between tests"
+  - "Descriptive test names that explain behavior"
+
+success_criteria:
+  - "Tests pass after FolderManager refactoring"
+  - "Tests catch real bugs (validated by mutation testing)"
+  - "New developers understand tests without reading implementation"
+  - "Tests run in <0.5 seconds"
+  - "Test quality score increases to 8+/10"

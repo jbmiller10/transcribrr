@@ -1,0 +1,13 @@
+target_file: "app/tests/test_thread_manager.py"
+quality_score: 
+  current: 6.5
+  target: 9.0
+
+refactoring_summary:
+  - Added log capture utility and logging assertions for duplicate registration and missing cancel method
+  - Preserved behavior-focused tests; avoided over-mocking
+  - Ensured cleaner setup via active thread cleanup using public APIs
+
+expected_outcomes:
+  - Tests verify observable behavior and logging
+  - No leaky state across tests

@@ -2,7 +2,10 @@
 
 import unittest
 
-from app.models.recording import Recording
+import math
+from unittest import mock
+
+from app.models.recording import Recording, _format_seconds
 
 
 class TestRecordingModel(unittest.TestCase):
@@ -108,7 +111,98 @@ class TestRecordingModel(unittest.TestCase):
         self.assertEqual(r.processed_text, "Processed")
         self.assertIsNotNone(r.processed_at)
 
+    # --- Additional boundary and edge case tests (per plan) ---
+    def test_validate_duration_allows_zero_and_infinity_and_nan(self):
+        Recording.validate_duration(0.0)  # no exception
+        Recording.validate_duration(float("inf"))  # no exception
+        # NaN comparisons are falsey; our validator only checks < 0
+        Recording.validate_duration(float("nan"))  # no exception
+
+    def test_validate_filename_whitespace_only_rejected(self):
+        with self.assertRaises(ValueError):
+            Recording.validate_filename(" \t\n ")
+
+    def test_validate_file_path_encoded_traversal_not_decoded(self):
+        # Literal '...'
+        Recording.validate_file_path("/safe/.../path")
+        # Encoded '.%2e' treated literally, allowed by validator
+        Recording.validate_file_path("/.%2e/dir/file")
+
+    def test_validate_file_path_long_and_reserved_names(self):
+        long_path = "/" + ("a" * 5000)
+        Recording.validate_file_path(long_path)
+        Recording.validate_file_path("CON")  # allowed by validator
+
+    def test_validate_date_format_invalid_month_and_timezone(self):
+        with self.assertRaises(ValueError):
+            Recording.validate_date_format("2024-13-01")
+        with self.assertRaises(ValueError):
+            Recording.validate_date_format("2024-01-15T10:30:00Z")
+
+    def test_format_seconds_boundaries_and_fractional(self):
+        self.assertEqual(_format_seconds(-1), "0:00")
+        self.assertEqual(_format_seconds(59.999), "0:59")
+        self.assertEqual(_format_seconds(60), "1:00")
+        self.assertEqual(_format_seconds(3600.5), "1:00:00")
+
+    def test_get_display_duration_infinity_raises(self):
+        r = Recording(1, "t.mp3", "/p", "2024-01-15", float("inf"))
+        with self.assertRaises(OverflowError):
+            r.get_display_duration()
+
+    def test_estimate_file_size_edge_cases(self):
+        r = Recording(1, "t.mp3", "/p", "2024-01-15", 60.0)
+        self.assertEqual(r.estimate_file_size(bitrate_kbps=0), 0)
+        self.assertEqual(r.estimate_file_size(bitrate_kbps=1), int(60 * (1000 / 8)))
+        self.assertEqual(r.estimate_file_size(bitrate_kbps=100000), int(60 * (100000 * 1000 / 8)))
+        rneg = Recording(2, "t.mp3", "/p", "2024-01-15", -10.0)
+        self.assertEqual(rneg.estimate_file_size(), 0)
+
+    def test_update_transcript_allows_empty_and_sets_timestamp(self):
+        r = Recording(1, "t.mp3", "/p", "2024-01-15", 1.0)
+        with mock.patch("app.models.recording.datetime") as mdt:
+            mdt.utcnow.return_value.isoformat.return_value = "2024-01-15T10:30:00"
+            r.update_transcript("")
+        self.assertEqual(r.raw_transcript, "")
+        self.assertEqual(r.transcribed_at, "2024-01-15T10:30:00")
+
+    def test_update_processed_text_without_raw_transcript(self):
+        r = Recording(1, "t.mp3", "/p", "2024-01-15", 1.0)
+        with mock.patch("app.models.recording.datetime") as mdt:
+            mdt.utcnow.return_value.isoformat.return_value = "2024-01-15T10:31:00"
+            r.update_processed_text("proc")
+        self.assertEqual(r.processed_text, "proc")
+        self.assertEqual(r.processed_at, "2024-01-15T10:31:00")
+
+    def test_status_with_whitespace_is_completed(self):
+        r = Recording(1, "t.mp3", "/p", "2024-01-15", 1.0, raw_transcript="   ", processed_text="\n\t")
+        self.assertEqual(r.get_status(), "completed")
+
+    def test_is_transcribed_empty_vs_none(self):
+        r1 = Recording(1, "t.mp3", "/p", "2024-01-15", 1.0, raw_transcript="")
+        r2 = Recording(2, "t.mp3", "/p", "2024-01-15", 1.0, raw_transcript=None)
+        self.assertFalse(r1.is_transcribed())
+        self.assertFalse(r2.is_transcribed())
+
+    def test_from_database_row_wrong_lengths(self):
+        short = (1, "f", "/p", "2024-01-01", 1.0, None, None, None, None)  # 9 elements
+        with self.assertRaises(IndexError):
+            Recording.from_database_row(short)
+        long = (1, "f", "/p", "2024-01-01", 1.0, None, None, None, None, None, "extra")
+        r = Recording.from_database_row(long)
+        self.assertEqual(r.id, 1)
+
+    def test_from_database_row_wrong_types(self):
+        row = ("1", 123, 456, 789, "sixty", [], {}, b"rf", b"pf", 0)
+        r = Recording.from_database_row(row)  # type: ignore[arg-type]
+        self.assertEqual(r.id, "1")
+        self.assertEqual(r.filename, 123)
+
+    def test_recording_unhashable(self):
+        r = Recording(1, "f", "/p", "2024-01-01", 1.0)
+        with self.assertRaises(TypeError):
+            {r: "value"}
+
 
 if __name__ == "__main__":
     unittest.main()
-

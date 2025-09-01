@@ -1,0 +1,27 @@
+target_file: "app/controllers/gpt_controller.py"
+test_file: "app/tests/test_gpt_controller_behavior.py"
+current_score: 6
+target_score: 9
+
+identified_issues:
+  - issue: "Testing Implementation Details"
+    description: "Tests directly access internal state (ctrl.threads) and private attributes (_started, _cancelled)"
+    severity: "high"
+    
+  - issue: "Conjoined Twins Pattern"
+    description: "Large tests testing multiple concerns in single test method"
+    severity: "medium"
+    
+  - issue: "Code Duplication/DRY Violation"
+    description: "Repeated patterns for thread simulation and signal capturing"
+    severity: "medium"
+    
+refactoring_summary:
+  - Introduced tracked thread stub to simulate completions without accessing ctrl.threads
+  - Switched assertions to behavior-based signal checks instead of internal flags
+  - Removed reliance on ctrl.threads in tests
+  - Preserved existing coverage while reducing implementation coupling
+
+expected_outcomes:
+  - Tests remain green and less brittle against refactors
+  - Improved readability and clearer intent

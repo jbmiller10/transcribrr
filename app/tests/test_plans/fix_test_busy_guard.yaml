@@ -1,0 +1,335 @@
+target_file: "app/ui_utils/busy_guard.py"
+test_file: "app/tests/test_busy_guard.py"
+dependencies_to_mock:
+  - "logging.getLogger"
+  - "uuid.uuid4"
+
+test_cases:
+  # Core Context Manager Behavior
+  - function_to_test: "BusyGuard.__enter__"
+    description: "Disables UI elements when entering context"
+    scenario: "Operation starts with UI elements that need to be disabled"
+    mocks:
+      - target: "feedback_manager.set_ui_busy"
+        return_value: "None"
+    expected_behavior:
+      - "UI elements are disabled via feedback manager"
+      - "Context manager returns self for fluent usage"
+      - "Operation is tracked as started"
+
+  - function_to_test: "BusyGuard.__exit__"
+    description: "Restores UI state when exiting context normally"
+    scenario: "Operation completes successfully and UI needs restoration"
+    mocks:
+      - target: "feedback_manager.finish_operation"
+        return_value: "None"
+    expected_behavior:
+      - "UI elements are re-enabled through feedback manager"
+      - "All started components are properly stopped"
+      - "Returns False to not suppress exceptions"
+
+  # Spinner Management
+  - function_to_test: "BusyGuard.__enter__"
+    description: "Starts spinner when requested"
+    scenario: "Operation requires visual spinner feedback"
+    mocks:
+      - target: "feedback_manager.start_spinner"
+        return_value: "True"
+    expected_behavior:
+      - "Spinner is started with correct name"
+      - "Spinner state is tracked for cleanup"
+
+  - function_to_test: "BusyGuard.__enter__"
+    description: "Handles missing spinner gracefully"
+    scenario: "Requested spinner doesn't exist in UI"
+    mocks:
+      - target: "feedback_manager.start_spinner"
+        return_value: "False"
+      - target: "logger.warning"
+        return_value: "None"
+    expected_behavior:
+      - "Operation continues despite missing spinner"
+      - "Warning is logged about missing spinner"
+      - "No spinner cleanup attempted on exit"
+
+  # Progress Dialog Management
+  - function_to_test: "BusyGuard.__enter__"
+    description: "Shows progress dialog with initial state"
+    scenario: "Long operation needs progress tracking"
+    mocks:
+      - target: "feedback_manager.start_progress"
+        return_value: "None"
+    expected_behavior:
+      - "Progress dialog created with unique operation ID"
+      - "Initial message and title are set"
+      - "Cancel callback is registered if provided"
+
+  - function_to_test: "BusyGuard.update_progress"
+    description: "Updates progress value and message"
+    scenario: "Operation reports progress during execution"
+    mocks:
+      - target: "feedback_manager.update_progress"
+        return_value: "None"
+    expected_behavior:
+      - "Progress value is updated"
+      - "Message is updated if provided"
+      - "No-op if progress dialog wasn't started"
+
+  - function_to_test: "BusyGuard.__exit__"
+    description: "Closes progress dialog on successful completion"
+    scenario: "Operation completes without errors"
+    mocks:
+      - target: "feedback_manager.finish_progress"
+        return_value: "None"
+    expected_behavior:
+      - "Progress dialog shows completion message"
+      - "Dialog is auto-closed after brief delay"
+      - "Success message includes operation name"
+
+  - function_to_test: "BusyGuard.__exit__"
+    description: "Immediately closes progress on exception"
+    scenario: "Operation fails with exception"
+    mocks:
+      - target: "feedback_manager.close_progress"
+        return_value: "None"
+    expected_behavior:
+      - "Progress dialog is closed immediately"
+      - "No success message is shown"
+      - "Exception is not suppressed"
+
+  # Cancellation Handling
+  - function_to_test: "BusyGuard.cancel"
+    description: "Invokes cancel callback once"
+    scenario: "User cancels operation through progress dialog"
+    mocks:
+      - target: "cancel_callback"
+        return_value: "None"
+      - target: "feedback_manager.close_progress"
+        return_value: "None"
+      - target: "feedback_manager.show_status"
+        return_value: "None"
+    expected_behavior:
+      - "Cancel callback is invoked exactly once"
+      - "Progress dialog is closed immediately"
+      - "Status message shows cancellation"
+
+  - function_to_test: "BusyGuard.cancel"
+    description: "Cancel is idempotent"
+    scenario: "Cancel called multiple times"
+    mocks:
+      - target: "cancel_callback"
+        return_value: "None"
+    expected_behavior:
+      - "Callback invoked only on first cancel"
+      - "Subsequent calls are no-ops"
+      - "No errors on repeated cancellation"
+
+  - function_to_test: "BusyGuard.cancel"
+    description: "Handles cancel callback errors"
+    scenario: "Cancel callback raises exception"
+    mocks:
+      - target: "cancel_callback"
+        side_effect: "raises RuntimeError"
+      - target: "logger.error"
+        return_value: "None"
+      - target: "feedback_manager.close_progress"
+        return_value: "None"
+    expected_behavior:
+      - "Exception is caught and logged"
+      - "Progress dialog still closes"
+      - "Status message still shown"
+
+  # Error Recovery - Setup Phase
+  - function_to_test: "BusyGuard.__enter__"
+    description: "Cleans up partial setup on error"
+    scenario: "Exception occurs during context manager setup"
+    mocks:
+      - target: "feedback_manager.start_spinner"
+        return_value: "True"
+      - target: "feedback_manager.start_progress"
+        side_effect: "raises RuntimeError"
+      - target: "feedback_manager.stop_spinner"
+        return_value: "True"
+    expected_behavior:
+      - "Spinner is stopped if it was started"
+      - "UI state is restored"
+      - "Original exception is re-raised"
+
+  - function_to_test: "BusyGuard.__enter__"
+    description: "Continues when status message fails"
+    scenario: "Status message display fails but operation should proceed"
+    mocks:
+      - target: "feedback_manager.show_status"
+        side_effect: "raises Exception"
+      - target: "logger.error"
+        return_value: "None"
+    expected_behavior:
+      - "Error is logged but not raised"
+      - "Other setup continues normally"
+      - "Context manager enters successfully"
+
+  # Error Recovery - Cleanup Phase
+  - function_to_test: "BusyGuard.__exit__"
+    description: "Cleanup errors don't mask user exceptions"
+    scenario: "Cleanup fails while handling user exception"
+    mocks:
+      - target: "feedback_manager.stop_spinner"
+        side_effect: "raises RuntimeError"
+      - target: "logger.error"
+        return_value: "None"
+    expected_behavior:
+      - "Cleanup error is logged"
+      - "Original user exception propagates"
+      - "Exit returns False"
+
+  - function_to_test: "BusyGuard.__exit__"
+    description: "All cleanup attempted despite failures"
+    scenario: "Multiple cleanup operations, some fail"
+    mocks:
+      - target: "feedback_manager.stop_spinner"
+        side_effect: "raises RuntimeError"
+      - target: "feedback_manager.close_progress"
+        return_value: "None"
+      - target: "feedback_manager.finish_operation"
+        return_value: "None"
+    expected_behavior:
+      - "All cleanup operations are attempted"
+      - "Progress is still closed"
+      - "Operation is still marked finished"
+
+  # Resource Management
+  - function_to_test: "BusyGuard.__enter__"
+    description: "Generates unique operation IDs"
+    scenario: "Multiple concurrent operations need tracking"
+    mocks:
+      - target: "uuid.uuid4"
+        return_value: "mock_uuid_12345678"
+    expected_behavior:
+      - "Operation ID includes operation name"
+      - "Operation ID includes unique identifier"
+      - "ID is lowercase and sanitized"
+
+  - function_to_test: "BusyGuard.set_result"
+    description: "Stores and returns operation result"
+    scenario: "Operation produces a result that needs capture"
+    mocks: []
+    expected_behavior:
+      - "Result is stored in guard.result"
+      - "Same result is returned for fluent usage"
+      - "Result survives context exit"
+
+  # Edge Cases - Empty/None Parameters
+  - function_to_test: "BusyGuard.__init__"
+    description: "Handles all optional parameters as None"
+    scenario: "Minimal usage with only required parameters"
+    mocks: []
+    expected_behavior:
+      - "Default values are set for all options"
+      - "Empty UI elements list is created"
+      - "No spinner or progress is configured"
+
+  - function_to_test: "BusyGuard.__enter__"
+    description: "No-op when no features requested"
+    scenario: "Guard used without spinner, progress, or UI elements"
+    mocks: []
+    expected_behavior:
+      - "Context enters successfully"
+      - "No feedback manager calls for visual elements"
+      - "Only operation tracking occurs if supported"
+
+  # Operation Tracking
+  - function_to_test: "BusyGuard.__enter__"
+    description: "Tracks operation start when supported"
+    scenario: "Feedback manager supports operation tracking"
+    mocks:
+      - target: "feedback_manager.start_operation"
+        return_value: "None"
+    expected_behavior:
+      - "Operation is registered with unique ID"
+      - "Operation marked as started"
+      - "Cleanup will call finish_operation"
+
+  - function_to_test: "BusyGuard.__enter__"
+    description: "Continues when operation tracking unavailable"
+    scenario: "Feedback manager doesn't support operation tracking"
+    mocks:
+      - target: "getattr(feedback_manager, 'start_operation')"
+        return_value: "None"
+      - target: "logger.debug"
+        return_value: "None"
+    expected_behavior:
+      - "Debug message logged"
+      - "Setup continues normally"
+      - "No finish_operation called on exit"
+
+  # Abnormal Termination
+  - function_to_test: "BusyGuard.__exit__"
+    description: "Handles cleanup when process is terminating"
+    scenario: "SystemExit or KeyboardInterrupt during operation"
+    mocks:
+      - target: "feedback_manager.stop_spinner"
+        return_value: "True"
+      - target: "feedback_manager.close_progress"
+        return_value: "None"
+    expected_behavior:
+      - "All resources are cleaned up"
+      - "No new exceptions raised during cleanup"
+      - "Termination exception propagates"
+
+  # Progress Dialog Options
+  - function_to_test: "BusyGuard.__enter__"
+    description: "Creates indeterminate progress bar"
+    scenario: "Operation duration unknown, progress_maximum=0"
+    mocks:
+      - target: "feedback_manager.start_progress"
+        return_value: "None"
+    expected_behavior:
+      - "Progress created with maximum=0"
+      - "Indeterminate progress bar shown"
+      - "Updates still possible but as marquee"
+
+  - function_to_test: "BusyGuard.__enter__"
+    description: "Creates non-cancelable progress"
+    scenario: "Critical operation that shouldn't be interrupted"
+    mocks:
+      - target: "feedback_manager.start_progress"
+        return_value: "None"
+    expected_behavior:
+      - "Progress created with cancelable=False"
+      - "No cancel button shown to user"
+      - "Cancel callback not registered"
+
+  # Multiple UI Elements
+  - function_to_test: "BusyGuard.__enter__"
+    description: "Disables multiple UI elements"
+    scenario: "Several buttons/widgets need disabling"
+    mocks:
+      - target: "feedback_manager.set_ui_busy"
+        return_value: "None"
+    expected_behavior:
+      - "All elements in list are disabled"
+      - "Original enabled states are preserved"
+      - "All elements re-enabled on exit"
+
+  # Status Message Edge Cases
+  - function_to_test: "BusyGuard.__enter__"
+    description: "Shows custom status message"
+    scenario: "Operation needs specific status text"
+    mocks:
+      - target: "feedback_manager.show_status"
+        return_value: "None"
+    expected_behavior:
+      - "Custom message is displayed"
+      - "Message shown with default timeout"
+      - "Setup continues after message"
+
+  - function_to_test: "BusyGuard.cancel"
+    description: "Shows cancellation status without progress"
+    scenario: "Cancel called but no progress dialog active"
+    mocks:
+      - target: "feedback_manager.show_status"
+        return_value: "None"
+    expected_behavior:
+      - "Cancellation status message shown"
+      - "No attempt to close non-existent progress"
+      - "Cancel callback still invoked if present"

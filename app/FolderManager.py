@@ -6,6 +6,16 @@ from typing import Optional
 from app.DatabaseManager import DatabaseManager
 from app.constants import get_database_path
 
+# Lightweight QTimer fallback for headless/test environments
+try:  # pragma: no cover - exercised implicitly by headless tests
+    from PyQt6.QtCore import QTimer as _QtQTimer  # type: ignore
+except Exception:  # pragma: no cover
+    class _QtQTimer:  # type: ignore
+        @staticmethod
+        def singleShot(_ms: int, func):
+            # Execute immediately when GUI timer unavailable
+            func()
+
 logger = logging.getLogger("transcribrr")
 
 
@@ -68,6 +78,22 @@ class FolderManager:
 
         # Use the configured database path
         self.db_path = get_database_path()
+
+    @classmethod
+    def _reset_for_testing(cls):  # pragma: no cover - used by tests only
+        """Reset singleton state for isolated unit tests.
+
+        This avoids reaching into private attributes from tests and provides
+        a supported way to clear global state without affecting production code.
+        """
+        with cls._lock:
+            cls._instance = None
+            cls._db_manager_attached = False
+
+    @classmethod
+    def reset_for_tests(cls) -> None:  # pragma: no cover - test helper
+        """Public test-only reset to avoid touching private attributes in tests."""
+        cls._reset_for_testing()
 
     def attach_db_manager(self, db_manager: DatabaseManager):
         """
@@ -588,10 +614,8 @@ class FolderManager:
                     if callback:
                         callback(True, "Folder structure imported successfully")
 
-                # Use QTimer to delay the reload
-                from PyQt6.QtCore import QTimer
-
-                QTimer.singleShot(500, reload_folders)
+                # Use Qt timer if available; fallback executes immediately
+                _QtQTimer.singleShot(500, reload_folders)
 
             # Execute clear folders after associations are cleared
             def on_associations_cleared(result):

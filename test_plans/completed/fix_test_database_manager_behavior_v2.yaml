@@ -1,0 +1,374 @@
+target_file: "app/tests/test_database_manager_behavior.py"
+test_file: "app/tests/test_database_manager_behavior.py"
+dependencies_to_mock:
+  - "app.DatabaseManager.logger"
+  - "app.constants.get_database_path"
+  - "app.constants._USER_DATA_DIR_CACHE"
+  - "sqlite3.connect"
+  - "os.makedirs"
+  - "os.path.exists"
+  - "shutil.rmtree"
+  - "tempfile.mkdtemp"
+  - "threading.Event"
+
+test_cases:
+  # ===========================================
+  # ERROR & EDGE CASE TESTS (80% of coverage)
+  # ===========================================
+  
+  # Database Connection Failures
+  - function_to_test: "DatabaseManager.__init__"
+    description: "Tests database connection failure during initialization"
+    scenario: "When SQLite fails to connect due to permission issues"
+    mocks:
+      - target: "sqlite3.connect"
+        side_effect: "raises sqlite3.OperationalError('database is locked')"
+      - target: "logger"
+        return_value: "Mock logger to verify error logging"
+    expected_behavior:
+      - "RuntimeError is raised with appropriate message"
+      - "Error is logged at CRITICAL level"
+      - "Worker thread is not started"
+      - "Cleanup occurs without hanging"
+
+  - function_to_test: "DatabaseWorker.run"
+    description: "Tests database corruption detection and recovery"
+    scenario: "When database file is corrupted mid-operation"
+    mocks:
+      - target: "conn.execute"
+        side_effect: "raises sqlite3.DatabaseError('database disk image is malformed')"
+      - target: "get_connection"
+        side_effect: "first call raises, second call succeeds"
+    expected_behavior:
+      - "Error is detected and logged"
+      - "Reconnection is attempted"
+      - "error_occurred signal is emitted"
+      - "Worker continues processing after recovery"
+      - "Timeout is 0.1s max for responsiveness"
+
+  - function_to_test: "DatabaseWorker.run"
+    description: "Tests handling of disk full errors"
+    scenario: "When disk is full during write operation"
+    mocks:
+      - target: "conn.execute"
+        side_effect: "raises sqlite3.OperationalError('disk I/O error')"
+      - target: "logger"
+        return_value: "Mock logger"
+    expected_behavior:
+      - "Error is caught and logged appropriately"
+      - "Transaction is rolled back"
+      - "error_occurred signal emitted with sanitized message"
+      - "Worker remains operational for read queries"
+      - "No data corruption occurs"
+
+  # Concurrent Access & Deadlocks
+  - function_to_test: "DatabaseManager.create_recording"
+    description: "Tests concurrent write conflicts with multiple threads"
+    scenario: "Two threads attempt to create recordings with same path simultaneously"
+    mocks:
+      - target: "threading.Event.wait"
+        return_value: "True immediately (0.01s timeout)"
+    expected_behavior:
+      - "First write succeeds"
+      - "Second write fails with DuplicatePathError"
+      - "No database corruption"
+      - "Both callbacks are invoked"
+      - "Proper cleanup of signal handlers"
+      - "Operations complete within 0.1s"
+
+  - function_to_test: "DatabaseWorker.run"
+    description: "Tests database lock timeout handling"
+    scenario: "When database is locked by another process"
+    mocks:
+      - target: "conn.execute"
+        side_effect: "raises sqlite3.OperationalError('database is locked') after 0.05s delay"
+      - target: "time.sleep"
+        return_value: "None (no actual sleep)"
+    expected_behavior:
+      - "Retry logic is triggered"
+      - "Error logged after max retries"
+      - "error_occurred signal emitted"
+      - "Operation marked as failed"
+      - "Queue continues processing"
+
+  - function_to_test: "DatabaseWorker.run"
+    description: "Tests transaction deadlock resolution"
+    scenario: "Circular dependency causing deadlock between operations"
+    mocks:
+      - target: "conn.execute"
+        side_effect: "raises sqlite3.OperationalError('deadlock detected')"
+    expected_behavior:
+      - "Deadlock is detected"
+      - "Transaction is rolled back"
+      - "Operation is retried with backoff"
+      - "Error signal emitted if retries exhausted"
+      - "Worker thread remains stable"
+
+  # Resource Exhaustion
+  - function_to_test: "DatabaseWorker.run"
+    description: "Tests queue overflow with excessive operations"
+    scenario: "Queue filled with 10000+ operations causing memory pressure"
+    mocks:
+      - target: "operations_queue.put"
+        side_effect: "raises queue.Full after 1000 items"
+      - target: "operations_queue.qsize"
+        return_value: "1000"
+    expected_behavior:
+      - "Queue full condition is detected"
+      - "New operations are rejected gracefully"
+      - "Warning logged about queue saturation"
+      - "Existing operations continue processing"
+      - "Memory usage remains bounded"
+
+  - function_to_test: "DatabaseWorker.stop"
+    description: "Tests forced shutdown with pending operations"
+    scenario: "Worker stopped while operations are queued"
+    mocks:
+      - target: "operations_queue.qsize"
+        return_value: "50"
+      - target: "threading.Event.wait"
+        return_value: "False (timeout)"
+    expected_behavior:
+      - "Sentinel value is added to queue"
+      - "Pending operations are discarded"
+      - "Database connection is closed"
+      - "Thread exits within 0.1s"
+      - "No hang or deadlock"
+
+  - function_to_test: "DatabaseManager.shutdown"
+    description: "Tests cleanup with active callbacks"
+    scenario: "Shutdown called while callbacks are registered"
+    mocks:
+      - target: "worker.isRunning"
+        return_value: "True then False"
+    expected_behavior:
+      - "All callbacks are disconnected"
+      - "Worker thread is stopped"
+      - "Database connection closed"
+      - "No memory leaks from dangling handlers"
+      - "Completes within 0.1s"
+
+  # Data Corruption & Invalid Input
+  - function_to_test: "DatabaseManager.create_recording"
+    description: "Tests SQL injection attempt handling"
+    scenario: "Malicious SQL in recording data fields"
+    mocks:
+      - target: "logger"
+        return_value: "Mock logger"
+    expected_behavior:
+      - "SQL injection is prevented via parameterized queries"
+      - "Data is properly escaped"
+      - "No database corruption"
+      - "Operation completes normally"
+      - "Security event is logged"
+
+  - function_to_test: "DatabaseManager.create_recording"
+    description: "Tests handling of oversized data"
+    scenario: "Recording with 100MB transcript text"
+    mocks:
+      - target: "conn.execute"
+        side_effect: "raises sqlite3.DataError('string or blob too big')"
+    expected_behavior:
+      - "Error is caught and handled"
+      - "error_occurred signal emitted"
+      - "Database remains consistent"
+      - "Memory is properly freed"
+      - "Worker continues operating"
+
+  - function_to_test: "DatabaseManager.update_recording"
+    description: "Tests updating with invalid field names"
+    scenario: "Update attempted with non-existent column"
+    mocks:
+      - target: "conn.execute"
+        side_effect: "raises sqlite3.OperationalError('no such column')"
+    expected_behavior:
+      - "Error is caught before execution"
+      - "Validation error logged"
+      - "error_occurred signal emitted"
+      - "Database unchanged"
+      - "Callback invoked with error state"
+
+  - function_to_test: "DatabaseManager.create_recording"
+    description: "Tests null/None value handling"
+    scenario: "Recording data contains None values in required fields"
+    mocks:
+      - target: "conn.execute"
+        side_effect: "raises sqlite3.IntegrityError('NOT NULL constraint failed')"
+    expected_behavior:
+      - "Constraint violation detected"
+      - "Transaction rolled back"
+      - "error_occurred signal emitted"
+      - "Database integrity maintained"
+      - "Clear error message provided"
+
+  # Unicode & Encoding Issues
+  - function_to_test: "DatabaseManager.create_recording"
+    description: "Tests invalid UTF-8 byte sequences"
+    scenario: "Recording contains malformed UTF-8 data"
+    mocks:
+      - target: "conn.execute"
+        side_effect: "raises UnicodeDecodeError"
+    expected_behavior:
+      - "Encoding error is caught"
+      - "Data is sanitized or rejected"
+      - "error_occurred signal emitted"
+      - "Database remains queryable"
+      - "Error logged with context"
+
+  - function_to_test: "DatabaseManager.search_recordings"
+    description: "Tests regex special characters in search"
+    scenario: "Search term contains SQL wildcards and regex metacharacters"
+    mocks:
+      - target: "logger"
+        return_value: "Mock logger"
+    expected_behavior:
+      - "Special characters are properly escaped"
+      - "No SQL injection possible"
+      - "Search completes without error"
+      - "Results are accurate"
+      - "Performance remains acceptable"
+
+  # Race Conditions & Timing Issues
+  - function_to_test: "DatabaseManager.create_recording"
+    description: "Tests callback disconnection race condition"
+    scenario: "Callback tries to disconnect while being invoked"
+    mocks:
+      - target: "threading.Event.wait"
+        return_value: "True (immediate)"
+    expected_behavior:
+      - "No TypeError on disconnect"
+      - "Callback executes exactly once"
+      - "Signal handlers properly cleaned up"
+      - "No dangling references"
+      - "Thread-safe execution"
+
+  - function_to_test: "DatabaseWorker.run"
+    description: "Tests queue.get timeout vs shutdown race"
+    scenario: "Shutdown called during queue.get blocking call"
+    mocks:
+      - target: "operations_queue.get"
+        side_effect: "blocks for 0.05s then returns None"
+    expected_behavior:
+      - "Shutdown is detected promptly"
+      - "Worker exits cleanly"
+      - "No hang or timeout"
+      - "Resources are freed"
+      - "Exit within 0.1s of shutdown call"
+
+  # Signal & Callback Errors  
+  - function_to_test: "DatabaseManager._on_data_changed"
+    description: "Tests signal emission with no receivers"
+    scenario: "dataChanged signal emitted when no UI connected"
+    mocks:
+      - target: "dataChanged.emit"
+        side_effect: "raises RuntimeError('No receivers')"
+    expected_behavior:
+      - "Error is caught and logged"
+      - "Worker continues operating"
+      - "No crash or thread termination"
+      - "Database operations unaffected"
+
+  - function_to_test: "DatabaseManager.get_all_recordings"
+    description: "Tests callback exception handling"
+    scenario: "Callback function raises exception"
+    mocks:
+      - target: "callback"
+        side_effect: "raises ValueError('callback error')"
+    expected_behavior:
+      - "Exception is caught"
+      - "Error is logged"
+      - "Signal handler is disconnected"
+      - "Worker thread continues"
+      - "No memory leak"
+
+  # Edge Cases with IDs
+  - function_to_test: "DatabaseManager.update_recording"
+    description: "Tests update with negative recording ID"
+    scenario: "Update called with ID = -1"
+    mocks:
+      - target: "conn.execute"
+        return_value: "Empty cursor (no rows)"
+    expected_behavior:
+      - "No rows are updated"
+      - "Callback is still invoked"
+      - "No error signal emitted"
+      - "Operation completes normally"
+
+  - function_to_test: "DatabaseManager.delete_recording"
+    description: "Tests delete with MAX_INT ID"
+    scenario: "Delete called with ID = 2^63-1"
+    mocks:
+      - target: "conn.execute"
+        return_value: "Empty cursor (no rows)"
+    expected_behavior:
+      - "No rows are deleted"
+      - "No integer overflow"
+      - "Callback is invoked"
+      - "Database remains stable"
+
+  # ===========================================
+  # HAPPY PATH TESTS (20% of coverage)
+  # ===========================================
+  
+  - function_to_test: "DatabaseManager.create_recording"
+    description: "Tests successful recording creation"
+    scenario: "Valid recording data is provided"
+    mocks:
+      - target: "threading.Event.wait"
+        return_value: "True (immediate)"
+    expected_behavior:
+      - "Recording is created in database"
+      - "Callback invoked with new ID"
+      - "dataChanged signal emitted"
+      - "Operation completes within 0.1s"
+
+  - function_to_test: "DatabaseManager.get_all_recordings"
+    description: "Tests retrieving all recordings"
+    scenario: "Database contains multiple recordings"
+    mocks:
+      - target: "threading.Event.wait"
+        return_value: "True (immediate)"
+    expected_behavior:
+      - "All recordings are returned"
+      - "Callback invoked with list"
+      - "Data is properly formatted"
+      - "Completes within 0.1s"
+
+  - function_to_test: "DatabaseManager.search_recordings"
+    description: "Tests search with matching results"
+    scenario: "Search term matches multiple recordings"
+    mocks:
+      - target: "threading.Event.wait"
+        return_value: "True (immediate)"
+    expected_behavior:
+      - "Matching recordings returned"
+      - "Search is case-insensitive"
+      - "Results properly ordered"
+      - "Callback invoked with results"
+
+# Test Configuration
+test_configuration:
+  max_timeout: 0.1  # Maximum timeout for any wait operation
+  cleanup_strategy: "aggressive"  # Always clean up resources, even on failure
+  error_coverage_target: 0.8  # 80% of tests should cover error scenarios
+  concurrency_level: "high"  # Test with multiple concurrent operations
+  resource_limits:
+    max_queue_size: 1000
+    max_memory_mb: 100
+    max_db_connections: 10
+  
+# Performance Requirements
+performance_requirements:
+  - "All synchronous operations complete within 10ms"
+  - "All async callbacks invoked within 100ms"
+  - "Database locks held for maximum 50ms"
+  - "Memory usage remains constant during 1000 operations"
+  - "No thread leaks after 100 test runs"
+
+# Cleanup Verification
+cleanup_verification:
+  - "All signal handlers disconnected after each test"
+  - "Database connections closed properly"
+  - "Temporary files removed"
+  - "Thread count returns to baseline"
+  - "No dangling locks or transactions"

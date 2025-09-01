@@ -34,6 +34,21 @@ class ThreadManager:
             cls._instance = ThreadManager()
         return cls._instance
 
+    @classmethod
+    def reset_for_tests(cls) -> None:  # pragma: no cover - test helper
+        """Reset the singleton for isolated tests.
+
+        Provides a supported mechanism for tests to clear global state
+        without manually poking at private attributes.
+        """
+        cls._instance = None
+
+    @classmethod
+    def create_for_testing(cls) -> "ThreadManager":  # pragma: no cover - test helper
+        """Create and set a fresh singleton instance for tests."""
+        cls._instance = ThreadManager()
+        return cls._instance
+
     def __init__(self):
         self._active_threads: Dict[int, QThread] = {}
         logger.debug("ThreadManager initialized")

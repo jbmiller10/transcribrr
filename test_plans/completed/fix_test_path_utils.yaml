@@ -1,165 +1,317 @@
-test_file: test_path_utils.py
-target_module: app.path_utils
-current_issues:
-  - Happy Path Only: No error conditions or edge cases tested
-  - Implementation Details: Tests internal path calculation logic
-  - Missing Coverage: Helper function _get_base_resource_path not directly tested
-  - Excessive Mocking: Uses patch to simulate environments instead of testing actual behavior
-  - Limited Scenarios: Only tests 3 basic scenarios, missing many edge cases
+# Test Improvement Plan for test_path_utils.py
+# Current Score: 6.5/10
+# Target Score: 9/10
 
-fix_plan:
-  remove_excessive_mocking:
-    - description: "Reduce mocking to only what's absolutely necessary"
-    - actions:
-      - "Keep sys attribute patches for simulating PyInstaller/py2app environments (necessary)"
-      - "Remove any unnecessary create=True parameters where attributes already exist"
-      - "Consider using temporary directories for file path validation instead of mocking"
+file_under_test: app/path_utils.py
+test_file: app/tests/test_path_utils.py
+
+current_issues:
+  - issue: "Excessive mocking of system attributes"
+    description: "Tests mock sys.frozen, sys._MEIPASS at the system level instead of using dependency injection"
+    severity: high
+    lines: [15-16, 29, 38-39]
+    
+  - issue: "Testing implementation details"
+    description: "Tests verify internal path construction rather than observable behavior"
+    severity: medium
+    lines: [19, 41]
+    
+  - issue: "Poor test names"
+    description: "Test names describe internal branches (e.g., 'pyinstaller_meipass_branch') instead of behavior"
+    severity: medium
+    lines: [27, 35]
+    
+  - issue: "Missing error cases"
+    description: "No tests for error conditions, invalid inputs, or permission issues"
+    severity: high
+    
+  - issue: "Weak assertions"
+    description: "Tests only check path equality, not actual resource accessibility"
+    severity: medium
+
+refactoring_strategy:
+  approach: "Behavior-focused testing with dependency injection"
+  principles:
+    - "Test observable behavior, not implementation"
+    - "Use dependency injection to avoid system-level mocking"
+    - "Verify actual resource accessibility, not just path construction"
+    - "Comprehensive error scenario coverage"
+
+proposed_test_structure:
+  test_classes:
+    - name: "TestResourcePathBehavior"
+      description: "Tests the behavior of resource_path in different environments"
+      focus: "Observable outcomes and resource accessibility"
       
-  test_actual_behavior:
-    - description: "Focus on testing outcomes rather than internal implementation"
-    - actions:
-      - "Test that paths returned are valid and absolute"
-      - "Test that paths exist or can be created (where applicable)"
-      - "Verify path normalization works correctly across platforms"
-      - "Test that logging occurs at appropriate levels"
+    - name: "TestResourcePathErrorHandling"
+      description: "Tests error conditions and edge cases"
+      focus: "Robustness and error recovery"
       
-  add_error_cases:
-    - description: "Add comprehensive error handling tests"
-    - test_cases:
-      - name: "test_relative_path_with_invalid_characters"
-        scenario: "Pass relative paths with invalid characters or path traversal attempts"
-        expected: "Should handle gracefully or sanitize the path"
-        
-      - name: "test_relative_path_with_absolute_path"
-        scenario: "Pass an absolute path as relative_path parameter"
-        expected: "Should handle appropriately (join or reject)"
-        
-      - name: "test_unicode_path_handling"
-        scenario: "Pass paths with unicode characters"
-        expected: "Should handle unicode paths correctly"
-        
-      - name: "test_extremely_long_path"
-        scenario: "Pass a path exceeding OS limits"
-        expected: "Should handle or truncate appropriately"
-        
-      - name: "test_permission_denied_scenario"
-        scenario: "Test when base path has restricted permissions"
-        expected: "Should handle permission errors gracefully"
-        
-  add_edge_cases:
-    - description: "Add tests for boundary conditions and edge cases"
-    - test_cases:
-      - name: "test_empty_string_relative_path"
-        scenario: "Pass empty string as relative_path"
-        expected: "Should return base path or handle appropriately"
-        
-      - name: "test_path_with_only_spaces"
-        scenario: "Pass whitespace-only string as relative_path"
-        expected: "Should handle whitespace appropriately"
-        
-      - name: "test_nested_relative_paths"
-        scenario: "Pass deeply nested relative paths"
-        expected: "Should construct correct nested path"
-        
-      - name: "test_path_with_double_slashes"
-        scenario: "Pass paths with double slashes or redundant separators"
-        expected: "Should normalize path correctly"
-        
-      - name: "test_path_traversal_attempts"
-        scenario: "Pass paths with ../ or ./ sequences"
-        expected: "Should normalize or reject traversal attempts"
-        
-      - name: "test_windows_path_on_unix"
-        scenario: "Pass Windows-style paths on Unix systems"
-        expected: "Should handle cross-platform path formats"
-        
-      - name: "test_mixed_path_separators"
-        scenario: "Pass paths with mixed / and \\ separators"
-        expected: "Should normalize to OS-appropriate separators"
-        
-  add_integration_tests:
-    - description: "Add tests that verify integration with file system"
-    - test_cases:
-      - name: "test_actual_file_creation"
-        scenario: "Create actual files at returned paths"
-        expected: "Files should be created successfully at correct locations"
-        
-      - name: "test_symlink_resolution"
-        scenario: "Test with symbolic links in paths"
-        expected: "Should resolve symlinks appropriately"
-        
-      - name: "test_concurrent_access"
-        scenario: "Multiple threads calling resource_path simultaneously"
-        expected: "Should be thread-safe"
-        
-  improve_test_structure:
-    - description: "Reorganize tests for better maintainability"
-    - actions:
-      - "Split tests into logical groups (environment detection, path construction, error handling)"
-      - "Use setUp/tearDown for common test fixtures"
-      - "Add descriptive docstrings to each test method"
-      - "Use parameterized tests for similar scenarios with different inputs"
-      - "Add custom assertion messages for better debugging"
-      
-  add_logging_verification:
-    - description: "Verify logging behavior"
-    - test_cases:
-      - name: "test_debug_logging_in_dev_mode"
-        scenario: "Verify debug logs are generated in development mode"
-        expected: "Should log at DEBUG level with correct path information"
-        
-      - name: "test_logging_in_pyinstaller_mode"
-        scenario: "Verify logging when running as PyInstaller bundle"
-        expected: "Should log PyInstaller path detection"
-        
-      - name: "test_logging_in_py2app_mode"
-        scenario: "Verify logging when running as py2app bundle"
-        expected: "Should log py2app path detection"
-        
-  add_platform_specific_tests:
-    - description: "Add tests for platform-specific behaviors"
-    - test_cases:
-      - name: "test_windows_unc_paths"
-        scenario: "Test with Windows UNC paths (if on Windows)"
-        expected: "Should handle network paths correctly"
-        
-      - name: "test_case_sensitivity"
-        scenario: "Test path case sensitivity based on OS"
-        expected: "Should respect OS case sensitivity rules"
-        
-      - name: "test_path_length_limits"
-        scenario: "Test OS-specific path length limitations"
-        expected: "Should handle or report path length violations"
-        
-  add_helper_function_tests:
-    - description: "Add direct tests for _get_base_resource_path helper"
-    - test_cases:
-      - name: "test_get_base_resource_path_directly"
-        scenario: "Test the helper function in isolation"
-        expected: "Should return correct base path for each environment"
-        
-      - name: "test_get_base_resource_path_precedence"
-        scenario: "Test when multiple frozen indicators are present"
-        expected: "Should follow correct precedence order"
-        
-implementation_notes:
-  - "Use tempfile.TemporaryDirectory for file system tests"
-  - "Use unittest.mock.patch.object sparingly and only for sys attributes"
-  - "Consider using pytest.mark.parametrize if migrating to pytest"
-  - "Ensure all tests are independent and can run in any order"
-  - "Add performance timing for path resolution operations"
-  - "Consider adding property-based tests for path manipulation"
+    - name: "TestResourcePathIntegration"
+      description: "Integration tests with actual file system"
+      focus: "Real resource loading and path resolution"
+
+refactoring_steps:
   
-expected_improvements:
-  - "Increase test coverage from ~60% to >95%"
-  - "Reduce mocking by 50% (keep only essential sys attribute mocks)"
-  - "Add 15+ new test cases covering errors and edge cases"
-  - "Improve test readability with better organization and documentation"
-  - "Ensure tests actually validate behavior, not just implementation"
+  step_1:
+    title: "Extract environment detection to injectable function"
+    description: "Move environment detection logic to a separate, injectable function"
+    code_changes:
+      - file: "app/path_utils.py"
+        changes: |
+          # Add environment detection function that can be overridden
+          def get_execution_environment():
+              """Returns 'pyinstaller', 'py2app', or 'development'"""
+              if hasattr(sys, "_MEIPASS"):
+                  return 'pyinstaller'
+              elif getattr(sys, "frozen", False) and "MacOS" in sys.executable:
+                  return 'py2app'
+              else:
+                  return 'development'
+          
+          # Modify _get_base_resource_path to use the function
+          def _get_base_resource_path(env_detector=None):
+              if env_detector is None:
+                  env_detector = get_execution_environment
+              env = env_detector()
+              # ... rest of logic based on env
+              
+  step_2:
+    title: "Create test helpers and fixtures"
+    description: "Build reusable test utilities instead of inline mocking"
+    new_test_utilities: |
+      class FakeEnvironment:
+          """Test double for environment detection"""
+          def __init__(self, env_type='development', base_path='/test/path'):
+              self.env_type = env_type
+              self.base_path = base_path
+              
+          def __call__(self):
+              return self.env_type
+              
+      class ResourcePathTestCase(unittest.TestCase):
+          """Base class with common test utilities"""
+          def create_temp_resource(self, relative_path, content="test"):
+              """Create a temporary resource file for testing"""
+              # Implementation here
+              
+          def assert_resource_accessible(self, path):
+              """Verify that a resource at the given path is accessible"""
+              self.assertTrue(os.path.exists(path), f"Resource not found: {path}")
+              
+  step_3:
+    title: "Rewrite tests with behavior focus"
+    description: "Replace implementation-focused tests with behavior tests"
+    new_tests:
+      - test_name: "test_finds_resources_in_development_environment"
+        description: "Verifies that resources can be located when running from source"
+        approach: "Create actual test resources and verify they can be found"
+        
+      - test_name: "test_finds_resources_in_bundled_application"
+        description: "Verifies resource location in packaged applications"
+        approach: "Use test doubles to simulate bundled environment with real paths"
+        
+      - test_name: "test_handles_missing_resources_gracefully"
+        description: "Verifies behavior when requested resources don't exist"
+        approach: "Test with non-existent paths and verify appropriate handling"
+        
+      - test_name: "test_resolves_nested_resource_paths"
+        description: "Verifies correct path resolution for nested resources"
+        approach: "Test with various nested path structures"
+        
+      - test_name: "test_handles_special_characters_in_paths"
+        description: "Verifies Unicode and special character handling"
+        approach: "Create resources with special characters and verify access"
+        
+      - test_name: "test_returns_consistent_paths_across_calls"
+        description: "Verifies path resolution is deterministic"
+        approach: "Call multiple times and verify consistency"
+        
+      - test_name: "test_preserves_absolute_paths_when_provided"
+        description: "Verifies absolute paths are not modified"
+        approach: "Provide absolute paths and verify they're returned unchanged"
+
+  step_4:
+    title: "Add comprehensive error testing"
+    description: "Test error conditions and edge cases"
+    error_tests:
+      - test_name: "test_handles_permission_denied_errors"
+        description: "Verifies graceful handling of permission issues"
+        
+      - test_name: "test_handles_extremely_long_paths"
+        description: "Tests behavior with paths exceeding OS limits"
+        
+      - test_name: "test_handles_null_and_empty_inputs"
+        description: "Verifies robustness with edge case inputs"
+        
+      - test_name: "test_handles_symbolic_links"
+        description: "Verifies correct resolution of symlinked resources"
+        
+      - test_name: "test_handles_network_paths"
+        description: "Tests behavior with UNC paths on Windows"
+
+  step_5:
+    title: "Add integration tests"
+    description: "Test actual resource loading with real files"
+    integration_tests:
+      - test_name: "test_loads_icon_resources_successfully"
+        description: "Verifies actual icon files can be loaded"
+        approach: "Load real icon files from the project"
+        
+      - test_name: "test_loads_configuration_files_successfully"
+        description: "Verifies config files can be accessed"
+        approach: "Load actual preset_prompts.json and verify content"
+
+improved_test_example: |
+  """Behavior-focused tests for path_utils resource management."""
   
-test_execution_requirements:
-  - "Tests should run in <1 second total"
-  - "No test method should exceed 20 lines"
-  - "Each test should have a single clear assertion focus"
-  - "Tests should work on Windows, macOS, and Linux"
-  - "Tests should not require external dependencies or network access"
+  import os
+  import tempfile
+  import unittest
+  from pathlib import Path
+  
+  from app.path_utils import resource_path, get_execution_environment
+  
+  
+  class TestResourcePathBehavior(unittest.TestCase):
+      """Tests the behavior of resource_path across environments."""
+      
+      def setUp(self):
+          """Set up test fixtures."""
+          self.test_dir = tempfile.mkdtemp()
+          self.test_resource = Path(self.test_dir) / "test_resource.txt"
+          self.test_resource.write_text("test content")
+          
+      def tearDown(self):
+          """Clean up test fixtures."""
+          import shutil
+          shutil.rmtree(self.test_dir, ignore_errors=True)
+          
+      def test_finds_resources_in_development_environment(self):
+          """Should locate resources relative to project root in dev mode."""
+          # Given: Running in development environment
+          # When: Requesting a known resource
+          icon_path = resource_path("icons")
+          
+          # Then: The path should exist and be accessible
+          self.assertTrue(os.path.exists(icon_path), 
+                         f"Icons directory not found at {icon_path}")
+          self.assertTrue(os.path.isdir(icon_path),
+                         f"Icons path is not a directory: {icon_path}")
+          
+      def test_returns_consistent_paths_across_calls(self):
+          """Should return the same path for repeated calls."""
+          # Given: Multiple calls to resource_path
+          # When: Requesting the same resource
+          path1 = resource_path("test.txt")
+          path2 = resource_path("test.txt")
+          
+          # Then: Paths should be identical
+          self.assertEqual(path1, path2, 
+                          "Resource path not consistent across calls")
+          
+      def test_handles_nested_resource_paths(self):
+          """Should correctly resolve nested resource paths."""
+          # Given: A nested resource path
+          nested = os.path.join("icons", "buttons", "play.png")
+          
+          # When: Requesting the nested resource
+          full_path = resource_path(nested)
+          
+          # Then: Path should be properly constructed
+          self.assertIn("icons", full_path)
+          self.assertIn("buttons", full_path)
+          self.assertIn("play.png", full_path)
+          self.assertTrue(full_path.endswith(nested.replace(os.sep, "/")))
+  
+  
+  class TestResourcePathErrorHandling(unittest.TestCase):
+      """Tests error conditions and edge cases."""
+      
+      def test_handles_none_input_gracefully(self):
+          """Should return base path when given None."""
+          # Given: None as input
+          # When: Calling resource_path
+          result = resource_path(None)
+          
+          # Then: Should return a valid base path
+          self.assertIsNotNone(result)
+          self.assertTrue(os.path.isabs(result), 
+                         "Base path should be absolute")
+          
+      def test_handles_empty_string_input(self):
+          """Should return base path for empty string."""
+          # Given: Empty string input
+          # When: Calling resource_path
+          base = resource_path()
+          empty = resource_path("")
+          
+          # Then: Should return the base path
+          self.assertEqual(os.path.normpath(base), 
+                          os.path.normpath(empty))
+          
+      def test_preserves_absolute_paths(self):
+          """Should not modify absolute paths."""
+          # Given: An absolute path
+          abs_path = os.path.abspath("/tmp/test.txt")
+          
+          # When: Passing to resource_path
+          result = resource_path(abs_path)
+          
+          # Then: Should return the absolute path unchanged
+          self.assertEqual(result, abs_path)
+
+quality_metrics:
+  before:
+    score: 6.5
+    test_count: 7
+    mock_count: 8
+    assertion_quality: "weak"
+    error_coverage: 0
+    
+  after:
+    target_score: 9.0
+    test_count: 15
+    mock_count: 0  # Using dependency injection instead
+    assertion_quality: "strong - behavior focused"
+    error_coverage: 6
+
+implementation_checklist:
+  - task: "Extract environment detection to injectable function"
+    estimated_time: "30 minutes"
+    priority: high
+    
+  - task: "Create test helper classes and fixtures"
+    estimated_time: "45 minutes"
+    priority: high
+    
+  - task: "Rewrite existing tests with behavior focus"
+    estimated_time: "1 hour"
+    priority: high
+    
+  - task: "Add comprehensive error handling tests"
+    estimated_time: "45 minutes"
+    priority: medium
+    
+  - task: "Add integration tests with real resources"
+    estimated_time: "30 minutes"
+    priority: medium
+    
+  - task: "Update test documentation and comments"
+    estimated_time: "15 minutes"
+    priority: low
+
+success_criteria:
+  - "Zero system-level mocking (no patching sys attributes)"
+  - "All tests focus on observable behavior"
+  - "Comprehensive error scenario coverage"
+  - "Tests remain fast and deterministic"
+  - "Clear test names that describe behavior"
+  - "Strong assertions that verify actual functionality"
+  - "Tests pass without modification when code is refactored"
+
+notes:
+  - "Consider adding performance tests for resource loading"
+  - "May want to add tests for concurrent resource access"
+  - "Could benefit from property-based testing for path manipulation"
+  - "Should coordinate with packaging team to test actual bundle scenarios"

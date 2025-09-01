@@ -1,0 +1,104 @@
+# Cleaned up test plan for app/tests/test_secure.py
+# 
+# This plan has been significantly reduced after comparing with existing implementations:
+# 
+# REMOVED (already implemented in test_secure.py):
+# - Basic redact function tests for OpenAI/HF patterns, multiple keys, empty/None input
+# - SensitiveLogFilter tests for log record filtering with msg/args
+# - Migration tests for successful/failed/partial migration scenarios  
+# - API key get/set operations with error handling
+# - Service ID generation tests
+#
+# REMOVED (already implemented in test_secure_behavior.py):
+# - Integration tests with real logger and TestKeyring implementation
+# - Concurrent logging tests
+# - Migration with in-memory keyring
+# - Unicode boundary tests for redaction
+# - Percent-style logging argument filtering
+#
+# KEPT (genuinely missing test cases):
+
+target_file: "/home/john/transcribrr/app/secure.py"
+test_file: "/home/john/transcribrr/app/tests/test_secure.py"
+
+missing_test_cases:
+  performance_edge_cases:
+    - test_name: "test_redact_performance_with_large_text"
+      description: "Verify redaction doesn't have catastrophic backtracking"
+      scenarios:
+        - "Large text (1MB+) with many potential matches"
+        - "Text with patterns that almost match but don't"
+      
+    - test_name: "test_redact_binary_data_handling"
+      description: "Test with binary data passed as string"
+      scenarios:
+        - "String with null bytes"
+        - "Binary data that might contain key-like patterns"
+
+  pattern_boundary_tests:
+    - test_name: "test_redact_pattern_length_boundaries"
+      description: "Test exact pattern length boundaries"
+      scenarios:
+        - "sk- followed by exactly 9 chars (too short for minimum 10)"
+        - "sk- followed by exactly 48 chars (maximum typical length)"
+        - "hf_ with exactly 9 chars (too short)"
+        - "Keys with mixed case patterns"
+
+    - test_name: "test_redact_overlapping_patterns"
+      description: "Test text with overlapping or adjacent patterns"
+      scenarios:
+        - "sk-abcde12345hf_xyz123 (adjacent without separator)"
+        - "Multiple keys with shared substrings"
+
+  format_preservation_tests:
+    - test_name: "test_redact_preserves_json_structure"
+      description: "Verify JSON remains valid after redaction"
+      scenarios:
+        - '{"api_key": "sk-abcde12345", "model": "gpt-4"}'
+        - "Nested JSON with multiple API keys"
+
+    - test_name: "test_redact_preserves_url_structure"  
+      description: "Verify URLs remain functional after redaction"
+      scenarios:
+        - "https://api.openai.com/v1/chat?key=sk-abcde12345"
+        - "Complex query strings with multiple parameters"
+
+  logging_integration_gaps:
+    - test_name: "test_filter_with_custom_formatters"
+      description: "Test filter works with various log formatters"
+      scenarios:
+        - "JSON formatter with structured logging"
+        - "Custom formatter that modifies message content"
+
+    - test_name: "test_filter_exception_logging"
+      description: "Test filter handles exception logging properly"  
+      scenarios:
+        - "Exception messages containing API keys"
+        - "Stack traces with sensitive data in variable names"
+
+  security_validation:
+    - test_name: "test_no_sensitive_data_in_memory_references"
+      description: "Verify redacted strings don't keep references to original"
+      implementation: |
+        # Test that gc can collect original sensitive strings
+        # after redaction, ensuring no memory leaks
+        
+    - test_name: "test_timing_attack_resistance"
+      description: "Verify operations don't leak information via timing"
+      implementation: |
+        # Time redaction of strings with/without keys
+        # to ensure consistent performance
+
+implementation_priority:
+  high:
+    - "Pattern boundary tests (most likely to catch regex bugs)"
+    - "Performance tests (prevent DoS via regex backtracking)"
+  
+  medium:
+    - "Format preservation (important for data integrity)"
+    - "Custom formatter tests (common integration issue)"
+    
+  low:
+    - "Security validation (nice-to-have defensive measures)"
+
+estimated_effort: "2-3 hours to implement all missing tests"

@@ -1,177 +1,309 @@
-target_file: "app/tests/test_atomic_rename.py"
-fix_priority: "CRITICAL"
-current_issues:
-  - issue: "Skip Everything Anti-Pattern"
-    description: "File unconditionally raises SkipTest at module level (line 16)"
-    impact: "Test suite provides zero coverage for critical atomic rename functionality"
-    
-  - issue: "Dodger Anti-Pattern"
-    description: "AtomicRenameTest class (lines 19-70) reimplements production logic instead of testing actual code"
-    impact: "Tests verify duplicate implementation, not the real RecentRecordingsWidget.handle_recording_rename"
-    
-  - issue: "Missing Edge Cases"
-    description: "No tests for symbolic links, cross-filesystem moves, network drives, or concurrent operations"
-    impact: "Critical failure scenarios remain untested"
-    
-  - issue: "Excessive Mocking"
-    description: "Tests mock os.rename and patch filesystem operations instead of using real temporary files"
-    impact: "Tests don't verify actual filesystem behavior"
-    
-  - issue: "Poor Test Isolation"
-    description: "Tests don't verify interaction with actual DatabaseManager or Qt signals"
-    impact: "Integration points between components remain untested"
+test_file: test_atomic_rename.py
+current_score: 6/10
+target_score: 9/10
 
-fixes_required:
-  step_1_remove_skip:
-    action: "Remove unconditional SkipTest"
-    changes:
-      - "Delete line 16 (raise unittest.SkipTest)"
-      - "Remove comment about headless environment (line 15)"
-    rationale: "Tests should run in all environments, use proper Qt headless mode if needed"
+issues_identified:
+  - issue: Manual Mock Implementations
+    description: |
+      Using custom DummySignal, DummyDBManager, DummyNameEditable, and DummyRecordingWidget
+      instead of unittest.mock.Mock or MagicMock. This leads to maintenance burden and
+      doesn't leverage the power of proper mocking frameworks.
+    severity: HIGH
     
-  step_2_remove_duplicate_implementation:
-    action: "Delete AtomicRenameTest class entirely"
-    changes:
-      - "Remove lines 19-70 (entire AtomicRenameTest class)"
-      - "Import actual RecentRecordingsWidget class instead"
-    rationale: "Test the real implementation, not a duplicate"
+  - issue: Conjoined Twins Anti-Pattern
+    description: |
+      Tests perform real filesystem operations using tempfile and shutil instead of
+      mocking os.rename and os.path operations. This makes tests slower and tests
+      multiple concerns (business logic + filesystem) in one test.
+    severity: HIGH
     
-  step_3_proper_test_structure:
-    action: "Create focused test classes for atomic rename functionality"
-    new_structure:
-      - class: "TestAtomicRenameSuccess"
-        purpose: "Test successful rename scenarios"
-        methods:
-          - "test_simple_rename_success"
-          - "test_rename_with_special_characters"
-          - "test_rename_preserves_extension"
-          - "test_rename_updates_database"
-          
-      - class: "TestAtomicRenameFilesystemErrors"
-        purpose: "Test filesystem failure scenarios"
-        methods:
-          - "test_source_file_not_found"
-          - "test_destination_already_exists"
-          - "test_insufficient_permissions"
-          - "test_cross_filesystem_move"
-          - "test_disk_full_scenario"
-          
-      - class: "TestAtomicRenameDatabaseErrors"
-        purpose: "Test database failure and rollback scenarios"
-        methods:
-          - "test_database_update_fails_rollback_succeeds"
-          - "test_database_timeout_with_rollback"
-          - "test_database_constraint_violation"
-          
-      - class: "TestAtomicRenameCriticalFailures"
-        purpose: "Test catastrophic failure scenarios"
-        methods:
-          - "test_rollback_fails_after_db_error"
-          - "test_filesystem_becomes_readonly_during_operation"
-          - "test_concurrent_rename_attempts"
-          
-  step_4_minimal_mocking:
-    action: "Use real filesystem operations with proper test isolation"
-    approach:
-      - "Use tempfile.TemporaryDirectory for all test files"
-      - "Create actual files with real content"
-      - "Only mock DatabaseManager.update_recording for DB operations"
-      - "Use Qt's headless mode for widget testing (QT_QPA_PLATFORM=offscreen)"
-      - "Mock only external boundaries (network, system calls)"
-    rationale: "Test actual behavior, not mock interactions"
+  - issue: Bypassing __init__ Constructor
+    description: |
+      Using RRW.__new__(RRW) to create instances without running __init__, which is
+      a code smell that indicates tight coupling and tests implementation details
+      rather than public interfaces.
+    severity: MEDIUM
     
-  step_5_test_actual_widget:
-    action: "Test RecentRecordingsWidget.handle_recording_rename directly"
-    setup:
-      - "Create minimal RecentRecordingsWidget instance with test dependencies"
-      - "Use real RecordingListItem widgets with test data"
-      - "Connect to actual Qt signals for verification"
-    verification:
-      - "Verify filesystem changes with os.path.exists"
-      - "Check database calls through mock.assert_called_with"
-      - "Validate Qt signal emissions"
-      - "Assert error messages shown to user"
-      
-  step_6_add_comprehensive_edge_cases:
-    action: "Add tests for all identified edge cases"
-    new_tests:
-      - test: "test_rename_symbolic_link"
-        scenario: "Renaming a symbolic link should rename link, not target"
-        
-      - test: "test_rename_with_unicode_characters"
-        scenario: "Handle filenames with emoji, CJK characters, RTL text"
-        
-      - test: "test_rename_maximum_path_length"
-        scenario: "Test OS path length limits (255 chars on most systems)"
-        
-      - test: "test_rename_case_only_change"
-        scenario: "Rename 'file.mp3' to 'File.mp3' on case-insensitive filesystems"
-        
-      - test: "test_rename_during_file_access"
-        scenario: "Rename while file is being read by another process"
-        
-      - test: "test_rename_network_drive"
-        scenario: "Handle network drive disconnection during rename"
-        
-      - test: "test_rename_with_special_filesystem_characters"
-        scenario: "Test reserved characters, trailing dots/spaces on Windows"
-        
-  step_7_improve_assertions:
-    action: "Use specific assertions with descriptive messages"
-    changes:
-      - "Replace assertTrue/assertFalse with specific checks"
-      - "Add custom assertion messages for debugging"
-      - "Verify exact error messages and types"
-      - "Check file content preservation after rename"
-      - "Validate database state consistency"
-      
-  step_8_add_performance_tests:
-    action: "Add tests for performance-critical scenarios"
-    tests:
-      - "test_rename_large_file": "Verify rename of 1GB+ files is atomic"
-      - "test_bulk_rename_operations": "Test renaming multiple files in sequence"
-      - "test_rename_timeout_handling": "Verify appropriate timeouts for slow operations"
-      
-  step_9_test_cleanup:
-    action: "Ensure proper resource cleanup"
-    implementation:
-      - "Use context managers for all file operations"
-      - "Implement proper tearDown to clean temporary files"
-      - "Verify no file handles left open"
-      - "Check database connections are closed"
-      
-  step_10_documentation:
-    action: "Add comprehensive test documentation"
-    requirements:
-      - "Add docstrings explaining what each test validates"
-      - "Document why specific edge cases matter"
-      - "Include examples of failure scenarios"
-      - "Reference bug reports or incidents that motivated tests"
+  - issue: Mixed Unit and Integration Testing
+    description: |
+      All tests are mixed concerns - they test filesystem, database interactions,
+      and business logic together. No clear separation between unit tests (isolated)
+      and integration tests (real components).
+    severity: MEDIUM
 
-expected_outcomes:
-  - "100% code coverage for handle_recording_rename method"
-  - "All error paths tested with actual filesystem operations"
-  - "Rollback scenarios verified with real file operations"
-  - "Edge cases documented and tested"
-  - "Performance characteristics validated"
-  - "No module-level skips or excessive mocking"
-  - "Tests run in < 2 seconds for normal cases"
-  - "Clear failure messages when tests fail"
+refactoring_plan:
+  phase_1_immediate_fixes:
+    - action: Replace Manual Mocks with unittest.mock
+      steps:
+        - Replace DummySignal with MagicMock()
+        - Replace DummyDBManager with Mock(spec=DatabaseManager)
+        - Replace DummyNameEditable with Mock() with proper spec
+        - Replace DummyRecordingWidget with Mock(spec=RecordingListItem)
+        - Use Mock's built-in assertion methods (assert_called_with, call_count, etc.)
+      
+    - action: Create Proper Test Fixture Setup
+      steps:
+        - Use dependency injection pattern in production code
+        - Create factory method for RecentRecordingsWidget that accepts dependencies
+        - Avoid bypassing __init__ by properly initializing with mock dependencies
+        
+  phase_2_separate_test_types:
+    - action: Split into Unit and Integration Tests
+      steps:
+        - Create test_atomic_rename_unit.py for pure unit tests
+        - Create test_atomic_rename_integration.py for filesystem integration tests
+        - Unit tests should mock ALL external dependencies (os, filesystem, database)
+        - Integration tests can use real filesystem with tempfile
+        
+    - action: Unit Test Structure
+      file: test_atomic_rename_unit.py
+      characteristics:
+        - Mock os.rename, os.path.exists, os.path.dirname, os.path.join
+        - Mock database manager completely
+        - Mock UI components (show_error_message, show_status_message)
+        - Test ONLY the business logic of handle_recording_rename
+        - Each test should test ONE specific behavior
+        
+    - action: Integration Test Structure
+      file: test_atomic_rename_integration.py
+      characteristics:
+        - Use real filesystem operations with tempfile
+        - Use in-memory SQLite database for real DB operations
+        - Test the complete flow from UI action to filesystem change
+        - Verify actual file operations and database state
+        
+  phase_3_improve_test_quality:
+    - action: Implement Proper Test Patterns
+      patterns:
+        - arrange_act_assert: |
+            def test_rename_updates_database_with_new_filename(self):
+                # Arrange
+                mock_db = Mock(spec=DatabaseManager)
+                widget = self.create_widget_with_mocks(db_manager=mock_db)
+                
+                # Act
+                widget.handle_recording_rename(1, "new_name")
+                
+                # Assert
+                mock_db.update_recording.assert_called_once_with(
+                    1, ANY, filename="new_name.mp3", file_path="/path/new_name.mp3"
+                )
+                
+        - behavior_not_implementation: |
+            # Bad: Testing implementation details
+            self.assertEqual(widget.unified_view.id_to_widget[1].file_path, new_path)
+            
+            # Good: Testing observable behavior
+            mock_widget.update_data.assert_called_with({
+                "filename": "new_name",
+                "file_path": "/path/new_name.mp3"
+            })
+            
+        - one_assertion_per_test: |
+            # Split complex tests into focused ones
+            def test_rename_succeeds_when_file_exists(self):
+            def test_rename_updates_widget_state(self):
+            def test_rename_shows_success_message(self):
 
-implementation_notes:
-  - "Use pytest.mark.parametrize for similar test scenarios"
-  - "Consider using pytest-qt for better Qt testing support"
-  - "Create helper methods for common setup (create_test_recording, etc.)"
-  - "Use pathlib.Path for cleaner path operations"
-  - "Mock only at the DatabaseManager boundary, not individual methods"
-  - "Test actual error message content shown to users"
-  - "Verify logging output for debugging production issues"
+new_test_structure:
+  test_atomic_rename_unit.py:
+    test_classes:
+      - TestHandleRecordingRenameValidation:
+          - test_returns_early_when_widget_not_found
+          - test_shows_error_when_source_file_missing
+          - test_shows_error_when_destination_exists
+          - test_preserves_file_extension
+          
+      - TestHandleRecordingRenameSuccess:
+          - test_calls_os_rename_with_correct_paths
+          - test_updates_database_with_new_filename_and_path
+          - test_updates_widget_data_on_success
+          - test_shows_success_status_message
+          
+      - TestHandleRecordingRenameRollback:
+          - test_rolls_back_rename_when_database_update_fails
+          - test_logs_critical_when_rollback_fails
+          - test_shows_error_message_on_failure
+          - test_reverts_ui_text_on_failure
+          
+  test_atomic_rename_integration.py:
+    test_classes:
+      - TestAtomicRenameEndToEnd:
+          - test_complete_rename_flow_with_real_files
+          - test_database_and_filesystem_stay_synchronized
+          - test_handles_unicode_filenames
+          - test_handles_long_filenames
+          - test_concurrent_rename_operations
+
+implementation_example:
+  unit_test_with_proper_mocks: |
+    import unittest
+    from unittest.mock import Mock, MagicMock, patch, call, ANY
+    from app.RecentRecordingsWidget import RecentRecordingsWidget
+    
+    class TestHandleRecordingRenameUnit(unittest.TestCase):
+        
+        def setUp(self):
+            # Create mocks with proper specs
+            self.mock_db_manager = Mock(spec=['update_recording', 'error_occurred'])
+            self.mock_db_manager.error_occurred = MagicMock()
+            
+            self.mock_widget = Mock(spec=['get_filename', 'file_path', 'update_data', 
+                                         'filename_no_ext', 'name_editable'])
+            self.mock_widget.get_filename.return_value = "old_file.mp3"
+            self.mock_widget.file_path = "/path/to/old_file.mp3"
+            self.mock_widget.filename_no_ext = "old_file"
+            self.mock_widget.name_editable = Mock()
+            
+            # Patch filesystem operations
+            self.patcher_exists = patch('os.path.exists')
+            self.patcher_rename = patch('os.rename')
+            self.patcher_dirname = patch('os.path.dirname')
+            self.patcher_join = patch('os.path.join')
+            self.patcher_error = patch('app.RecentRecordingsWidget.show_error_message')
+            
+            self.mock_exists = self.patcher_exists.start()
+            self.mock_rename = self.patcher_rename.start()
+            self.mock_dirname = self.patcher_dirname.start()
+            self.mock_join = self.patcher_join.start()
+            self.mock_error = self.patcher_error.start()
+            
+            # Setup default return values
+            self.mock_exists.side_effect = lambda path: path == "/path/to/old_file.mp3"
+            self.mock_dirname.return_value = "/path/to"
+            self.mock_join.side_effect = lambda dir, file: f"{dir}/{file}"
+            
+            # Create widget with dependency injection
+            self.widget = RecentRecordingsWidget()
+            self.widget.db_manager = self.mock_db_manager
+            self.widget.unified_view = Mock()
+            self.widget.unified_view.id_to_widget = {1: self.mock_widget}
+            self.widget.show_status_message = Mock()
+            
+        def tearDown(self):
+            self.patcher_exists.stop()
+            self.patcher_rename.stop()
+            self.patcher_dirname.stop()
+            self.patcher_join.stop()
+            self.patcher_error.stop()
+            
+        def test_successful_rename_updates_database(self):
+            # Arrange
+            self.mock_db_manager.update_recording.side_effect = \
+                lambda id, callback, **kwargs: callback()
+            
+            # Act
+            self.widget.handle_recording_rename(1, "new_name")
+            
+            # Assert
+            self.mock_db_manager.update_recording.assert_called_once_with(
+                1, ANY, filename="new_name.mp3", file_path="/path/to/new_name.mp3"
+            )
+            
+        def test_successful_rename_performs_filesystem_operation(self):
+            # Arrange
+            self.mock_db_manager.update_recording.side_effect = \
+                lambda id, callback, **kwargs: callback()
+            
+            # Act
+            self.widget.handle_recording_rename(1, "new_name")
+            
+            # Assert
+            self.mock_rename.assert_called_once_with(
+                "/path/to/old_file.mp3", "/path/to/new_name.mp3"
+            )
+            
+        def test_database_failure_triggers_rollback(self):
+            # Arrange
+            self.mock_db_manager.update_recording.side_effect = Exception("DB Error")
+            
+            # Act
+            self.widget.handle_recording_rename(1, "new_name")
+            
+            # Assert
+            # Should call rename twice: once forward, once rollback
+            expected_calls = [
+                call("/path/to/old_file.mp3", "/path/to/new_name.mp3"),
+                call("/path/to/new_name.mp3", "/path/to/old_file.mp3")
+            ]
+            self.mock_rename.assert_has_calls(expected_calls)
+
+  integration_test_example: |
+    import unittest
+    import tempfile
+    import shutil
+    import os
+    from app.RecentRecordingsWidget import RecentRecordingsWidget
+    from app.database_manager import DatabaseManager
+    
+    class TestAtomicRenameIntegration(unittest.TestCase):
+        
+        def setUp(self):
+            # Use real temporary directory for filesystem operations
+            self.temp_dir = tempfile.mkdtemp()
+            
+            # Use in-memory SQLite for real database operations
+            self.db_manager = DatabaseManager(":memory:")
+            self.db_manager.initialize()
+            
+            # Create test file
+            self.test_file = os.path.join(self.temp_dir, "test.mp3")
+            with open(self.test_file, 'w') as f:
+                f.write("test content")
+                
+            # Insert test record in database
+            self.recording_id = self.db_manager.create_recording(
+                filename="test.mp3",
+                file_path=self.test_file
+            )
+            
+            # Create real widget with real dependencies
+            self.widget = RecentRecordingsWidget()
+            self.widget.db_manager = self.db_manager
+            self.widget.initialize()
+            
+        def tearDown(self):
+            shutil.rmtree(self.temp_dir, ignore_errors=True)
+            self.db_manager.close()
+            
+        def test_complete_rename_flow(self):
+            # Act
+            self.widget.handle_recording_rename(self.recording_id, "renamed")
+            
+            # Assert filesystem change
+            new_path = os.path.join(self.temp_dir, "renamed.mp3")
+            self.assertTrue(os.path.exists(new_path))
+            self.assertFalse(os.path.exists(self.test_file))
+            
+            # Assert database change
+            recording = self.db_manager.get_recording(self.recording_id)
+            self.assertEqual(recording.filename, "renamed.mp3")
+            self.assertEqual(recording.file_path, new_path)
+
+testing_best_practices:
+  - Use Mock(spec=...) to ensure mocks conform to real interfaces
+  - One assertion per test for clarity
+  - Test behavior, not implementation
+  - Use descriptive test names that explain what is being tested
+  - Separate unit tests (fast, isolated) from integration tests (slower, real components)
+  - Use dependency injection in production code to enable better testing
+  - Mock at appropriate boundaries (module imports, not internal methods)
+  - Use test fixtures and builders to reduce test setup duplication
 
 success_metrics:
-  - "Zero skipped tests in this file"
-  - "< 30% mock usage (currently 100% with duplicate implementation)"
-  - "All test methods < 20 lines"
-  - "Each test has single clear purpose"
-  - "Tests provide actionable failure messages"
-  - "Edge cases have dedicated test methods"
-  - "No testing of implementation details"
+  - All tests run in < 1 second for unit tests
+  - No real filesystem operations in unit tests
+  - Clear separation of concerns
+  - Tests don't break when implementation changes but behavior stays same
+  - 100% code coverage for critical paths
+  - No manual mock implementations
+  - Tests are self-documenting through clear naming
+
+migration_steps:
+  1. Create backup of existing test file
+  2. Write new unit tests with proper mocking
+  3. Write integration tests for end-to-end scenarios
+  4. Verify all test cases from original are covered
+  5. Delete original test file after validation
+  6. Update CI/CD to run both unit and integration tests
+  7. Document testing approach in project README

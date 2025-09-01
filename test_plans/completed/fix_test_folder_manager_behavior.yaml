@@ -1,0 +1,595 @@
+target_file: "app/FolderManager.py"
+test_file: "app/tests/test_folder_manager_behavior.py"
+dependencies_to_mock:
+  - "app.DatabaseManager.DatabaseManager"
+  - "app.constants.get_database_path"
+  - "logging.getLogger"
+  - "datetime.datetime"
+  - "json.dumps"
+  - "json.loads"
+  - "PyQt6.QtCore.QTimer"
+
+test_cases:
+  # Singleton Pattern Tests
+  - function_to_test: "FolderManager.instance"
+    description: "Tests singleton returns same instance on multiple calls"
+    scenario: "When instance() is called multiple times with same db_manager"
+    mocks:
+      - target: "DatabaseManager"
+        return_value: "mock_db_manager instance"
+    expected_behavior:
+      - "Returns the same FolderManager instance object"
+      - "Does not create new instances"
+      - "attach_db_manager called only once"
+
+  - function_to_test: "FolderManager.instance"
+    description: "Tests RuntimeError when no db_manager provided on first call"
+    scenario: "When instance() is called without db_manager and none attached"
+    mocks: []
+    expected_behavior:
+      - "Raises RuntimeError with message about requiring DatabaseManager"
+
+  - function_to_test: "FolderManager.instance"
+    description: "Tests warning when different db_manager provided after init"
+    scenario: "When instance() called with different db_manager after initialization"
+    mocks:
+      - target: "logger.warning"
+        return_value: "None"
+    expected_behavior:
+      - "Logs warning about different DatabaseManager"
+      - "Keeps original db_manager instance"
+      - "Returns singleton instance"
+
+  # Create Folder - Happy Path
+  - function_to_test: "FolderManager.create_folder"
+    description: "Tests successful folder creation at root level"
+    scenario: "Creating a new folder with unique name at root"
+    mocks:
+      - target: "datetime.datetime.now"
+        return_value: "datetime(2024, 1, 1, 12, 0, 0)"
+      - target: "db_manager.execute_query"
+        return_value: "calls callback with folder_id=1"
+    expected_behavior:
+      - "Returns True immediately"
+      - "Callback receives (True, 1)"
+      - "Folder added to self.folders list"
+
+  - function_to_test: "FolderManager.create_folder"
+    description: "Tests successful child folder creation"
+    scenario: "Creating folder with valid parent_id"
+    mocks:
+      - target: "datetime.datetime.now"
+        return_value: "datetime(2024, 1, 1, 12, 0, 0)"
+      - target: "db_manager.execute_query"
+        return_value: "calls callback with folder_id=2"
+    expected_behavior:
+      - "Returns True immediately"
+      - "Child folder added to parent's children list"
+      - "Callback receives (True, 2)"
+
+  # Create Folder - Error Cases
+  - function_to_test: "FolderManager.create_folder"
+    description: "Tests duplicate name rejection at same level"
+    scenario: "Attempting to create folder with existing name at same parent level"
+    mocks:
+      - target: "logger.warning"
+        return_value: "None"
+    expected_behavior:
+      - "Returns False immediately"
+      - "Callback receives (False, 'A folder with this name already exists')"
+      - "No database query executed"
+
+  - function_to_test: "FolderManager.create_folder"
+    description: "Tests handling of database error on insert"
+    scenario: "When database returns None or 0 as folder_id"
+    mocks:
+      - target: "db_manager.execute_query"
+        return_value: "calls callback with None"
+      - target: "logger.error"
+        return_value: "None"
+    expected_behavior:
+      - "Logs error about failed folder ID"
+      - "Callback receives (False, 'Database error: Failed to get new folder ID')"
+      - "Folder not added to memory"
+
+  - function_to_test: "FolderManager.create_folder"
+    description: "Tests creation with null/empty name"
+    scenario: "Attempting to create folder with empty string name"
+    mocks:
+      - target: "db_manager.execute_query"
+        side_effect: "database constraint violation"
+    expected_behavior:
+      - "Operation fails appropriately"
+      - "No folder added to memory"
+
+  # Rename Folder - Happy Path
+  - function_to_test: "FolderManager.rename_folder"
+    description: "Tests successful folder rename"
+    scenario: "Renaming existing folder to unique name"
+    mocks:
+      - target: "db_manager.execute_query"
+        return_value: "calls callback with success"
+    expected_behavior:
+      - "Returns True immediately"
+      - "Folder name updated in memory"
+      - "Callback receives (True, None)"
+
+  # Rename Folder - Error Cases
+  - function_to_test: "FolderManager.rename_folder"
+    description: "Tests rename of non-existent folder"
+    scenario: "Attempting to rename folder_id that doesn't exist"
+    mocks:
+      - target: "logger.warning"
+        return_value: "None"
+    expected_behavior:
+      - "Returns False immediately"
+      - "Callback receives (False, 'Folder not found')"
+      - "No database query executed"
+
+  - function_to_test: "FolderManager.rename_folder"
+    description: "Tests rename to duplicate name at same level"
+    scenario: "Renaming to name that already exists at same parent level"
+    mocks:
+      - target: "logger.warning"
+        return_value: "None"
+    expected_behavior:
+      - "Returns False immediately"
+      - "Callback receives (False, 'A folder with this name already exists')"
+      - "No database query executed"
+
+  - function_to_test: "FolderManager.rename_folder"
+    description: "Tests rename with empty string"
+    scenario: "Attempting to rename folder to empty string"
+    mocks:
+      - target: "db_manager.execute_query"
+        side_effect: "database constraint violation"
+    expected_behavior:
+      - "Operation handles error appropriately"
+      - "Original name preserved in memory"
+
+  # Delete Folder - Happy Path
+  - function_to_test: "FolderManager.delete_folder"
+    description: "Tests successful folder deletion"
+    scenario: "Deleting existing folder with no children"
+    mocks:
+      - target: "db_manager.execute_query"
+        return_value: "calls both callbacks in sequence"
+    expected_behavior:
+      - "Returns True immediately"
+      - "Folder removed from memory"
+      - "Callback receives (True, None)"
+
+  - function_to_test: "FolderManager.delete_folder"
+    description: "Tests deletion removes from parent's children"
+    scenario: "Deleting child folder updates parent's children list"
+    mocks:
+      - target: "db_manager.execute_query"
+        return_value: "calls callbacks"
+    expected_behavior:
+      - "Folder removed from parent's children list"
+      - "Parent folder structure remains intact"
+
+  # Delete Folder - Error Cases
+  - function_to_test: "FolderManager.delete_folder"
+    description: "Tests deletion of non-existent folder"
+    scenario: "Attempting to delete folder_id that doesn't exist"
+    mocks:
+      - target: "logger.warning"
+        return_value: "None"
+    expected_behavior:
+      - "Returns False immediately"
+      - "Callback receives (False, 'Folder not found')"
+      - "No database query executed"
+
+  - function_to_test: "FolderManager.delete_folder"
+    description: "Tests handling of database error during deletion"
+    scenario: "When database delete operation fails"
+    mocks:
+      - target: "db_manager.execute_query"
+        side_effect: "database error"
+    expected_behavior:
+      - "Folder remains in memory if delete fails"
+      - "Error propagated to callback"
+
+  # Recording Association - Happy Path
+  - function_to_test: "FolderManager.add_recording_to_folder"
+    description: "Tests adding recording to folder"
+    scenario: "Adding recording that isn't in any folder"
+    mocks:
+      - target: "db_manager.execute_query"
+        return_value: "calls callbacks for check, remove, insert"
+    expected_behavior:
+      - "Returns True immediately"
+      - "Recording associated with folder"
+      - "Callback receives (True, None)"
+
+  - function_to_test: "FolderManager.add_recording_to_folder"
+    description: "Tests adding already associated recording"
+    scenario: "Recording already exists in target folder"
+    mocks:
+      - target: "db_manager.execute_query"
+        return_value: "check query returns existing association"
+      - target: "logger.info"
+        return_value: "None"
+    expected_behavior:
+      - "Returns True immediately"
+      - "No duplicate association created"
+      - "Callback receives (True, None)"
+
+  # Recording Association - Error Cases
+  - function_to_test: "FolderManager.add_recording_to_folder"
+    description: "Tests adding with invalid recording_id"
+    scenario: "Recording ID doesn't exist in database"
+    mocks:
+      - target: "db_manager.execute_query"
+        side_effect: "foreign key constraint violation"
+    expected_behavior:
+      - "Operation fails appropriately"
+      - "No association created"
+
+  - function_to_test: "FolderManager.add_recording_to_folder"
+    description: "Tests adding with invalid folder_id"
+    scenario: "Folder ID doesn't exist"
+    mocks:
+      - target: "db_manager.execute_query"
+        side_effect: "foreign key constraint violation"
+    expected_behavior:
+      - "Operation fails appropriately"
+      - "No association created"
+
+  - function_to_test: "FolderManager.add_recording_to_folder"
+    description: "Tests moving recording between folders"
+    scenario: "Recording exists in folder A, moving to folder B"
+    mocks:
+      - target: "db_manager.execute_query"
+        return_value: "removes from A, adds to B"
+    expected_behavior:
+      - "Recording removed from original folder"
+      - "Recording added to new folder"
+      - "Single association maintained"
+
+  # Remove Recording - Happy Path
+  - function_to_test: "FolderManager.remove_recording_from_folder"
+    description: "Tests removing existing association"
+    scenario: "Removing recording that exists in folder"
+    mocks:
+      - target: "db_manager.execute_query"
+        return_value: "calls callback after delete"
+    expected_behavior:
+      - "Returns True immediately"
+      - "Association removed"
+      - "Callback receives (True, None)"
+
+  # Remove Recording - Error Cases
+  - function_to_test: "FolderManager.remove_recording_from_folder"
+    description: "Tests removing non-existent association"
+    scenario: "Recording not in specified folder"
+    mocks:
+      - target: "db_manager.execute_query"
+        return_value: "delete affects 0 rows"
+    expected_behavior:
+      - "Returns True (idempotent)"
+      - "No error raised"
+      - "Callback still receives (True, None)"
+
+  - function_to_test: "FolderManager.remove_recording_from_folder"
+    description: "Tests removal with invalid IDs"
+    scenario: "Using non-existent recording or folder ID"
+    mocks:
+      - target: "db_manager.execute_query"
+        return_value: "delete affects 0 rows"
+    expected_behavior:
+      - "Operation completes without error"
+      - "Idempotent behavior"
+
+  # Query Methods - Happy Path
+  - function_to_test: "FolderManager.get_recordings_in_folder"
+    description: "Tests retrieving recordings from folder"
+    scenario: "Folder contains multiple recordings"
+    mocks:
+      - target: "db_manager.execute_query"
+        return_value: "calls callback with recording list"
+    expected_behavior:
+      - "Returns None immediately"
+      - "Callback receives (True, list_of_recordings)"
+      - "Results ordered by date_created DESC"
+
+  - function_to_test: "FolderManager.get_recordings_in_folder"
+    description: "Tests empty folder query"
+    scenario: "Folder exists but has no recordings"
+    mocks:
+      - target: "db_manager.execute_query"
+        return_value: "calls callback with empty list"
+    expected_behavior:
+      - "Returns None immediately"
+      - "Callback receives (True, [])"
+
+  # Query Methods - Error Cases
+  - function_to_test: "FolderManager.get_recordings_in_folder"
+    description: "Tests query without callback"
+    scenario: "Method called without providing callback"
+    mocks:
+      - target: "db_manager.execute_query"
+        return_value: "executes query"
+      - target: "logger.warning"
+        return_value: "None"
+    expected_behavior:
+      - "Returns None"
+      - "Warning logged about missing callback"
+
+  - function_to_test: "FolderManager.get_recordings_in_folder"
+    description: "Tests query with invalid folder_id"
+    scenario: "Folder ID doesn't exist"
+    mocks:
+      - target: "db_manager.execute_query"
+        return_value: "calls callback with empty result"
+    expected_behavior:
+      - "Returns None"
+      - "Callback receives (True, [])"
+
+  - function_to_test: "FolderManager.get_folders_for_recording"
+    description: "Tests retrieving folders containing recording"
+    scenario: "Recording exists in multiple folders"
+    mocks:
+      - target: "db_manager.execute_query"
+        return_value: "calls callback with folder list"
+    expected_behavior:
+      - "Returns empty list immediately"
+      - "Callback receives (True, list_of_folders)"
+
+  - function_to_test: "FolderManager.get_recordings_not_in_folders"
+    description: "Tests retrieving unassigned recordings"
+    scenario: "Some recordings not in any folder"
+    mocks:
+      - target: "db_manager.execute_query"
+        return_value: "calls callback with unassigned list"
+    expected_behavior:
+      - "Returns None immediately"
+      - "Callback receives (True, list_of_unassigned)"
+
+  # Utility Methods
+  - function_to_test: "FolderManager.get_folder_by_id"
+    description: "Tests retrieving folder by ID"
+    scenario: "Folder exists in memory"
+    mocks: []
+    expected_behavior:
+      - "Returns folder dictionary"
+      - "Contains id, name, parent_id, children"
+
+  - function_to_test: "FolderManager.get_folder_by_id"
+    description: "Tests retrieving non-existent folder"
+    scenario: "Folder ID not in memory"
+    mocks: []
+    expected_behavior:
+      - "Returns None"
+
+  - function_to_test: "FolderManager.get_all_root_folders"
+    description: "Tests retrieving root folders"
+    scenario: "Multiple root folders exist"
+    mocks: []
+    expected_behavior:
+      - "Returns list of folders with parent_id=None"
+      - "Does not include child folders"
+
+  - function_to_test: "FolderManager.get_folder_recording_count"
+    description: "Tests counting recordings in folder"
+    scenario: "Folder contains recordings"
+    mocks:
+      - target: "db_manager.execute_query"
+        return_value: "calls callback with count result"
+    expected_behavior:
+      - "Returns 0 immediately (async)"
+      - "Callback receives actual count"
+
+  - function_to_test: "FolderManager.folder_exists"
+    description: "Tests checking folder name existence"
+    scenario: "Checking for duplicate name at same level"
+    mocks: []
+    expected_behavior:
+      - "Returns True if name exists at parent level"
+      - "Respects exclude_id parameter"
+      - "Checks parent_id correctly"
+
+  # Export/Import - Happy Path
+  - function_to_test: "FolderManager.export_folder_structure"
+    description: "Tests exporting folder structure"
+    scenario: "Multiple folders in hierarchy"
+    mocks:
+      - target: "json.dumps"
+        return_value: "JSON string representation"
+    expected_behavior:
+      - "Returns JSON string"
+      - "Includes all folder properties"
+      - "Preserves hierarchy"
+
+  - function_to_test: "FolderManager.import_folder_structure"
+    description: "Tests importing valid structure"
+    scenario: "Importing well-formed JSON folder structure"
+    mocks:
+      - target: "json.loads"
+        return_value: "parsed folder list"
+      - target: "db_manager.execute_query"
+        return_value: "executes clear and insert queries"
+      - target: "QTimer.singleShot"
+        return_value: "calls reload immediately"
+    expected_behavior:
+      - "Returns True"
+      - "Clears existing folders"
+      - "Callback receives (True, 'Folder structure imported successfully')"
+
+  # Export/Import - Error Cases
+  - function_to_test: "FolderManager.import_folder_structure"
+    description: "Tests importing invalid JSON"
+    scenario: "JSON parsing fails"
+    mocks:
+      - target: "json.loads"
+        side_effect: "raises JSONDecodeError"
+      - target: "logger.error"
+        return_value: "None"
+    expected_behavior:
+      - "Returns False"
+      - "Error logged"
+      - "Callback receives (False, error_message)"
+
+  - function_to_test: "FolderManager.import_folder_structure"
+    description: "Tests import with database error"
+    scenario: "Database operations fail during import"
+    mocks:
+      - target: "db_manager.execute_query"
+        side_effect: "database error"
+      - target: "logger.error"
+        return_value: "None"
+    expected_behavior:
+      - "Returns False"
+      - "Original structure preserved"
+      - "Error propagated to callback"
+
+  # Load Folders
+  - function_to_test: "FolderManager.load_folders"
+    description: "Tests loading folders from database"
+    scenario: "Database contains folder hierarchy"
+    mocks:
+      - target: "db_manager.execute_query"
+        return_value: "calls callback with folder rows"
+      - target: "logger.info"
+        return_value: "None"
+    expected_behavior:
+      - "Populates self.folders list"
+      - "Builds parent-child relationships"
+      - "Calls provided callback"
+
+  - function_to_test: "FolderManager.load_folders"
+    description: "Tests loading with empty database"
+    scenario: "No folders in database"
+    mocks:
+      - target: "db_manager.execute_query"
+        return_value: "calls callback with empty list"
+    expected_behavior:
+      - "self.folders becomes empty list"
+      - "No errors raised"
+      - "Callback still executed"
+
+  - function_to_test: "FolderManager.load_folders"
+    description: "Tests loading with orphaned children"
+    scenario: "Child folder references non-existent parent"
+    mocks:
+      - target: "db_manager.execute_query"
+        return_value: "returns folders with invalid parent_ids"
+    expected_behavior:
+      - "Orphaned folders loaded but not in hierarchy"
+      - "No crash or error"
+      - "Structure built for valid relationships"
+
+  # Build Folder Structure
+  - function_to_test: "FolderManager.build_folder_structure"
+    description: "Tests building hierarchy from flat list"
+    scenario: "Folders have parent-child relationships"
+    mocks: []
+    expected_behavior:
+      - "Children added to parent's children list"
+      - "Maintains folder references"
+      - "Handles multiple levels"
+
+  - function_to_test: "FolderManager.build_folder_structure"
+    description: "Tests structure with circular reference"
+    scenario: "Folder A parent of B, B parent of A"
+    mocks: []
+    expected_behavior:
+      - "Avoids infinite loop"
+      - "Builds partial valid structure"
+
+  # Thread Safety
+  - function_to_test: "FolderManager.instance"
+    description: "Tests thread-safe singleton creation"
+    scenario: "Multiple threads call instance() simultaneously"
+    mocks:
+      - target: "threading.Lock"
+        return_value: "thread lock"
+    expected_behavior:
+      - "Only one instance created"
+      - "All threads receive same instance"
+      - "No race conditions"
+
+  # Attach DB Manager
+  - function_to_test: "FolderManager.attach_db_manager"
+    description: "Tests attaching database manager"
+    scenario: "Attaching db_manager to new instance"
+    mocks:
+      - target: "init_database"
+        return_value: "None"
+      - target: "load_folders"
+        return_value: "None"
+    expected_behavior:
+      - "Sets self.db_manager"
+      - "Calls init_database"
+      - "Calls load_folders"
+
+  - function_to_test: "FolderManager.attach_db_manager"
+    description: "Tests replacing existing db_manager"
+    scenario: "Different db_manager attached to instance with existing one"
+    mocks:
+      - target: "logger.warning"
+        return_value: "None"
+    expected_behavior:
+      - "Logs warning about replacement"
+      - "Replaces db_manager"
+      - "Re-initializes database"
+
+  - function_to_test: "FolderManager.attach_db_manager"
+    description: "Tests attaching same db_manager twice"
+    scenario: "Same db_manager instance attached again"
+    mocks:
+      - target: "logger.debug"
+        return_value: "None"
+    expected_behavior:
+      - "Logs debug message"
+      - "Returns early without re-init"
+
+  # Edge Cases
+  - function_to_test: "FolderManager.create_folder"
+    description: "Tests creating folder with very long name"
+    scenario: "Name exceeds typical database column length"
+    mocks:
+      - target: "db_manager.execute_query"
+        side_effect: "database column length exceeded"
+    expected_behavior:
+      - "Operation fails gracefully"
+      - "Error handled appropriately"
+
+  - function_to_test: "FolderManager.create_folder"
+    description: "Tests creating folder with special characters"
+    scenario: "Name contains SQL injection attempt"
+    mocks:
+      - target: "db_manager.execute_query"
+        return_value: "parameterized query prevents injection"
+    expected_behavior:
+      - "Special characters handled safely"
+      - "No SQL injection possible"
+      - "Folder created with exact name"
+
+  - function_to_test: "FolderManager.delete_folder"
+    description: "Tests cascade deletion with deep hierarchy"
+    scenario: "Parent has children, grandchildren, etc."
+    mocks:
+      - target: "db_manager.execute_query"
+        return_value: "cascade deletes all descendants"
+    expected_behavior:
+      - "All descendants removed"
+      - "Memory structure updated correctly"
+
+  - function_to_test: "FolderManager.__init__"
+    description: "Tests direct instantiation raises error"
+    scenario: "Attempting to create instance with __init__"
+    mocks: []
+    expected_behavior:
+      - "Raises RuntimeError"
+      - "Message about using instance() method"
+
+  - function_to_test: "FolderManager._reset_for_testing"
+    description: "Tests test helper resets singleton"
+    scenario: "Resetting singleton state for tests"
+    mocks: []
+    expected_behavior:
+      - "Sets _instance to None"
+      - "Sets _db_manager_attached to False"
+      - "Thread-safe with lock"

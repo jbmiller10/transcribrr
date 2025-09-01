@@ -1,0 +1,295 @@
+target_file: "app/ThreadManager.py"
+test_file: "app/tests/test_thread_manager.py"
+
+dependencies_to_mock:
+  - "logging.getLogger"
+  - "weakref.ref"
+  - "PyQt6.QtCore.QThread"
+  - "time.sleep"
+  - "threading.Lock"
+  - "threading.Event"
+  - "concurrent.futures.ThreadPoolExecutor"
+
+test_cases:
+  # Singleton Pattern Tests
+  - function_to_test: "ThreadManager.instance"
+    description: "Verify singleton pattern implementation with concurrent access"
+    scenario: "Multiple threads attempting to create instance simultaneously"
+    mocks:
+      - target: "threading.Lock"
+        behavior: "Real lock for thread synchronization"
+    expected_behavior:
+      - "Only one instance created despite concurrent calls"
+      - "All threads receive same instance reference"
+      - "No race conditions during initialization"
+      - "Instance has empty _active_threads dict on first creation"
+
+  # Thread Registration with Realistic Timing
+  - function_to_test: "ThreadManager.register_thread"
+    description: "Tests thread registration with realistic QThread behavior"
+    scenario: "Registering a thread that simulates actual work with delays"
+    mocks:
+      - target: "QThread.finished"
+        behavior: "Signal that fires after realistic delay (100-500ms)"
+      - target: "weakref.ref"
+        return_value: "Weak reference to thread object"
+    expected_behavior:
+      - "Thread added to _active_threads dictionary"
+      - "Weak reference created to avoid memory leaks"
+      - "Auto-unregister callback connected to finished signal"
+      - "Debug log shows thread registration with class name and ID"
+
+  - function_to_test: "ThreadManager.register_thread"
+    description: "Tests concurrent registration of multiple threads"
+    scenario: "10 threads being registered simultaneously from different threads"
+    mocks:
+      - target: "threading.Lock"
+        behavior: "Real lock to protect _active_threads dict"
+    expected_behavior:
+      - "All threads successfully registered without data corruption"
+      - "No KeyError or race conditions"
+      - "Each thread has unique ID in dictionary"
+      - "Warning logged for any duplicate registration attempts"
+
+  - function_to_test: "ThreadManager.register_thread"
+    description: "Tests registration of thread without finished signal"
+    scenario: "Thread object missing required finished attribute"
+    mocks: []
+    expected_behavior:
+      - "AttributeError raised with clear message"
+      - "Thread not added to _active_threads"
+      - "Manager state remains consistent"
+
+  - function_to_test: "ThreadManager.register_thread"
+    description: "Tests weakref behavior when thread is garbage collected"
+    scenario: "Thread object deleted while still registered"
+    mocks:
+      - target: "weakref.ref"
+        behavior: "Returns weak reference that becomes None after del"
+    expected_behavior:
+      - "Auto-unregister handles None reference gracefully"
+      - "No exceptions during cleanup"
+      - "Thread removed from active threads"
+      - "Memory properly released"
+
+  # Thread Cancellation with Realistic Scenarios
+  - function_to_test: "ThreadManager.cancel_all_threads"
+    description: "Tests cancellation with threads that take varying times to stop"
+    scenario: "Mix of quick-stopping and slow-stopping threads"
+    mocks:
+      - target: "QThread.wait"
+        behavior: "Returns True after delays: 100ms, 500ms, 2000ms"
+      - target: "QThread.isRunning"
+        behavior: "Returns True initially, False after wait"
+    expected_behavior:
+      - "All threads receive cancel() call in sequence"
+      - "Each thread waited with specified timeout"
+      - "Threads that finish quickly marked as successful"
+      - "Debug logs show timing for each thread"
+
+  - function_to_test: "ThreadManager.cancel_all_threads"
+    description: "Tests thread cancellation timeout scenario"
+    scenario: "Thread doesn't respond to cancel within timeout period"
+    mocks:
+      - target: "QThread.wait"
+        return_value: "False (simulates timeout)"
+      - target: "QThread.isRunning"
+        return_value: "True (thread still running)"
+      - target: "time.time"
+        behavior: "Track actual elapsed time"
+    expected_behavior:
+      - "Warning logged: 'Thread X did not finish within timeout'"
+      - "Method continues processing other threads"
+      - "Thread remains in active list for forced termination"
+      - "Total cancellation time logged"
+
+  - function_to_test: "ThreadManager.cancel_all_threads"
+    description: "Tests cancellation with thread.cancel() raising exception"
+    scenario: "Thread's cancel method throws RuntimeError"
+    mocks:
+      - target: "QThread.cancel"
+        side_effect: "raises RuntimeError('Device busy')"
+    expected_behavior:
+      - "Error logged with thread name and exception message"
+      - "Cancellation continues for remaining threads"
+      - "wait() still called on thread despite cancel error"
+      - "Method completes without propagating exception"
+
+  - function_to_test: "ThreadManager.cancel_all_threads"
+    description: "Tests cancellation with thread lacking cancel method"
+    scenario: "Legacy thread without cancel() implementation"
+    mocks:
+      - target: "hasattr"
+        return_value: "False for 'cancel'"
+    expected_behavior:
+      - "Warning logged: 'Thread X has no cancel() method'"
+      - "Thread still waited with timeout"
+      - "Graceful degradation without exceptions"
+
+  - function_to_test: "ThreadManager.cancel_all_threads"
+    description: "Tests concurrent cancellation and registration"
+    scenario: "New thread registered while cancel_all_threads is running"
+    mocks:
+      - target: "threading.Event"
+        behavior: "Synchronization between registration and cancellation"
+    expected_behavior:
+      - "New thread not included in current cancellation batch"
+      - "No ConcurrentModificationException"
+      - "Snapshot of threads taken at start of cancellation"
+      - "New thread remains active after cancellation completes"
+
+  # Thread Unregistration Edge Cases
+  - function_to_test: "ThreadManager.unregister_thread"
+    description: "Tests unregistration during thread execution"
+    scenario: "Thread emits finished signal while still executing cleanup"
+    mocks:
+      - target: "QThread.isRunning"
+        behavior: "Returns True then False with timing delay"
+    expected_behavior:
+      - "Thread removed from _active_threads"
+      - "No double-unregistration errors"
+      - "Debug log shows unregistration"
+
+  - function_to_test: "ThreadManager.unregister_thread"
+    description: "Tests concurrent unregistration attempts"
+    scenario: "Multiple threads trying to unregister same thread"
+    mocks:
+      - target: "threading.Lock"
+        behavior: "Protects dictionary modification"
+    expected_behavior:
+      - "First unregistration succeeds"
+      - "Subsequent attempts log debug message about non-registered thread"
+      - "No KeyError exceptions"
+      - "Dictionary remains consistent"
+
+  # Resource Management and Cleanup
+  - function_to_test: "ThreadManager.cancel_all_threads"
+    description: "Tests resource cleanup with 100+ active threads"
+    scenario: "Stress test with many concurrent threads"
+    mocks:
+      - target: "concurrent.futures.ThreadPoolExecutor"
+        behavior: "Manages thread pool for cancellation"
+    expected_behavior:
+      - "All threads processed without resource exhaustion"
+      - "Memory usage remains bounded"
+      - "No thread leaks after cancellation"
+      - "Performance degradation logged if cancellation takes >10s"
+
+  - function_to_test: "ThreadManager.cancel_all_threads"
+    description: "Tests deadlock prevention"
+    scenario: "Thread's cancel() method tries to register another thread"
+    mocks:
+      - target: "threading.RLock"
+        behavior: "Reentrant lock to prevent deadlock"
+      - target: "threading.Thread.join"
+        behavior: "Timeout to detect deadlock"
+    expected_behavior:
+      - "No deadlock occurs"
+      - "Cancellation completes within reasonable time"
+      - "Warning logged if circular dependency detected"
+
+  # Signal and Slot Connection Issues  
+  - function_to_test: "ThreadManager.register_thread"
+    description: "Tests signal connection failure"
+    scenario: "finished.connect() raises exception"
+    mocks:
+      - target: "QThread.finished.connect"
+        side_effect: "raises RuntimeError('Signal already connected')"
+    expected_behavior:
+      - "Thread still registered despite signal error"
+      - "Error logged with details"
+      - "Manual unregistration still possible"
+      - "No orphaned thread references"
+
+  # Thread State Verification
+  - function_to_test: "ThreadManager.get_active_threads"
+    description: "Tests thread list consistency during modifications"
+    scenario: "get_active_threads called while threads are being added/removed"
+    mocks:
+      - target: "threading.Lock"
+        behavior: "Ensures thread-safe list copying"
+    expected_behavior:
+      - "Returns consistent snapshot of threads"
+      - "No partial state exposed"
+      - "List is a copy, not reference to internal dict"
+      - "Concurrent modifications don't affect returned list"
+
+  # Thread Interruption and Forced Termination
+  - function_to_test: "ThreadManager.cancel_all_threads"
+    description: "Tests QThread.requestInterruption() behavior"
+    scenario: "Thread checks isInterruptionRequested() during execution"
+    mocks:
+      - target: "QThread.requestInterruption"
+        behavior: "Sets interruption flag"
+      - target: "QThread.isInterruptionRequested"
+        return_value: "True after requestInterruption"
+    expected_behavior:
+      - "Interruption requested before cancel()"
+      - "Thread can check flag and exit gracefully"
+      - "Faster shutdown than waiting for timeout"
+
+  # Memory Leak Prevention
+  - function_to_test: "ThreadManager.register_thread"
+    description: "Tests prevention of memory leaks with circular references"
+    scenario: "Thread holds reference to manager which holds reference to thread"
+    mocks:
+      - target: "weakref.ref"
+        behavior: "Breaks circular reference chain"
+      - target: "gc.collect"
+        behavior: "Forces garbage collection"
+    expected_behavior:
+      - "Thread object collectible after finished signal"
+      - "No strong references kept in manager"
+      - "Memory freed after thread completion"
+      - "Weak reference callback still executes"
+
+  # Error Recovery
+  - function_to_test: "ThreadManager.cancel_all_threads"
+    description: "Tests recovery from thread.wait() exception"
+    scenario: "wait() method raises unexpected exception"
+    mocks:
+      - target: "QThread.wait"
+        side_effect: "raises OSError('Thread handle invalid')"
+    expected_behavior:
+      - "Exception caught and logged"
+      - "Thread marked as problematic"
+      - "Cancellation continues for other threads"
+      - "Summary includes failed thread count"
+
+  - function_to_test: "ThreadManager.cancel_all_threads"
+    description: "Tests behavior with no active threads"
+    scenario: "cancel_all_threads called when thread list is empty"
+    mocks: []
+    expected_behavior:
+      - "Debug log: 'No active threads to cancel'"
+      - "Method returns immediately"
+      - "No exceptions or errors"
+      - "State remains consistent"
+
+  # Thread Priority and Ordering
+  - function_to_test: "ThreadManager.cancel_all_threads"
+    description: "Tests cancellation order for different thread types"
+    scenario: "Mix of UI threads, worker threads, and background threads"
+    mocks:
+      - target: "QThread.property"
+        return_value: "Thread priority level"
+    expected_behavior:
+      - "Critical threads cancelled last"
+      - "Worker threads cancelled before UI threads"
+      - "Cancellation order logged"
+      - "Dependencies respected during shutdown"
+
+  # Thread Zombie Detection
+  - function_to_test: "ThreadManager.cancel_all_threads"
+    description: "Tests detection of zombie threads"
+    scenario: "Thread reports not running but never emitted finished signal"
+    mocks:
+      - target: "QThread.isRunning"
+        return_value: "False"
+      - target: "QThread.isFinished"
+        return_value: "False"
+    expected_behavior:
+      - "Zombie thread detected and logged"
+      - "Forced cleanup attempted"
+      - "Thread removed from active list"
+      - "Warning about potential resource leak"

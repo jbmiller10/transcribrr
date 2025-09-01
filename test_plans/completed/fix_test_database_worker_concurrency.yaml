@@ -1,0 +1,283 @@
+# Test Improvement Plan: test_database_worker_concurrency.py
+# Current Score: 6/10
+# Target Score: 9/10
+
+test_file: app/tests/test_database_worker_concurrency.py
+current_issues:
+  - issue: "Leaky Test State (Generous Leftovers)"
+    severity: HIGH
+    description: "Tests leave database files and worker threads potentially running"
+    impact: "Can cause intermittent failures and resource leaks"
+  
+  - issue: "Happy Path Only Testing"
+    severity: HIGH
+    description: "Only tests successful operations and basic SQL errors"
+    impact: "Missing coverage for edge cases, race conditions, and complex error scenarios"
+  
+  - issue: "Weak Assertions"
+    severity: MEDIUM
+    description: "Only checks row counts, not actual data integrity or signal content"
+    impact: "Tests could pass even when data is corrupted or signals contain wrong information"
+  
+  - issue: "Missing Test Documentation"
+    severity: MEDIUM
+    description: "Minimal docstrings, no Given/When/Then structure"
+    impact: "Difficult to understand test intent and maintenance challenges"
+
+improvement_actions:
+  phase_1_cleanup:
+    - action: "Implement robust cleanup mechanism"
+      steps:
+        - "Create a proper test fixture that ensures worker threads are terminated"
+        - "Add timeout-based cleanup for stuck threads"
+        - "Verify database connections are closed"
+        - "Add cleanup verification assertions"
+      code_structure: |
+        def tearDown(self):
+            # Step 1: Signal workers to stop gracefully
+            for worker in self.workers:
+                worker.running = False
+                worker.operations_queue.put(None)
+            
+            # Step 2: Wait with timeout for graceful shutdown
+            for worker in self.workers:
+                if not self._wait_for_thread(worker, timeout=2.0):
+                    # Force terminate if needed
+                    worker.terminate()
+            
+            # Step 3: Close database connections
+            for worker in self.workers:
+                if hasattr(worker, 'conn'):
+                    worker.conn.close()
+            
+            # Step 4: Verify cleanup
+            self._verify_no_open_connections()
+            self._verify_temp_files_removed()
+
+    - action: "Add thread registry for tracking"
+      steps:
+        - "Track all created workers in a list"
+        - "Implement thread lifecycle monitoring"
+        - "Add assertions to verify thread states"
+
+  phase_2_comprehensive_testing:
+    - action: "Add error scenario test cases"
+      new_tests:
+        - test_name: "test_database_lock_timeout_handling"
+          description: "Verify behavior when database is locked by another process"
+          implementation: |
+            - Lock database with external connection
+            - Attempt concurrent writes
+            - Verify proper timeout and retry behavior
+            - Check error signals contain appropriate messages
+        
+        - test_name: "test_connection_loss_during_operation"
+          description: "Test recovery when database connection is lost mid-operation"
+          implementation: |
+            - Start long-running operation
+            - Force close database connection
+            - Verify reconnection attempt
+            - Check operation retry or proper error reporting
+        
+        - test_name: "test_queue_overflow_handling"
+          description: "Test behavior when operation queue is full"
+          implementation: |
+            - Fill queue to capacity
+            - Attempt to add more operations
+            - Verify proper backpressure handling
+        
+        - test_name: "test_malformed_operation_handling"
+          description: "Test various malformed operation formats"
+          implementation: |
+            - Missing operation type
+            - Invalid arguments
+            - Null/None values in critical fields
+            - Verify each generates appropriate error signal
+        
+        - test_name: "test_transaction_rollback_on_error"
+          description: "Verify transaction atomicity during failures"
+          implementation: |
+            - Start multi-step transaction
+            - Force error mid-transaction
+            - Verify all changes are rolled back
+            - Check database state consistency
+
+    - action: "Add race condition tests"
+      new_tests:
+        - test_name: "test_concurrent_updates_same_record"
+          description: "Test when multiple workers update the same record"
+          implementation: |
+            - Create initial record
+            - Launch concurrent updates with different values
+            - Verify final state is consistent
+            - Check for lost updates
+        
+        - test_name: "test_read_write_race_conditions"
+          description: "Test concurrent reads during writes"
+          implementation: |
+            - Start continuous reads
+            - Perform writes concurrently
+            - Verify reads always return consistent data
+            - Check for phantom reads or dirty reads
+
+  phase_3_stronger_assertions:
+    - action: "Implement detailed data verification"
+      improvements:
+        - "Check actual field values, not just counts"
+        - "Verify signal parameters contain correct data"
+        - "Assert on operation completion order"
+        - "Validate database constraints are enforced"
+      
+      example_assertions: |
+        # Instead of:
+        self.assertEqual(count, 20)
+        
+        # Use:
+        with self._db_conn() as conn:
+            recordings = conn.execute(
+                "SELECT name, path, date, duration FROM recordings ORDER BY id"
+            ).fetchall()
+            
+            # Verify count
+            self.assertEqual(len(recordings), 20)
+            
+            # Verify data integrity
+            w1_recordings = [r for r in recordings if r[0].startswith('file1_')]
+            w2_recordings = [r for r in recordings if r[0].startswith('file2_')]
+            
+            self.assertEqual(len(w1_recordings), 10)
+            self.assertEqual(len(w2_recordings), 10)
+            
+            # Verify no data corruption
+            for i, rec in enumerate(w1_recordings):
+                self.assertEqual(rec[0], f'file1_{i}.wav')
+                self.assertEqual(rec[1], f'{self.tmp}/f1_{i}.wav')
+                self.assertEqual(rec[2], '2024-01-01 00:00:00')
+            
+            # Verify signals
+            self.assertEqual(len(self.w1.operation_complete.calls), 11)  # 10 + init
+            for call in self.w1.operation_complete.calls[1:]:  # Skip init
+                op_id, result = call
+                self.assertTrue(op_id.startswith('w1_'))
+                self.assertIsNotNone(result)
+                self.assertIsInstance(result, int)  # Should be row ID
+
+    - action: "Add signal content verification"
+      improvements:
+        - "Verify error_occurred signals contain meaningful messages"
+        - "Check operation_complete returns expected result types"
+        - "Validate dataChanged is emitted only for write operations"
+        - "Assert signal emission order matches operation order"
+
+  phase_4_documentation:
+    - action: "Add comprehensive test documentation"
+      template: |
+        def test_concurrent_updates_same_record(self):
+            """
+            Test data integrity when multiple workers update the same record.
+            
+            Given: A database with a single recording
+            When: Two workers simultaneously attempt to update different fields
+            Then: 
+              - Both updates complete without deadlock
+              - Final state contains changes from both workers
+              - No data corruption occurs
+              - Appropriate signals are emitted in order
+            
+            This test verifies:
+            - SQLite's row-level locking works correctly
+            - Transaction isolation prevents dirty writes
+            - Worker thread synchronization is proper
+            """
+    
+    - action: "Add test data builders"
+      code: |
+        class TestDataBuilder:
+            @staticmethod
+            def recording_payload(prefix="test", index=0, base_path="/tmp"):
+                """Build a standard recording payload tuple."""
+                return (
+                    f"{prefix}_{index}.wav",
+                    f"{base_path}/{prefix}_{index}.wav",
+                    "2024-01-01 00:00:00",
+                    f"{index}s"
+                )
+            
+            @staticmethod
+            def batch_recordings(count=10, prefix="batch", base_path="/tmp"):
+                """Generate multiple recording payloads."""
+                return [
+                    TestDataBuilder.recording_payload(prefix, i, base_path)
+                    for i in range(count)
+                ]
+
+  phase_5_test_organization:
+    - action: "Split into focused test classes"
+      new_structure:
+        - class_name: "TestDatabaseWorkerConcurrency"
+          focus: "Pure concurrency scenarios with multiple workers"
+          tests:
+            - "test_concurrent_inserts_no_duplicates"
+            - "test_concurrent_updates_same_record"
+            - "test_read_write_race_conditions"
+            - "test_concurrent_deletes"
+        
+        - class_name: "TestDatabaseWorkerErrorHandling"
+          focus: "Error scenarios and recovery"
+          tests:
+            - "test_invalid_sql_emits_error"
+            - "test_connection_loss_recovery"
+            - "test_transaction_rollback_on_error"
+            - "test_malformed_operation_handling"
+        
+        - class_name: "TestDatabaseWorkerSignals"
+          focus: "Signal emission and content verification"
+          tests:
+            - "test_operation_complete_signal_content"
+            - "test_error_signal_contains_details"
+            - "test_data_changed_emission_rules"
+            - "test_signal_order_matches_operations"
+
+  phase_6_performance_tests:
+    - action: "Add performance benchmarks"
+      new_tests:
+        - test_name: "test_bulk_insert_performance"
+          description: "Verify performance with large batches"
+          metrics:
+            - "Operations per second"
+            - "Memory usage"
+            - "Lock contention time"
+        
+        - test_name: "test_concurrent_read_performance"
+          description: "Measure read throughput under load"
+          metrics:
+            - "Queries per second"
+            - "Response time percentiles"
+
+implementation_checklist:
+  - [ ] "Remove or fix leaky test state"
+  - [ ] "Add comprehensive error scenario tests"
+  - [ ] "Implement strong assertions on data and signals"
+  - [ ] "Add proper test documentation with Given/When/Then"
+  - [ ] "Create test data builders for reusability"
+  - [ ] "Split into focused test classes"
+  - [ ] "Add performance benchmarks"
+  - [ ] "Implement thread cleanup verification"
+  - [ ] "Add race condition tests"
+  - [ ] "Verify transaction atomicity"
+
+success_criteria:
+  - "All tests have proper cleanup with verification"
+  - "Error scenarios cover at least 50% of test cases"
+  - "Every test has meaningful assertions beyond counts"
+  - "All tests have comprehensive docstrings"
+  - "No test exceeds 50 lines of code"
+  - "Test execution time under 5 seconds total"
+  - "Zero resource leaks after test run"
+  - "Coverage includes all DatabaseWorker operations"
+
+estimated_effort: "8-10 hours"
+priority: HIGH
+dependencies:
+  - "May need to refactor DatabaseWorker for better testability"
+  - "Consider adding test-specific hooks for thread monitoring"

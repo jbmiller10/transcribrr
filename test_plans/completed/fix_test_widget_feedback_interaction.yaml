@@ -1,0 +1,107 @@
+# Cleaned up test plan for widget feedback interaction tests
+# 
+# This plan has been analyzed against existing test files and cleaned up to remove
+# tests that are already implemented:
+#
+# REMOVED (already implemented):
+# - Basic transcription feedback interaction (test_widget_feedback_interaction.py:test_start_transcription_calls_feedback)
+# - Basic YouTube submission feedback (test_widget_feedback_interaction.py:test_submit_youtube_url_triggers_progress)  
+# - UI busy state management (test_feedback_manager.py:test_set_ui_busy_and_restore)
+# - Operation lifecycle management (test_feedback_manager.py:test_start_and_finish_operation_restores)
+# - Nested operations handling (test_feedback_manager.py:test_concurrent_overlap)
+# - stop_all_feedback functionality (test_feedback_manager.py:test_stop_all_feedback)
+# - Progress dialog creation and updates (test_feedback_manager.py:test_progress_dialog_headless)
+#
+# KEPT (genuinely missing):
+# - Error condition handling and edge cases
+# - Detailed progress parsing and updates
+# - Cancellation scenarios
+# - Invalid input validation
+# - Resource cleanup verification
+
+target_file: "app/tests/test_widget_feedback_interaction.py"
+description: "Additional test cases for error conditions and edge cases in widget feedback interactions"
+
+missing_test_cases:
+  - class: "TestMainTranscriptionWidgetFeedback"
+    new_test_cases:
+      - name: "test_transcription_with_no_recording_selected"
+        scenario: "When transcription attempted without recording"
+        behaviors_to_test:
+          - "Error message is shown"
+          - "No feedback operations are started"
+          - "UI remains enabled"
+
+      - name: "test_transcription_cancellation_cleans_up_feedback"
+        scenario: "When user cancels ongoing transcription"
+        behaviors_to_test:
+          - "Spinner is stopped"
+          - "Progress dialog is closed"
+          - "UI elements are re-enabled"
+
+      - name: "test_transcription_error_cleans_up_feedback"
+        scenario: "When transcription fails with exception"
+        behaviors_to_test:
+          - "All feedback is stopped on error"
+          - "Error message is displayed"
+          - "UI is restored to enabled state"
+
+      - name: "test_concurrent_transcription_attempts_blocked"
+        scenario: "When transcription started while another is running"
+        behaviors_to_test:
+          - "Second transcription is prevented"
+          - "Warning message shown to user"
+
+      - name: "test_transcription_progress_updates"
+        scenario: "When transcription reports progress"
+        behaviors_to_test:
+          - "Progress dialog updates with percentage"
+          - "Status messages update"
+
+  - class: "TestControlPanelWidgetFeedback"
+    new_test_cases:
+      - name: "test_youtube_submit_with_empty_url"
+        scenario: "When submit clicked with empty URL field"
+        behaviors_to_test:
+          - "Error message shown"
+          - "No feedback operations started"
+
+      - name: "test_youtube_submit_with_invalid_url"
+        scenario: "When invalid URL is submitted"
+        behaviors_to_test:
+          - "Validation error shown"
+          - "No download initiated"
+
+      - name: "test_youtube_download_cancellation"
+        scenario: "When user cancels YouTube download"
+        behaviors_to_test:
+          - "Download thread is cancelled"
+          - "Progress dialog closed"
+          - "UI restored to ready state"
+
+      - name: "test_youtube_progress_percentage_extraction"
+        scenario: "When download reports percentage progress"
+        behaviors_to_test:
+          - "Progress percentage extracted from message"
+          - "Progress dialog updated with value"
+
+      - name: "test_youtube_download_error_recovery"
+        scenario: "When YouTube download fails"
+        behaviors_to_test:
+          - "Error message displayed"
+          - "All feedback stopped"
+          - "UI restored for retry"
+
+implementation_strategy:
+  approach: "Add missing error/edge case tests to existing test classes"
+  principles:
+    - "Focus on error conditions and edge cases not currently tested"
+    - "Use existing test structure but improve mocking strategy"
+    - "Test observable behavior changes, not internal method calls"
+    - "Ensure proper cleanup in all error scenarios"
+
+refactoring_notes:
+  - "The existing tests have the right structure but use excessive mocking"
+  - "Consider refactoring existing tests to use real FeedbackManager where possible"
+  - "Add the missing error condition tests identified above"
+  - "Current tests cover basic happy path scenarios adequately"

@@ -1,0 +1,205 @@
+target_file: "app/tests/test_folder_manager_behavior.py"
+test_file: "app/tests/test_folder_manager_behavior.py"
+module_under_test: "app.FolderManager.FolderManager"
+current_test_approach: "Behavior-focused integration testing with real SQLite database"
+
+issues_identified:
+  - category: "Minor structural issues"
+    details:
+      - "Helper class _Wait with unclear naming and purpose"
+      - "Inconsistent test method naming - overly verbose"
+      - "Missing docstrings on test methods"
+      - "Setup/teardown logic could be cleaner"
+  
+  - category: "Compressed code that needs expanding"
+    details:
+      - "Line 251-253: Multiple statements on single lines making debugging difficult"
+      - "Line 111-112: Inline function definition that should be extracted"
+      - "Line 143: Complex lambda expression that reduces readability"
+      - "Chained assertions without intermediate variable inspection"
+  
+  - category: "Add consistent assertion messages"
+    details:
+      - "Many assertions lack descriptive failure messages"
+      - "assertTrue/assertFalse without context"
+      - "assertEqual without explaining what's being compared"
+      - "Inconsistent message formatting when present"
+
+improvements_to_make:
+  structural_improvements:
+    - rename_helper_class:
+        from: "_Wait"
+        to: "CallbackWaiter"
+        reason: "More descriptive name indicating its purpose"
+    
+    - extract_constants:
+        - name: "DEFAULT_TEST_TIMEOUT"
+          value: 3.0
+          reason: "Magic number used throughout tests"
+        - name: "TEST_TIMEOUT_ENV_VAR"
+          value: "TEST_TIMEOUT"
+          reason: "Environment variable name should be constant"
+    
+    - improve_test_names:
+        - from: "test_should_create_hierarchical_folder_structure_with_parent_child_relationship"
+          to: "test_creates_hierarchical_folder_structure"
+        - from: "test_should_persist_folder_rename_to_database_and_update_memory_cache"
+          to: "test_persists_folder_rename_to_database"
+        - from: "test_should_associate_recording_with_folder_and_retrieve_via_query"
+          to: "test_associates_recording_with_folder"
+        - from: "test_should_delete_folder_from_database_and_memory_when_requested"
+          to: "test_deletes_folder_from_database_and_memory"
+        - from: "test_should_reject_duplicate_folder_name_at_same_hierarchy_level"
+          to: "test_rejects_duplicate_folder_name_at_same_level"
+        - from: "test_should_reject_rename_when_target_name_exists_at_same_level"
+          to: "test_rejects_rename_to_existing_name"
+        - from: "test_should_cascade_delete_child_folders_when_parent_deleted"
+          to: "test_cascade_deletes_child_folders"
+        - from: "test_should_disassociate_recording_from_folder_on_removal"
+          to: "test_removes_recording_from_folder"
+        - from: "test_should_return_all_folders_containing_specific_recording"
+          to: "test_returns_folders_containing_recording"
+        - from: "test_should_preserve_folder_structure_through_export_import_cycle"
+          to: "test_preserves_structure_through_export_import"
+
+  code_expansion:
+    - location: "Line 111-112"
+      current: |
+        def on_rename_complete(success: bool, msg: str) -> None:  # noqa: ANN001
+            done.cb(success, msg)
+      improved: |
+        def on_rename_complete(success: bool, msg: str) -> None:
+            """Handle rename completion callback."""
+            done.cb(success, msg)
+    
+    - location: "Line 143"
+      current: |
+        self.fm.get_recordings_in_folder(fid, callback=lambda ok, res: (wq.cb(ok, res)))
+      improved: |
+        def handle_query_result(ok: bool, res: list) -> None:
+            """Handle folder query result."""
+            wq.cb(ok, res)
+        
+        self.fm.get_recordings_in_folder(fid, callback=handle_query_result)
+    
+    - location: "Line 251-253"
+      current: |
+        f = _Wait(); self.fm.create_folder("F", callback=f.cb); self.assertTrue(f.wait()); fid = f.args[1]
+        r = _Wait(); self.dbm.create_recording(("h.wav", f"{self.tmp}/h.wav", "2024-01-01 00:00:00", "1s"), r.cb); self.assertTrue(r.wait()); rid = r.args[0]
+        okw = _Wait(); self.fm.add_recording_to_folder(rid, fid, callback=lambda ok, _m: okw.cb(ok)); self.assertTrue(okw.wait()); self.assertTrue(okw.args[0])
+      improved: |
+        # Create folder
+        folder_waiter = CallbackWaiter()
+        self.fm.create_folder("F", callback=folder_waiter.cb)
+        self.assertTrue(folder_waiter.wait(), "Folder creation callback not called")
+        folder_id = folder_waiter.args[1]
+        
+        # Create recording
+        recording_waiter = CallbackWaiter()
+        recording_data = ("h.wav", f"{self.tmp}/h.wav", "2024-01-01 00:00:00", "1s")
+        self.dbm.create_recording(recording_data, recording_waiter.cb)
+        self.assertTrue(recording_waiter.wait(), "Recording creation callback not called")
+        recording_id = recording_waiter.args[0]
+        
+        # Associate recording with folder
+        association_waiter = CallbackWaiter()
+        self.fm.add_recording_to_folder(
+            recording_id, 
+            folder_id, 
+            callback=lambda ok, _m: association_waiter.cb(ok)
+        )
+        self.assertTrue(association_waiter.wait(), "Association callback not called")
+        self.assertTrue(association_waiter.args[0], "Failed to associate recording with folder")
+
+  assertion_improvements:
+    - add_messages_to_all_assertions: true
+    - message_format: "descriptive_context"
+    - examples:
+      - original: "self.assertTrue(w1.wait())"
+        improved: 'self.assertTrue(w1.wait(), "Root folder creation callback not called within timeout")'
+      
+      - original: "self.assertEqual(w1.args[0], True)"
+        improved: 'self.assertEqual(w1.args[0], True, "Root folder creation should succeed")'
+      
+      - original: "self.assertEqual(rows, [(root_id, 'Root', None), (child_id, 'Child', root_id)])"
+        improved: |
+          self.assertEqual(
+              rows, 
+              [(root_id, 'Root', None), (child_id, 'Child', root_id)],
+              "Database should contain root folder with no parent and child folder with root as parent"
+          )
+      
+      - original: "self.assertIsNotNone(parent)"
+        improved: 'self.assertIsNotNone(parent, f"Parent folder with id {root_id} should exist in memory")'
+      
+      - original: "self.assertIn(child, parent['children'])"
+        improved: 'self.assertIn(child, parent["children"], "Child folder should be in parent\'s children list")'
+
+  additional_refactoring:
+    - extract_test_helpers:
+        purpose: "Create reusable helper methods for common operations"
+        methods:
+          - name: "_create_folder"
+            purpose: "Helper to create folder and wait for callback"
+            signature: "def _create_folder(self, name: str, parent_id: Optional[int] = None, timeout: float = 3.0) -> tuple[bool, int]"
+          
+          - name: "_create_recording"
+            purpose: "Helper to create recording and wait for callback"
+            signature: "def _create_recording(self, filename: str, timeout: float = 3.0) -> int"
+          
+          - name: "_assert_folder_exists_in_db"
+            purpose: "Helper to verify folder exists in database"
+            signature: "def _assert_folder_exists_in_db(self, folder_id: int, expected_name: str) -> None"
+    
+    - improve_callback_waiter:
+        - add_type_hints: "Properly type the args attribute"
+        - add_result_property: "Property to access result more cleanly"
+        - add_success_check: "Method to check if callback indicated success"
+        - better_timeout_handling: "Use class constant instead of env var lookup"
+    
+    - organize_test_methods:
+        grouping:
+          - "Basic CRUD operations"
+          - "Hierarchical relationships"
+          - "Recording associations"
+          - "Error handling and validation"
+          - "Import/Export functionality"
+
+  test_coverage_additions:
+    - add_edge_cases:
+        - "Test creating folder with empty name"
+        - "Test creating folder with special characters"
+        - "Test maximum nesting depth"
+        - "Test concurrent folder operations"
+    
+    - add_error_scenarios:
+        - "Test database connection failures"
+        - "Test callback timeout handling"
+        - "Test invalid folder IDs"
+        - "Test malformed import data"
+
+implementation_notes:
+  - priority: "Medium - This file has good foundations but needs polish"
+  - estimated_time: "2-3 hours"
+  - dependencies: "None - this is a self-contained test file"
+  - testing_philosophy: |
+      Keep the behavior-focused approach with real SQLite database.
+      This is actually a good example of integration testing done right.
+      The improvements are mainly for readability and maintainability.
+  
+  key_principles:
+    - "Maintain the real database approach - it's working well"
+    - "Keep tests independent through proper setup/teardown"
+    - "Make failures easier to diagnose with clear messages"
+    - "Improve code readability without changing test logic"
+    - "Add helper methods to reduce duplication"
+
+verification_checklist:
+  - "All test methods have descriptive assertion messages"
+  - "No compressed multi-statement lines remain"
+  - "Helper class has clear, descriptive name"
+  - "Common operations are extracted to helper methods"
+  - "Test method names are concise but descriptive"
+  - "All callbacks use proper type hints"
+  - "Timeout handling is consistent throughout"
+  - "Each test is self-documenting through clear structure"

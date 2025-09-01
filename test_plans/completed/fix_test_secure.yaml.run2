@@ -1,0 +1,235 @@
+target_file: "app/secure.py"
+test_file: "app/tests/test_secure.py"
+
+# Core Issues to Fix
+issues_to_address:
+  - "Excessive mocking of keyring library - tests only verify mock calls, not actual behavior"
+  - "Hardcoded test returns in production code (lines 128-129) that bypass real keyring"
+  - "Tests focus on mock interactions rather than security guarantees"
+  - "No integration with actual keyring backends or test implementations"
+  - "Migration tests don't verify data integrity or rollback scenarios"
+
+# Testing Strategy
+testing_strategy:
+  approach: "Behavior-driven with minimal mocking"
+  key_principles:
+    - "Use in-memory keyring backend for testing instead of mocking"
+    - "Test actual security behaviors: data storage, retrieval, deletion"
+    - "Remove hardcoded test returns from production code"
+    - "Mock only external boundaries (logging, constants) not core functionality"
+    - "Verify data transformations and error handling, not implementation details"
+  
+  test_categories:
+    unit_tests:
+      - "Pure functions (redact, get_service_id) with no external deps"
+      - "Log filter behavior with real LogRecord objects"
+      - "Pattern matching and text transformation"
+    
+    integration_tests:
+      - "Keyring operations with test backend"
+      - "Migration scenarios with actual data movement"
+      - "Error handling with real keyring exceptions"
+
+# Dependencies to Mock vs Use Real
+dependencies_to_mock:
+  - "app.constants.APP_NAME"  # Mock for consistent test values
+  - "app.constants.APP_VERSION"  # Mock for consistent test values
+  - "logging.Logger.info"  # Mock to verify log messages
+  - "logging.Logger.error"  # Mock to verify error logging
+
+dependencies_to_use_real:
+  - "keyring"  # Use keyring.backend.memory or test backend
+  - "re.compile"  # Real regex engine for pattern testing
+  - "logging.LogRecord"  # Real log records for filter testing
+
+# Test Cases
+test_cases:
+  # Redact Function Tests
+  - function_to_test: "redact"
+    description: "Redacts OpenAI API keys with sk- prefix"
+    scenario: "Text contains various forms of OpenAI keys"
+    mocks: []
+    expected_behavior:
+      - "All sk-[alphanumeric]{10+} patterns replaced with ***-REDACTED-***"
+      - "Preserves surrounding text structure"
+      - "Handles multiple keys in same text"
+      - "Case-sensitive pattern matching (sk- not SK-)"
+
+  - function_to_test: "redact"
+    description: "Redacts HuggingFace tokens with hf_ prefix"
+    scenario: "Text contains HuggingFace authentication tokens"
+    mocks: []
+    expected_behavior:
+      - "All hf_[alphanumeric]{10+} patterns replaced with ***-REDACTED-***"
+      - "Preserves JSON/URL structure when keys are embedded"
+      - "Handles tokens in exception messages and logs"
+
+  - function_to_test: "redact"
+    description: "Handles edge cases and boundaries"
+    scenario: "Empty strings, None values, partial patterns, very long texts"
+    mocks: []
+    expected_behavior:
+      - "Returns empty string for None or empty input"
+      - "Ignores partial patterns (sk- alone, hf_ alone)"
+      - "Minimum 10 characters after prefix for valid key"
+      - "Processes large texts efficiently without backtracking"
+
+  # SensitiveLogFilter Tests
+  - function_to_test: "SensitiveLogFilter.filter"
+    description: "Filters sensitive data from log messages"
+    scenario: "LogRecord contains API keys in msg attribute"
+    mocks: []
+    expected_behavior:
+      - "Modifies record.msg in-place with redacted version"
+      - "Always returns True to keep the record"
+      - "Handles non-string msg gracefully (int, None, missing)"
+
+  - function_to_test: "SensitiveLogFilter.filter"
+    description: "Filters sensitive data from log arguments"
+    scenario: "LogRecord contains API keys in args tuple for formatting"
+    mocks: []
+    expected_behavior:
+      - "Redacts string arguments in args tuple"
+      - "Preserves non-string arguments unchanged"
+      - "Maintains tuple type and order"
+      - "Works with Python's % formatting"
+
+  # Service ID Function Tests
+  - function_to_test: "get_service_id"
+    description: "Generates consistent service ID for keyring"
+    scenario: "APP_NAME and APP_VERSION constants are available"
+    mocks:
+      - target: "app.constants.APP_NAME"
+        return_value: "Transcribrr"
+      - target: "app.constants.APP_VERSION"
+        return_value: "1.2.3"
+    expected_behavior:
+      - "Returns lowercase app name with version: transcribrr-v1.2.3"
+      - "Format is consistent and deterministic"
+      - "Used by all keyring operations for namespace"
+
+  # API Key Storage Tests (Using Test Keyring Backend)
+  - function_to_test: "get_api_key"
+    description: "Retrieves API keys from secure storage"
+    scenario: "Using in-memory keyring backend with pre-stored keys"
+    mocks:
+      - target: "keyring backend"
+        return_value: "in-memory test backend"
+    expected_behavior:
+      - "Returns stored key value when exists"
+      - "Returns None when key doesn't exist"
+      - "No hardcoded test values in production code"
+      - "Works with any key name, not just OPENAI/HF"
+
+  - function_to_test: "set_api_key"
+    description: "Stores API keys securely"
+    scenario: "Storing various key types and values in test backend"
+    mocks:
+      - target: "keyring backend"
+        return_value: "in-memory test backend"
+    expected_behavior:
+      - "Stores key-value pair in keyring"
+      - "Empty/None value triggers deletion"
+      - "Returns True on success"
+      - "Handles special characters and Unicode"
+
+  - function_to_test: "set_api_key"
+    description: "Handles storage errors gracefully"
+    scenario: "Keyring operations fail with various exceptions"
+    mocks:
+      - target: "keyring.set_password"
+        side_effect: "raises keyring.errors.KeyringError"
+      - target: "logger.error"
+        return_value: "capture error logs"
+    expected_behavior:
+      - "Catches exceptions and logs redacted error"
+      - "Returns False on failure"
+      - "Doesn't expose sensitive data in logs"
+
+  # Migration Tests (Using Test Backend)
+  - function_to_test: "migrate_api_keys"
+    description: "Migrates keys from old to new service ID"
+    scenario: "Keys exist in old location, migration to versioned service ID"
+    mocks:
+      - target: "keyring backend"
+        return_value: "in-memory test backend with old keys"
+      - target: "app.constants.APP_NAME"
+        return_value: "Transcribrr"
+      - target: "app.constants.APP_VERSION"
+        return_value: "2.0.0"
+    expected_behavior:
+      - "Reads keys from old service ID"
+      - "Writes keys to new versioned service ID"
+      - "Deletes keys from old location after successful copy"
+      - "Returns status dict with migration results"
+      - "Logs success for each migrated key"
+
+  - function_to_test: "migrate_api_keys"
+    description: "Handles partial migration failures"
+    scenario: "One key migrates successfully, another fails"
+    mocks:
+      - target: "keyring backend"
+        return_value: "test backend with failure simulation"
+      - target: "logger.error"
+        return_value: "capture error logs"
+    expected_behavior:
+      - "Continues migration after individual key failure"
+      - "Returns accurate status for each key"
+      - "Logs redacted errors for failures"
+      - "Successfully migrated keys remain in new location"
+
+  - function_to_test: "migrate_api_keys"
+    description: "Handles missing keys gracefully"
+    scenario: "No keys exist in old location"
+    mocks:
+      - target: "keyring backend"
+        return_value: "empty test backend"
+    expected_behavior:
+      - "Returns false for both keys in status dict"
+      - "No errors raised or logged"
+      - "No delete operations attempted"
+
+# Implementation Requirements
+implementation_requirements:
+  setup_changes:
+    - "Remove hardcoded test returns from get_api_key (lines 128-129)"
+    - "Create test helper for setting up in-memory keyring backend"
+    - "Use keyring.backend.memory.InMemoryKeyring or similar"
+  
+  test_helpers:
+    - name: "setup_test_keyring"
+      purpose: "Initialize in-memory keyring backend for tests"
+      returns: "Configured test keyring instance"
+    
+    - name: "populate_test_keys"
+      purpose: "Pre-populate keyring with test data"
+      parameters: ["keyring_backend", "keys_dict"]
+    
+    - name: "verify_key_migration"
+      purpose: "Assert keys moved from old to new service"
+      parameters: ["backend", "old_service", "new_service", "key_names"]
+
+  test_structure:
+    - "Group tests by function/class being tested"
+    - "Use descriptive test names explaining the scenario"
+    - "Each test should verify behavior, not implementation"
+    - "Include both positive and negative test cases"
+    - "Test edge cases and error conditions"
+
+# Verification Criteria
+verification_criteria:
+  - "All tests pass without hardcoded returns in production code"
+  - "Tests use real keyring backend (in-memory for speed)"
+  - "Security behaviors are verified, not mock calls"
+  - "Error handling preserves security (no data leaks)"
+  - "Migration tests verify data integrity"
+  - "Pattern matching tests cover all documented formats"
+  - "No tests depend on implementation details"
+
+# Notes
+notes:
+  - "Consider using keyring.backend.fail.Keyring for error testing"
+  - "May need to set keyring.set_keyring() in test setup"
+  - "Ensure test isolation - each test gets fresh backend"
+  - "Consider parameterized tests for pattern variations"
+  - "Migration tests should verify atomicity where possible"

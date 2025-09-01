@@ -30,31 +30,52 @@ import threading
 try:
     from PyQt6.QtCore import QObject, pyqtSignal, QThread, QMutex, Qt  # type: ignore
 except ImportError:  # pragma: no cover – executed only in non-Qt test envs
-    # Create a minimal stub of the QtCore module and the required symbols
+    # Create a functional stub of the QtCore module and required symbols.
+    # The goal is to behave closely enough for tests: connect/emit must work.
+
+    class _BoundSignal:
+        def __init__(self):
+            self._slots = []
+
+        def connect(self, fn):  # noqa: ANN001
+            if fn not in self._slots:
+                self._slots.append(fn)
+
+        def disconnect(self, fn):  # noqa: ANN001
+            try:
+                self._slots.remove(fn)
+            except ValueError:
+                # Match Qt's behaviour: disconnecting a non-connected slot raises
+                raise TypeError("disconnect() failed: slot not connected")
+
+        def emit(self, *args, **kwargs):  # noqa: ANN001
+            # Copy to protect against mutation during iteration
+            for s in list(self._slots):
+                s(*args, **kwargs)
+
+        # Helper used by tests to introspect receiver count
+        def receivers(self):  # noqa: D401 - simple helper
+            return list(self._slots)
 
     class _Signal:
-        """Very small replacement for pyqtSignal/SignalInstance."""
+        """Descriptor mimicking pyqtSignal that returns per-instance objects."""
 
         def __init__(self, *args, **kwargs):
-            pass
+            self._name = None  # set via __set_name__
 
-        # When accessed via the class attribute the object itself behaves like
-        # a descriptor that yields a *bound* signal instance.  For the purpose
-        # of the unit tests a shared instance is perfectly fine.
-        def __get__(self, instance, owner):  # noqa: D401 – simple descriptor
-            return self
+        def __set_name__(self, owner, name):  # Python 3.6+
+            self._name = name
 
-        # The real SignalInstance API offers connect/emit/disconnect.  They
-        # can silently ignore all arguments here because the tests never rely
-        # on their side-effects.
-        def connect(self, *args, **kwargs):
-            pass
-
-        def disconnect(self, *args, **kwargs):
-            pass
-
-        def emit(self, *args, **kwargs):
-            pass
+        def __get__(self, instance, owner):  # noqa: D401 – descriptor returning bound signal
+            if instance is None:
+                return self
+            # Store bound signal per instance per attribute
+            key = f"__signal_{self._name}__"
+            sig = instance.__dict__.get(key)
+            if sig is None:
+                sig = _BoundSignal()
+                instance.__dict__[key] = sig
+            return sig
 
     class QObject:  # noqa: D401 – stub
         """Light-weight QObject replacement (no signalling, no parents)."""
@@ -156,7 +177,7 @@ class DatabaseWorker(QThread):
         pyqtSignal()
     )  # Basic signal with no parameters - parameters added by DatabaseManager
 
-    def __init__(self, parent=None):
+    def __init__(self, parent=None, signals=None):
         # Accept arbitrary parent types in tests; only real QObject is valid.
         try:
             valid_parent = parent if isinstance(parent, QObject) else None
@@ -173,6 +194,19 @@ class DatabaseWorker(QThread):
             self.conn.execute("PRAGMA foreign_keys = ON")
         except Exception:
             # Defer connection health handling to run() where reconnection logic exists
+            pass
+
+        # Optionally override signals for test adapters
+        try:
+            if signals is not None:
+                if hasattr(signals, "operation_complete"):
+                    self.operation_complete = signals.operation_complete  # type: ignore[assignment]
+                if hasattr(signals, "error_occurred"):
+                    self.error_occurred = signals.error_occurred  # type: ignore[assignment]
+                if hasattr(signals, "dataChanged"):
+                    self.dataChanged = signals.dataChanged  # type: ignore[assignment]
+        except Exception:
+            # Stay resilient in production; tests will surface setup issues
             pass
 
         # Make queue methods patch-friendly in tests while delegating to the

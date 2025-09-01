@@ -2,6 +2,9 @@
 
 These tests mock heavy ML/HTTP dependencies and exercise branching logic for
 local/API transcription, MPS handling, and speaker diarization formatting.
+
+Isolation note: Build and inject stubs for heavy modules via patch.dict in
+setUp/tearDown to avoid leaking global sys.modules state across the suite.
 """
 
 import os
@@ -12,137 +15,230 @@ import unittest
 from unittest.mock import Mock, patch
 
 
-def _ensure_stubbed_heavy_modules():
-    """Provide lightweight stubs for heavy optional deps used by the service."""
+def _build_heavy_module_stubs() -> dict[str, object]:
+    """Create stubs for heavy optional deps used by the service.
+
+    Returns a mapping suitable for ``patch.dict(sys.modules, mapping)``.
+    """
+    mapping: dict[str, object] = {}
+
     # torch with backends and cuda flags
     torch = types.SimpleNamespace()
     torch.backends = types.SimpleNamespace(mps=types.SimpleNamespace(is_available=lambda: False))
-    torch.cuda = types.SimpleNamespace(is_available=lambda: False, empty_cache=lambda: None, get_device_properties=lambda *_: types.SimpleNamespace(total_memory=8 * 1024**3), memory_allocated=lambda *_: 0)
+    torch.cuda = types.SimpleNamespace(
+        is_available=lambda: False,
+        empty_cache=lambda: None,
+        get_device_properties=lambda *_: types.SimpleNamespace(total_memory=8 * 1024**3),
+        memory_allocated=lambda *_: 0,
+    )
     torch.float16 = object()
     torch.float32 = object()
-    sys.modules.setdefault("torch", torch)  # simple stub
+    mapping["torch"] = torch
 
     # transformers pipeline/model/processor
-    transformers = types.SimpleNamespace(AutoModelForSpeechSeq2Seq=Mock(), AutoProcessor=Mock(), pipeline=Mock())
-    sys.modules.setdefault("transformers", transformers)
+    transformers = types.SimpleNamespace(
+        AutoModelForSpeechSeq2Seq=Mock(),
+        AutoProcessor=Mock(),
+        pipeline=Mock(),
+    )
+    mapping["transformers"] = transformers
 
     # openai client with OpenAI symbol
     openai_mod = types.ModuleType("openai")
     setattr(openai_mod, "OpenAI", object)
-    sys.modules.setdefault("openai", openai_mod)
+    mapping["openai"] = openai_mod
 
     # numpy
-    sys.modules.setdefault("numpy", types.ModuleType("numpy"))
+    mapping["numpy"] = types.ModuleType("numpy")
 
     # torchaudio.functional alias used as F
     torchaudio = types.ModuleType("torchaudio")
     setattr(torchaudio, "functional", types.SimpleNamespace())
-    sys.modules.setdefault("torchaudio", torchaudio)
+    mapping["torchaudio"] = torchaudio
 
-    # pyannote will be patched per-test when needed
-    sys.modules.setdefault("pyannote", types.ModuleType("pyannote"))
+    # pyannote (placeholder; Pipeline overridden per-test when needed)
+    mapping["pyannote"] = types.ModuleType("pyannote")
     pa = types.ModuleType("pyannote.audio")
-    # Minimal Pipeline placeholder so module import succeeds
     class _Pipeline:
         @staticmethod
         def from_pretrained(*args, **kwargs):
             raise RuntimeError("not used in import phase")
     setattr(pa, "Pipeline", _Pipeline)
-    sys.modules.setdefault("pyannote.audio", pa)
+    mapping["pyannote.audio"] = pa
 
     # Minimal PyQt6 stubs for modules that import Qt types
-    sys.modules.setdefault("PyQt6", types.ModuleType("PyQt6"))
+    pyqt = types.ModuleType("PyQt6")
     qtcore = types.ModuleType("PyQt6.QtCore")
     class _QObject:
         def __init__(self, *a, **k):
             pass
     qtcore.QObject = _QObject
     qtcore.pyqtSignal = lambda *a, **k: None
-    sys.modules.setdefault("PyQt6.QtCore", qtcore)
     qtwidgets = types.ModuleType("PyQt6.QtWidgets")
     class _QWidget:  # only for type reference
         pass
     qtwidgets.QWidget = _QWidget
-    sys.modules.setdefault("PyQt6.QtWidgets", qtwidgets)
+    mapping["PyQt6"] = pyqt
+    mapping["PyQt6.QtCore"] = qtcore
+    mapping["PyQt6.QtWidgets"] = qtwidgets
+
+    return mapping
 
 
-_ensure_stubbed_heavy_modules()
-
-
-from app.services.transcription_service import TranscriptionService, ModelManager
+# Service module is imported inside setUp after patching sys.modules
 
 
 class TestTranscriptionService(unittest.TestCase):
     def setUp(self):
-        # Patch logger to keep quiet and assert warnings
+        """Set up test fixtures with isolated mocks."""
+        self._setup_module_stubs()
+        self._setup_mocks()
+        self._setup_service()
+        self._setup_test_file()
+
+    def _setup_module_stubs(self):
+        """Inject heavy-module stubs to avoid real imports."""
+        self._mods = _build_heavy_module_stubs()
+        self._mods_patcher = patch.dict(sys.modules, self._mods, clear=False)
+        self._mods_patcher.start()
+        import app.services.transcription_service as tsvc
+        self._tsvc = tsvc
+
+    def _setup_mocks(self):
+        """Configure mocks for logger and ModelManager."""
+        # Patch logger to capture warnings/errors
         self.logger_patcher = patch("app.services.transcription_service.logger")
         self.mock_logger = self.logger_patcher.start()
 
-        # Stub ModelManager.instance() to avoid real model loading
-        self.mm_patcher = patch.object(ModelManager, "instance")
+        # Stub ModelManager to avoid real model loading
+        self.mm_patcher = patch.object(self._tsvc.ModelManager, "instance")
         self.mock_mm_instance = self.mm_patcher.start()
         self.mm = Mock()
         self.mm._get_optimal_device.return_value = "cpu"
         self.mm.create_pipeline.return_value = lambda path: {"text": "hello", "chunks": []}
         self.mock_mm_instance.return_value = self.mm
 
-        self.svc = TranscriptionService()
+    def _setup_service(self):
+        """Initialize the service under test."""
+        self.svc = self._tsvc.TranscriptionService()
 
-        # Create a temp file for paths that require opening
-        self.tmp = tempfile.NamedTemporaryFile(delete=False)
-        self.tmp.write(b"data")
-        self.tmp.flush()
-        self.tmp.close()
-        self.file_path = self.tmp.name
+    def _setup_test_file(self):
+        """Create a mock file path instead of actual temp file."""
+        # Use a mock file path instead of creating real file (fixes Mystery Guest)
+        self.file_path = "/mock/test/audio.wav"
+        # Patch file operations to avoid real filesystem access
+        self.open_patcher = patch("builtins.open", create=True)
+        self.mock_open = self.open_patcher.start()
+        self.mock_open.return_value.__enter__.return_value.read.return_value = b"mock audio data"
+        
+        # Patch os.path.exists to return True for our mock file
+        self.exists_patcher = patch("os.path.exists")
+        self.mock_exists = self.exists_patcher.start()
+        self.mock_exists.return_value = True
 
     def tearDown(self):
+        """Clean up all patches."""
         self.logger_patcher.stop()
         self.mm_patcher.stop()
-        try:
-            os.unlink(self.file_path)
-        except FileNotFoundError:
-            pass
+        self._mods_patcher.stop()
+        self.open_patcher.stop()
+        self.exists_patcher.stop()
 
     def test_transcribe_file_missing_file_raises(self):
+        # Configure mock to return False for non-existent file
+        self.mock_exists.return_value = False
         with self.assertRaises(FileNotFoundError):
             self.svc.transcribe_file("/nope.wav", model_id="m", method="local")
 
     def test_transcribe_file_api_ignores_speaker_detection_with_warning(self):
-        with patch.object(self.svc, "_transcribe_with_api", return_value={"text": "x", "method": "api"}) as m:
-            out = self.svc.transcribe_file(self.file_path, model_id="m", method="api", language="en", openai_api_key="sk-1", speaker_detection=True)
+        """Test that API method ignores speaker_detection and logs warning."""
+        with patch.object(self.svc, "_transcribe_with_api", return_value={"text": "x", "method": "api"}) as mock_api:
+            out = self.svc.transcribe_file(
+                self.file_path, model_id="m", method="api", 
+                language="en", openai_api_key="sk-1", speaker_detection=True
+            )
+        
+        # Verify the API method was used and speaker detection was NOT passed
         self.assertEqual(out["method"], "api")
-        self.mock_logger.warning.assert_called()  # speaker detection ignored
-        m.assert_called()
+        self.assertEqual(out["text"], "x")
+        
+        # Verify warning was logged about speaker detection being ignored
+        warning_calls = [call for call in self.mock_logger.warning.call_args_list]
+        self.assertTrue(any("speaker" in str(call).lower() for call in warning_calls),
+                        "Expected warning about speaker detection being ignored")
+        
+        # Verify API was called WITHOUT speaker_detection parameter
+        mock_api.assert_called_once()
+        call_args = mock_api.call_args
+        # The API method shouldn't receive speaker_detection parameter
+        self.assertNotIn("speaker_detection", call_args[1] if call_args[1] else {})
 
     def test_transcribe_file_mps_path_selected(self):
+        """Test that MPS acceleration is used when available and enabled."""
         # Simulate MPS available and CUDA off
         import torch as torch_mod
         torch_mod.backends.mps.is_available = lambda: True
         torch_mod.cuda.is_available = lambda: False
-        with patch.object(self.svc, "_transcribe_with_mps", return_value={"text": "mps"}) as m:
-            out = self.svc.transcribe_file(self.file_path, model_id="m", method="local", language="en", speaker_detection=False, hardware_acceleration_enabled=True)
-        self.assertEqual(out["text"], "mps")
-        m.assert_called_once()
+        
+        mps_result = {"text": "mps transcribed", "method": "local_mps"}
+        with patch.object(self.svc, "_transcribe_with_mps", return_value=mps_result) as mock_mps:
+            out = self.svc.transcribe_file(
+                self.file_path, model_id="m", method="local", 
+                language="en", speaker_detection=False, hardware_acceleration_enabled=True
+            )
+        
+        # Verify MPS path was used and returned correct result
+        self.assertEqual(out["text"], "mps transcribed")
+        self.assertEqual(out["method"], "local_mps")
+        
+        # Verify MPS method was called with correct parameters
+        mock_mps.assert_called_once_with(self.file_path, "m", "en")
 
     def test_transcribe_file_mps_with_speaker_detection_prefers_cpu(self):
+        """Test that speaker detection forces CPU path even with MPS available."""
         # MPS available but speaker detection forces CPU/local path
         import torch as torch_mod
         torch_mod.backends.mps.is_available = lambda: True
         torch_mod.cuda.is_available = lambda: False
-        with patch.object(self.svc, "_transcribe_locally", return_value={"text": "cpu"}) as m:
-            out = self.svc.transcribe_file(self.file_path, model_id="m", method="local", language="en", speaker_detection=True, hardware_acceleration_enabled=True)
-        self.assertEqual(out["text"], "cpu")
-        self.mock_logger.warning.assert_called()
-        m.assert_called_once()
+        
+        cpu_result = {"text": "cpu transcribed", "method": "local"}
+        with patch.object(self.svc, "_transcribe_locally", return_value=cpu_result) as mock_local:
+            out = self.svc.transcribe_file(
+                self.file_path, model_id="m", method="local", 
+                language="en", speaker_detection=True, hardware_acceleration_enabled=True
+            )
+        
+        # Verify CPU path was used instead of MPS
+        self.assertEqual(out["text"], "cpu transcribed")
+        self.assertEqual(out["method"], "local")
+        
+        # Verify warning about MPS being unavailable for speaker detection
+        warning_calls = [call for call in self.mock_logger.warning.call_args_list]
+        self.assertTrue(any("mps" in str(call).lower() for call in warning_calls),
+                        "Expected warning about MPS not supporting speaker detection")
+        
+        # Verify local method was called with speaker detection enabled
+        mock_local.assert_called_once()
+        call_args = mock_local.call_args[0]
+        self.assertTrue(call_args[3])  # speaker_detection parameter should be True
 
     def test_transcribe_file_standard_local_path(self):
+        """Test standard local transcription when MPS is not available."""
         # No MPS path -> standard local
         import torch as torch_mod
         torch_mod.backends.mps.is_available = lambda: False
-        with patch.object(self.svc, "_transcribe_locally", return_value={"text": "ok"}) as m:
+        
+        local_result = {"text": "local transcribed", "method": "local", "chunks": []}
+        with patch.object(self.svc, "_transcribe_locally", return_value=local_result) as mock_local:
             out = self.svc.transcribe_file(self.file_path, model_id="m", method="local", language="en")
-        self.assertEqual(out["text"], "ok")
-        m.assert_called_once()
+        
+        # Verify local path was used with correct result
+        self.assertEqual(out["text"], "local transcribed")
+        self.assertEqual(out["method"], "local")
+        self.assertIn("chunks", out)
+        
+        # Verify local method was called with correct parameters
+        mock_local.assert_called_once_with(self.file_path, "m", "en", False, None)
 
     def test__transcribe_locally_basic_and_string_result(self):
         # dict result
@@ -277,6 +373,136 @@ class TestTranscriptionService(unittest.TestCase):
         out = self.svc._add_speaker_detection(self.file_path, base, hf_auth_key="hf")
         self.assertEqual(out, base)
 
+    # --- Additional edge/error tests from plan ---
+
+    def test_permission_denied_file(self):
+        def bad_pipe(_path):
+            raise PermissionError('denied')
+        self.mm.create_pipeline.return_value = bad_pipe
+        with self.assertRaises(RuntimeError):
+            self.svc.transcribe_file(self.file_path, model_id='m', method='local')
+
+    def test_directory_instead_of_file(self):
+        """Test that passing a directory path raises appropriate error."""
+        # Mock a directory path
+        dir_path = "/mock/directory/"
+        
+        # Configure mock to simulate directory check
+        def dir_pipe(path):
+            if path.endswith('/'):
+                raise IsADirectoryError('is a directory')
+            return {"text": "ok"}
+        
+        self.mm.create_pipeline.return_value = dir_pipe
+        
+        with self.assertRaises(RuntimeError):
+            self.svc.transcribe_file(dir_path, model_id='m', method='local')
+
+    def test_invalid_audio_format(self):
+        """Test that invalid audio format raises appropriate error."""
+        # Mock a text file path
+        text_file_path = "/mock/file.txt"
+        
+        def invalid_pipe(path):
+            if path.endswith('.txt'):
+                raise ValueError('unsupported audio format')
+            return {"text": "ok"}
+        
+        self.mm.create_pipeline.return_value = invalid_pipe
+        
+        with self.assertRaises(RuntimeError):
+            self.svc.transcribe_file(text_file_path, model_id='m', method='local')
+
+    def test_corrupted_audio(self):
+        def pipe_raises(_):
+            raise IOError('file truncated')
+        self.mm.create_pipeline.return_value = pipe_raises
+        with self.assertRaises(RuntimeError):
+            self.svc.transcribe_file(self.file_path, model_id='m', method='local')
+
+    def test_api_network_timeout(self):
+        class FakeTranscriptions:
+            def create(self, **kwargs):
+                import requests
+                raise requests.Timeout('timeout')
+        class FakeAudio:
+            def __init__(self):
+                self.transcriptions = FakeTranscriptions()
+        class FakeClient:
+            def __init__(self, *a, **k):
+                self.audio = FakeAudio()
+        with patch('app.services.transcription_service.OpenAI', return_value=FakeClient()):
+            with self.assertRaises(RuntimeError):
+                self.svc.transcribe_file(self.file_path, model_id='m', method='api', language='en', openai_api_key='sk')
+
+    def test_api_authentication_errors(self):
+        class FakeTranscriptions:
+            def create(self, **kwargs):
+                raise Exception('401 Unauthorized')
+        class FakeClient:
+            def __init__(self, *a, **k):
+                self.audio = types.SimpleNamespace(transcriptions=FakeTranscriptions())
+        with patch('app.services.transcription_service.OpenAI', return_value=FakeClient()):
+            with self.assertRaises(RuntimeError):
+                self.svc._transcribe_with_api(self.file_path, 'english', api_key='sk')
+
+    def test_speaker_detection_requested_but_no_hf_key(self):
+        # With speaker_detection True but no key, returns base result (no crash)
+        self.mm.create_pipeline.return_value = lambda p: {"text": "base", "chunks": []}
+        out = self.svc._transcribe_locally(self.file_path, 'm', 'en', True, None)
+        self.assertEqual(out["text"], "base")
+
+
+class TestModelManagerDeviceSelection(unittest.TestCase):
+    def setUp(self):
+        self._mods = _build_heavy_module_stubs()
+        self._mods_patcher = patch.dict(sys.modules, self._mods, clear=False)
+        self._mods_patcher.start()
+        import app.services.transcription_service as tsvc
+        self._tsvc = tsvc
+
+    def test_hw_accel_disabled_returns_cpu(self):
+        with patch("app.utils.ConfigManager") as CM:
+            inst = Mock(); inst.get.return_value = False
+            CM.instance.return_value = inst
+            mm = self._tsvc.ModelManager()
+            self.assertEqual(mm.device, "cpu")
+
+    def test_cuda_selected_with_sufficient_memory(self):
+        import torch as torch_mod
+        torch_mod.cuda.is_available = lambda: True
+        torch_mod.cuda.get_device_properties = lambda *_: types.SimpleNamespace(total_memory=8 * 1024**3)
+        torch_mod.cuda.memory_allocated = lambda *_: 2 * 1024**3
+        with patch("app.utils.ConfigManager") as CM:
+            inst = Mock(); inst.get.return_value = True
+            CM.instance.return_value = inst
+            mm = self._tsvc.ModelManager()
+            self.assertEqual(mm.device, "cuda")
+
+    def test_cuda_insufficient_memory_falls_back_cpu(self):
+        import torch as torch_mod
+        torch_mod.cuda.is_available = lambda: True
+        torch_mod.cuda.get_device_properties = lambda *_: types.SimpleNamespace(total_memory=2 * 1024**3)
+        torch_mod.cuda.memory_allocated = lambda *_: 1.5 * 1024**3
+        with patch("app.utils.ConfigManager") as CM:
+            inst = Mock(); inst.get.return_value = True
+            CM.instance.return_value = inst
+            mm = self._tsvc.ModelManager()
+            self.assertEqual(mm.device, "cpu")
+
+    def test_get_free_gpu_memory_exception_returns_zero(self):
+        import torch as torch_mod
+        torch_mod.cuda.is_available = lambda: True
+        def boom(*_):
+            raise RuntimeError("cuda error")
+        torch_mod.cuda.get_device_properties = boom
+        mm = self._tsvc.ModelManager.instance()
+        # Bypass __init__ device concerns by directly calling helper
+        # Bypass __init__ device concerns by directly calling helper
+        self.assertEqual(mm._get_free_gpu_memory(), 0.0)
+
+    def tearDown(self):
+        self._mods_patcher.stop()
 
 if __name__ == "__main__":
     unittest.main()

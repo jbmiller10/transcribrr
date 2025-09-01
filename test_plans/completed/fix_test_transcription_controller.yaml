@@ -1,0 +1,173 @@
+# Cleaned up test plan for test_transcription_controller.py
+# 
+# REMOVED ITEMS:
+# - All Phase 1 tasks (excessive mocking removal) - these are structural changes, not missing tests
+# - All Phase 2 behavior testing tasks - most core behaviors are already tested
+# - All Phase 3 structural improvements - test splitting is organizational, not missing functionality  
+# - Most Phase 4 error cases - basic error handling is already covered
+# - All Phase 5 quality improvements - these are enhancements, not missing tests
+#
+# The existing test file already covers:
+# - Constructor initialization (test_init_successful)
+# - File validation (test_validate_inputs_* methods)
+# - Configuration handling (test_build_thread_args_* methods)  
+# - Signal behavior (multiple tests verify signal emission)
+# - Database interaction (test_on_transcription_completed_* methods)
+# - Basic error cases (missing files, oversized files, missing API keys)
+# - Transcription execution flow (test_start_* methods)
+# - Callback handling (test_on_transcription_progress, test_on_transcription_error)
+# - Cancellation (test_cancel_* methods)
+# - Edge cases (speaker detection formats, whitespace handling)
+#
+# REMAINING MISSING TEST CASES:
+
+test_file: test_transcription_controller.py
+
+missing_error_cases:
+  file_system_errors:
+    - name: "test_file_read_permission_denied"
+      description: "Test handling when file exists but cannot be read due to permissions"
+      details:
+        - "Mock os.access to return False for read permission"
+        - "Verify appropriate error message is logged"
+        - "Verify transcription does not start"
+    
+    - name: "test_file_deleted_during_transcription" 
+      description: "Test handling when file is deleted after validation but before thread start"
+      details:
+        - "Mock file to exist during validation but raise FileNotFoundError in thread"
+        - "Verify error is handled gracefully"
+    
+    - name: "test_network_drive_disconnect"
+      description: "Test handling when network file becomes unavailable"  
+      details:
+        - "Mock OSError with specific network-related errno"
+        - "Verify appropriate error handling"
+
+  api_errors:
+    - name: "test_api_rate_limit_exceeded"
+      description: "Test handling of API rate limit responses"
+      details:
+        - "Mock API calls to return 429 status"
+        - "Verify appropriate error messaging"
+    
+    - name: "test_api_timeout"
+      description: "Test handling of API request timeouts"
+      details:
+        - "Mock requests.exceptions.Timeout"
+        - "Verify timeout is handled gracefully"
+    
+    - name: "test_api_malformed_response"
+      description: "Test handling of unexpected API response format"
+      details:
+        - "Mock API to return invalid JSON or structure"
+        - "Verify parsing errors are handled"
+
+  thread_errors:
+    - name: "test_thread_creation_failure" 
+      description: "Test handling when TranscriptionThread constructor fails"
+      details:
+        - "Mock TranscriptionThread to raise exception on creation"
+        - "Verify controller handles thread creation failure"
+    
+    - name: "test_thread_unexpected_termination"
+      description: "Test handling when thread terminates without completion/error signals"
+      details:
+        - "Mock thread to finish without emitting expected signals"
+        - "Verify controller cleanup occurs properly"
+
+  database_errors:
+    - name: "test_database_connection_lost"
+      description: "Test handling when database becomes unavailable during update"
+      details:
+        - "Mock db_manager.update_recording to raise connection error"
+        - "Verify transcription completes but error is handled"
+    
+    - name: "test_database_constraint_violation"
+      description: "Test handling of database constraint errors during save"
+      details:
+        - "Mock database update to raise integrity constraint error"
+        - "Verify appropriate error handling and logging"
+
+boundary_conditions:
+  - name: "test_empty_file"
+    description: "Test handling of zero-byte audio file"
+    details:
+      - "Mock os.path.getsize to return 0"
+      - "Verify appropriate validation error"
+  
+  - name: "test_unicode_filename"
+    description: "Test handling of files with Unicode characters in path"
+    details:
+      - "Create recording with Unicode characters in file_path"
+      - "Verify file path handling works correctly"
+  
+  - name: "test_very_long_file_path"  
+    description: "Test handling of extremely long file paths"
+    details:
+      - "Create recording with path near OS limits (>260 chars on Windows)"
+      - "Verify path validation and error handling"
+
+transcript_edge_cases:
+  - name: "test_empty_transcript"
+    description: "Test handling when transcription returns empty string"
+    details:
+      - "Mock transcription to complete with empty transcript"  
+      - "Verify database update and signal emission still occur"
+  
+  - name: "test_very_long_transcript"
+    description: "Test handling of extremely large transcript text"
+    details:
+      - "Mock transcription to return transcript >1MB in size"
+      - "Verify memory handling and database storage"
+  
+  - name: "test_special_characters_in_transcript"
+    description: "Test transcript with special Unicode characters and emojis"
+    details:
+      - "Mock transcript with various Unicode, emojis, special chars"
+      - "Verify proper encoding and storage"
+
+concurrency_issues:
+  - name: "test_multiple_simultaneous_starts"
+    description: "Test calling start() multiple times before first completes"
+    details:
+      - "Call start() twice rapidly on same controller"
+      - "Verify second call is rejected appropriately"
+  
+  - name: "test_cancel_during_database_update"  
+    description: "Test cancellation while database update is in progress"
+    details:
+      - "Mock database update to be slow/blocking"  
+      - "Call cancel during update operation"
+      - "Verify proper cleanup occurs"
+  
+  - name: "test_rapid_start_cancel_cycles"
+    description: "Test rapid start/cancel sequences"
+    details:
+      - "Perform multiple start/cancel cycles quickly"
+      - "Verify no resource leaks or state corruption"
+
+implementation_priority:
+  high:
+    - "test_thread_creation_failure"
+    - "test_database_connection_lost" 
+    - "test_multiple_simultaneous_starts"
+    - "test_empty_transcript"
+  
+  medium:
+    - "test_file_read_permission_denied"
+    - "test_api_timeout"
+    - "test_unicode_filename"
+    - "test_special_characters_in_transcript"
+  
+  low:
+    - "test_network_drive_disconnect"
+    - "test_very_long_file_path"
+    - "test_rapid_start_cancel_cycles"
+    - "test_very_long_transcript"
+
+notes:
+  - "The existing test suite has good coverage of basic functionality"
+  - "Most missing cases are advanced error conditions and edge cases"  
+  - "Focus should be on high-priority items that could occur in normal usage"
+  - "Many low-priority items are extreme edge cases that may not be worth implementing"

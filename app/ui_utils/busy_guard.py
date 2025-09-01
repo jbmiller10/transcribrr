@@ -121,6 +121,8 @@ class BusyGuard(Generic[T]):
         self.progress_started = False
         self.ui_busy = False
         self.result: Optional[T] = None  # Will hold operation result if any
+        self._started_operation = False
+        self._cancel_invoked = False
 
     def __enter__(self) -> "BusyGuard[T]":
         """Start the feedback indicators when entering context.
@@ -133,6 +135,17 @@ class BusyGuard(Generic[T]):
             if self.ui_elements:
                 self.feedback_manager.set_ui_busy(True, self.ui_elements)
                 self.ui_busy = True
+
+            # Mark the beginning of this operation if feedback manager supports it
+            # This helps FeedbackManager restore UI state when operation finishes.
+            try:
+                start_op = getattr(self.feedback_manager, "start_operation", None)
+                if callable(start_op):
+                    start_op(self.operation_id)
+                    self._started_operation = True
+            except Exception:
+                # Non-fatal: continue without explicit operation tracking
+                logger.debug("BusyGuard: start_operation not available/failed; continuing")
 
             # Start spinner if requested
             if self.spinner_name:
@@ -156,9 +169,12 @@ class BusyGuard(Generic[T]):
                 )
                 self.progress_started = True
 
-            # Show status message
+            # Show status message (non-fatal if it fails)
             if self.status_message:
-                self.feedback_manager.show_status(self.status_message)
+                try:
+                    self.feedback_manager.show_status(self.status_message)
+                except Exception as e:
+                    logger.error(f"Error showing status message: {e}", exc_info=True)
 
             logger.debug(
                 f"BusyGuard started for operation: {self.operation_name}")
@@ -193,6 +209,17 @@ class BusyGuard(Generic[T]):
 
             # The feedback_manager will automatically re-enable UI when operations complete
 
+            # Mark the end of this operation if supported. This ensures any UI busy
+            # state tracked by the manager can be restored even if no spinner/progress.
+            try:
+                if self._started_operation:
+                    finish_op = getattr(self.feedback_manager, "finish_operation", None)
+                    if callable(finish_op):
+                        finish_op(self.operation_id)
+            except Exception:
+                # Don't let cleanup errors mask user exceptions
+                logger.debug("BusyGuard: finish_operation failed; UI restore may be deferred")
+
             logger.debug(
                 f"BusyGuard completed for operation: {self.operation_name}")
 
@@ -216,9 +243,10 @@ class BusyGuard(Generic[T]):
     def cancel(self) -> None:
         """Cancel the operation and clean up UI state."""
         # Call user's cancel callback if provided
-        if self.cancel_callback:
+        if self.cancel_callback and not self._cancel_invoked:
             try:
                 self.cancel_callback()
+                self._cancel_invoked = True
             except Exception as e:
                 logger.error(f"Error in cancel callback: {e}", exc_info=True)
 

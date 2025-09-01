@@ -1,0 +1,319 @@
+target_file: "app/ui_utils/__init__.py"
+test_file: "app/tests/test_feedback_manager.py"
+dependencies_to_mock:
+  - "logging.getLogger"
+
+test_cases:
+  # Core Operation Tracking Tests
+  - function_to_test: "FeedbackManager.start_operation"
+    description: "Verifies UI is disabled only on first operation start"
+    scenario: "Starting the first operation should disable UI elements, subsequent operations should not re-disable"
+    mocks: []
+    expected_behavior:
+      - "UI elements are disabled when first operation starts"
+      - "UI state is preserved in internal tracking dictionary"
+      - "Starting second operation does not trigger another UI disable"
+      - "Active operations set contains all started operations"
+
+  - function_to_test: "FeedbackManager.finish_operation"
+    description: "Tests UI restoration only occurs when all operations complete"
+    scenario: "Multiple concurrent operations finish at different times"
+    mocks: []
+    expected_behavior:
+      - "UI remains disabled while any operations are active"
+      - "UI elements restore to original state only after last operation finishes"
+      - "Operation ID is removed from active operations set"
+      - "UI state tracking is cleared after restoration"
+
+  # Concurrent Operation Tests
+  - function_to_test: "FeedbackManager.start_operation"
+    description: "Tests race condition when multiple operations start simultaneously"
+    scenario: "Two threads attempt to start operations at the exact same time"
+    mocks: []
+    expected_behavior:
+      - "Only one thread successfully disables UI (first operation check)"
+      - "Both operations are tracked in active_operations set"
+      - "No duplicate UI state saving occurs"
+      - "Thread safety maintained without corruption"
+
+  - function_to_test: "FeedbackManager.finish_operation"
+    description: "Tests concurrent finish operations with UI restoration race"
+    scenario: "Multiple threads finish operations simultaneously, triggering potential double-restoration"
+    mocks: []
+    expected_behavior:
+      - "UI restoration happens exactly once"
+      - "No exceptions from concurrent state clearing"
+      - "All operations properly removed from tracking"
+      - "UI elements end in correct enabled state"
+
+  # UI State Management Tests
+  - function_to_test: "FeedbackManager.set_ui_busy"
+    description: "Tests preservation of mixed enabled/disabled element states"
+    scenario: "UI contains both enabled and disabled elements when busy mode activates"
+    mocks: []
+    expected_behavior:
+      - "Originally enabled elements are disabled"
+      - "Originally disabled elements remain disabled"
+      - "Each element's original state is recorded accurately"
+      - "Elements without isEnabled method are handled gracefully"
+
+  - function_to_test: "FeedbackManager.set_ui_busy"
+    description: "Tests handling of elements that raise exceptions during state queries"
+    scenario: "Some UI elements throw exceptions when isEnabled() is called"
+    mocks: []
+    expected_behavior:
+      - "Exception is caught and element assumed enabled"
+      - "Default state of True is stored for problematic elements"
+      - "Processing continues for remaining elements"
+      - "No propagation of exceptions to caller"
+
+  - function_to_test: "FeedbackManager.set_ui_busy"
+    description: "Tests handling of elements that fail during setEnabled calls"
+    scenario: "UI element raises exception when being disabled"
+    mocks: []
+    expected_behavior:
+      - "Exception is silently caught"
+      - "Element state is still tracked despite failure"
+      - "Other elements continue to be processed"
+      - "No crash or error propagation"
+
+  # Spinner Integration Tests
+  - function_to_test: "FeedbackManager.start_spinner"
+    description: "Tests spinner lifecycle with operation tracking"
+    scenario: "Starting a spinner should activate it and track as operation"
+    mocks: []
+    expected_behavior:
+      - "Spinner state changes to active in SpinnerManager"
+      - "Operation is tracked in active_operations"
+      - "UI elements are disabled if this is first operation"
+      - "Returns True for successful start"
+
+  - function_to_test: "FeedbackManager.start_spinner"
+    description: "Tests starting non-existent spinner"
+    scenario: "Attempting to start a spinner that wasn't created"
+    mocks:
+      - target: "logger"
+        return_value: "Mock logger to verify error logging"
+    expected_behavior:
+      - "Returns False immediately"
+      - "No operation is tracked"
+      - "No UI state changes occur"
+      - "Error is logged but not raised"
+
+  - function_to_test: "FeedbackManager.stop_spinner"
+    description: "Tests stopping already inactive spinner"
+    scenario: "Attempting to stop a spinner that is not running"
+    mocks: []
+    expected_behavior:
+      - "Returns True (idempotent success)"
+      - "No state changes occur"
+      - "No operations are finished"
+      - "UI state remains unchanged"
+
+  - function_to_test: "FeedbackManager.stop_spinner"
+    description: "Tests concurrent spinner start/stop operations"
+    scenario: "One thread starts spinner while another tries to stop it"
+    mocks: []
+    expected_behavior:
+      - "Final state is deterministic based on operation order"
+      - "No corruption of spinner state"
+      - "Operation tracking remains consistent"
+      - "UI state matches final operation state"
+
+  # Progress Dialog Tests
+  - function_to_test: "FeedbackManager.start_progress"
+    description: "Tests progress dialog creation and operation tracking"
+    scenario: "Creating a new progress dialog for an operation"
+    mocks: []
+    expected_behavior:
+      - "Progress dialog object is created and stored"
+      - "Operation is added to active operations"
+      - "UI elements are disabled if first operation"
+      - "Returns the created dialog object"
+
+  - function_to_test: "FeedbackManager.start_progress"
+    description: "Tests replacing existing progress dialog with same ID"
+    scenario: "Starting a progress operation that already has an active dialog"
+    mocks: []
+    expected_behavior:
+      - "Previous dialog is removed from tracking"
+      - "New dialog replaces the old one"
+      - "Operation remains in active_operations"
+      - "UI busy state is maintained"
+
+  - function_to_test: "FeedbackManager.update_progress"
+    description: "Tests updating non-existent progress dialog"
+    scenario: "Attempting to update progress for an operation without dialog"
+    mocks: []
+    expected_behavior:
+      - "No exception is raised"
+      - "Update is silently ignored"
+      - "No state changes occur"
+      - "Method returns normally"
+
+  - function_to_test: "FeedbackManager.finish_progress"
+    description: "Tests auto-close behavior with concurrent operations"
+    scenario: "Finishing a progress operation with auto_close while other operations active"
+    mocks: []
+    expected_behavior:
+      - "Dialog is removed from tracking after auto-close"
+      - "Operation is removed from active_operations"
+      - "UI remains disabled if other operations active"
+      - "No interference with other progress dialogs"
+
+  - function_to_test: "FeedbackManager.close_progress"
+    description: "Tests closing already closed progress dialog"
+    scenario: "Attempting to close a progress dialog that was already closed"
+    mocks: []
+    expected_behavior:
+      - "No exception is raised"
+      - "Operation removal is idempotent"
+      - "UI state update handles missing operation gracefully"
+      - "Method completes normally"
+
+  # Comprehensive Cleanup Tests
+  - function_to_test: "FeedbackManager.stop_all_feedback"
+    description: "Tests complete cleanup with mixed active operations"
+    scenario: "Multiple spinners and progress dialogs active when stop_all called"
+    mocks: []
+    expected_behavior:
+      - "All spinners are stopped via SpinnerManager"
+      - "All progress dialogs are closed"
+      - "All operations cleared from tracking"
+      - "All UI elements restored to original states"
+      - "Internal state dictionaries are cleared"
+
+  - function_to_test: "FeedbackManager.stop_all_feedback"
+    description: "Tests cleanup with elements that fail during restoration"
+    scenario: "Some UI elements raise exceptions when being re-enabled"
+    mocks: []
+    expected_behavior:
+      - "Exceptions are caught and ignored"
+      - "Restoration continues for remaining elements"
+      - "All tracking structures are still cleared"
+      - "Method completes without raising exceptions"
+
+  - function_to_test: "FeedbackManager.stop_all_feedback"
+    description: "Tests concurrent stop_all_feedback calls"
+    scenario: "Multiple threads call stop_all_feedback simultaneously"
+    mocks: []
+    expected_behavior:
+      - "Operations are cleared exactly once"
+      - "UI restoration is idempotent"
+      - "No race conditions or double-frees"
+      - "Final state is clean regardless of call order"
+
+  # Memory and Resource Management Tests
+  - function_to_test: "FeedbackManager.__init__"
+    description: "Tests proper initialization and resource allocation"
+    scenario: "Creating FeedbackManager with various parent widget configurations"
+    mocks: []
+    expected_behavior:
+      - "SpinnerManager is created or reused correctly"
+      - "All tracking dictionaries are initialized empty"
+      - "Parent widget reference is stored"
+      - "No resource leaks on creation"
+
+  - function_to_test: "FeedbackManager.finish_operation"
+    description: "Tests memory cleanup after operations complete"
+    scenario: "Large number of operations start and finish over time"
+    mocks: []
+    expected_behavior:
+      - "Completed operations are removed from tracking"
+      - "UI state dictionary is cleared when idle"
+      - "No accumulation of stale operation IDs"
+      - "Memory usage remains stable"
+
+  # Edge Cases and Error Conditions
+  - function_to_test: "FeedbackManager.finish_operation"
+    description: "Tests finishing operation that was never started"
+    scenario: "Calling finish_operation with an unknown operation ID"
+    mocks: []
+    expected_behavior:
+      - "Operation ID discarded safely (no KeyError)"
+      - "No UI restoration triggered if no operations active"
+      - "State remains consistent"
+      - "Method completes normally"
+
+  - function_to_test: "FeedbackManager.set_ui_busy"
+    description: "Tests busy mode with None ui_elements parameter"
+    scenario: "Calling set_ui_busy with ui_elements=None when ui_state has existing elements"
+    mocks: []
+    expected_behavior:
+      - "Uses existing tracked elements from ui_state"
+      - "All tracked elements are disabled"
+      - "State preservation works correctly"
+      - "No new elements are added to tracking"
+
+  - function_to_test: "FeedbackManager.set_ui_busy"
+    description: "Tests busy=False parameter (should be no-op)"
+    scenario: "Calling set_ui_busy with busy=False"
+    mocks: []
+    expected_behavior:
+      - "Method returns immediately"
+      - "No UI elements are modified"
+      - "No state changes occur"
+      - "Existing operations continue unaffected"
+
+  # Integration Tests with SpinnerManager
+  - function_to_test: "FeedbackManager.start_spinner"
+    description: "Tests spinner toggle affecting operation state"
+    scenario: "Starting an already active spinner (toggle returns False)"
+    mocks: []
+    expected_behavior:
+      - "Spinner toggles to inactive state"
+      - "Operation is finished rather than started"
+      - "UI may be restored if last operation"
+      - "Returns False to indicate deactivation"
+
+  - function_to_test: "FeedbackManager.stop_spinner"
+    description: "Tests coordination between spinner state and operation tracking"
+    scenario: "Stopping spinner updates both SpinnerManager and operation tracking"
+    mocks: []
+    expected_behavior:
+      - "Spinner state set to False in SpinnerManager"
+      - "Operation removed from active_operations"
+      - "UI restored if this was last operation"
+      - "Returns True for successful stop"
+
+  # Status Message Tests
+  - function_to_test: "FeedbackManager.show_status"
+    description: "Tests status message display (headless implementation)"
+    scenario: "Showing status message in headless environment"
+    mocks: []
+    expected_behavior:
+      - "Method returns None without error"
+      - "No actual UI updates occur (headless)"
+      - "Parameters are accepted but ignored"
+      - "No side effects on operation tracking"
+
+  # Complex Interaction Scenarios
+  - function_to_test: "FeedbackManager"
+    description: "Tests interleaved spinner and progress operations"
+    scenario: "Starting spinners and progress dialogs in alternating pattern"
+    mocks: []
+    expected_behavior:
+      - "Each operation type tracked independently"
+      - "UI disabled on first operation of any type"
+      - "UI restored only when all operations complete"
+      - "Mixed operation types coexist without interference"
+
+  - function_to_test: "FeedbackManager"
+    description: "Tests rapid operation start/stop cycles"
+    scenario: "Operations starting and stopping in quick succession"
+    mocks: []
+    expected_behavior:
+      - "UI state changes are minimized (disabled once)"
+      - "No flickering or redundant enable/disable calls"
+      - "Final state matches expected operation count"
+      - "No race conditions in state management"
+
+  - function_to_test: "FeedbackManager"
+    description: "Tests exception resilience during complex operations"
+    scenario: "Various exceptions thrown during multi-operation sequence"
+    mocks: []
+    expected_behavior:
+      - "Each exception is isolated and handled"
+      - "Other operations continue normally"
+      - "Partial failures don't corrupt overall state"
+      - "System remains usable after exceptions"

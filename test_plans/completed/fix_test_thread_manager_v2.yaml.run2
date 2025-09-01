@@ -1,0 +1,187 @@
+# Test Improvement Plan for test_thread_manager.py
+# Current Score: 7/10
+# Target Score: 9.5/10
+
+target_file: "app/ThreadManager.py"
+test_file: "app/tests/test_thread_manager.py"
+
+current_issues:
+  - "Non-deterministic concurrency test in test_unregister_during_cancel"
+  - "Singleton cleanup issues between test classes"
+  - "Minor improvements needed for better test isolation"
+  - "Some edge cases in error handling not fully tested"
+  - "Test relies on timing-sensitive behavior in concurrent scenarios"
+
+dependencies_to_mock:
+  - "logging.getLogger"
+  - "weakref.ref"
+  - "PyQt6.QtCore.QThread (already stubbed with TestThread)"
+
+improvement_goals:
+  - "Move non-deterministic concurrent test to separate integration test file"
+  - "Improve singleton isolation and cleanup between test classes"
+  - "Add proper singleton reset mechanism in setUp/tearDown"
+  - "Ensure all tests are fully deterministic and repeatable"
+  - "Add missing edge case coverage for error conditions"
+  - "Improve test documentation and clarity"
+
+test_infrastructure:
+  singleton_reset_helper:
+    description: "Add helper method to properly reset singleton state"
+    implementation: |
+      class ThreadManagerTestBase(unittest.TestCase):
+          """Base class with proper singleton management."""
+          
+          @classmethod
+          def setUpClass(cls):
+              """Store original singleton state."""
+              cls._original_instance = ThreadManager._instance
+              
+          @classmethod
+          def tearDownClass(cls):
+              """Restore original singleton state."""
+              ThreadManager._instance = cls._original_instance
+              
+          def setUp(self):
+              """Reset singleton for each test."""
+              ThreadManager._instance = None
+              self.manager = ThreadManager.instance()
+              # Clear any lingering threads from previous tests
+              self.manager._active_threads.clear()
+              
+          def tearDown(self):
+              """Ensure clean state after each test."""
+              # Clear active threads
+              if hasattr(self, 'manager'):
+                  self.manager._active_threads.clear()
+              # Reset singleton
+              ThreadManager._instance = None
+
+  improved_test_thread:
+    description: "Enhanced TestThread with better control over timing"
+    implementation: |
+      class TestThread:
+          """Deterministic thread-like object for testing."""
+          
+          def __init__(self, name="TestThread"):
+              self.name = name
+              self.finished = _Signal()
+              self._running = False
+              self._cancelled = False
+              self._wait_result = True  # Configurable wait result
+              self._cancel_error = None  # For error injection
+              
+          def cancel(self):
+              if self._cancel_error:
+                  raise self._cancel_error
+              self._cancelled = True
+              
+          def isRunning(self):
+              return self._running
+              
+          def wait(self, timeout):
+              # Always deterministic - no actual waiting
+              was_running = self._running
+              self._running = False
+              return self._wait_result if was_running else True
+              
+          def start(self):
+              self._running = True
+              
+          def set_wait_behavior(self, will_succeed):
+              """Configure wait() return value for testing."""
+              self._wait_result = will_succeed
+              
+          def set_cancel_error(self, error):
+              """Inject error for cancel() testing."""
+              self._cancel_error = error
+
+test_cases_to_modify:
+  - test_class: "TestThreadRegistration"
+    improvements:
+      - "Inherit from ThreadManagerTestBase for proper singleton management"
+      - "Add assertion messages for better test failure diagnostics"
+      - "Verify weakref behavior is working correctly"
+    
+  - test_class: "TestThreadCancellation"
+    improvements:
+      - "Inherit from ThreadManagerTestBase for proper singleton management"
+      - "Make cancel_all_threads test fully deterministic"
+      - "Add test for timeout scenario when thread.wait() returns False"
+      - "Add test for exception handling during cancel()"
+    
+  - test_class: "TestThreadManagerEdgeCases"
+    improvements:
+      - "Inherit from ThreadManagerTestBase for proper singleton management"
+      - "Move test_unregister_during_cancel to integration test file"
+      - "Add more comprehensive error injection tests"
+      - "Test weakref cleanup when thread is garbage collected"
+
+test_cases_to_add:
+  - function_to_test: "ThreadManager.instance"
+    description: "Test singleton pattern implementation"
+    scenario: "Verify that multiple calls return same instance"
+    mocks: []
+    expected_behavior:
+      - "Multiple calls to instance() return same object"
+      - "Instance is properly initialized on first call"
+      - "Thread dictionary is empty on initialization"
+
+  - function_to_test: "ThreadManager.cancel_all_threads"
+    description: "Test wait timeout behavior"
+    scenario: "When thread.wait() times out and returns False"
+    mocks:
+      - target: "TestThread.wait"
+        return_value: "False"
+    expected_behavior:
+      - "Warning logged about thread not finishing within timeout"
+      - "Method completes without raising exception"
+      - "Thread remains in active threads list"
+
+  - function_to_test: "ThreadManager.register_thread"
+    description: "Test weakref cleanup on thread deletion"
+    scenario: "When thread object is garbage collected"
+    mocks:
+      - target: "weakref.ref"
+        behavior: "Returns weak reference that becomes None"
+    expected_behavior:
+      - "Auto-unregister callback handles None reference gracefully"
+      - "No exceptions raised during cleanup"
+      - "Thread is removed from active threads"
+
+  - function_to_test: "ThreadManager.cancel_all_threads"
+    description: "Test error logging during cancel"
+    scenario: "When thread.cancel() raises an exception"
+    mocks:
+      - target: "TestThread.cancel"
+        side_effect: "raises RuntimeError('Cancel failed')"
+    expected_behavior:
+      - "Error is logged with thread name and exception message"
+      - "Cancellation continues for other threads"
+      - "Method completes without propagating exception"
+
+test_cases_to_move:
+  - test_name: "test_unregister_during_cancel"
+    reason: "Non-deterministic concurrent behavior"
+    new_location: "app/tests/test_thread_manager_integration.py"
+    description: |
+      This test involves mutation of the thread registry during iteration,
+      which is inherently timing-sensitive. Move to integration tests where
+      non-deterministic behavior is acceptable and expected.
+
+improvements_summary:
+  - "Add ThreadManagerTestBase class for consistent singleton management"
+  - "Enhance TestThread with configurable behavior for deterministic testing"
+  - "Add comprehensive error injection and edge case tests"
+  - "Move non-deterministic concurrent test to integration suite"
+  - "Improve test isolation to prevent state leakage between tests"
+  - "Add missing coverage for timeout and error scenarios"
+  - "Ensure all tests are fully deterministic and repeatable"
+
+expected_outcomes:
+  - "All tests are deterministic and pass consistently"
+  - "No singleton state leakage between test classes"
+  - "Complete coverage of error paths and edge cases"
+  - "Clear separation between unit and integration tests"
+  - "Improved test maintainability and readability"
+  - "Test failures provide clear diagnostic information"

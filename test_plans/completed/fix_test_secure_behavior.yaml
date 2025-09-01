@@ -1,0 +1,244 @@
+target_file: "app/secure.py"
+test_file: "app/tests/test_secure_behavior.py"
+dependencies_to_mock:
+  - "keyring.get_password"
+  - "keyring.set_password"
+  - "keyring.delete_password"
+  - "keyring.errors.PasswordDeleteError"
+  - "app.constants.APP_NAME"
+  - "app.constants.APP_VERSION"
+  - "logging.Logger"
+
+test_cases:
+  # Existing test coverage that needs enhancement
+  - function_to_test: "redact"
+    description: "Tests HuggingFace token pattern detection and redaction"
+    scenario: "When text contains HuggingFace authentication tokens (hf_* pattern)"
+    mocks: []
+    expected_behavior:
+      - "HuggingFace tokens matching hf_[A-Za-z0-9]{10,} are replaced with ***-REDACTED-***"
+      - "Multiple HF tokens in same text are all redacted"
+      - "Partial matches or malformed tokens are not redacted"
+
+  - function_to_test: "redact"
+    description: "Tests redaction with complex Unicode characters and emojis"
+    scenario: "When text contains API keys mixed with various Unicode characters, emojis, and special symbols"
+    mocks: []
+    expected_behavior:
+      - "API keys are correctly identified and redacted even when surrounded by emojis"
+      - "Unicode characters (Chinese, Arabic, Hebrew, etc.) don't interfere with pattern matching"
+      - "Zero-width Unicode characters don't break redaction"
+      - "Right-to-left text doesn't affect key detection"
+
+  - function_to_test: "redact"
+    description: "Tests redaction at string boundaries and edge cases"
+    scenario: "When API keys appear at the very beginning or end of strings, or in edge positions"
+    mocks: []
+    expected_behavior:
+      - "Keys at string start are redacted"
+      - "Keys at string end are redacted"
+      - "Keys with no surrounding text are redacted"
+      - "Empty strings return empty strings"
+      - "None input is handled gracefully (returns empty string)"
+
+  - function_to_test: "redact"
+    description: "Tests redaction with mixed token types in same text"
+    scenario: "When text contains both OpenAI (sk-*) and HuggingFace (hf_*) tokens"
+    mocks: []
+    expected_behavior:
+      - "Both token types are redacted in a single pass"
+      - "Multiple instances of each type are all redacted"
+      - "Redaction preserves non-sensitive text between tokens"
+
+  # New test cases for missing error paths
+  - function_to_test: "migrate_api_keys"
+    description: "Tests migration when delete operation fails for OpenAI key"
+    scenario: "When keyring.delete_password raises PasswordDeleteError for OpenAI key after successful set"
+    mocks:
+      - target: "keyring.get_password"
+        return_value: "old-openai-key for OPENAI_API_KEY, None for HF_AUTH_TOKEN"
+      - target: "keyring.set_password"
+        return_value: "succeeds"
+      - target: "keyring.delete_password"
+        side_effect: "raises PasswordDeleteError for OPENAI_API_KEY"
+    expected_behavior:
+      - "Migration continues despite delete failure"
+      - "OpenAI key exists in new location"
+      - "OpenAI key may still exist in old location"
+      - "Error is logged with redacted message"
+      - "Migration status shows openai: True (set succeeded)"
+
+  - function_to_test: "migrate_api_keys"
+    description: "Tests migration when get operation fails"
+    scenario: "When keyring.get_password raises an exception"
+    mocks:
+      - target: "keyring.get_password"
+        side_effect: "raises RuntimeError('Keyring locked')"
+    expected_behavior:
+      - "Migration handles the exception gracefully"
+      - "Error is logged with redacted error message"
+      - "Migration status shows both keys as False"
+      - "Function doesn't crash"
+
+  - function_to_test: "migrate_api_keys"
+    description: "Tests migration with both keys present and various failure modes"
+    scenario: "When both keys exist but HF delete fails while OpenAI succeeds"
+    mocks:
+      - target: "keyring.get_password"
+        return_value: "returns appropriate keys for both OPENAI_API_KEY and HF_AUTH_TOKEN"
+      - target: "keyring.set_password"
+        return_value: "succeeds for both"
+      - target: "keyring.delete_password"
+        side_effect: "succeeds for OPENAI_API_KEY, raises PasswordDeleteError for HF_AUTH_TOKEN"
+    expected_behavior:
+      - "OpenAI key is fully migrated"
+      - "HF key exists in both old and new locations"
+      - "Migration status reflects partial success"
+      - "Appropriate log messages for each operation"
+
+  - function_to_test: "get_api_key"
+    description: "Tests API key retrieval with keyring errors"
+    scenario: "When keyring.get_password raises an exception"
+    mocks:
+      - target: "keyring.get_password"
+        side_effect: "raises KeyError('Service not found')"
+    expected_behavior:
+      - "Function returns None on error"
+      - "Exception doesn't propagate to caller"
+      - "Error might be logged (depending on implementation)"
+
+  - function_to_test: "set_api_key"
+    description: "Tests API key storage when keyring.set_password fails"
+    scenario: "When attempting to store a key but keyring raises an exception"
+    mocks:
+      - target: "keyring.set_password"
+        side_effect: "raises RuntimeError('Keyring is locked')"
+    expected_behavior:
+      - "Function returns False to indicate failure"
+      - "Error is logged with redacted message"
+      - "Exception doesn't propagate to caller"
+
+  - function_to_test: "set_api_key"
+    description: "Tests API key deletion when empty value provided"
+    scenario: "When set_api_key is called with empty string to delete a key"
+    mocks:
+      - target: "keyring.delete_password"
+        side_effect: "raises PasswordDeleteError (key doesn't exist)"
+    expected_behavior:
+      - "Function returns True (deletion of non-existent key is success)"
+      - "PasswordDeleteError is caught and ignored"
+      - "No error is logged for missing key deletion"
+
+  - function_to_test: "set_api_key"
+    description: "Tests API key deletion with unexpected errors"
+    scenario: "When delete_password raises non-PasswordDeleteError exception"
+    mocks:
+      - target: "keyring.delete_password"
+        side_effect: "raises RuntimeError('Unexpected keyring error')"
+    expected_behavior:
+      - "Function returns False to indicate failure"
+      - "Error is logged with redacted message"
+      - "Exception is caught and doesn't propagate"
+
+  - function_to_test: "SensitiveLogFilter.filter"
+    description: "Tests filter with various log record edge cases"
+    scenario: "When log record has missing or unusual attributes"
+    mocks:
+      - target: "logging.LogRecord"
+        return_value: "record with no args attribute or args=None"
+    expected_behavior:
+      - "Filter handles missing args gracefully"
+      - "Filter handles non-string args (numbers, objects)"
+      - "Filter always returns True to keep the record"
+      - "Non-string args are preserved unchanged"
+
+  - function_to_test: "SensitiveLogFilter.filter"
+    description: "Tests filter with formatted string operations"
+    scenario: "When log uses format strings with dictionaries or complex formatting"
+    mocks: []
+    expected_behavior:
+      - "Filter redacts keys in format string arguments"
+      - "Dictionary values containing keys are redacted"
+      - "Formatting is preserved after redaction"
+
+  # Additional HuggingFace token test cases
+  - function_to_test: "redact"
+    description: "Tests various HuggingFace token formats and edge cases"
+    scenario: "When text contains valid and invalid HF token patterns"
+    mocks: []
+    expected_behavior:
+      - "Valid tokens like hf_abcdefghij (exactly 10 chars) are redacted"
+      - "Longer tokens like hf_abcdefghijklmnop are redacted"
+      - "Tokens with underscores like hf_abc_def_ghi are redacted"
+      - "Tokens with hyphens like hf_abc-def-ghi are redacted"
+      - "Short tokens like hf_abc (less than 10 chars) are NOT redacted"
+      - "Tokens without underscore like hfabcdefghijk are NOT redacted"
+
+  - function_to_test: "redact"
+    description: "Tests redaction performance with large text"
+    scenario: "When processing very large text blocks with multiple keys"
+    mocks: []
+    expected_behavior:
+      - "All keys are found and redacted efficiently"
+      - "Memory usage remains reasonable"
+      - "Regex compilation is reused (not recompiled each call)"
+
+  # Test concurrent access scenarios
+  - function_to_test: "SensitiveLogFilter.filter"
+    description: "Tests thread safety of filter under concurrent access"
+    scenario: "When multiple threads log sensitive information simultaneously"
+    mocks: []
+    expected_behavior:
+      - "All threads' logs are properly redacted"
+      - "No race conditions in pattern matching"
+      - "Filter state remains consistent"
+      - "No logs leak sensitive information"
+
+  - function_to_test: "get_service_id"
+    description: "Tests service ID generation with different app versions"
+    scenario: "When APP_VERSION changes between calls"
+    mocks:
+      - target: "app.constants.APP_VERSION"
+        return_value: "different version strings"
+      - target: "app.constants.APP_NAME"
+        return_value: "Transcribrr"
+    expected_behavior:
+      - "Service ID includes current version"
+      - "Service ID format is consistent: {app_name}-v{version}"
+      - "App name is lowercased in service ID"
+
+  - function_to_test: "migrate_api_keys"
+    description: "Tests migration with corrupted or invalid key values"
+    scenario: "When retrieved keys contain invalid characters or are corrupted"
+    mocks:
+      - target: "keyring.get_password"
+        return_value: "binary data or invalid UTF-8 sequences"
+      - target: "keyring.set_password"
+        side_effect: "may raise UnicodeError"
+    expected_behavior:
+      - "Migration handles encoding errors gracefully"
+      - "Corrupted keys are either migrated as-is or skipped"
+      - "Errors are logged appropriately"
+      - "Migration continues for other keys"
+
+  # Edge cases for the test keyring implementation
+  - function_to_test: "TestKeyring"
+    description: "Verify test keyring implementation handles edge cases"
+    scenario: "When test keyring is used with various edge cases"
+    mocks: []
+    expected_behavior:
+      - "Handles None values correctly"
+      - "Handles empty string passwords"
+      - "Correctly implements key namespacing with service:username format"
+      - "delete_password raises correct exception type for missing keys"
+      - "get_password returns None for non-existent keys"
+
+quality_checks:
+  - "All error paths in secure.py are covered"
+  - "HuggingFace token patterns are thoroughly tested"
+  - "Unicode and internationalization edge cases are covered"
+  - "Thread safety and concurrency are validated"
+  - "Test keyring implementation is robust"
+  - "All public functions have error handling tests"
+  - "Pattern matching is tested with various text encodings"
+  - "Migration handles all failure scenarios gracefully"

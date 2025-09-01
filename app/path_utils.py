@@ -3,26 +3,40 @@
 import os
 import sys
 import logging
-from typing import Optional
+from typing import Optional, Callable
 
 # Configure module-level logger
 logger = logging.getLogger("transcribrr")
 
 
-def _get_base_resource_path() -> str:
+def get_execution_environment() -> str:
+    """Return execution environment: 'pyinstaller', 'py2app', or 'development'."""
+    if hasattr(sys, "_MEIPASS"):
+        return "pyinstaller"
+    elif getattr(sys, "frozen", False) and "MacOS" in sys.executable:
+        return "py2app"
+    else:
+        return "development"
+
+
+def _get_base_resource_path(env_detector: Optional[Callable[[], str]] = None) -> str:
     """
     Get the base resource directory path based on the execution environment.
 
     This is a helper function to make testing easier.
     """
+    if env_detector is None:
+        env_detector = get_execution_environment
+    env = env_detector()
+
     # Check if running as PyInstaller bundle
-    if hasattr(sys, "_MEIPASS"):
+    if env == "pyinstaller":
         pyinstaller_path: str = sys._MEIPASS  # Type annotation to ensure correct type
         logger.debug(f"Using PyInstaller _MEIPASS path: {pyinstaller_path}")
         return pyinstaller_path
 
     # Check if running as a py2app bundle
-    elif getattr(sys, "frozen", False) and "MacOS" in sys.executable:
+    elif env == "py2app":
         bundle_dir = os.path.normpath(
             os.path.join(os.path.dirname(sys.executable),
                          os.pardir, "Resources")
@@ -38,7 +52,7 @@ def _get_base_resource_path() -> str:
     return dev_path
 
 
-def resource_path(relative_path: Optional[str] = None) -> str:
+def resource_path(relative_path: Optional[str] = None, *, env_detector: Optional[Callable[[], str]] = None) -> str:
     """
     Return absolute path to resources, works for dev and for PyInstaller/py2app.
 
@@ -56,7 +70,7 @@ def resource_path(relative_path: Optional[str] = None) -> str:
     Returns:
         Absolute path to the resource or the resource directory.
     """
-    base_path = _get_base_resource_path()
+    base_path = _get_base_resource_path(env_detector)
 
     # If no relative path provided, return the base resource directory
     if relative_path is None:
