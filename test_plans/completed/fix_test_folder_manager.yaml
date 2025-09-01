@@ -8,6 +8,7 @@ identified_issues:
   - "State pollution - Manual singleton state manipulation"
   - "Missing error coverage - No tests for database errors, malformed data, edge cases"
   - "Conjoined twins - Mixed unit and integration concerns"
+  # Completed: Plan executed. Behavior-first tests added and mocking reduced.
   - "Weak assertions - Using assertTrue/False instead of specific checks"
 
 # Plan to Fix Anti-Patterns

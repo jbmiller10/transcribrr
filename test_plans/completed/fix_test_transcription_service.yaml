@@ -1,0 +1,112 @@
+# Cleaned up test plan for app/services/transcription_service.py
+# 
+# REMOVED ITEMS:
+# - Basic file validation tests (test_missing_file) - already implemented as test_transcribe_file_missing_file_raises
+# - API transcription success tests - already implemented as test__transcribe_with_api_success  
+# - API input validation tests - already implemented as test__transcribe_with_api_input_validation
+# - API empty response handling - already implemented as test__transcribe_with_api_empty_response_raises
+# - API exception wrapping - already implemented as test__transcribe_with_api_exception_wrapped
+# - Local transcription basic tests - already implemented as test__transcribe_locally_basic_and_string_result
+# - Local transcription pipeline exceptions - already implemented as test__transcribe_locally_pipeline_exception_wrapped
+# - Speaker detection success path - already implemented as test__add_speaker_detection_labels_chunks
+# - Speaker detection fallback on error - already implemented as test__transcribe_locally_with_speaker_detection_error_falls_back
+# - Speaker detection with no segments - already implemented as test__add_speaker_detection_no_segments_returns_original
+# - Device selection logic (MPS/CPU) - already implemented in multiple MPS-related tests
+# - API vs local method routing - already implemented in various path selection tests
+# - Module-level stubbing critique - this is an architectural issue, not missing test cases
+#
+# REMAINING GAPS: Only genuinely missing test scenarios are listed below
+
+target_file: "app/services/transcription_service.py"  
+test_file: "app/tests/test_transcription_service.py"
+
+# Missing test coverage that should be added
+missing_test_cases:
+
+  file_validation_extended:
+    - test_permission_denied_file:
+        description: "Test handling of files that exist but can't be read due to permissions"
+        scenario: "Create file with restricted permissions and verify appropriate error"
+        
+    - test_directory_instead_of_file:
+        description: "Test error when path points to directory instead of file"
+        scenario: "Pass directory path to transcribe_file and verify error handling"
+        
+    - test_invalid_audio_format:
+        description: "Test with non-audio files (text, images) to verify format validation"
+        scenario: "Pass text/image files and verify appropriate format error"
+        
+    - test_corrupted_audio:
+        description: "Test with truncated/corrupted audio files"
+        scenario: "Create corrupted WAV files and verify graceful error handling"
+
+  api_error_scenarios:
+    - test_api_network_timeout:
+        description: "Test handling of network timeouts during API calls"
+        scenario: "Mock requests to timeout and verify appropriate error handling"
+        
+    - test_api_rate_limiting:
+        description: "Test handling of 429 rate limit responses"
+        scenario: "Mock 429 HTTP response and verify retry/error behavior"
+        
+    - test_api_authentication_errors:
+        description: "Test handling of 401/403 authentication errors"  
+        scenario: "Mock auth errors and verify appropriate error messages"
+        
+    - test_api_malformed_response:
+        description: "Test handling of malformed JSON responses"
+        scenario: "Mock invalid JSON response and verify parsing error handling"
+
+  local_transcription_gaps:
+    - test_memory_management:
+        description: "Test model caching and memory cleanup behavior"
+        scenario: "Verify models are cached and memory is cleaned up after transcription"
+        
+    - test_chunked_audio_processing:
+        description: "Test handling of very long audio files requiring chunking"
+        scenario: "Test with audio longer than model's context window"
+
+  speaker_detection_gaps:  
+    - test_overlapping_speakers:
+        description: "Test handling of segments with overlapping speakers"
+        scenario: "Create diarization output with overlapping time ranges"
+        
+    - test_missing_hf_auth:
+        description: "Test error when HuggingFace auth key is missing/invalid"
+        scenario: "Test speaker detection with no/invalid HF key"
+
+  concurrent_usage:
+    - test_simultaneous_transcriptions:
+        description: "Test multiple simultaneous transcription requests"
+        scenario: "Start multiple transcriptions concurrently and verify they don't interfere"
+
+# Test data quality improvements needed
+test_data_improvements:
+  - valid_audio_fixtures:
+      description: "Replace fake b'\\0\\0' with actual valid WAV data"
+      requirement: "Create minimal valid WAV files for realistic testing"
+      
+  - audio_format_variety:
+      description: "Test with different audio formats (MP3, FLAC, etc.)"
+      requirement: "Verify format support and conversion handling"
+
+# Architecture improvements (not test cases but testing approach)
+testing_approach_improvements:
+  - reduce_module_mocking:
+      description: "The 54-line _ensure_stubbed_heavy_modules function should be eliminated"
+      recommendation: "Mock only at service boundaries, not entire ML frameworks"
+      
+  - focus_on_outcomes:
+      description: "Tests currently verify mock calls rather than actual behavior"
+      recommendation: "Test transcription outcomes and error conditions, not implementation details"
+      
+  - separate_test_classes:
+      description: "Split monolithic TestTranscriptionService into focused classes"
+      recommendation: "Create separate test classes for validation, local, API, and speaker detection"
+
+# Success criteria for remaining work
+success_criteria:
+  - "Add the 12 missing test scenarios listed above"
+  - "Replace fake audio data with valid WAV fixtures"
+  - "Achieve >90% line coverage of transcription_service.py"
+  - "Each new test method should be <20 lines and test outcomes, not mocks"

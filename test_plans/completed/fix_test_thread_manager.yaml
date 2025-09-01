@@ -1,0 +1,58 @@
+# Cleaned up ThreadManager test plan
+# 
+# ANALYSIS SUMMARY:
+# After reviewing existing test files, most improvements suggested in the original plan 
+# have already been implemented across multiple test files:
+#
+# ALREADY IMPLEMENTED:
+# - test_thread_manager_v2.py and test_thread_manager_real.py both use real objects instead of mocks
+# - Both newer test files avoid mocking weakref and use minimal thread stubs  
+# - Signal connection and auto-unregistration behavior is tested in both files
+# - Thread cancellation with various timeout scenarios is covered
+# - Concurrent operation testing exists in test_thread_manager_real.py
+# - Error condition testing (threads without cancel method) is implemented
+# - Edge cases like duplicate registration and rapid operations are covered
+# - Thread launcher functionality is comprehensively tested in test_thread_launcher.py
+#
+# REMAINING GAPS:
+# The following test scenarios from the original plan are NOT yet implemented 
+# in any of the existing test files:
+
+target_file: "app/ThreadManager.py"
+test_files: 
+  - "app/tests/test_thread_manager.py"
+  - "app/tests/test_thread_manager_v2.py" 
+  - "app/tests/test_thread_manager_real.py"
+  - "app/tests/test_thread_launcher.py"
+
+# Missing test scenarios that should be added
+missing_test_coverage:
+  error_conditions:
+    - "Thread registration when thread.finished signal doesn't exist or is None"
+    - "Thread registration with None or completely invalid thread object" 
+    - "Unregister thread during active cancellation process"
+    - "Cancel thread that raises exception in isRunning() method"
+    - "Thread with broken wait() method that raises exceptions"
+    
+  extreme_edge_cases:
+    - "Thread garbage collected during the cancellation process itself"
+    - "Singleton access from multiple threads simultaneously with race conditions"
+    - "Thread that completes between cancel() call and wait() call"
+    - "Memory leak verification - ensure weak references actually allow garbage collection"
+    - "Signal disconnection verification when thread is deleted/garbage collected"
+    
+  resource_management:
+    - "Test cleanup behavior when ThreadManager singleton itself is deleted"
+    - "Verify signal disconnection on thread deletion prevents memory leaks"
+    - "Test behavior with thread hierarchy (parent/child threads)"
+
+# Implementation notes:
+# - The existing test_thread_manager.py could be simplified by removing excessive mocking
+# - Consider consolidating test_thread_manager_v2.py and test_thread_manager_real.py as they overlap significantly
+# - Focus new tests on the specific missing scenarios listed above
+# - All other scenarios from the original plan are already well covered
+
+# Expected work:
+# - Add ~10-15 new focused test methods covering the missing edge cases above
+# - Consider refactoring existing test_thread_manager.py to use less mocking (optional)
+# - Most of the original 400+ line rewrite is not needed since better tests already exist

@@ -79,6 +79,28 @@ class TestMainTranscriptionWidgetFeedback(unittest.TestCase):
         # At least called for transcription progress
         self.widget.feedback_manager.start_progress.assert_called()
 
+    def test_transcription_with_no_recording_selected(self):
+        # No current recording
+        self.widget.current_recording_data = None
+        with patch("app.MainTranscriptionWidget.show_error_message") as mock_err:
+            self.widget.start_transcription()
+            mock_err.assert_called()
+        # Feedback not started
+        self.widget.feedback_manager.set_ui_busy.assert_not_called()
+        self.widget.feedback_manager.start_spinner.assert_not_called()
+
+    def test_transcription_progress_updates(self):
+        # Provide a fake BusyGuard-like object
+        guard = MagicMock()
+        self.widget.transcription_guard = guard
+        # With numeric chunk info
+        self.widget.on_transcription_progress("Processing chunk 2/5...")
+        guard.update_progress.assert_called_with(40, "Processing chunk 2/5...")
+        guard.update_progress.reset_mock()
+        # Without numeric info
+        self.widget.on_transcription_progress("Preparing audio")
+        guard.update_progress.assert_called_with(0, "Preparing audio")
+
 
 @unittest.skipUnless(HAVE_CONTROL, "PyQt6 or ControlPanelWidget not available")
 class TestControlPanelWidgetFeedback(unittest.TestCase):
@@ -116,3 +138,44 @@ class TestControlPanelWidgetFeedback(unittest.TestCase):
         # Should start progress with 'youtube_download'
         args, _ = self.widget.feedback_manager.start_progress.call_args
         self.assertEqual(args[0], "youtube_download")
+
+    def test_youtube_submit_with_empty_url(self):
+        self.widget.youtube_url_field.text.return_value = "  "
+        with patch("app.ControlPanelWidget.show_error_message") as mock_err:
+            self.widget.submit_youtube_url()
+            mock_err.assert_called()
+        self.widget.feedback_manager.start_progress.assert_not_called()
+
+    def test_youtube_submit_with_invalid_url(self):
+        self.widget.youtube_url_field.text.return_value = "not-a-url"
+        with patch("app.ControlPanelWidget.validate_url", return_value=False), \
+             patch("app.ControlPanelWidget.show_error_message") as mock_err:
+            self.widget.submit_youtube_url()
+            mock_err.assert_called()
+        self.widget.feedback_manager.start_progress.assert_not_called()
+
+    def test_youtube_download_cancellation(self):
+        t = MagicMock()
+        t.isRunning.return_value = True
+        self.widget.youtube_download_thread = t
+        self.widget.cancel_youtube_download()
+        t.cancel.assert_called_once()
+        self.widget.feedback_manager.show_status.assert_called()
+
+    def test_youtube_progress_percentage_extraction(self):
+        self.widget.yt_progress_id = "youtube_download"
+        self.widget.on_youtube_progress("Downloading: 85%")
+        self.widget.feedback_manager.update_progress.assert_called_with(
+            "youtube_download", 85, "Downloading: 85%"
+        )
+
+    def test_youtube_download_error_recovery(self):
+        # Set active progress ids to verify cleanup
+        self.widget.yt_progress_id = "youtube_download"
+        self.widget.transcoding_progress_id = "transcoding"
+        with patch("app.ControlPanelWidget.show_error_message") as mock_err:
+            self.widget.on_error("boom")
+            mock_err.assert_called()
+        # Progress closed
+        self.widget.feedback_manager.close_progress.assert_any_call("youtube_download")
+        self.widget.feedback_manager.close_progress.assert_any_call("transcoding")

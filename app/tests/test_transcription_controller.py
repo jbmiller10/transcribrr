@@ -684,6 +684,63 @@ class TestTranscriptionController(unittest.TestCase):
         # Signals should still be emitted
         self.controller.transcription_process_completed.emit.assert_called_once_with(transcript)
 
+    def test_on_transcription_completed_empty_transcript(self):
+        """Empty transcript should still update DB and emit signals."""
+        self.controller.status_update = Mock()
+        self.controller.transcription_process_completed = Mock()
+        self.controller.recording_status_updated = Mock()
+
+        transcript = ""
+
+        def mock_update(rec_id, callback, **kwargs):
+            callback()
+        self.db_manager.update_recording.side_effect = mock_update
+
+        self.controller._on_transcription_completed(self.recording, transcript)
+
+        # Saved as raw transcript, formatted None
+        call_args = self.db_manager.update_recording.call_args
+        self.assertEqual(call_args[1]["raw_transcript"], transcript)
+        self.assertIsNone(call_args[1]["raw_transcript_formatted"])
+        # Signals emitted
+        self.controller.transcription_process_completed.emit.assert_called_once_with(transcript)
+
+    @patch('app.controllers.transcription_controller.ThreadManager')
+    @patch('app.controllers.transcription_controller.TranscriptionThread')
+    @patch('os.path.getsize')
+    @patch('os.path.exists')
+    def test_start_with_unicode_filename(self, mock_exists, mock_getsize,
+                                         mock_thread_class, mock_thread_manager):
+        """Ensure unicode file paths are handled correctly in thread args."""
+        mock_exists.return_value = True
+        mock_getsize.return_value = 10 * 1024 * 1024
+        mock_thread_instance = Mock()
+        mock_thread_class.return_value = mock_thread_instance
+        mock_thread_manager.instance.return_value = Mock()
+
+        # Use unicode path
+        self.recording.file_path = "/tmp/😀-音声-данные.wav"
+
+        result = self.controller.start(self.recording, self.config, self.busy_guard_callback)
+        self.assertTrue(result)
+        # Thread created with the exact unicode path
+        call_kwargs = mock_thread_class.call_args.kwargs
+        self.assertEqual(call_kwargs["file_path"], self.recording.file_path)
+
+    @patch('app.controllers.transcription_controller.ThreadManager')
+    @patch('app.controllers.transcription_controller.TranscriptionThread')
+    @patch('os.path.getsize')
+    @patch('os.path.exists')
+    def test_thread_creation_failure(self, mock_exists, mock_getsize,
+                                     mock_thread_class, mock_thread_manager):
+        """If thread construction fails, the exception propagates and no thread stays set."""
+        mock_exists.return_value = True
+        mock_getsize.return_value = 10 * 1024 * 1024
+        mock_thread_class.side_effect = RuntimeError('boom')
+        with self.assertRaises(RuntimeError):
+            self.controller.start(self.recording, self.config, self.busy_guard_callback)
+        self.assertIsNone(self.controller.transcription_thread)
+
 
 if __name__ == "__main__":
     unittest.main()

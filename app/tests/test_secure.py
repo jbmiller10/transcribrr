@@ -102,6 +102,77 @@ class TestRedactFunction(unittest.TestCase):
         self.assertEqual(result, text)
         self.assertNotIn("***-REDACTED-***", result)
 
+    def test_redact_pattern_length_boundaries(self):
+        """Boundary lengths for patterns are respected."""
+        # Too short after sk-
+        text_short = "token sk-abcdefghi end"
+        self.assertEqual(redact(text_short), text_short)
+
+        # Exactly 10 after sk- should redact
+        text_exact = "token sk-abcdefghij end"
+        self.assertIn("***-REDACTED-***", redact(text_exact))
+
+        # Typical long length (48+) should redact
+        long_key = "sk-" + ("a" * 48)
+        self.assertEqual(redact(f"x {long_key} y"), "x ***-REDACTED-*** y")
+
+        # hf_ too short (9) should not redact, 10 should
+        self.assertEqual(redact("hf_abcdefghi"), "hf_abcdefghi")
+        self.assertEqual(redact("hf_abcdefghij"), "***-REDACTED-***")
+
+        # Mixed case prefix should not match current patterns
+        self.assertEqual(redact("SK-abcdefghij"), "SK-abcdefghij")
+
+    def test_redact_overlapping_and_adjacent_patterns(self):
+        """Handles adjacent patterns; greedy match may collapse into one."""
+        s = "sk-abcdefghijhf_abcdefghij"
+        out = redact(s)
+        # Our regex is greedy and will redact the whole stretch as one token
+        self.assertEqual(out, "***-REDACTED-***")
+        # Multiple similar keys with shared substrings
+        s2 = "sk-aaaaa12345 sk-aaaaa123456"
+        out2 = redact(s2)
+        self.assertEqual(out2.count("***-REDACTED-***"), 2)
+
+    def test_redact_preserves_json_structure(self):
+        import json
+        raw = '{"api_key": "sk-abcdefghij", "model": "gpt-4"}'
+        red = redact(raw)
+        # Must still parse as JSON
+        parsed = json.loads(red)
+        self.assertIn("api_key", parsed)
+        self.assertEqual(parsed["api_key"], "***-REDACTED-***")
+
+    def test_redact_preserves_url_structure(self):
+        from urllib.parse import urlparse, parse_qs
+        url = "https://api.openai.com/v1/chat?key=sk-abcdefghij&other=1"
+        red = redact(url)
+        pr = urlparse(red)
+        qs = parse_qs(pr.query)
+        self.assertIn("key", qs)
+        self.assertEqual(qs["key"][0], "***-REDACTED-***")
+
+    def test_redact_binary_data_handling(self):
+        s = "\x00\x01abc sk-abcdefghij\x02\x03"
+        out = redact(s)
+        self.assertIn("***-REDACTED-***", out)
+        self.assertNotIn("sk-abcdefghij", out)
+
+    def test_redact_performance_with_large_text(self):
+        import time
+        # Build ~1MB text with many near-misses and a valid key
+        near = ("sk-" + "a" * 8)  # too short
+        blob = (near + " ") * 50000  # ~450KB
+        valid = "sk-" + ("b" * 32)
+        payload = blob + valid + " " + blob
+        start = time.perf_counter()
+        red = redact(payload)
+        dur = time.perf_counter() - start
+        # One valid redaction should occur
+        self.assertIn("***-REDACTED-***", red)
+        # Should complete quickly (no catastrophic backtracking)
+        self.assertLess(dur, 1.5)
+
 
 class TestSensitiveLogFilter(unittest.TestCase):
     """Test cases for the SensitiveLogFilter class."""
@@ -204,6 +275,38 @@ class TestSensitiveLogFilter(unittest.TestCase):
         # Method returns True
         self.assertTrue(result)
 
+
+class TestSensitiveLogFilterIntegration(unittest.TestCase):
+    def _build_logger(self):
+        import io
+        stream = io.StringIO()
+        handler = logging.StreamHandler(stream)
+        handler.addFilter(SensitiveLogFilter())
+        formatter = logging.Formatter('%(levelname)s:%(message)s')
+        handler.setFormatter(formatter)
+        logger = logging.getLogger('secure_test_logger')
+        logger.handlers[:] = []
+        logger.addHandler(handler)
+        logger.setLevel(logging.INFO)
+        return logger, stream
+
+    def test_filter_with_custom_formatter(self):
+        logger, stream = self._build_logger()
+        logger.info('Token %s present', 'sk-abcdefghij')
+        out = stream.getvalue()
+        self.assertIn('***-REDACTED-***', out)
+        self.assertNotIn('sk-abcdefghij', out)
+
+    def test_filter_exception_logging(self):
+        logger, stream = self._build_logger()
+        try:
+            raise ValueError('hf_abcdefghij')
+        except ValueError:
+            logger.exception('Boom with %s', 'sk-abcdefghij')
+        out = stream.getvalue()
+        # Message/args must be redacted; exception text may remain
+        self.assertIn('***-REDACTED-***', out)
+        self.assertNotIn('sk-abcdefghij', out)
 
 class TestMigrateApiKeys(unittest.TestCase):
     """Test cases for the migrate_api_keys() function."""

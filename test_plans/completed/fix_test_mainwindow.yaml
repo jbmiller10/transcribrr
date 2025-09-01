@@ -1,0 +1,71 @@
+# Cleaned up test plan for MainWindow - Removed already implemented tests
+#
+# REMOVED ITEMS (already implemented in app/tests/test_mainwindow.py):
+# - All basic initialization tests (success, database failure, folder manager failure, UI failure)
+# - Signal connection verification tests  
+# - on_new_file success and error flow tests
+# - Status bar update tests
+# - Error handler cleanup and connection management tests
+# - Database error handling tests
+#
+# The majority of the original plan focused on REFACTORING existing tests rather than adding 
+# genuinely missing functionality. Most "new_tests" were actually architectural improvements 
+# (removing excessive mocking, better test structure, using real Qt signals, etc.).
+#
+# REMAINING ITEMS: Only truly missing test scenarios that aren't covered by existing tests
+
+target_file: "/home/john/transcribrr/app/tests/test_mainwindow.py"
+
+genuinely_missing_tests:
+  
+  edge_cases_and_boundary_conditions:
+    - test_name: "test_extremely_long_filenames"
+      scenario: "File path with 500+ characters"
+      expected: "Truncated appropriately in UI, full path in database"
+      rationale: "No existing test covers UI display of very long paths"
+    
+    - test_name: "test_unicode_filenames" 
+      scenario: "File paths with emoji and non-ASCII characters"
+      expected: "Handled correctly throughout the system"
+      rationale: "Existing tests only use ASCII filenames"
+    
+    - test_name: "test_rapid_file_additions"
+      scenario: "Multiple files added in quick succession"
+      expected: "All processed, UI remains responsive"
+      rationale: "No concurrency/performance tests exist"
+    
+    - test_name: "test_zero_duration_files"
+      scenario: "Audio file with 0 second duration" 
+      expected: "Handled appropriately, shown as 00:00:00"
+      rationale: "Existing tests use fixed positive durations"
+
+  error_scenarios:
+    - test_name: "test_invalid_file_paths"
+      scenario: "on_new_file called with None, empty string, non-existent file"
+      expected: "Appropriate error messages, no crash"
+      rationale: "Current tests assume valid file paths"
+    
+    - test_name: "test_corrupted_audio_files_detailed"
+      scenario: "calculate_duration raises specific exception types (OSError, PermissionError, etc.)"
+      expected: "Each exception type handled with appropriate user message"
+      rationale: "Existing test only covers generic ValueError"
+
+architectural_improvements:
+  # NOTE: These are refactoring tasks, not missing functionality
+  description: "The original plan was primarily focused on refactoring existing tests"
+  priority: "medium"
+  items:
+    - "Remove module-level mocking (lines 44-63)"
+    - "Replace DummySignal with real Qt signals or proper test doubles"  
+    - "Split into focused test classes by functionality"
+    - "Reduce test method complexity (currently 70+ lines each)"
+    - "Use in-memory SQLite for database tests"
+    - "Add proper setUp/tearDown for resource cleanup"
+
+implementation_notes:
+  - "Most 'missing' tests from original plan are actually already implemented"
+  - "Focus should be on the 6 genuinely missing edge case/error scenario tests above"
+  - "Architectural improvements are separate refactoring tasks, not missing functionality"
+  - "Original plan correctly identified test quality issues but conflated refactoring with missing tests"
+
+estimated_effort: "1-2 hours for the 6 missing tests, 1-2 days for architectural refactoring"

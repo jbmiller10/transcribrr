@@ -465,6 +465,120 @@ class TestDatabaseWorker(unittest.TestCase):
         # Assert
         worker._log_error.assert_called()
         mock_logger.info.assert_called()  # Worker finished log
+
+    # Additional error and recovery scenarios
+
+    @patch('app.DatabaseManager.create_recording')
+    @patch('app.DatabaseManager.get_connection')
+    @patch('app.DatabaseManager.logger')
+    def test_database_locked_error_recovery(self, mock_logger, mock_get_conn, mock_create):
+        """Simulate a locked database followed by successful retry on next op."""
+        # Arrange
+        mock_get_conn.return_value = self.mock_connection
+        # First call raises lock error, second succeeds
+        mock_create.side_effect = [sqlite3.OperationalError('database is locked'), 777]
+
+        worker = DatabaseWorker(self.mock_parent)
+        worker.operation_complete = Mock()
+        worker.error_occurred = Mock()
+        worker.dataChanged = Mock()
+
+        rec = ('file.wav', '/tmp/x.wav', '2024-01-01T00:00:00', '10')
+        op1 = {'type': 'create_recording', 'id': 'create_1', 'args': [rec], 'kwargs': {}}
+        op2 = {'type': 'create_recording', 'id': 'create_2', 'args': [rec], 'kwargs': {}}
+        worker.operations_queue.get.side_effect = [op1, op2, None]
+
+        # Act
+        worker.run()
+
+        # Assert: first op errored (outer handler should emit error), second succeeded
+        self.assertTrue(worker.error_occurred.emit.called)
+        worker.operation_complete.emit.assert_any_call('create_2', 777)
+        worker.dataChanged.emit.assert_called_once()
+
+    @patch('app.DatabaseManager.create_recording')
+    @patch('app.DatabaseManager.get_connection')
+    @patch('app.DatabaseManager.logger')
+    def test_disk_full_error_handling(self, mock_logger, mock_get_conn, mock_create):
+        """Simulate SQLITE_FULL during write; ensure error is surfaced and no dataChanged."""
+        # Arrange
+        mock_get_conn.return_value = self.mock_connection
+        mock_create.side_effect = sqlite3.OperationalError('database or disk is full')
+
+        worker = DatabaseWorker(self.mock_parent)
+        worker.operation_complete = Mock()
+        worker.error_occurred = Mock()
+        worker.dataChanged = Mock()
+
+        rec = ('file.wav', '/tmp/x.wav', '2024-01-01T00:00:00', '10')
+        op = {'type': 'create_recording', 'id': 'create_full', 'args': [rec], 'kwargs': {}}
+        worker.operations_queue.get.side_effect = [op, None]
+
+        # Act
+        worker.run()
+
+        # Assert: emitted a runtime error and did not report success/data change
+        self.assertTrue(worker.error_occurred.emit.called)
+        first_call = worker.error_occurred.emit.call_args_list[0][0][0]
+        self.assertEqual(first_call, 'Runtime error')
+        worker.operation_complete.emit.assert_not_called()
+        worker.dataChanged.emit.assert_not_called()
+
+    def test_connection_timeout_recovery(self):
+        """Health check fails then reconnects and processes operation."""
+        with patch('app.DatabaseManager.get_connection') as mock_get_conn, \
+                patch('app.DatabaseManager.get_all_recordings') as mock_get_all, \
+                patch('app.DatabaseManager.logger'):
+            # First connection has a failing execute (health check), second is healthy
+            bad_conn = Mock()
+            bad_conn.execute.side_effect = sqlite3.OperationalError('timeout')
+            good_conn = Mock()
+            good_conn.execute.return_value = None
+            good_conn.cursor.return_value = Mock()
+            mock_get_conn.side_effect = [bad_conn, good_conn]
+
+            worker = DatabaseWorker(self.mock_parent)
+            worker.operation_complete = Mock()
+            worker.error_occurred = Mock()
+
+            op = {'type': 'get_all_recordings', 'id': 'list', 'args': [], 'kwargs': {}}
+            mock_get_all.return_value = []
+            worker.operations_queue.get.side_effect = [op, None]
+
+            # Act
+            worker.run()
+
+            # Assert: get_connection was called twice (init + reconnect)
+            self.assertGreaterEqual(mock_get_conn.call_count, 2)
+            # A warning-level connection issue is emitted before successful reconnect
+            worker.error_occurred.emit.assert_called()
+            args, _ = worker.error_occurred.emit.call_args
+            self.assertEqual(args[0], 'Database connection issue')
+            worker.operation_complete.emit.assert_called_once_with('list', [])
+
+    @patch('app.DatabaseManager.get_all_recordings')
+    @patch('app.DatabaseManager.get_connection')
+    @patch('app.DatabaseManager.logger')
+    def test_corrupted_database_detection(self, mock_logger, mock_get_conn, mock_get_all):
+        """Detect corrupted database error path and surface via error signal."""
+        # Arrange
+        mock_get_conn.return_value = self.mock_connection
+        mock_get_all.side_effect = sqlite3.DatabaseError('file is not a database')
+
+        worker = DatabaseWorker(self.mock_parent)
+        worker.operation_complete = Mock()
+        worker.error_occurred = Mock()
+
+        op = {'type': 'get_all_recordings', 'id': 'list', 'args': [], 'kwargs': {}}
+        worker.operations_queue.get.side_effect = [op, None]
+
+        # Act
+        worker.run()
+
+        # Assert
+        self.assertTrue(worker.error_occurred.emit.called)
+        first_call = worker.error_occurred.emit.call_args_list[0][0][0]
+        self.assertEqual(first_call, 'Runtime error')
     
     # DatabaseWorker.add_operation tests
     

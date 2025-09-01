@@ -277,6 +277,82 @@ class TestTranscriptionService(unittest.TestCase):
         out = self.svc._add_speaker_detection(self.file_path, base, hf_auth_key="hf")
         self.assertEqual(out, base)
 
+    # --- Additional edge/error tests from plan ---
+
+    def test_permission_denied_file(self):
+        def bad_pipe(_path):
+            raise PermissionError('denied')
+        self.mm.create_pipeline.return_value = bad_pipe
+        with self.assertRaises(RuntimeError):
+            self.svc.transcribe_file(self.file_path, model_id='m', method='local')
+
+    def test_directory_instead_of_file(self):
+        import tempfile
+        with tempfile.TemporaryDirectory() as d:
+            def dir_pipe(path):
+                if os.path.isdir(path):
+                    raise IsADirectoryError('is a directory')
+                return {"text": "ok"}
+            self.mm.create_pipeline.return_value = dir_pipe
+            with self.assertRaises(RuntimeError):
+                self.svc.transcribe_file(d, model_id='m', method='local')
+
+    def test_invalid_audio_format(self):
+        # Create a dummy text file and make pipeline reject it
+        with tempfile.NamedTemporaryFile(delete=False, suffix='.txt') as tf:
+            tf.write(b'not audio')
+            tf.flush()
+            p = tf.name
+        def invalid_pipe(path):
+            if path.endswith('.txt'):
+                raise ValueError('unsupported audio format')
+            return {"text": "ok"}
+        self.mm.create_pipeline.return_value = invalid_pipe
+        try:
+            with self.assertRaises(RuntimeError):
+                self.svc.transcribe_file(p, model_id='m', method='local')
+        finally:
+            os.unlink(p)
+
+    def test_corrupted_audio(self):
+        def pipe_raises(_):
+            raise IOError('file truncated')
+        self.mm.create_pipeline.return_value = pipe_raises
+        with self.assertRaises(RuntimeError):
+            self.svc.transcribe_file(self.file_path, model_id='m', method='local')
+
+    def test_api_network_timeout(self):
+        class FakeTranscriptions:
+            def create(self, **kwargs):
+                import requests
+                raise requests.Timeout('timeout')
+        class FakeAudio:
+            def __init__(self):
+                self.transcriptions = FakeTranscriptions()
+        class FakeClient:
+            def __init__(self, *a, **k):
+                self.audio = FakeAudio()
+        with patch('app.services.transcription_service.OpenAI', return_value=FakeClient()):
+            with self.assertRaises(RuntimeError):
+                self.svc.transcribe_file(self.file_path, model_id='m', method='api', language='en', openai_api_key='sk')
+
+    def test_api_authentication_errors(self):
+        class FakeTranscriptions:
+            def create(self, **kwargs):
+                raise Exception('401 Unauthorized')
+        class FakeClient:
+            def __init__(self, *a, **k):
+                self.audio = types.SimpleNamespace(transcriptions=FakeTranscriptions())
+        with patch('app.services.transcription_service.OpenAI', return_value=FakeClient()):
+            with self.assertRaises(RuntimeError):
+                self.svc._transcribe_with_api(self.file_path, 'english', api_key='sk')
+
+    def test_speaker_detection_requested_but_no_hf_key(self):
+        # With speaker_detection True but no key, returns base result (no crash)
+        self.mm.create_pipeline.return_value = lambda p: {"text": "base", "chunks": []}
+        out = self.svc._transcribe_locally(self.file_path, 'm', 'en', True, None)
+        self.assertEqual(out["text"], "base")
+
 
 if __name__ == "__main__":
     unittest.main()

@@ -477,6 +477,122 @@ class MainWindowTests(unittest.TestCase):
                 except Exception:
                     self.fail("Cleanup should not raise")
 
+    # --- Additional edge/error cases from plan ---
+
+    def _build_window_with_db(self, create_recording_side_effect=None):
+        with patch("app.MainWindow.DatabaseManager") as mock_db, \
+             patch("app.MainWindow.FolderManager.instance"):
+            db = MagicMock()
+            if create_recording_side_effect is None:
+                def _ok(data, cb):
+                    cb(1)
+                db.create_recording.side_effect = _ok
+            else:
+                db.create_recording.side_effect = create_recording_side_effect
+            db.error_occurred = DummySignal()
+            mock_db.return_value = db
+            win = self.MainWindow()
+            return win, db
+
+    def test_extremely_long_filenames(self):
+        long_name = "a" * 520 + ".wav"
+        long_path = f"/very/long/path/{long_name}"
+        win, db = self._build_window_with_db()
+
+        # Speed up UI selection path
+        fake_qtimer = types.SimpleNamespace(singleShot=lambda _ms, cb: cb())
+
+        with patch("PyQt6.QtCore.QTimer", new=fake_qtimer), \
+             patch.object(win, "update_status_bar") as mock_status:
+            win.recent_recordings_widget = MagicMock()
+            win.recent_recordings_widget.unified_view = MagicMock()
+
+            win.on_new_file(long_path)
+
+            # DB should be called with the full path (2nd tuple element)
+            called_args = db.create_recording.call_args[0][0]
+            self.assertEqual(called_args[1], long_path)
+            # UI is updated (no crash due to length)
+            mock_status.assert_called()
+
+    def test_unicode_filenames(self):
+        path = "/tmp/😀-音声-данные.mp3"
+        win, _db = self._build_window_with_db()
+        fake_qtimer = types.SimpleNamespace(singleShot=lambda _ms, cb: cb())
+        with patch("PyQt6.QtCore.QTimer", new=fake_qtimer), \
+             patch.object(win, "update_status_bar") as mock_status:
+            win.recent_recordings_widget = MagicMock()
+            win.recent_recordings_widget.unified_view = MagicMock()
+
+            win.on_new_file(path)
+            # Message should include the base filename (unicode-safe)
+            msg = mock_status.call_args[0][0]
+            self.assertIn("Added new recording:", msg)
+
+    def test_rapid_file_additions(self):
+        counts = {"cb": 0}
+        def side_effect(data, cb):
+            counts["cb"] += 1
+            cb(counts["cb"])  # unique ids
+
+        win, db = self._build_window_with_db(create_recording_side_effect=side_effect)
+        fake_qtimer = types.SimpleNamespace(singleShot=lambda _ms, cb: cb())
+        with patch("PyQt6.QtCore.QTimer", new=fake_qtimer), \
+             patch.object(win, "update_status_bar") as mock_status:
+            rr = MagicMock()
+            rr.unified_view = MagicMock()
+            win.recent_recordings_widget = rr
+
+            for i in range(3):
+                win.on_new_file(f"/tmp/f{i}.wav")
+
+            self.assertEqual(db.create_recording.call_count, 3)
+            self.assertGreaterEqual(mock_status.call_count, 3)
+            self.assertGreaterEqual(rr.unified_view.select_item_by_id.call_count, 3)
+
+    def test_zero_duration_files(self):
+        win, db = self._build_window_with_db()
+        rr = MagicMock()
+        rr.unified_view = MagicMock()
+        win.recent_recordings_widget = rr
+        fake_qtimer = types.SimpleNamespace(singleShot=lambda _ms, cb: cb())
+        with patch("app.MainWindow.calculate_duration", return_value="00:00:00"), \
+             patch("PyQt6.QtCore.QTimer", new=fake_qtimer), \
+             patch.object(win, "update_status_bar") as mock_status:
+            win.on_new_file("/tmp/zero.wav")
+            # Ensure added with zero duration
+            self.assertTrue(rr.add_recording_to_list.called)
+            args = rr.add_recording_to_list.call_args[0]
+            self.assertEqual(args[4], "00:00:00")
+            self.assertIn("Added new recording:", mock_status.call_args[0][0])
+
+    def test_invalid_file_paths(self):
+        win, _db = self._build_window_with_db()
+        with patch.object(win, "update_status_bar") as mock_status:
+            # None -> TypeError in os.path.basename -> handled
+            win.on_new_file(None)  # type: ignore[arg-type]
+            # Empty string -> may pass basename but likely fail later; still handled
+            win.on_new_file("")
+        self.assertGreaterEqual(mock_status.call_count, 2)
+
+        # Non-existent: simulate calculator raising FileNotFoundError
+        with patch.object(win, "update_status_bar") as mock_status2, \
+             patch("app.MainWindow.calculate_duration", side_effect=FileNotFoundError("not found")):
+            win.on_new_file("/no/such/file.wav")
+            msg = mock_status2.call_args[0][0]
+            self.assertIn("Error processing file:", msg)
+
+    def test_corrupted_audio_files_detailed(self):
+        win, _db = self._build_window_with_db()
+        for exc in (OSError("corrupted"), PermissionError("denied"), ValueError("bad header")):
+            with patch.object(win, "update_status_bar") as mock_status, \
+                 patch("app.MainWindow.calculate_duration", side_effect=exc):
+                win.on_new_file("/tmp/bad.mp3")
+                # Ensure user-facing error message includes exception text
+                msg = mock_status.call_args[0][0]
+                self.assertIn("Error processing file:", msg)
+                self.assertIn(str(exc), msg)
+
 
 if __name__ == "__main__":  # pragma: no cover
     unittest.main(verbosity=2)

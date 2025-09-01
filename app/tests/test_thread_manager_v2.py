@@ -95,3 +95,61 @@ class TestThreadCancellation(unittest.TestCase):
         self.assertFalse(t1.isRunning())
         self.assertFalse(t2.isRunning())
 
+
+class TestThreadManagerEdgeCases(unittest.TestCase):
+    def setUp(self) -> None:
+        self.manager = ThreadManager.instance()
+        for t in list(self.manager.get_active_threads()):
+            self.manager.unregister_thread(t)
+
+    def tearDown(self) -> None:
+        for t in list(self.manager.get_active_threads()):
+            self.manager.unregister_thread(t)
+
+    def test_register_thread_without_finished_signal(self):
+        class NoFinished:
+            pass
+        nf = NoFinished()
+        with self.assertRaises(AttributeError):
+            self.manager.register_thread(nf)  # type: ignore[arg-type]
+        # Cleanup: ensure not tracked
+        self.manager.unregister_thread(nf)  # type: ignore[arg-type]
+
+    def test_register_none_object(self):
+        # Weakref on None will fail; ensure the error surfaces clearly
+        with self.assertRaises(TypeError):
+            self.manager.register_thread(None)  # type: ignore[arg-type]
+        # Nothing to cleanup beyond assertion
+
+    def test_unregister_during_cancel(self):
+        class T(TestThread):
+            def cancel(self) -> None:
+                super().cancel()
+                # Emit finished during cancel to trigger auto-unregister
+                self.finished.emit()
+
+        t = T(); t.start()
+        self.manager.register_thread(t)
+        # Should not raise even though registry is mutated during iteration
+        self.manager.cancel_all_threads()
+        self.assertNotIn(t, self.manager.get_active_threads())
+
+    def test_is_running_raises_exception(self):
+        class BadIsRunning(TestThread):
+            def isRunning(self) -> bool:  # noqa: N802
+                raise RuntimeError('isRunning failed')
+
+        t = BadIsRunning(); t.start()
+        self.manager.register_thread(t)
+        with self.assertRaises(RuntimeError):
+            self.manager.cancel_all_threads()
+
+    def test_wait_raises_exception(self):
+        class BadWait(TestThread):
+            def wait(self, timeout: int) -> bool:  # noqa: ARG002
+                raise RuntimeError('wait failed')
+
+        t = BadWait(); t.start()
+        self.manager.register_thread(t)
+        with self.assertRaises(RuntimeError):
+            self.manager.cancel_all_threads()

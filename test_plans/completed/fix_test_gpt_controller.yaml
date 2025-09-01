@@ -198,6 +198,7 @@ fix_plan:
 
   example_refactored_test:
     description: "Example of properly focused behavior test"
+    # Completed: Added behavior tests for process, smart_format, refine, errors, and cancel.
     code: |
       class TestGPTProcessing(unittest.TestCase):
           def setUp(self):
