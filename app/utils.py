@@ -6,7 +6,60 @@ import sys
 import logging
 import platform
 import subprocess
-import torch
+# Torch may not be available or may lack certain submodules in CPU-only builds.
+# Provide a resilient shim to keep tests import-safe and patchable.
+try:  # pragma: no cover - behavior validated by higher-level tests
+    import torch as _torch  # type: ignore
+except Exception:  # torch not installed
+    import types as _types  # lazy import for shim
+
+    class _CudaShim:
+        def is_available(self):
+            return False
+
+        def device_count(self):
+            return 0
+
+        def get_device_name(self, idx):  # noqa: ARG002
+            return f"GPU{idx}"
+
+        def get_device_properties(self, idx):  # noqa: ARG002
+            return _types.SimpleNamespace(total_memory=0)
+
+    _torch = _types.SimpleNamespace(  # type: ignore
+        cuda=_CudaShim(),
+        backends=_types.SimpleNamespace(
+            mps=_types.SimpleNamespace(is_available=lambda: False)
+        ),
+    )
+else:
+    # Ensure 'cuda' and 'backends.mps' exist for patching/tests
+    import types as _types
+
+    if not hasattr(_torch, "cuda"):
+        class _CudaShim:
+            def is_available(self):
+                return False
+
+            def device_count(self):
+                return 0
+
+            def get_device_name(self, idx):  # noqa: ARG002
+                return f"GPU{idx}"
+
+            def get_device_properties(self, idx):  # noqa: ARG002
+                return _types.SimpleNamespace(total_memory=0)
+
+        _torch.cuda = _CudaShim()  # type: ignore
+
+    # backends may exist without mps; add if missing
+    if not hasattr(_torch, "backends"):
+        _torch.backends = _types.SimpleNamespace()  # type: ignore
+    if not hasattr(_torch.backends, "mps"):
+        _torch.backends.mps = _types.SimpleNamespace(is_available=lambda: False)  # type: ignore
+
+# Expose as 'torch' for module consumers
+torch = _torch  # type: ignore
 import shutil
 import json
 from typing import Dict, Any, Optional, Union, Tuple

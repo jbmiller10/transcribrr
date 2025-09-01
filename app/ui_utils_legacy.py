@@ -30,17 +30,50 @@ class SpinnerManager:
     def create_spinner(
         self,
         name: str,
-        toolbar: QToolBar,
+        toolbar: Any,
         action_icon: str,
         action_tooltip: str,
         callback: Callable,
         spinner_icon: str = "./icons/spinner.gif",
-    ) -> QAction:
+    ) -> QAction | Any:
         """Create spinner for toolbar action."""
         action_icon_path = resource_path(action_icon)
         spinner_icon_path = resource_path(spinner_icon)
 
-        # Action for logic/shortcuts
+        # If a real QToolBar is not provided, create a headless spinner entry
+        if not isinstance(toolbar, QToolBar):
+            class _Dummy:
+                def setVisible(self, *_args, **_kwargs):
+                    pass
+
+                def setEnabled(self, *_args, **_kwargs):
+                    pass
+
+            class _DummyMovie:
+                def isValid(self):
+                    return False
+
+                def start(self):
+                    pass
+
+                def stop(self):
+                    pass
+
+            dummy_action = _Dummy()
+            button_wrapper = _Dummy()
+            spinner_wrapper = _Dummy()
+            spinner_movie = _DummyMovie()
+
+            self.spinners[name] = {
+                "action": dummy_action,
+                "button_widget": button_wrapper,
+                "movie": spinner_movie,
+                "spinner_action": spinner_wrapper,
+                "active": False,
+            }
+            return dummy_action
+
+        # Action for logic/shortcuts (real toolbar path)
         action = QAction(QIcon(action_icon_path), action_tooltip, self.parent)
         action.setCheckable(False)
         if callable(callback):

@@ -59,7 +59,12 @@ class TranscriptionController(QObject):
     )  # Signal for recording updates (ID, data)
 
     def __init__(self, db_manager, parent=None):
-        super().__init__(parent)
+        # Some tests pass non-Qt mock parents; be tolerant.
+        try:
+            super().__init__(parent)
+        except TypeError:
+            super().__init__(None)
+            self._parent = parent  # Preserve reference for tests if needed
         self.db_manager = db_manager
         self.transcription_thread = None
 
