@@ -5,6 +5,7 @@ from unittest.mock import MagicMock, Mock, patch, call, PropertyMock
 import logging
 import os
 import sys
+import types
 
 # Mock PyQt6 modules before importing the controller
 # Create a proper mock QObject class that can be inherited
@@ -30,7 +31,18 @@ sys.modules['requests'] = mock_requests
 sys.modules['requests.exceptions'] = mock_requests.exceptions
 
 # Mock other dependencies that might not be installed
-sys.modules['torch'] = MagicMock()
+if 'torch' not in sys.modules:
+    torch_stub = types.SimpleNamespace()
+    torch_stub.backends = types.SimpleNamespace(mps=types.SimpleNamespace(is_available=lambda: False))
+    torch_stub.cuda = types.SimpleNamespace(
+        is_available=lambda: False,
+        empty_cache=lambda: None,
+        get_device_properties=lambda *_: types.SimpleNamespace(total_memory=8 * 1024**3),
+        memory_allocated=lambda *_: 0,
+        device_count=lambda: 0,
+        get_device_name=lambda *_: "GPU",
+    )
+    sys.modules['torch'] = torch_stub
 sys.modules['torchaudio'] = MagicMock()
 sys.modules['transformers'] = MagicMock()
 sys.modules['pydub'] = MagicMock()

@@ -21,6 +21,38 @@ warnings.filterwarnings(
 logger = logging.getLogger("transcribrr")
 
 
+def _torch_mps_available() -> bool:
+    """Return True if torch backends.mps reports availability.
+
+    This helper fetches the current torch module from sys.modules to avoid
+    cross-test interference where a previous test may have replaced the
+    module object after this file was imported.
+    """
+    try:
+        import sys  # local import to avoid global side effects
+
+        t = sys.modules.get("torch", torch)
+        backends = getattr(t, "backends", None)
+        mps = getattr(backends, "mps", None)
+        is_avail = getattr(mps, "is_available", None)
+        return bool(is_avail()) if callable(is_avail) else False
+    except Exception:
+        return False
+
+
+def _torch_cuda_available() -> bool:
+    """Return True if torch.cuda reports availability (robust to stubs)."""
+    try:
+        import sys
+
+        t = sys.modules.get("torch", torch)
+        cuda = getattr(t, "cuda", None)
+        is_avail = getattr(cuda, "is_available", None)
+        return bool(is_avail()) if callable(is_avail) else False
+    except Exception:
+        return False
+
+
 class ModelManager:
     """Manage ML models for transcription."""
 
@@ -266,8 +298,8 @@ class TranscriptionService:
         # For local method, decide on hardware acceleration path
         is_mps_device = (
             hardware_acceleration_enabled
-            and torch.backends.mps.is_available()
-            and not torch.cuda.is_available()
+            and _torch_mps_available()
+            and not _torch_cuda_available()
         )
 
         # Special case: MPS device with hardware acceleration and speaker detection
@@ -369,7 +401,7 @@ class TranscriptionService:
         """
         try:
             # SpeechToTextPipeline MPS implementation
-            if torch.backends.mps.is_available():
+            if _torch_mps_available():
                 logger.info(
                     f"Using MPS device for transcription of {os.path.basename(file_path)}"
                 )

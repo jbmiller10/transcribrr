@@ -1,113 +1,48 @@
-# app/tests/test_spinner_no_gui.py
-#!/usr/bin/env python3
-"""Test for SpinnerManager and FeedbackManager without GUI."""
+"""Headless tests for SpinnerManager and FeedbackManager (no PyQt6)."""
 
-import os
-import sys
 import unittest
-from unittest.mock import MagicMock, patch
 
-# Add parent directory to path to find modules
-# Ensure this path adjustment is correct for your structure
-if os.path.abspath(os.path.join(os.path.dirname(__file__), "../..")) not in sys.path:
-    sys.path.insert(
-        0, os.path.abspath(os.path.join(os.path.dirname(__file__), "../.."))
-    )
+from app.ui_utils import SpinnerManager, FeedbackManager
 
 
 class TestSpinnerFunctionality(unittest.TestCase):
-    """Test the SpinnerManager and FeedbackManager functionality."""
+    def test_spinner_lifecycle(self):
+        sm = SpinnerManager(None)
+        sm.create_spinner("s1", toolbar=object(), action_icon=None, action_tooltip="t", callback=lambda: None)
+        self.assertFalse(sm.is_active("s1"))
+        self.assertTrue(sm.toggle_spinner("s1"))
+        self.assertTrue(sm.is_active("s1"))
+        self.assertFalse(sm.toggle_spinner("s1"))
+        self.assertFalse(sm.is_active("s1"))
 
-    @patch("app.ui_utils_legacy.QMovie")
-    @patch("app.ui_utils_legacy.QWidgetAction")
-    @patch("app.ui_utils_legacy.QAction")
-    @patch("app.ui_utils_legacy.QLabel")
-    @patch("app.ui_utils_legacy.QPushButton")
-    def test_spinner_creation(
-        self, mock_button, mock_label, mock_action, mock_widget_action, mock_movie
-    ):
-        """Test creating and toggling a spinner."""
-        from app.ui_utils import SpinnerManager
+    def test_nonexistent_spinner_operations(self):
+        sm = SpinnerManager(None)
+        self.assertFalse(sm.toggle_spinner("missing"))
+        self.assertFalse(sm.is_active("missing"))
+        # set state on missing is a no-op
+        sm.set_spinner_state("missing", True)
+        self.assertFalse(sm.is_active("missing"))
 
-        # Set up mocks
-        mock_parent = MagicMock()
-        mock_toolbar = MagicMock()
-        mock_movie.return_value.isValid.return_value = True
+    def test_stop_all_spinners(self):
+        sm = SpinnerManager(None)
+        sm.create_spinner("a", object(), None, "", lambda: None)
+        sm.create_spinner("b", object(), None, "", lambda: None)
+        sm.toggle_spinner("a")
+        sm.toggle_spinner("b")
+        self.assertTrue(sm.is_active("a"))
+        self.assertTrue(sm.is_active("b"))
+        sm.stop_all_spinners()
+        self.assertFalse(sm.is_active("a"))
+        self.assertFalse(sm.is_active("b"))
 
-        # Create spinner manager
-        spinner_manager = SpinnerManager(mock_parent)
-
-        # --- FIX: Use None for icon path as it's not needed with mocks ---
-        spinner_manager.create_spinner(
-            name="test_spinner",
-            toolbar=mock_toolbar,
-            action_icon=None,  # Changed from './icons/test.svg'
-            action_tooltip="Test Spinner",
-            callback=lambda: None,
-        )
-        # --- End FIX ---
-
-        # Check spinner was created
-        self.assertIn("test_spinner", spinner_manager.spinners)
-
-        # Test toggling spinner
-        result = spinner_manager.toggle_spinner("test_spinner")
-        self.assertTrue(result)
-        self.assertTrue(spinner_manager.is_active("test_spinner"))
-
-        # Test toggling again to stop
-        result = spinner_manager.toggle_spinner("test_spinner")
-        # Should return False indicating it's now inactive
-        self.assertFalse(result)
-        self.assertFalse(spinner_manager.is_active("test_spinner"))
-
-    @patch("app.ui_utils_legacy.QMovie")
-    @patch("app.ui_utils_legacy.QWidgetAction")
-    @patch("app.ui_utils_legacy.QAction")
-    @patch("app.ui_utils_legacy.QLabel")
-    @patch("app.ui_utils_legacy.QPushButton")
-    def test_feedback_manager(
-        self, mock_button, mock_label, mock_action, mock_widget_action, mock_movie
-    ):
-        """Test FeedbackManager integration with SpinnerManager."""
-        from app.ui_utils import FeedbackManager
-
-        # Set up mocks
-        mock_parent = MagicMock()
-        mock_parent.spinner_manager = None  # Ensure FeedbackManager creates its own
-        mock_toolbar = MagicMock()
-        mock_movie.return_value.isValid.return_value = True
-
-        # Create feedback manager (which should create a SpinnerManager)
-        feedback_manager = FeedbackManager(mock_parent)
-        spinner_manager = feedback_manager.spinner_manager  # Get the created manager
-
-        # --- FIX: Use None for icon path ---
-        spinner_manager.create_spinner(
-            name="test_spinner",
-            toolbar=mock_toolbar,
-            action_icon=None,  # Changed from './icons/test.svg'
-            action_tooltip="Test Spinner",
-            callback=lambda: None,
-        )
-        # --- End FIX ---
-
-        # Test starting spinner via feedback manager
-        result = feedback_manager.start_spinner("test_spinner")
-        # Should return True indicating it's now active
-        self.assertTrue(result)
-        self.assertTrue(spinner_manager.is_active("test_spinner"))
-
-        # Test stopping spinner via feedback manager
-        result = feedback_manager.stop_spinner("test_spinner")
-        # Should return True indicating it stopped successfully
-        self.assertTrue(result)
-        self.assertFalse(spinner_manager.is_active("test_spinner"))
-
-        # Test non-existent spinner
-        result = feedback_manager.start_spinner("nonexistent")
-        # Should return False as spinner doesn't exist
-        self.assertFalse(result)
+    def test_feedback_manager_integration(self):
+        fm = FeedbackManager(None)
+        fm.spinner_manager.create_spinner("s", object(), None, "", lambda: None)
+        self.assertTrue(fm.start_spinner("s"))
+        self.assertTrue(fm.spinner_manager.is_active("s"))
+        self.assertTrue(fm.stop_spinner("s"))
+        self.assertFalse(fm.spinner_manager.is_active("s"))
+        self.assertFalse(fm.start_spinner("missing"))
 
 
 if __name__ == "__main__":

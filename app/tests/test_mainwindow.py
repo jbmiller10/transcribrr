@@ -175,30 +175,46 @@ class MainWindowTests(unittest.TestCase):
             mock_sys_exit.assert_called_once_with(1)
 
     def test_init_ui_connects_signals(self):
-        # Verify that init_ui connects widget signals appropriately
+        # Verify that init_ui connects widget signals appropriately using real QWidget subclasses
         from PyQt6.QtCore import QSize  # type: ignore
+        from PyQt6.QtWidgets import QWidget  # type: ignore
 
-        # Stub widgets with minimal signal interfaces
-        ctrl = MagicMock(name="ControlPanel")
-        ctrl.file_ready_for_processing = MagicMock()
-        ctrl.file_ready_for_processing.connect = MagicMock()
+        class _Sig:
+            def __init__(self):
+                self.connected = []
 
-        rr = MagicMock(name="RecentRecordings")
-        rr.recordingItemSelected = MagicMock()
-        rr.recordingItemSelected.connect = MagicMock()
-        rr.update_recording_status = MagicMock()
-        rr.load_recordings = MagicMock()
-        rr.setSizePolicy = MagicMock()
+            def connect(self, fn, *args, **kwargs):  # noqa: D401
+                self.connected.append((fn, args, kwargs))
 
-        rr.unified_view = MagicMock()
-        rr.unified_view.select_item_by_id = MagicMock()
+        class _Ctrl(QWidget):
+            def __init__(self, parent=None):
+                super().__init__(parent)
+                self.file_ready_for_processing = _Sig()
 
-        trans = MagicMock(name="MainTranscription")
-        trans.recording_status_updated = MagicMock()
-        trans.recording_status_updated.connect = MagicMock()
-        trans.status_update = MagicMock()
-        trans.status_update.connect = MagicMock()
-        trans.on_recording_item_selected = MagicMock()
+        class _RR(QWidget):
+            def __init__(self, parent=None):
+                super().__init__(parent)
+                self.recordingItemSelected = _Sig()
+                self.unified_view = types.SimpleNamespace(select_item_by_id=lambda *_: None)
+
+            def update_recording_status(self, *_):
+                pass
+
+            def load_recordings(self):  # pragma: no cover - trivial
+                pass
+
+        class _Trans(QWidget):
+            def __init__(self, parent=None):
+                super().__init__(parent)
+                self.recording_status_updated = _Sig()
+                self.status_update = _Sig()
+
+            def on_recording_item_selected(self, *_):
+                pass
+
+        ctrl = _Ctrl()
+        rr = _RR()
+        trans = _Trans()
 
         with patch("app.MainWindow.DatabaseManager") as mock_db, \
              patch("app.MainWindow.FolderManager.instance") as mock_folder_instance, \
@@ -221,28 +237,28 @@ class MainWindowTests(unittest.TestCase):
             self.assertIsNotNone(win)
 
             # File ready connects to on_new_file
-            ctrl.file_ready_for_processing.connect.assert_called()
-            cb = ctrl.file_ready_for_processing.connect.call_args[0][0]
+            self.assertGreater(len(ctrl.file_ready_for_processing.connected), 0)
+            cb = ctrl.file_ready_for_processing.connected[0][0]
             self.assertEqual(cb, win.on_new_file)
 
             # Recording item selected connects to main transcription handler
-            rr.recordingItemSelected.connect.assert_called()
+            self.assertGreater(len(rr.recordingItemSelected.connected), 0)
             self.assertEqual(
-                rr.recordingItemSelected.connect.call_args[0][0],
+                rr.recordingItemSelected.connected[0][0],
                 trans.on_recording_item_selected,
             )
 
             # Recording status updated connects to recent recordings updater
-            trans.recording_status_updated.connect.assert_called()
+            self.assertGreater(len(trans.recording_status_updated.connected), 0)
             self.assertEqual(
-                trans.recording_status_updated.connect.call_args[0][0],
+                trans.recording_status_updated.connected[0][0],
                 rr.update_recording_status,
             )
 
             # Transcription status_update connects to update_status_bar
-            trans.status_update.connect.assert_called()
+            self.assertGreater(len(trans.status_update.connected), 0)
             self.assertEqual(
-                trans.status_update.connect.call_args[0][0],
+                trans.status_update.connected[0][0],
                 win.update_status_bar,
             )
 

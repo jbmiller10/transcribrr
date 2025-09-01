@@ -1,0 +1,240 @@
+target_file: "app/db_utils.py"
+test_file: "app/tests/test_db_utils_unit.py"
+fix_priority: "HIGH"
+
+current_issues:
+  - issue: "Excessive mocking - mocks entire database connection and cursor"
+    severity: "CRITICAL"
+    details: "All tests mock sqlite3.Connection and cursor, never testing actual SQL execution or database behavior"
+    
+  - issue: "Testing implementation details"
+    severity: "HIGH"
+    details: "Tests verify mock method calls (assert_called_with) instead of actual database state changes"
+    
+  - issue: "Happy path only testing"
+    severity: "HIGH"
+    details: "Missing error scenarios, edge cases, concurrent access, and transaction rollback testing"
+    
+  - issue: "Weak assertions"
+    severity: "MEDIUM"
+    details: "Tests check if methods were called, not what they actually did or returned"
+    
+  - issue: "No integration with real SQLite"
+    severity: "CRITICAL"
+    details: "Never uses in-memory SQLite (:memory:) to validate actual SQL queries and database operations"
+
+fix_strategy:
+  approach: "Hybrid testing with in-memory SQLite for core logic and minimal mocking for external dependencies"
+  principles:
+    - "Use in-memory SQLite (:memory:) for all database operation tests"
+    - "Only mock external I/O operations (file system, logging)"
+    - "Test actual SQL execution and database state changes"
+    - "Verify data integrity and constraints"
+    - "Test error recovery and transaction behavior"
+
+test_structure_improvements:
+  - split_by_functionality:
+      - "TestDatabaseSetup" # Database initialization and table creation
+      - "TestRecordingCRUD" # Create, Read, Update, Delete operations
+      - "TestQueryOperations" # Search and utility queries
+      - "TestErrorHandling" # Error scenarios and exception handling
+      - "TestConcurrency" # Concurrent access and locking
+      - "TestDataIntegrity" # Constraints and validation
+      
+  - test_naming_convention: "test_<action>_<condition>_<expected_result>"
+  
+  - max_lines_per_test: 20
+  - max_tests_per_class: 10
+
+specific_fixes:
+
+  remove_excessive_mocking:
+    - current: |
+        self.conn = Mock()
+        self.cursor = Mock()
+        self.conn.cursor.return_value = self.cursor
+    - fix: |
+        self.conn = sqlite3.connect(':memory:')
+        db_utils.create_recordings_table(self.conn)
+        # Use real database, only mock file I/O if needed
+    - rationale: "Use real in-memory database to test actual SQL execution"
+
+  test_actual_behavior:
+    - current: |
+        def test_create_recording_success(self):
+            self.cursor.lastrowid = 7
+            new_id = db_utils.create_recording(self.conn, rec)
+            self.assertEqual(new_id, 7)
+            self.conn.cursor.assert_called_once()
+    - fix: |
+        def test_create_recording_inserts_data_and_returns_id(self):
+            rec = ("file.wav", "/tmp/file.wav", "2024-01-02T03:04:05", "10:00")
+            new_id = db_utils.create_recording(self.conn, rec)
+            
+            # Verify actual database state
+            cursor = self.conn.cursor()
+            cursor.execute("SELECT * FROM recordings WHERE id=?", (new_id,))
+            row = cursor.fetchone()
+            
+            self.assertIsNotNone(row)
+            self.assertEqual(row[1], "file.wav")  # filename
+            self.assertEqual(row[2], "/tmp/file.wav")  # file_path
+            self.assertGreater(new_id, 0)
+    - rationale: "Test actual database state changes, not mock interactions"
+
+  add_error_scenarios:
+    - test_connection_timeout:
+        scenario: "Database locked by another process"
+        setup: "Create locked database file"
+        expected: "Raises RuntimeError with appropriate message after timeout"
+        
+    - test_sql_injection_prevention:
+        scenario: "Malicious input in search terms"
+        input: "'; DROP TABLE recordings; --"
+        expected: "Query executes safely without SQL injection"
+        
+    - test_transaction_rollback:
+        scenario: "Error during multi-step operation"
+        setup: "Start transaction, partial update, then error"
+        expected: "Database state unchanged after rollback"
+        
+    - test_concurrent_writes:
+        scenario: "Multiple threads writing simultaneously"
+        setup: "Use threading to simulate concurrent access"
+        expected: "All writes succeed or fail gracefully with proper locking"
+
+  add_edge_cases:
+    - test_empty_and_null_values:
+        cases:
+          - "Empty string for filename"
+          - "NULL for optional fields"
+          - "Very long strings (>1000 chars)"
+          - "Special characters in text fields"
+          - "Binary data in BLOB fields"
+          
+    - test_boundary_conditions:
+        cases:
+          - "Maximum integer ID value"
+          - "Zero-length duration"
+          - "Invalid date formats"
+          - "Duplicate file paths"
+          - "Non-existent recording IDs"
+          
+    - test_data_type_validation:
+        cases:
+          - "Non-integer IDs"
+          - "Non-string text fields"
+          - "Invalid BLOB data"
+          - "Malformed datetime strings"
+
+  add_constraint_testing:
+    - test_unique_constraint:
+        scenario: "Insert duplicate file_path"
+        expected: "Raises DuplicatePathError"
+        verify: "First record remains, second insert fails"
+        
+    - test_foreign_key_cascade:
+        scenario: "Delete recording with folder associations"
+        expected: "Associated recording_folders entries deleted"
+        verify: "Check recording_folders table after deletion"
+        
+    - test_not_null_constraints:
+        scenario: "Insert without required fields"
+        expected: "sqlite3.IntegrityError raised"
+        verify: "No partial data inserted"
+
+  improve_test_isolation:
+    - setup_method:
+        - "Create fresh in-memory database for each test"
+        - "Initialize required tables"
+        - "Clear any module-level state"
+        
+    - teardown_method:
+        - "Close database connection"
+        - "Reset any mocked external dependencies"
+        - "No shared state between tests"
+
+  add_performance_tests:
+    - test_bulk_insert_performance:
+        scenario: "Insert 1000 recordings"
+        measure: "Time taken and memory usage"
+        expected: "Completes in < 1 second"
+        
+    - test_search_with_large_dataset:
+        scenario: "Search in 10000 recordings"
+        measure: "Query execution time"
+        expected: "Returns results in < 100ms"
+        
+    - test_index_effectiveness:
+        scenario: "Query by file_path with and without index"
+        measure: "Compare execution plans"
+        expected: "Index reduces query time significantly"
+
+new_test_cases_to_add:
+  TestDatabaseSetup:
+    - test_ensure_database_creates_all_tables
+    - test_ensure_database_handles_existing_database
+    - test_ensure_database_creates_config_file
+    - test_get_connection_creates_directory_if_missing
+    - test_get_connection_enables_foreign_keys
+    - test_get_connection_with_locked_database_times_out
+    
+  TestRecordingCRUD:
+    - test_create_recording_with_minimal_fields
+    - test_create_recording_with_all_fields
+    - test_create_recording_duplicate_path_raises_error
+    - test_update_recording_partial_fields
+    - test_update_recording_invalid_fields_ignored
+    - test_update_recording_nonexistent_id_succeeds_silently
+    - test_delete_recording_removes_from_database
+    - test_delete_recording_nonexistent_id_succeeds_silently
+    
+  TestQueryOperations:
+    - test_get_all_recordings_returns_ordered_list
+    - test_get_recording_by_id_returns_recording_object
+    - test_get_recording_by_id_handles_invalid_dates
+    - test_get_recording_by_id_nonexistent_returns_none
+    - test_recording_exists_finds_existing_path
+    - test_recording_exists_returns_false_for_missing
+    - test_search_recordings_matches_all_fields
+    - test_search_recordings_case_insensitive
+    - test_search_recordings_handles_special_characters
+    
+  TestErrorHandling:
+    - test_database_locked_error_handling
+    - test_corrupt_database_error_handling
+    - test_disk_full_error_handling
+    - test_invalid_sql_error_handling
+    - test_connection_lost_during_transaction
+    
+  TestDataIntegrity:
+    - test_unique_file_path_constraint
+    - test_foreign_key_relationships
+    - test_cascade_delete_behavior
+    - test_transaction_atomicity
+    - test_concurrent_access_integrity
+
+implementation_notes:
+  - "Use pytest.fixture for database setup if migrating to pytest"
+  - "Consider parameterized tests for similar scenarios"
+  - "Use context managers for database connections"
+  - "Add descriptive assertion messages for debugging"
+  - "Include docstrings explaining test purpose"
+  - "Use constants from app.constants for field names"
+  - "Test both success and failure paths for each operation"
+
+success_metrics:
+  - "Mock usage reduced to < 20% (currently ~100%)"
+  - "All public methods have error scenario tests"
+  - "All SQL constraints are validated"
+  - "Test execution time < 2 seconds"
+  - "Code coverage > 90% for db_utils.py"
+  - "No test exceeds 20 lines"
+  - "Clear separation between unit and integration tests"
+
+migration_strategy:
+  phase_1: "Replace Mock() connections with in-memory SQLite"
+  phase_2: "Rewrite assertions to check database state"
+  phase_3: "Add missing error and edge case tests"
+  phase_4: "Add performance and concurrency tests"
+  phase_5: "Refactor to improve test organization and naming"

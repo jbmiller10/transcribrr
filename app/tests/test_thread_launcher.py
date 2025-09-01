@@ -1,52 +1,51 @@
-"""Test the thread launcher functionality."""
+"""Test the thread launcher functionality using the real method."""
 
 import unittest
 from unittest.mock import MagicMock, patch
+import sys
+import types
 
-# Mock class to extract and test the _launch_thread method without dependencies
+# Provide a minimal torch stub to satisfy imports without pulling the full ML stack
+sys.modules.setdefault("torch", types.ModuleType("torch"))
+# Stub out optional docs-related dependency pulled by TextEditor
+sys.modules.setdefault("docx", types.ModuleType("docx"))
+_htmldocx = types.ModuleType("htmldocx")
+class _HtmlToDocx:
+    def add_html_to_document(self, *a, **k):
+        pass
+HtmlToDocx = _HtmlToDocx
+_htmldocx.HtmlToDocx = _HtmlToDocx
+sys.modules.setdefault("htmldocx", _htmldocx)
+
+# Minimal moviepy stubs used by file_utils import chain
+_moviepy = types.ModuleType("moviepy")
+_moviepy_editor = types.ModuleType("moviepy.editor")
+class _Clip:
+    def __init__(self, *a, **k):
+        pass
+    def close(self):
+        pass
+VideoFileClip = _Clip
+AudioFileClip = _Clip
+_moviepy_editor.VideoFileClip = _Clip
+_moviepy_editor.AudioFileClip = _Clip
+sys.modules.setdefault("moviepy", _moviepy)
+sys.modules.setdefault("moviepy.editor", _moviepy_editor)
+
+# Minimal pydub stub
+_pydub = types.ModuleType("pydub")
+class _AudioSegment:
+    @classmethod
+    def from_file(cls, *a, **k):
+        return cls()
+AudioSegment = _AudioSegment
+_pydub.AudioSegment = _AudioSegment
+sys.modules.setdefault("pydub", _pydub)
+
+from app.MainTranscriptionWidget import MainTranscriptionWidget as MTW
 
 
-class ThreadLauncherTestHelper:
-    """Helper class to isolate and test _launch_thread method."""
-
-    def __init__(self):
-        """Initialize with minimal requirements."""
-        self.test_thread = None
-
-    def _launch_thread(
-        self,
-        thread,
-        completion_handler,
-        progress_handler,
-        error_handler,
-        finished_handler,
-        thread_attr_name=None,
-    ):
-        """
-        Clone of the MainTranscriptionWidget._launch_thread method for testing.
-        """
-        # Connect signals
-        thread.completed.connect(completion_handler)
-        thread.update_progress.connect(progress_handler)
-        thread.error.connect(error_handler)
-        thread.finished.connect(finished_handler)
-
-        # Store thread reference if attribute name provided
-        if thread_attr_name:
-            setattr(self, thread_attr_name, thread)
-
-        # Register thread with ThreadManager
-        from app.ThreadManager import ThreadManager
-
-        ThreadManager.instance().register_thread(thread)
-
-        # Start the thread
-        thread.start()
-
-        return thread
-
-
-class MockThread:
+class MockThread:  # Lightweight thread-like object exposing signal attributes
     """Mock thread for testing signal connections."""
 
     def __init__(self):
@@ -59,7 +58,7 @@ class MockThread:
 
 
 class TestThreadLauncher(unittest.TestCase):
-    """Test the _launch_thread helper method."""
+    """Test MainTranscriptionWidget._launch_thread behavior."""
 
     @patch("app.ThreadManager.ThreadManager.instance")
     def test_launch_thread_connects_signals(self, mock_thread_manager_instance):
@@ -68,8 +67,8 @@ class TestThreadLauncher(unittest.TestCase):
         thread_manager = MagicMock()
         mock_thread_manager_instance.return_value = thread_manager
 
-        # Create a helper instance
-        helper = ThreadLauncherTestHelper()
+        # Create a minimal instance without invoking heavy __init__
+        widget = MTW.__new__(MTW)
 
         # Create mock handlers
         completion_handler = MagicMock()
@@ -81,7 +80,8 @@ class TestThreadLauncher(unittest.TestCase):
         mock_thread = MockThread()
 
         # Call _launch_thread
-        result = helper._launch_thread(
+        result = MTW._launch_thread(
+            widget,
             thread=mock_thread,
             completion_handler=completion_handler,
             progress_handler=progress_handler,
@@ -105,7 +105,7 @@ class TestThreadLauncher(unittest.TestCase):
         mock_thread.start.assert_called_once()
 
         # Verify thread attribute set
-        self.assertEqual(helper.test_thread, mock_thread)
+        self.assertEqual(getattr(widget, "test_thread"), mock_thread)
 
         # Verify method returns the thread
         self.assertEqual(result, mock_thread)
@@ -117,8 +117,8 @@ class TestThreadLauncher(unittest.TestCase):
         thread_manager = MagicMock()
         mock_thread_manager_instance.return_value = thread_manager
 
-        # Create a helper instance
-        helper = ThreadLauncherTestHelper()
+        # Create a minimal instance without invoking heavy __init__
+        widget = MTW.__new__(MTW)
 
         # Create mock handlers
         completion_handler = MagicMock()
@@ -130,7 +130,8 @@ class TestThreadLauncher(unittest.TestCase):
         mock_thread = MockThread()
 
         # Call _launch_thread without thread_attr_name
-        result = helper._launch_thread(
+        result = MTW._launch_thread(
+            widget,
             thread=mock_thread,
             completion_handler=completion_handler,
             progress_handler=progress_handler,

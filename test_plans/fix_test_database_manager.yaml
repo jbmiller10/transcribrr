@@ -1,0 +1,291 @@
+target_file: "app/tests/test_database_manager.py"
+fix_priority: "critical"
+severity: "high"
+estimated_effort: "8-12 hours"
+
+# Summary of Current Issues
+current_issues:
+  - issue: "Excessive Mocking"
+    description: "All database operations are mocked - never tests actual SQLite behavior"
+    impact: "Tests don't validate real database interactions or SQL correctness"
+    lines_affected: "31-1287 (entire file)"
+    
+  - issue: "Testing Implementation Details"
+    description: "Tests verify mock.assert_called_with() rather than actual database state"
+    impact: "Tests are brittle and don't ensure correctness of database operations"
+    examples:
+      - "Line 51: Asserts mock_connection.execute.assert_called_once_with('PRAGMA foreign_keys = ON')"
+      - "Line 215: Asserts mock_cursor.execute.assert_called_once_with('SELECT * FROM recordings')"
+      - "Line 482: Verifies exact dict structure passed to queue.put()"
+      
+  - issue: "No Real Database Testing"
+    description: "Never uses in-memory SQLite database despite being lightweight and fast"
+    impact: "SQL syntax errors, constraint violations, and transaction issues go undetected"
+    
+  - issue: "Empty Test Method"
+    description: "test_run_disconnect_error_in_cleanup has only 'pass' statement"
+    line: 582
+    
+  - issue: "Missing Error Scenarios"
+    description: "Limited testing of database-specific errors like constraint violations, locks, corrupted database"
+    impact: "Critical database failure modes are untested"
+    
+  - issue: "Complex Mock Setup"
+    description: "40+ lines of mock configuration in setUp methods"
+    impact: "Tests are hard to understand and maintain"
+
+# Comprehensive Fix Plan
+
+## Phase 1: Remove Excessive Mocking
+remove_mocking:
+  description: "Replace mocked database with in-memory SQLite for all tests"
+  
+  changes:
+    - step: "Remove all database connection mocking"
+      details:
+        - "Delete mock_connection, mock_cursor setup"
+        - "Remove @patch('app.DatabaseManager.get_connection') decorators"
+        - "Use actual get_connection() with ':memory:' database"
+      
+    - step: "Create test database helper"
+      code: |
+        def create_test_database():
+            """Create an in-memory SQLite database for testing."""
+            conn = sqlite3.connect(':memory:')
+            conn.execute("PRAGMA foreign_keys = ON")
+            create_recordings_table(conn)
+            return conn
+            
+    - step: "Use real database in DatabaseWorker tests"
+      approach:
+        - "Initialize DatabaseWorker with real in-memory connection"
+        - "Test actual SQL execution and results"
+        - "Verify database state after operations"
+
+## Phase 2: Test Actual Behavior
+behavior_testing:
+  description: "Focus tests on observable outcomes rather than implementation"
+  
+  test_categories:
+    - category: "Database State Verification"
+      tests:
+        - name: "test_create_recording_persists_data"
+          validates: "Recording is actually stored in database"
+          approach: |
+            # Create recording
+            worker.create_recording(data)
+            # Query database directly
+            cursor = conn.execute("SELECT * FROM recordings WHERE filename = ?", [filename])
+            result = cursor.fetchone()
+            # Assert actual data exists
+            self.assertIsNotNone(result)
+            self.assertEqual(result['filename'], filename)
+            
+        - name: "test_update_recording_modifies_data"
+          validates: "Updates are persisted correctly"
+          approach: |
+            # Insert initial record
+            # Update via DatabaseWorker
+            # Query and verify changes
+            
+        - name: "test_delete_recording_removes_data"
+          validates: "Deletion actually removes records"
+          
+    - category: "Transaction Integrity"
+      tests:
+        - name: "test_rollback_on_error"
+          validates: "Failed operations don't corrupt database"
+          
+        - name: "test_atomic_operations"
+          validates: "Multiple operations in transaction succeed or fail together"
+          
+    - category: "Constraint Enforcement"
+      tests:
+        - name: "test_unique_constraint_violation"
+          validates: "Duplicate paths are properly rejected"
+          
+        - name: "test_foreign_key_constraint"
+          validates: "Referential integrity is maintained"
+
+## Phase 3: Add Comprehensive Error Testing
+error_scenarios:
+  description: "Test all database error conditions and edge cases"
+  
+  test_cases:
+    - name: "test_database_locked_error"
+      scenario: "Database is locked by another process"
+      implementation: |
+        # Create two connections
+        # Lock database with one
+        # Attempt operation with other
+        # Verify proper error handling and retry logic
+        
+    - name: "test_corrupted_database_recovery"
+      scenario: "Database file is corrupted"
+      implementation: |
+        # Write invalid data to database file
+        # Attempt operations
+        # Verify error handling and recovery attempts
+        
+    - name: "test_disk_full_error"
+      scenario: "Disk space exhausted during write"
+      approach: "Mock only the write operation to simulate SQLITE_FULL"
+      
+    - name: "test_invalid_sql_syntax"
+      scenario: "Malformed SQL query"
+      validates: "Proper error logging and signal emission"
+      
+    - name: "test_connection_timeout"
+      scenario: "Database connection times out"
+      validates: "Proper timeout handling and retry logic"
+      
+    - name: "test_concurrent_access_conflicts"
+      scenario: "Multiple threads accessing database"
+      validates: "Thread safety and proper locking"
+
+## Phase 4: Improve Test Structure
+structural_improvements:
+  description: "Reorganize tests for clarity and maintainability"
+  
+  changes:
+    - change: "Split into multiple test classes"
+      structure:
+        - "TestDatabaseWorkerCore: Basic worker functionality"
+        - "TestDatabaseWorkerOperations: CRUD operations"  
+        - "TestDatabaseWorkerErrors: Error handling"
+        - "TestDatabaseWorkerConcurrency: Thread safety"
+        - "TestDatabaseManager: Manager-level operations"
+        - "TestDatabaseManagerCallbacks: Callback handling"
+        
+    - change: "Use setUp/tearDown properly"
+      implementation: |
+        def setUp(self):
+            """Create fresh in-memory database for each test."""
+            self.conn = create_test_database()
+            self.worker = DatabaseWorker(parent=None)
+            self.worker.conn = self.conn
+            
+        def tearDown(self):
+            """Clean up database connection."""
+            if hasattr(self, 'conn'):
+                self.conn.close()
+            if hasattr(self, 'worker') and self.worker.isRunning():
+                self.worker.stop()
+                
+    - change: "Extract test helpers"
+      helpers:
+        - "insert_test_recording(conn, **data)"
+        - "assert_recording_exists(conn, recording_id)"
+        - "assert_recording_data(conn, recording_id, **expected)"
+        - "create_locked_database()"
+        - "simulate_database_corruption(conn)"
+
+## Phase 5: Add Edge Cases and Boundaries
+edge_cases:
+  description: "Test boundary conditions and edge cases"
+  
+  test_scenarios:
+    - category: "Data Boundaries"
+      tests:
+        - "Empty strings in all text fields"
+        - "Maximum length strings (SQLite limit: 1GB)"
+        - "Special characters and SQL injection attempts"
+        - "Unicode and emoji in text fields"
+        - "NULL values in optional fields"
+        
+    - category: "Numeric Boundaries"
+      tests:
+        - "Maximum integer values"
+        - "Negative IDs"
+        - "Zero and near-zero values"
+        
+    - category: "Concurrency Edge Cases"
+      tests:
+        - "Rapid create/delete of same record"
+        - "Simultaneous updates to same record"
+        - "Queue overflow scenarios"
+        - "Worker thread interrupted mid-operation"
+
+## Phase 6: Performance and Load Testing
+performance_tests:
+  description: "Add tests for performance-critical scenarios"
+  
+  tests:
+    - name: "test_bulk_insert_performance"
+      validates: "Efficient handling of many records"
+      implementation: |
+        # Insert 1000 records
+        # Measure time
+        # Assert reasonable performance (< 1 second)
+        
+    - name: "test_search_performance_with_large_dataset"
+      validates: "Search remains fast with many records"
+      
+    - name: "test_queue_processing_throughput"
+      validates: "Worker processes operations efficiently"
+
+## Implementation Guidelines
+
+guidelines:
+  - guideline: "Minimal Mocking"
+    rule: "Only mock external I/O (file system, network) and PyQt signals where necessary"
+    
+  - guideline: "Test Through Public API"
+    rule: "Access DatabaseWorker and DatabaseManager through their public methods only"
+    
+  - guideline: "Assert on State, Not Calls"
+    rule: "Verify database state and return values, not method invocations"
+    
+  - guideline: "Isolated Tests"
+    rule: "Each test creates its own database; no shared state between tests"
+    
+  - guideline: "Descriptive Names"
+    rule: "Test names should describe the scenario and expected outcome"
+    
+  - guideline: "Fast Execution"
+    rule: "All tests should complete in < 100ms using in-memory database"
+
+## Expected Outcomes
+
+metrics:
+  before:
+    total_lines: 1291
+    mock_decorators: 89
+    actual_db_tests: 0
+    test_methods: 76
+    empty_tests: 1
+    
+  after:
+    total_lines: "~800"
+    mock_decorators: "<10"
+    actual_db_tests: ">90%"
+    test_methods: "~60 (more focused)"
+    empty_tests: 0
+    
+benefits:
+  - "Catches actual SQL errors and database issues"
+  - "Tests are more maintainable and understandable"
+  - "Faster test execution with in-memory database"
+  - "Better coverage of error conditions"
+  - "Tests document actual behavior, not implementation"
+
+## Migration Strategy
+
+steps:
+  1: "Create new test file test_database_manager_v2.py"
+  2: "Implement Phase 1-2 tests with real database"
+  3: "Verify new tests catch issues old tests missed"
+  4: "Port remaining valuable tests from old file"
+  5: "Replace old file with new implementation"
+  6: "Run full test suite to ensure no regressions"
+
+priority_order:
+  1: "Fix empty test method (quick win)"
+  2: "Create test database helper functions"
+  3: "Rewrite core CRUD operation tests with real database"
+  4: "Add error scenario tests"
+  5: "Add edge case and boundary tests"
+  6: "Reorganize into focused test classes"
+  7: "Add performance tests"
+
+estimated_completion: "2-3 days for complete refactor"

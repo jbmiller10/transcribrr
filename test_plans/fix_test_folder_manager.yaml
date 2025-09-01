@@ -1,0 +1,254 @@
+target_file: "app/FolderManager.py"
+test_file: "app/tests/test_folder_manager.py"
+
+# Critical Issues from Audit Report
+identified_issues:
+  - "Excessive mocking - Complex execute_query stub with result injection"
+  - "Testing implementation details - Tests internal flags like _db_manager_attached"
+  - "State pollution - Manual singleton state manipulation"
+  - "Missing error coverage - No tests for database errors, malformed data, edge cases"
+  - "Conjoined twins - Mixed unit and integration concerns"
+  - "Weak assertions - Using assertTrue/False instead of specific checks"
+
+# Plan to Fix Anti-Patterns
+
+## 1. Remove Excessive Mocking
+current_problems:
+  - "Mock DatabaseManager prevents testing real SQL logic"
+  - "Complex execute_query stub with result injection pattern"
+  - "PyQt6 module injection hack in import_folder_structure test"
+  - "Tests verify mock calls instead of actual behavior"
+
+fixes:
+  - action: "Use in-memory SQLite database for all tests"
+    implementation:
+      - "Create a real DatabaseManager with ':memory:' database"
+      - "Let FolderManager execute real SQL queries"
+      - "Test actual database state after operations"
+      - "Remove all Mock(spec=DatabaseManager) usage"
+      - "Remove execute_query stubbing and result injection"
+    
+  - action: "Remove PyQt6 module injection"
+    implementation:
+      - "Mock only QTimer.singleShot at method level, not entire module"
+      - "Use patch decorator instead of sys.modules manipulation"
+      - "Focus on testing business logic, not Qt internals"
+
+## 2. Stop Testing Implementation Details
+current_problems:
+  - "Direct access to private attributes (_instance, _db_manager_attached)"
+  - "Testing internal state instead of behavior"
+  - "Verifying exact SQL strings instead of query results"
+
+fixes:
+  - action: "Focus on observable behavior"
+    implementation:
+      - "Remove all assertions on private attributes"
+      - "Test through public API only"
+      - "Verify outcomes, not internal state changes"
+      - "Use database queries to verify state instead of checking folders list"
+  
+  - action: "Test contracts, not implementations"
+    implementation:
+      - "Test that singleton returns same instance through behavior"
+      - "Test that operations succeed/fail appropriately"
+      - "Verify data integrity through queries, not memory structures"
+
+## 3. Fix State Pollution
+current_problems:
+  - "Manual singleton reset in tearDown"
+  - "Direct manipulation of class variables"
+  - "Potential test order dependencies"
+
+fixes:
+  - action: "Proper test isolation"
+    implementation:
+      - "Create fresh FolderManager for each test class"
+      - "Use subprocess or multiprocessing for true singleton testing"
+      - "Avoid manipulating class-level state directly"
+      - "Each test should be completely independent"
+
+## 4. Add Comprehensive Error Coverage
+missing_scenarios:
+  - "Database connection failures"
+  - "SQL constraint violations"
+  - "Malformed data handling"
+  - "Concurrent access issues"
+  - "Resource cleanup failures"
+  - "Edge cases (null values, empty strings, extreme values)"
+
+test_cases_to_add:
+  - database_errors:
+      - "Connection lost during operation"
+      - "Database locked scenarios"
+      - "Constraint violations (foreign key, unique)"
+      - "Transaction rollback scenarios"
+  
+  - data_validation:
+      - "Empty folder names"
+      - "Special characters in names"
+      - "Very long folder names (>255 chars)"
+      - "Unicode and emoji in names"
+      - "SQL injection attempts"
+  
+  - edge_cases:
+      - "Operating on non-existent folders"
+      - "Circular parent-child relationships"
+      - "Orphaned folders (parent deleted)"
+      - "Deep nesting limits"
+      - "Large number of folders (performance)"
+  
+  - concurrency:
+      - "Multiple threads creating folders"
+      - "Race conditions in singleton creation"
+      - "Concurrent read/write operations"
+
+## 5. Improve Test Structure
+
+reorganization_plan:
+  test_classes:
+    - name: "TestFolderManagerInitialization"
+      focus: "Singleton creation and dependency injection"
+      tests:
+        - "test_creates_singleton_instance"
+        - "test_requires_database_manager"
+        - "test_initializes_database_tables"
+        - "test_handles_database_connection_errors"
+    
+    - name: "TestFolderOperations"
+      focus: "CRUD operations on folders"
+      setup: "Use real in-memory database"
+      tests:
+        - "test_create_folder_with_valid_data"
+        - "test_create_folder_with_duplicate_name"
+        - "test_create_folder_with_invalid_characters"
+        - "test_rename_folder_success"
+        - "test_rename_to_existing_name"
+        - "test_delete_folder_with_children"
+        - "test_delete_non_existent_folder"
+    
+    - name: "TestFolderHierarchy"
+      focus: "Parent-child relationships"
+      tests:
+        - "test_build_folder_structure"
+        - "test_nested_folder_creation"
+        - "test_move_folder_to_new_parent"
+        - "test_detect_circular_relationships"
+        - "test_orphaned_folder_handling"
+    
+    - name: "TestRecordingAssociations"
+      focus: "Recording-folder relationships"
+      tests:
+        - "test_add_recording_to_folder"
+        - "test_add_duplicate_recording"
+        - "test_remove_recording_from_folder"
+        - "test_get_recordings_in_folder"
+        - "test_get_folders_for_recording"
+        - "test_cascade_delete_associations"
+    
+    - name: "TestImportExport"
+      focus: "Data serialization"
+      tests:
+        - "test_export_folder_structure"
+        - "test_import_valid_structure"
+        - "test_import_malformed_json"
+        - "test_import_with_conflicts"
+        - "test_preserve_relationships_on_import"
+
+## 6. Testing Best Practices
+
+improvements:
+  - assertions:
+      old: "self.assertTrue(result)"
+      new: "self.assertEqual(result, expected_value, 'Folder creation should return ID')"
+  
+  - test_data:
+      old: "Magic values like 'A', 'B', 123"
+      new: "Descriptive names: 'test_parent_folder', 'test_child_folder'"
+  
+  - test_methods:
+      old: "Long methods with multiple assertions"
+      new: "Single responsibility, max 15 lines per test"
+  
+  - documentation:
+      old: "Minimal or missing docstrings"
+      new: "Clear description of scenario and expected outcome"
+
+## 7. Specific Test Implementations
+
+example_refactored_tests:
+  - test_name: "test_create_folder_with_database_error"
+    setup:
+      - "Create in-memory database"
+      - "Intentionally corrupt database or lock table"
+    execution:
+      - "Attempt to create folder"
+    verification:
+      - "Operation returns False"
+      - "Error is logged appropriately"
+      - "Database remains in consistent state"
+      - "Callback receives error message"
+  
+  - test_name: "test_concurrent_folder_creation"
+    setup:
+      - "Create shared in-memory database"
+      - "Prepare multiple threads"
+    execution:
+      - "Each thread creates folder with unique name"
+    verification:
+      - "All folders created successfully"
+      - "No duplicate IDs assigned"
+      - "Folder count matches thread count"
+      - "Parent-child relationships preserved"
+
+## 8. Remove Test Code Smells
+
+refactoring_actions:
+  - "Remove 522-line test file, split into 5 files of ~100 lines each"
+  - "Remove manual singleton manipulation"
+  - "Remove sys.modules hacking"
+  - "Remove complex mock stubbing patterns"
+  - "Remove direct access to private attributes"
+  - "Use pytest fixtures or setUp/tearDown properly"
+  - "Add parameterized tests for similar scenarios"
+
+## 9. Performance and Resource Tests
+
+new_test_categories:
+  - performance:
+      - "Test with 10,000 folders"
+      - "Test deep nesting (100 levels)"
+      - "Test large import operations"
+      - "Measure query execution time"
+  
+  - resource_management:
+      - "Verify database connections are closed"
+      - "Check for memory leaks in large operations"
+      - "Test cleanup after failures"
+
+## 10. Integration Test Separation
+
+separate_files:
+  - "test_folder_manager_unit.py": "Pure unit tests with mocked DB"
+  - "test_folder_manager_integration.py": "Tests with real database"
+  - "test_folder_manager_performance.py": "Performance benchmarks"
+  - "test_folder_manager_concurrency.py": "Thread safety tests"
+
+implementation_priority:
+  1. "Remove excessive mocking - use real in-memory SQLite"
+  2. "Add error scenario testing"
+  3. "Split into focused test classes"
+  4. "Remove implementation detail testing"
+  5. "Add edge case coverage"
+  6. "Improve assertions and test clarity"
+  7. "Add performance tests"
+  8. "Document test intentions"
+
+success_metrics:
+  - "Mock usage reduced from 85% to <20%"
+  - "Test file reduced from 522 to <150 lines"
+  - "100% error path coverage"
+  - "All tests run in <2 seconds"
+  - "No direct access to private attributes"
+  - "Clear test names describing behavior"
+  - "No state pollution between tests"

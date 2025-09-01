@@ -1,0 +1,230 @@
+target_file: "/home/john/transcribrr/app/tests/test_busy_guard.py"
+test_subject: "app/ui_utils/busy_guard.py::BusyGuard"
+
+identified_issues:
+  - issue: "Mockery Anti-Pattern"
+    description: "Entire feedback_manager is mocked without contract validation"
+    impact: "Tests don't verify actual behavior with real feedback manager"
+    
+  - issue: "Happy Path Only"
+    description: "No exception testing during cleanup phase"
+    impact: "Critical error paths in __exit__ are not tested"
+    
+  - issue: "Testing Implementation Details"
+    description: "Tests exact method call sequences instead of outcomes"
+    impact: "Tests are brittle and coupled to internal implementation"
+    
+  - issue: "Missing Edge Cases"
+    description: "No tests for concurrent usage, resource exhaustion, or complex error scenarios"
+    impact: "Robustness in production scenarios is not validated"
+
+fix_plan:
+  phase_1_reduce_mocking:
+    description: "Replace full mocking with minimal protocol-based stubs"
+    tasks:
+      - task: "Create TestFeedbackManager stub"
+        details: |
+          - Implement FeedbackProtocol with real behavior tracking
+          - Store actual state changes (busy states, spinner states, progress values)
+          - Allow assertions on actual state rather than mock calls
+          - Example:
+            ```python
+            class TestFeedbackManager:
+                def __init__(self):
+                    self.busy_elements = set()
+                    self.active_spinners = set()
+                    self.progress_dialogs = {}
+                    self.status_messages = []
+                
+                def set_ui_busy(self, busy, ui_elements=None):
+                    if busy:
+                        self.busy_elements.update(ui_elements or [])
+                    else:
+                        self.busy_elements.difference_update(ui_elements or [])
+            ```
+          
+      - task: "Remove Mock imports"
+        details: "Replace unittest.mock with actual test doubles that implement the protocol"
+        
+      - task: "Test with real QWidget instances"
+        details: |
+          - Use headless Qt mode (QT_QPA_PLATFORM=offscreen)
+          - Create actual QPushButton instances instead of mocks
+          - Test actual widget.setEnabled() behavior
+
+  phase_2_test_actual_behavior:
+    description: "Focus on testing outcomes rather than method calls"
+    tasks:
+      - task: "Test state transitions"
+        details: |
+          - Verify that UI elements are actually disabled/enabled
+          - Check that spinner state is properly tracked
+          - Ensure progress values are correctly maintained
+          - Test that cleanup restores original state
+          
+      - task: "Test resource management"
+        details: |
+          - Verify unique operation IDs are generated
+          - Test that resources are cleaned up even on exceptions
+          - Validate that nested guards don't interfere
+          
+      - task: "Test error recovery"
+        details: |
+          - Verify partial setup is cleaned up on setup failure
+          - Test that cleanup errors don't mask original exceptions
+          - Ensure logging captures error information
+
+  phase_3_add_error_cases:
+    description: "Add comprehensive error and edge case testing"
+    test_cases_to_add:
+      - case: "test_setup_failure_with_cleanup"
+        scenario: "When feedback_manager.start_progress raises exception"
+        expected: "Partial setup is rolled back, exception is re-raised"
+        
+      - case: "test_cleanup_exception_handling"
+        scenario: "When stop_spinner raises during __exit__"
+        expected: "Original exception is not masked, error is logged"
+        
+      - case: "test_cancel_callback_exception"
+        scenario: "When user's cancel_callback raises exception"
+        expected: "Exception is caught, logged, cleanup continues"
+        
+      - case: "test_concurrent_guard_instances"
+        scenario: "Multiple BusyGuard instances for same spinner"
+        expected: "Each guard maintains independent state"
+        
+      - case: "test_resource_exhaustion"
+        scenario: "Creating many progress dialogs"
+        expected: "System handles resource limits gracefully"
+        
+      - case: "test_null_feedback_manager"
+        scenario: "BusyGuard with None feedback_manager"
+        expected: "Appropriate error handling or no-op behavior"
+        
+      - case: "test_invalid_spinner_name"
+        scenario: "Empty string or special characters in spinner name"
+        expected: "Graceful handling without crashes"
+        
+      - case: "test_progress_value_boundaries"
+        scenario: "Progress values < 0 or > maximum"
+        expected: "Values are clamped or handled appropriately"
+        
+      - case: "test_operation_id_uniqueness"
+        scenario: "Creating multiple guards with same operation name"
+        expected: "Each gets unique operation_id via UUID"
+        
+      - case: "test_cleanup_after_manual_cancel"
+        scenario: "User calls cancel() then context exits normally"
+        expected: "No double cleanup, state is consistent"
+
+  phase_4_improve_structure:
+    description: "Reorganize tests for better maintainability"
+    tasks:
+      - task: "Split test class by functionality"
+        details: |
+          - TestBusyGuardBasicOperations (setup, teardown, basic flow)
+          - TestBusyGuardErrorHandling (exceptions, cleanup failures)  
+          - TestBusyGuardProgress (progress updates, cancellation)
+          - TestBusyGuardEdgeCases (concurrency, boundaries, invalid inputs)
+          
+      - task: "Use parameterized tests"
+        details: |
+          - Group similar test scenarios with different inputs
+          - Example: @parameterized.expand for different exception types
+          
+      - task: "Add descriptive docstrings"
+        details: |
+          - Each test should explain:
+            - What condition is being tested
+            - Why this test is important
+            - What failure would indicate
+            
+      - task: "Improve assertions"
+        details: |
+          - Replace assertTrue/assertFalse with specific assertions
+          - Add custom assertion messages for debugging
+          - Use assertIn, assertEqual, assertRaises appropriately
+
+  phase_5_test_integration_points:
+    description: "Test interaction with real components"
+    tasks:
+      - task: "Test with actual Qt event loop"
+        details: |
+          - Use QTest.qWait() to test timing-dependent behavior
+          - Verify UI updates are processed correctly
+          
+      - task: "Test logging output"
+        details: |
+          - Capture log output and verify error messages
+          - Ensure debug logging provides useful information
+          
+      - task: "Test thread safety"
+        details: |
+          - Verify BusyGuard works correctly from worker threads
+          - Test concurrent access to feedback_manager
+
+implementation_order:
+  1: "Create TestFeedbackManager stub class"
+  2: "Replace all Mock() usage with TestFeedbackManager"
+  3: "Add error case tests one by one"
+  4: "Reorganize into multiple test classes"
+  5: "Add parameterized tests where appropriate"
+  6: "Add integration tests with Qt components"
+
+success_metrics:
+  - metric: "Mock usage reduction"
+    target: "< 20% of test code uses mocks"
+    current: "~80% is mock setup and verification"
+    
+  - metric: "Error case coverage"
+    target: "All public methods have error tests"
+    current: "Only happy path tested"
+    
+  - metric: "Test line count"
+    target: "< 300 lines total"
+    current: "170 lines"
+    
+  - metric: "Test execution time"
+    target: "< 1 second for all tests"
+    current: "Not measured"
+    
+  - metric: "Assertion quality"
+    target: "100% specific assertions with messages"
+    current: "Mix of assert_called and assertTrue"
+
+example_improved_test:
+  description: "Example of improved test following the fix plan"
+  code: |
+    class TestBusyGuardErrorHandling(unittest.TestCase):
+        '''Tests for BusyGuard error handling and cleanup.'''
+        
+        def setUp(self):
+            '''Create test feedback manager with controllable failures.'''
+            self.feedback = TestFeedbackManager()
+            self.feedback.fail_on_stop_spinner = False
+            
+        def test_cleanup_exception_does_not_mask_original(self):
+            '''Verify cleanup errors don't hide the actual exception.
+            
+            When an exception occurs in the guarded block AND cleanup
+            also fails, the original exception should be raised, not
+            the cleanup exception.
+            '''
+            self.feedback.fail_on_stop_spinner = True
+            
+            with self.assertRaises(ValueError) as cm:
+                with BusyGuard(self.feedback, "Test", spinner="test"):
+                    # Spinner should be started
+                    self.assertIn("test", self.feedback.active_spinners)
+                    raise ValueError("Original error")
+            
+            # Original exception is raised
+            self.assertEqual(str(cm.exception), "Original error")
+            # Cleanup error was logged (check logs in integration test)
+
+notes:
+  - "Focus on testing the actual BusyGuard behavior, not mock interactions"
+  - "Each test should validate a specific guarantee that BusyGuard provides"
+  - "Error cases are critical - this is a cleanup/resource management class"
+  - "Consider creating a separate integration test file for Qt-specific tests"
+  - "The TestFeedbackManager should be reusable across other test files"

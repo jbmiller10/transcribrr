@@ -15,7 +15,7 @@
         "category": "Translation",
         "text": "Translate this raw audio transcript into English. You may fix minor transcription errors based on context."
     },
-    "Youtube to Article": {
+    "Youtube to article": {
         "category": "Formatting",
         "text": "Transform this raw transcript of a youtube video into a well-structured article, maintaining as much detail as possible. Do not embellish by adding details not mentioned. It is extremely important you keep all details. Your output should come close to matching the number of words of the original transcript."
     }

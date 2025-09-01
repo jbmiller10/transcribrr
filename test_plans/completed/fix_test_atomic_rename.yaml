@@ -1,0 +1,177 @@
+target_file: "app/tests/test_atomic_rename.py"
+fix_priority: "CRITICAL"
+current_issues:
+  - issue: "Skip Everything Anti-Pattern"
+    description: "File unconditionally raises SkipTest at module level (line 16)"
+    impact: "Test suite provides zero coverage for critical atomic rename functionality"
+    
+  - issue: "Dodger Anti-Pattern"
+    description: "AtomicRenameTest class (lines 19-70) reimplements production logic instead of testing actual code"
+    impact: "Tests verify duplicate implementation, not the real RecentRecordingsWidget.handle_recording_rename"
+    
+  - issue: "Missing Edge Cases"
+    description: "No tests for symbolic links, cross-filesystem moves, network drives, or concurrent operations"
+    impact: "Critical failure scenarios remain untested"
+    
+  - issue: "Excessive Mocking"
+    description: "Tests mock os.rename and patch filesystem operations instead of using real temporary files"
+    impact: "Tests don't verify actual filesystem behavior"
+    
+  - issue: "Poor Test Isolation"
+    description: "Tests don't verify interaction with actual DatabaseManager or Qt signals"
+    impact: "Integration points between components remain untested"
+
+fixes_required:
+  step_1_remove_skip:
+    action: "Remove unconditional SkipTest"
+    changes:
+      - "Delete line 16 (raise unittest.SkipTest)"
+      - "Remove comment about headless environment (line 15)"
+    rationale: "Tests should run in all environments, use proper Qt headless mode if needed"
+    
+  step_2_remove_duplicate_implementation:
+    action: "Delete AtomicRenameTest class entirely"
+    changes:
+      - "Remove lines 19-70 (entire AtomicRenameTest class)"
+      - "Import actual RecentRecordingsWidget class instead"
+    rationale: "Test the real implementation, not a duplicate"
+    
+  step_3_proper_test_structure:
+    action: "Create focused test classes for atomic rename functionality"
+    new_structure:
+      - class: "TestAtomicRenameSuccess"
+        purpose: "Test successful rename scenarios"
+        methods:
+          - "test_simple_rename_success"
+          - "test_rename_with_special_characters"
+          - "test_rename_preserves_extension"
+          - "test_rename_updates_database"
+          
+      - class: "TestAtomicRenameFilesystemErrors"
+        purpose: "Test filesystem failure scenarios"
+        methods:
+          - "test_source_file_not_found"
+          - "test_destination_already_exists"
+          - "test_insufficient_permissions"
+          - "test_cross_filesystem_move"
+          - "test_disk_full_scenario"
+          
+      - class: "TestAtomicRenameDatabaseErrors"
+        purpose: "Test database failure and rollback scenarios"
+        methods:
+          - "test_database_update_fails_rollback_succeeds"
+          - "test_database_timeout_with_rollback"
+          - "test_database_constraint_violation"
+          
+      - class: "TestAtomicRenameCriticalFailures"
+        purpose: "Test catastrophic failure scenarios"
+        methods:
+          - "test_rollback_fails_after_db_error"
+          - "test_filesystem_becomes_readonly_during_operation"
+          - "test_concurrent_rename_attempts"
+          
+  step_4_minimal_mocking:
+    action: "Use real filesystem operations with proper test isolation"
+    approach:
+      - "Use tempfile.TemporaryDirectory for all test files"
+      - "Create actual files with real content"
+      - "Only mock DatabaseManager.update_recording for DB operations"
+      - "Use Qt's headless mode for widget testing (QT_QPA_PLATFORM=offscreen)"
+      - "Mock only external boundaries (network, system calls)"
+    rationale: "Test actual behavior, not mock interactions"
+    
+  step_5_test_actual_widget:
+    action: "Test RecentRecordingsWidget.handle_recording_rename directly"
+    setup:
+      - "Create minimal RecentRecordingsWidget instance with test dependencies"
+      - "Use real RecordingListItem widgets with test data"
+      - "Connect to actual Qt signals for verification"
+    verification:
+      - "Verify filesystem changes with os.path.exists"
+      - "Check database calls through mock.assert_called_with"
+      - "Validate Qt signal emissions"
+      - "Assert error messages shown to user"
+      
+  step_6_add_comprehensive_edge_cases:
+    action: "Add tests for all identified edge cases"
+    new_tests:
+      - test: "test_rename_symbolic_link"
+        scenario: "Renaming a symbolic link should rename link, not target"
+        
+      - test: "test_rename_with_unicode_characters"
+        scenario: "Handle filenames with emoji, CJK characters, RTL text"
+        
+      - test: "test_rename_maximum_path_length"
+        scenario: "Test OS path length limits (255 chars on most systems)"
+        
+      - test: "test_rename_case_only_change"
+        scenario: "Rename 'file.mp3' to 'File.mp3' on case-insensitive filesystems"
+        
+      - test: "test_rename_during_file_access"
+        scenario: "Rename while file is being read by another process"
+        
+      - test: "test_rename_network_drive"
+        scenario: "Handle network drive disconnection during rename"
+        
+      - test: "test_rename_with_special_filesystem_characters"
+        scenario: "Test reserved characters, trailing dots/spaces on Windows"
+        
+  step_7_improve_assertions:
+    action: "Use specific assertions with descriptive messages"
+    changes:
+      - "Replace assertTrue/assertFalse with specific checks"
+      - "Add custom assertion messages for debugging"
+      - "Verify exact error messages and types"
+      - "Check file content preservation after rename"
+      - "Validate database state consistency"
+      
+  step_8_add_performance_tests:
+    action: "Add tests for performance-critical scenarios"
+    tests:
+      - "test_rename_large_file": "Verify rename of 1GB+ files is atomic"
+      - "test_bulk_rename_operations": "Test renaming multiple files in sequence"
+      - "test_rename_timeout_handling": "Verify appropriate timeouts for slow operations"
+      
+  step_9_test_cleanup:
+    action: "Ensure proper resource cleanup"
+    implementation:
+      - "Use context managers for all file operations"
+      - "Implement proper tearDown to clean temporary files"
+      - "Verify no file handles left open"
+      - "Check database connections are closed"
+      
+  step_10_documentation:
+    action: "Add comprehensive test documentation"
+    requirements:
+      - "Add docstrings explaining what each test validates"
+      - "Document why specific edge cases matter"
+      - "Include examples of failure scenarios"
+      - "Reference bug reports or incidents that motivated tests"
+
+expected_outcomes:
+  - "100% code coverage for handle_recording_rename method"
+  - "All error paths tested with actual filesystem operations"
+  - "Rollback scenarios verified with real file operations"
+  - "Edge cases documented and tested"
+  - "Performance characteristics validated"
+  - "No module-level skips or excessive mocking"
+  - "Tests run in < 2 seconds for normal cases"
+  - "Clear failure messages when tests fail"
+
+implementation_notes:
+  - "Use pytest.mark.parametrize for similar test scenarios"
+  - "Consider using pytest-qt for better Qt testing support"
+  - "Create helper methods for common setup (create_test_recording, etc.)"
+  - "Use pathlib.Path for cleaner path operations"
+  - "Mock only at the DatabaseManager boundary, not individual methods"
+  - "Test actual error message content shown to users"
+  - "Verify logging output for debugging production issues"
+
+success_metrics:
+  - "Zero skipped tests in this file"
+  - "< 30% mock usage (currently 100% with duplicate implementation)"
+  - "All test methods < 20 lines"
+  - "Each test has single clear purpose"
+  - "Tests provide actionable failure messages"
+  - "Edge cases have dedicated test methods"
+  - "No testing of implementation details"

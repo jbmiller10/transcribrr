@@ -1,281 +1,232 @@
 """
-Unit tests for atomic rename logic.
+Atomic rename tests against the real RecentRecordingsWidget.handle_recording_rename.
 
-This test suite focuses on ensuring that the file rename operations in the application
-maintain atomicity - either both the filesystem and database are updated, or neither is.
+Uses real filesystem operations in a temporary directory and minimal mocking
+for database and UI boundaries.
 """
 
-from unittest.mock import MagicMock, patch
-import stat
+from unittest.mock import patch
 import shutil
 import tempfile
 import os
 import unittest
 
-# Skip legacy tests in headless environment
-raise unittest.SkipTest("Skipping legacy test in headless environment")
+from app.RecentRecordingsWidget import RecentRecordingsWidget as RRW
 
 
-class AtomicRenameTest:
-    """
-    Simplified implementation of the atomic rename logic from RecentRecordingsWidget.handle_recording_rename.
-
-    This class encapsulates the core logic for testing without PyQt6 dependencies.
-    """
-
-    def __init__(self):
-        """Initialize the test class."""
-        self.db_update_called = False
-        self.rollback_attempted = False
-        self.critical_error = False
-
-    def rename_file(self, old_path, new_path, db_update_func):
-        """
-        Perform an atomic rename operation.
-
-        Args:
-            old_path: Path to the file to be renamed
-            new_path: New path for the file
-            db_update_func: Function to call to update database
-
-        Returns:
-            Tuple of (success, error_message)
-        """
-        try:
-            # First attempt the filesystem rename
-            os.rename(old_path, new_path)
-
-            try:
-                # Then update the database
-                db_update_func()
-                self.db_update_called = True
-                return True, None
-
-            except Exception as db_error:
-                # If DB update fails, roll back the filesystem rename
-                self.rollback_attempted = True
-                try:
-                    os.rename(new_path, old_path)  # Roll back
-                    return False, f"Database error: {str(db_error)}"
-                except OSError as rollback_error:
-                    self.critical_error = True
-                    return (
-                        False,
-                        f"Critical error: DB update failed AND rollback failed: {str(rollback_error)}",
-                    )
-
-        except OSError as fs_error:
-            # Filesystem rename failed
-            return False, f"Filesystem error: {str(fs_error)}"
+class DummySignal:
+    def connect(self, _):
+        # No-op signal connector for tests
+        return None
 
 
-class TestAtomicRename(unittest.TestCase):
-    """Test the atomic rename functionality isolated from PyQt dependencies."""
+class DummyDBManager:
+    def __init__(self, should_raise=False):
+        self.should_raise = should_raise
+        self.calls = []
+        self.error_occurred = DummySignal()
 
+    def update_recording(self, recording_id, on_success_cb, **kwargs):
+        # Record the call for assertions
+        self.calls.append((recording_id, kwargs))
+        if self.should_raise:
+            raise RuntimeError("DB update failed")
+        # Emulate successful async completion by calling the callback
+        on_success_cb()
+
+
+class DummyNameEditable:
+    def __init__(self, initial_text=""):
+        self.last_set = None
+        self._text = initial_text
+
+    def setText(self, text):
+        self.last_set = text
+        self._text = text
+
+    def text(self):
+        return self._text
+
+
+class DummyRecordingWidget:
+    def __init__(self, file_path):
+        self.file_path = file_path
+        base, ext = os.path.splitext(os.path.basename(file_path))
+        self.filename_no_ext = base
+        self._ext = ext
+        self._filename = base + ext
+        self.name_editable = DummyNameEditable(base)
+        self.updated = []
+
+    def get_filename(self):
+        return self._filename
+
+    def update_data(self, data):
+        # Mirror minimal behavior used by widget code
+        if "filename" in data:
+            self.filename_no_ext = data["filename"]
+            self._filename = data["filename"] + self._ext
+        if "file_path" in data:
+            self.file_path = data["file_path"]
+        self.updated.append(data)
+
+
+def make_widget_instance(db_manager, recording_widget_map):
+    # Create instance without running __init__ (avoids heavy Qt setup)
+    inst = RRW.__new__(RRW)
+    inst.db_manager = db_manager
+    inst.unified_view = type("DummyView", (), {"id_to_widget": recording_widget_map})()
+    # Stub out UI helpers used by handler
+    inst.show_status_message = lambda *_: None
+    return inst
+
+
+class TestAtomicRenameSuccess(unittest.TestCase):
     def setUp(self):
-        """Set up test environment with a temporary directory."""
-        # Create a temporary directory for our test files
         self.temp_dir = tempfile.mkdtemp()
+        self.src = os.path.join(self.temp_dir, "test_recording.mp3")
+        with open(self.src, "w", encoding="utf-8") as f:
+            f.write("content")
 
-        # Create a test file to rename
-        self.test_file_path = os.path.join(self.temp_dir, "test_recording.mp3")
-        with open(self.test_file_path, "w") as f:
-            f.write("test content")
+        self.db = DummyDBManager()
+        self.item = DummyRecordingWidget(self.src)
+        self.widget = make_widget_instance(self.db, {1: self.item})
 
-        # Create a read-only subdirectory to simulate permission errors
-        self.readonly_dir = os.path.join(self.temp_dir, "readonly")
-        os.makedirs(self.readonly_dir)
-
-        # Make the directory read-only on Unix systems
-        if os.name != "nt":  # Skip on Windows as permissions work differently
-            os.chmod(
-                self.readonly_dir, stat.S_IRUSR | stat.S_IXUSR
-            )  # Read + execute only
-
-        # Create a test instance of the atomic rename logic
-        self.rename_test = AtomicRenameTest()
+        # Patch error/info dialogs so tests don't try to render UI
+        patcher = patch("app.RecentRecordingsWidget.show_error_message")
+        self.addCleanup(patcher.stop)
+        self.mock_show_error = patcher.start()
 
     def tearDown(self):
-        """Clean up temporary files."""
-        # Restore permissions to allow deletion
-        if os.name != "nt" and os.path.exists(self.readonly_dir):
-            os.chmod(self.readonly_dir, stat.S_IRWXU)  # Read, write, execute
-
-        # Remove temporary directory and all contents
         shutil.rmtree(self.temp_dir, ignore_errors=True)
 
-    def test_successful_rename(self):
-        """Test a successful atomic rename operation."""
-        # Set up the test
+    def test_simple_rename_success(self):
+        self.widget.handle_recording_rename(1, "renamed_recording")
+
         new_path = os.path.join(self.temp_dir, "renamed_recording.mp3")
-        db_update_func = MagicMock()  # Mock function that succeeds
+        self.assertFalse(os.path.exists(self.src), "Old file should be gone")
+        self.assertTrue(os.path.exists(new_path), "New file should exist")
 
-        # Call the function
-        success, error = self.rename_test.rename_file(
-            self.test_file_path, new_path, db_update_func
+        # Database call should include both filename and file_path
+        self.assertEqual(len(self.db.calls), 1)
+        rec_id, kwargs = self.db.calls[0]
+        self.assertEqual(rec_id, 1)
+        self.assertEqual(kwargs.get("filename"), "renamed_recording.mp3")
+        self.assertEqual(kwargs.get("file_path"), new_path)
+
+        # Widget internal state updated
+        self.assertEqual(self.item.file_path, new_path)
+        self.assertEqual(self.item.filename_no_ext, "renamed_recording")
+
+    def test_rename_preserves_extension(self):
+        self.widget.handle_recording_rename(1, "name_only_no_ext")
+        self.assertTrue(
+            os.path.exists(os.path.join(self.temp_dir, "name_only_no_ext.mp3"))
         )
 
-        # Verify success
-        self.assertTrue(success)
-        self.assertIsNone(error)
-
-        # Verify that the file was renamed
-        self.assertFalse(os.path.exists(self.test_file_path))
-        self.assertTrue(os.path.exists(new_path))
-
-        # Verify that DB update was called
-        db_update_func.assert_called_once()
-        self.assertTrue(self.rename_test.db_update_called)
-        self.assertFalse(self.rename_test.rollback_attempted)
-        self.assertFalse(self.rename_test.critical_error)
-
-    def test_filesystem_rename_fails(self):
-        """Test a scenario where the filesystem rename fails."""
-        # Set up the test - non-existent source file
-        source_path = os.path.join(self.temp_dir, "nonexistent_file.mp3")
-        new_path = os.path.join(self.temp_dir, "renamed_nonexistent.mp3")
-        db_update_func = MagicMock()  # This shouldn't be called
-
-        # Call the function
-        success, error = self.rename_test.rename_file(
-            source_path, new_path, db_update_func
+    def test_rename_with_special_characters(self):
+        new_base = "weird name_ä漢字🙂"
+        self.widget.handle_recording_rename(1, new_base)
+        self.assertTrue(
+            os.path.exists(os.path.join(self.temp_dir, f"{new_base}.mp3"))
         )
 
-        # Verify failure
-        self.assertFalse(success)
-        self.assertIsNotNone(error)
-        self.assertTrue("Filesystem error" in error)
 
-        # Verify that DB update was NOT called
-        db_update_func.assert_not_called()
-        self.assertFalse(self.rename_test.db_update_called)
-        self.assertFalse(self.rename_test.rollback_attempted)
-        self.assertFalse(self.rename_test.critical_error)
+class TestAtomicRenameFilesystemErrors(unittest.TestCase):
+    def setUp(self):
+        self.temp_dir = tempfile.mkdtemp()
+        # Do not create self.src to simulate missing file in first test
+        self.db = DummyDBManager()
+        self.item = DummyRecordingWidget(os.path.join(self.temp_dir, "missing.mp3"))
+        self.widget = make_widget_instance(self.db, {1: self.item})
 
-    def test_rename_to_readonly_directory(self):
-        """Test rename operation to a read-only directory - should fail atomically."""
-        # Skip this test on Windows as permissions work differently
-        if os.name == "nt":
-            self.skipTest("Skipping read-only directory test on Windows")
+        patcher = patch("app.RecentRecordingsWidget.show_error_message")
+        self.addCleanup(patcher.stop)
+        self.mock_show_error = patcher.start()
 
-        # Set up the test - target path in read-only directory
-        source_path = os.path.join(self.temp_dir, "test_readonly.mp3")
-        with open(source_path, "w") as f:
-            f.write("test content")
+    def tearDown(self):
+        shutil.rmtree(self.temp_dir, ignore_errors=True)
 
-        target_path = os.path.join(self.readonly_dir, "read_only_test.mp3")
-        db_update_func = MagicMock()  # This shouldn't be called
+    def test_source_file_not_found(self):
+        self.widget.handle_recording_rename(1, "any")
+        # Should show error and do nothing else
+        self.assertFalse(self.db.calls, "DB should not be called when missing source")
+        self.mock_show_error.assert_called()
 
-        # Call the function - should fail on filesystem rename
-        success, error = self.rename_test.rename_file(
-            source_path, target_path, db_update_func
-        )
+    def test_destination_already_exists(self):
+        # Create real source and an existing destination
+        src = os.path.join(self.temp_dir, "a.mp3")
+        with open(src, "w", encoding="utf-8"):
+            pass
+        existing = os.path.join(self.temp_dir, "b.mp3")
+        with open(existing, "w", encoding="utf-8"):
+            pass
 
-        # Verify failure
-        self.assertFalse(success)
-        self.assertIsNotNone(error)
-        self.assertTrue("Filesystem error" in error)
+        # Update the item to point to real source
+        self.item.file_path = src
+        self.item.filename_no_ext = "a"
+        self.item.name_editable = DummyNameEditable("b")
 
-        # Verify that original file still exists and target doesn't
-        self.assertTrue(os.path.exists(source_path))
-        self.assertFalse(os.path.exists(target_path))
+        # Swap in a fresh widget referencing the updated item
+        self.widget = make_widget_instance(self.db, {1: self.item})
 
-        # Verify that DB update was NOT called
-        db_update_func.assert_not_called()
-        self.assertFalse(self.rename_test.db_update_called)
-        self.assertFalse(self.rename_test.rollback_attempted)
-        self.assertFalse(self.rename_test.critical_error)
+        self.widget.handle_recording_rename(1, "b")
 
-    def test_db_update_fails_rollback_succeeds(self):
-        """Test a scenario where DB update fails but filesystem rename succeeds and is rolled back."""
-        # Set up the test
-        new_path = os.path.join(self.temp_dir, "db_error_test.mp3")
-        db_update_func = MagicMock(side_effect=Exception("DB update failed"))
+        # Should not have moved the file
+        self.assertTrue(os.path.exists(src))
+        self.assertTrue(os.path.exists(existing))
+        self.assertFalse(self.db.calls, "DB should not be called when target exists")
+        self.assertEqual(self.item.name_editable.last_set, "a")
 
-        # Call the function
-        success, error = self.rename_test.rename_file(
-            self.test_file_path, new_path, db_update_func
-        )
 
-        # Verify failure
-        self.assertFalse(success)
-        self.assertIsNotNone(error)
-        self.assertTrue("Database error" in error)
+class TestAtomicRenameDatabaseErrors(unittest.TestCase):
+    def setUp(self):
+        self.temp_dir = tempfile.mkdtemp()
+        self.src = os.path.join(self.temp_dir, "x.mp3")
+        with open(self.src, "w", encoding="utf-8"):
+            pass
 
-        # Verify that original file was restored
-        self.assertTrue(os.path.exists(self.test_file_path))
-        self.assertFalse(os.path.exists(new_path))
+        self.db = DummyDBManager(should_raise=True)
+        self.item = DummyRecordingWidget(self.src)
+        self.widget = make_widget_instance(self.db, {1: self.item})
 
-        # Verify that DB update was attempted and rollback was attempted
-        db_update_func.assert_called_once()
-        # Should be False since we're raising exception
-        self.assertFalse(self.rename_test.db_update_called)
-        self.assertTrue(self.rename_test.rollback_attempted)
-        self.assertFalse(self.rename_test.critical_error)
+        patcher = patch("app.RecentRecordingsWidget.show_error_message")
+        self.addCleanup(patcher.stop)
+        self.mock_show_error = patcher.start()
 
-    def test_db_update_fails_rollback_fails(self):
-        """Test a scenario where DB update fails and filesystem rollback also fails."""
-        # Set up the test
-        new_path = os.path.join(self.temp_dir, "critical_error_test.mp3")
-        db_update_func = MagicMock(side_effect=Exception("DB update failed"))
+    def tearDown(self):
+        shutil.rmtree(self.temp_dir, ignore_errors=True)
 
-        # Mock os.rename to succeed the first time (filesystem rename) but fail the second time (rollback)
-        original_rename = os.rename
-        rename_call_count = 0
+    def test_database_update_fails_rollback_succeeds(self):
+        # Normal os.rename for forward and rollback
+        self.widget.handle_recording_rename(1, "y")
 
-        def mock_rename(src, dst):
-            nonlocal rename_call_count
-            rename_call_count += 1
-            if rename_call_count == 1:
-                # First call - the actual rename - should succeed
-                return original_rename(src, dst)
-            else:
-                # Second call - the rollback - should fail
-                raise OSError("Rollback failed")
+        # Should have rolled back => original remains, destination does not
+        dest = os.path.join(self.temp_dir, "y.mp3")
+        self.assertTrue(os.path.exists(self.src))
+        self.assertFalse(os.path.exists(dest))
+        # Error dialog shown
+        self.mock_show_error.assert_called()
 
-        with patch("os.rename", side_effect=mock_rename):
-            # Call the function
-            success, error = self.rename_test.rename_file(
-                self.test_file_path, new_path, db_update_func
-            )
+    def test_database_update_fails_rollback_fails(self):
+        dest = os.path.join(self.temp_dir, "y.mp3")
 
-        # Verify failure with critical error
-        self.assertFalse(success)
-        self.assertIsNotNone(error)
-        self.assertTrue("Critical error" in error)
-        self.assertTrue("rollback failed" in error.lower())
+        rename_calls = {"count": 0}
+        real_rename = os.rename
 
-        # Verify that DB update was attempted and rollback was attempted
-        db_update_func.assert_called_once()
-        self.assertFalse(self.rename_test.db_update_called)
-        self.assertTrue(self.rename_test.rollback_attempted)
-        self.assertTrue(self.rename_test.critical_error)
+        def flaky_rename(a, b):
+            rename_calls["count"] += 1
+            if rename_calls["count"] == 1:
+                return real_rename(a, b)  # forward rename succeeds
+            raise OSError("rollback failed")
 
-        # Verify that file was renamed but not rolled back
-        self.assertFalse(os.path.exists(self.test_file_path))
-        self.assertTrue(os.path.exists(new_path))
+        with patch("os.rename", side_effect=flaky_rename):
+            self.widget.handle_recording_rename(1, "y")
 
-    def test_rename_prevents_overwriting(self):
-        """Test that the rename operation prevents overwriting existing files."""
-        # Create a target file that already exists
-        existing_path = os.path.join(self.temp_dir, "existing_file.mp3")
-        with open(existing_path, "w") as f:
-            f.write("existing content")
-
-        # Set up the test
-        db_update_func = MagicMock()  # This shouldn't be called
-
-        # Mock the os.path.exists to return True for the target path
-        with patch("os.path.exists", return_value=True):
-            # Call the function - this would be inside the RecentRecordingsWidget.handle_recording_rename method
-            # In the actual implementation, the check for existing files happens before the atomic rename
-            # so we're skipping the actual rename call
-            self.assertEqual(True, os.path.exists(existing_path))
-
-        # Verify that the original file still exists
-        self.assertTrue(os.path.exists(existing_path))
-
-        # In the actual code, this check would prevent the rename from happening
+        # Forward rename happened, rollback failed => dest exists, src gone
+        self.assertFalse(os.path.exists(self.src))
+        self.assertTrue(os.path.exists(dest))
+        self.mock_show_error.assert_called()
 
 
 if __name__ == "__main__":

@@ -1,0 +1,275 @@
+target_file: app/models/recording.py
+test_file: app/tests/test_recording_model.py
+fix_plan_version: 1.0
+current_issues:
+  - "714 lines testing a 20-line dataclass"
+  - "Tests Python's dataclass implementation, not business logic"
+  - "Verifies trivial attribute access"
+  - "Tests with 100,000 character strings (unrealistic)"
+  - "No business validation rules being tested"
+  - "Excessive testing of Python language features"
+
+proposed_structure:
+  total_lines: 100-120
+  test_classes:
+    - name: "TestRecordingModel"
+      focus: "Business logic and data validation"
+      methods: 8-10
+
+specific_fixes:
+
+  1_remove_dataclass_internals_testing:
+    description: "Remove all tests that verify Python's dataclass behavior"
+    items_to_remove:
+      - test_initialization_with_required_fields (lines 22-61)
+      - test_initialization_with_all_fields (lines 62-99)
+      - test_type_validation_for_integer_id (lines 102-119)
+      - test_type_validation_for_float_duration (lines 120-136)
+      - test_field_access_via_dot_notation (lines 413-447)
+      - test_undefined_attribute_access (lines 448-465)
+      - test_field_order_preservation (lines 559-585)
+      - test_init_signature (lines 586-611)
+      - test_hashability_of_recording_instances (lines 323-344)
+      - test_repr_string_representation (lines 298-322)
+    rationale: "These test Python's dataclass implementation, not our business logic"
+
+  2_reduce_attribute_access_tests:
+    description: "Consolidate basic attribute tests into one concise test"
+    new_test:
+      name: "test_recording_creation"
+      lines: 10-15
+      purpose: "Verify Recording can be created with valid data"
+      implementation: |
+        def test_recording_creation(self):
+            """Test Recording creation with valid data."""
+            recording = Recording(
+                id=1,
+                filename="test.mp3",
+                file_path="/path/to/test.mp3",
+                date_created="2024-01-15 10:30:00",
+                duration=120.5,
+                raw_transcript="Test transcript"
+            )
+            self.assertEqual(recording.id, 1)
+            self.assertEqual(recording.filename, "test.mp3")
+            self.assertIsNone(recording.processed_text)  # Optional field
+
+  3_add_business_validation_tests:
+    description: "Add tests for actual business rules and validation"
+    new_tests:
+      - name: "test_invalid_duration_raises_error"
+        purpose: "Test that negative duration is rejected"
+        implementation: |
+          def test_invalid_duration_raises_error(self):
+              """Test that negative duration raises ValueError."""
+              with self.assertRaises(ValueError) as context:
+                  Recording.validate_duration(-30.5)
+              self.assertIn("Duration must be non-negative", str(context.exception))
+      
+      - name: "test_empty_filename_rejected"
+        purpose: "Test that empty filename is rejected"
+        implementation: |
+          def test_empty_filename_rejected(self):
+              """Test that empty filename raises ValueError."""
+              with self.assertRaises(ValueError) as context:
+                  Recording.validate_filename("")
+              self.assertIn("Filename cannot be empty", str(context.exception))
+      
+      - name: "test_invalid_file_path"
+        purpose: "Test file path validation"
+        implementation: |
+          def test_invalid_file_path(self):
+              """Test that invalid file path is rejected."""
+              with self.assertRaises(ValueError) as context:
+                  Recording.validate_file_path("../../../etc/passwd")
+              self.assertIn("Invalid file path", str(context.exception))
+
+  4_add_edge_cases_with_business_context:
+    description: "Add edge cases that matter for the application"
+    new_tests:
+      - name: "test_recording_with_pending_transcription"
+        purpose: "Test recording in pending state"
+        implementation: |
+          def test_recording_with_pending_transcription(self):
+              """Test recording with pending transcription state."""
+              recording = Recording(
+                  id=1,
+                  filename="pending.mp3",
+                  file_path="/path/pending.mp3",
+                  date_created="2024-01-15",
+                  duration=60.0
+              )
+              self.assertIsNone(recording.raw_transcript)
+              self.assertFalse(recording.is_transcribed())
+              self.assertEqual(recording.get_status(), "pending")
+      
+      - name: "test_recording_with_completed_transcription"
+        purpose: "Test recording with completed transcription"
+        implementation: |
+          def test_recording_with_completed_transcription(self):
+              """Test recording with completed transcription."""
+              recording = Recording(
+                  id=1,
+                  filename="complete.mp3",
+                  file_path="/path/complete.mp3",
+                  date_created="2024-01-15",
+                  duration=60.0,
+                  raw_transcript="Transcribed text",
+                  processed_text="Processed text"
+              )
+              self.assertTrue(recording.is_transcribed())
+              self.assertTrue(recording.is_processed())
+              self.assertEqual(recording.get_status(), "completed")
+
+  5_add_database_integration_helpers:
+    description: "Test methods that help with database operations"
+    new_tests:
+      - name: "test_to_database_tuple"
+        purpose: "Test conversion for database insertion"
+        implementation: |
+          def test_to_database_tuple(self):
+              """Test conversion to database tuple format."""
+              recording = Recording(
+                  id=1,
+                  filename="test.mp3",
+                  file_path="/path/test.mp3",
+                  date_created="2024-01-15",
+                  duration=60.0
+              )
+              db_tuple = recording.to_database_tuple()
+              self.assertEqual(len(db_tuple), 10)
+              self.assertEqual(db_tuple[0], 1)
+              self.assertEqual(db_tuple[1], "test.mp3")
+      
+      - name: "test_from_database_row"
+        purpose: "Test creation from database row"
+        implementation: |
+          def test_from_database_row(self):
+              """Test creating Recording from database row."""
+              db_row = (1, "test.mp3", "/path/test.mp3", "2024-01-15", 60.0,
+                       "Raw", "Processed", None, None, "source_1")
+              recording = Recording.from_database_row(db_row)
+              self.assertEqual(recording.id, 1)
+              self.assertEqual(recording.raw_transcript, "Raw")
+
+  6_add_error_handling_tests:
+    description: "Test error conditions and exception handling"
+    new_tests:
+      - name: "test_missing_required_fields"
+        purpose: "Test that missing required fields raise appropriate errors"
+        implementation: |
+          def test_missing_required_fields(self):
+              """Test that missing required fields raise TypeError."""
+              with self.assertRaises(TypeError) as context:
+                  Recording(filename="test.mp3")  # Missing id, file_path, etc.
+              self.assertIn("missing", str(context.exception).lower())
+      
+      - name: "test_malformed_date_format"
+        purpose: "Test date format validation"
+        implementation: |
+          def test_malformed_date_format(self):
+              """Test that malformed date raises ValueError."""
+              with self.assertRaises(ValueError) as context:
+                  Recording.validate_date_format("not-a-date")
+              self.assertIn("Invalid date format", str(context.exception))
+
+  7_remove_unrealistic_tests:
+    description: "Remove tests with unrealistic data"
+    items_to_remove:
+      - test_initialization_with_very_long_strings (lines 184-204)
+      - test_large_transcript_data (lines 535-556)
+    rationale: "100,000+ character strings are unrealistic and don't test business logic"
+
+  8_consolidate_equality_tests:
+    description: "Combine equality/inequality tests into one concise test"
+    new_test:
+      name: "test_recording_equality"
+      lines: 10-12
+      implementation: |
+        def test_recording_equality(self):
+            """Test Recording equality comparison."""
+            r1 = Recording(1, "test.mp3", "/path", "2024-01-15", 60.0)
+            r2 = Recording(1, "test.mp3", "/path", "2024-01-15", 60.0)
+            r3 = Recording(2, "test.mp3", "/path", "2024-01-15", 60.0)
+            self.assertEqual(r1, r2)
+            self.assertNotEqual(r1, r3)
+
+  9_add_practical_utility_methods:
+    description: "Test utility methods that would be useful in the application"
+    new_tests:
+      - name: "test_get_display_duration"
+        purpose: "Test formatting duration for display"
+        implementation: |
+          def test_get_display_duration(self):
+              """Test formatting duration for display."""
+              recording = Recording(1, "test.mp3", "/path", "2024-01-15", 125.5)
+              self.assertEqual(recording.get_display_duration(), "2:05")
+              
+              recording2 = Recording(2, "test.mp3", "/path", "2024-01-15", 3665.0)
+              self.assertEqual(recording2.get_display_duration(), "1:01:05")
+      
+      - name: "test_get_file_size_estimate"
+        purpose: "Test estimating file size from duration"
+        implementation: |
+          def test_get_file_size_estimate(self):
+              """Test estimating file size from duration."""
+              recording = Recording(1, "test.mp3", "/path", "2024-01-15", 60.0)
+              # Assuming 128kbps MP3
+              estimated_size = recording.estimate_file_size()
+              self.assertAlmostEqual(estimated_size, 960000, delta=1000)
+
+  10_add_state_transition_tests:
+    description: "Test recording state transitions"
+    new_tests:
+      - name: "test_update_transcript"
+        purpose: "Test updating transcript fields"
+        implementation: |
+          def test_update_transcript(self):
+              """Test updating transcript fields."""
+              recording = Recording(1, "test.mp3", "/path", "2024-01-15", 60.0)
+              self.assertIsNone(recording.raw_transcript)
+              
+              recording.update_transcript("New transcript")
+              self.assertEqual(recording.raw_transcript, "New transcript")
+              self.assertIsNotNone(recording.transcribed_at)
+      
+      - name: "test_update_processed_text"
+        purpose: "Test updating processed text"
+        implementation: |
+          def test_update_processed_text(self):
+              """Test updating processed text."""
+              recording = Recording(1, "test.mp3", "/path", "2024-01-15", 60.0,
+                                  raw_transcript="Raw")
+              recording.update_processed_text("Processed")
+              self.assertEqual(recording.processed_text, "Processed")
+              self.assertIsNotNone(recording.processed_at)
+
+summary:
+  current_lines: 714
+  target_lines: 100-120
+  lines_to_remove: ~600
+  new_meaningful_tests: 15-20
+  focus_areas:
+    - Business validation rules
+    - Practical utility methods
+    - Database integration helpers
+    - State transitions
+    - Error conditions
+  anti_patterns_fixed:
+    - Excessive testing of language features
+    - Unrealistic test data
+    - Missing error cases
+    - No business logic validation
+
+implementation_notes:
+  - "Most current tests should be deleted as they test Python's dataclass implementation"
+  - "Focus on testing business rules that the Recording model should enforce"
+  - "Add validation methods to the Recording model if they don't exist"
+  - "Test practical scenarios that occur in the application"
+  - "Keep tests concise and focused on behavior, not implementation"
+  - "Use realistic test data (reasonable string lengths, valid file paths)"
+  - "Test error conditions and edge cases that matter for the application"
+
+priority: HIGH
+estimated_effort: "2-3 hours"
+risk: "Low - mostly deletion of unnecessary tests"

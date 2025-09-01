@@ -1,0 +1,295 @@
+target_file: "app/tests/test_utils.py"
+description: "Fix plan for test_utils.py to address excessive mocking and improve test quality"
+
+# Issues identified from audit report
+identified_issues:
+  - issue: "Module-level stubbing of PyQt6 and torch (lines 19-62)"
+    severity: "CRITICAL"
+    impact: "Tests don't validate actual PyQt6 signal behavior or torch functionality"
+    
+  - issue: "Testing implementation details instead of behavior"
+    severity: "HIGH"
+    impact: "Tests are brittle and break with refactoring"
+    
+  - issue: "Excessive mocking of subprocess, os, and file operations"
+    severity: "HIGH"
+    impact: "Tests don't verify actual system interactions"
+    
+  - issue: "No error scenario testing for edge cases"
+    severity: "MEDIUM"
+    impact: "Missing coverage for malformed inputs, concurrent access, resource exhaustion"
+    
+  - issue: "Singleton state pollution in tearDown methods"
+    severity: "MEDIUM"
+    impact: "Tests may affect each other through shared state"
+
+# Refactoring strategy
+refactoring_approach:
+  phase_1_remove_excessive_mocking:
+    - action: "Remove module-level PyQt6 and torch stubbing"
+      rationale: "Use actual PyQt6 with headless mode (QT_QPA_PLATFORM=offscreen)"
+      implementation: |
+        - Set environment variable in test setUp
+        - Import actual PyQt6 modules
+        - Use real signal/slot mechanism
+        
+    - action: "Replace subprocess mocking with controlled execution"
+      rationale: "Test actual command execution with known commands"
+      implementation: |
+        - Use 'echo' or 'true/false' commands for testing
+        - Create temp executable scripts for complex scenarios
+        - Only mock for network-dependent operations
+        
+    - action: "Use real file operations with temp directories"
+      rationale: "Test actual file I/O behavior"
+      implementation: |
+        - Use tempfile.TemporaryDirectory() for isolated testing
+        - Create real test files and directories
+        - Verify actual file system state
+
+  phase_2_test_actual_behavior:
+    - action: "Rewrite file type detection tests"
+      implementation: |
+        - Test with actual file extensions and edge cases
+        - Test case-insensitive matching
+        - Test with compound extensions (.tar.gz)
+        - Test with no extension
+        - Test with Unicode filenames
+        
+    - action: "Rewrite FFmpeg checks with real subprocess calls"
+      implementation: |
+        - Test with actual 'which' command
+        - Test PATH manipulation
+        - Create mock ffmpeg script that returns version
+        - Test timeout handling with sleep command
+        
+    - action: "Rewrite URL validation with comprehensive patterns"
+      implementation: |
+        - Test all YouTube URL formats
+        - Test invalid URLs (malformed, non-YouTube)
+        - Test edge cases (empty, None, special characters)
+        - Test URL encoding issues
+        
+    - action: "Rewrite ConfigManager tests with real files"
+      implementation: |
+        - Use temporary config files
+        - Test concurrent access scenarios
+        - Test file corruption recovery
+        - Test permission errors
+        - Test disk full scenarios
+
+  phase_3_add_missing_coverage:
+    - action: "Add error handling tests"
+      implementation: |
+        test_cases:
+          - "File permission errors during backup"
+          - "Disk full during config save"
+          - "Concurrent ConfigManager access"
+          - "Invalid JSON in config files"
+          - "Network timeouts in subprocess calls"
+          - "Unicode handling in all string operations"
+          
+    - action: "Add edge case tests"
+      implementation: |
+        test_cases:
+          - "Empty strings, None values, special characters"
+          - "Very long file paths (>255 chars)"
+          - "Files with multiple dots in name"
+          - "Symbolic links and special files"
+          - "Cross-platform path separators"
+          
+    - action: "Add performance tests"
+      implementation: |
+        test_cases:
+          - "Large config file handling (>1MB)"
+          - "Cleanup with thousands of temp files"
+          - "Concurrent prompt updates"
+
+# Test structure improvements
+structural_changes:
+  - change: "Split TestConfigManager into focused test classes"
+    new_classes:
+      - "TestConfigManagerSingleton"
+      - "TestConfigManagerPersistence"
+      - "TestConfigManagerConcurrency"
+      - "TestConfigManagerBackup"
+      
+  - change: "Split TestPromptManager into focused test classes"
+    new_classes:
+      - "TestPromptManagerCRUD"
+      - "TestPromptManagerImportExport"
+      - "TestPromptManagerValidation"
+      
+  - change: "Reduce test method size"
+    guidelines:
+      - "Max 15 lines per test method"
+      - "Single assertion focus per test"
+      - "Extract common setup to helper methods"
+      
+  - change: "Improve test naming"
+    convention: "test_{method}_{scenario}_{expected_outcome}"
+    examples:
+      - "test_is_video_file_with_uppercase_extension_returns_true"
+      - "test_create_backup_when_disk_full_returns_none"
+      - "test_config_manager_concurrent_writes_maintains_consistency"
+
+# Specific test rewrites
+test_rewrites:
+  TestFileTypeDetection:
+    current_issues:
+      - "Only tests happy path"
+      - "No edge cases"
+    new_tests:
+      - "test_is_video_file_with_mixed_case_extensions"
+      - "test_is_video_file_with_no_extension"
+      - "test_is_video_file_with_double_extension"
+      - "test_is_audio_file_with_unicode_filename"
+      - "test_is_audio_file_with_null_input"
+      
+  TestFFmpegChecks:
+    current_issues:
+      - "Mocks entire subprocess module"
+      - "Doesn't test actual PATH manipulation"
+    new_approach: |
+      - Create a mock ffmpeg executable in temp directory
+      - Add temp directory to PATH
+      - Test actual subprocess execution
+      - Use timeout testing with real sleep command
+      
+  TestURLAndLanguage:
+    current_issues:
+      - "Limited URL pattern testing"
+      - "No malformed URL tests"
+    new_tests:
+      - "test_validate_url_with_special_characters"
+      - "test_validate_url_with_xss_attempt"
+      - "test_language_to_iso_with_None_input"
+      - "test_language_to_iso_with_partial_matches"
+      
+  TestBackupAndTimestamp:
+    current_issues:
+      - "All file operations mocked"
+      - "No actual backup verification"
+    new_approach: |
+      - Create real files in temp directory
+      - Perform actual backup operations
+      - Verify file content preservation
+      - Test cross-filesystem moves
+      - Test symbolic link handling
+      
+  TestSystemRequirements:
+    current_issues:
+      - "Mocks platform and torch entirely"
+      - "Doesn't test actual system detection"
+    new_approach: |
+      - Use actual platform module
+      - Mock only CUDA availability
+      - Test with real Python version detection
+      - Test actual FFmpeg detection
+      
+  TestTempCleanup:
+    current_issues:
+      - "Mocks file operations"
+      - "No concurrent cleanup testing"
+    new_approach: |
+      - Create real temp files with various ages
+      - Test actual deletion
+      - Test with files in use
+      - Test with permission errors
+      - Test cleanup during concurrent access
+      
+  TestConfigManager:
+    current_issues:
+      - "Complex mock setup"
+      - "Tests internal state directly"
+      - "No concurrency testing"
+    new_approach: |
+      - Use real config files in temp directory
+      - Test actual file persistence
+      - Add threading tests for concurrent access
+      - Test signal emission with real PyQt6
+      - Test atomic write operations
+      
+  TestPromptManager:
+    current_issues:
+      - "Heavy mocking of file operations"
+      - "No validation of prompt structure"
+    new_approach: |
+      - Use real prompt files
+      - Test import with malformed JSON
+      - Test export with special characters
+      - Test concurrent prompt updates
+      - Validate prompt normalization logic
+
+# Implementation guidelines
+implementation_notes:
+  test_helpers:
+    - "Create a base test class with temp directory setup/teardown"
+    - "Helper to create test files with specific content"
+    - "Helper to create mock executables"
+    - "Helper to safely modify PATH for tests"
+    
+  fixtures:
+    - "Sample audio/video filenames with various extensions"
+    - "Valid and invalid YouTube URLs"
+    - "Sample config and prompt JSON data"
+    - "Mock ffmpeg version output"
+    
+  assertions:
+    - "Use specific assertions (assertEqual, assertIn, assertRaises)"
+    - "Add descriptive messages to all assertions"
+    - "Verify file content, not just existence"
+    - "Check for side effects (files created, logs written)"
+    
+  cleanup:
+    - "Always use try/finally or context managers for cleanup"
+    - "Reset singletons in tearDown"
+    - "Restore PATH and environment variables"
+    - "Clean temp files even on test failure"
+
+# Success metrics
+success_criteria:
+  - metric: "Mocking reduced to <20% of current level"
+    measurement: "Count of @patch decorators and Mock() calls"
+    
+  - metric: "Test file under 500 lines"
+    measurement: "Total line count after refactoring"
+    
+  - metric: "All public methods have error tests"
+    measurement: "Coverage report showing exception paths"
+    
+  - metric: "No test method exceeds 20 lines"
+    measurement: "Automated check in CI"
+    
+  - metric: "Tests run in <5 seconds"
+    measurement: "pytest timing report"
+    
+  - metric: "Zero test interdependencies"
+    measurement: "Tests pass when run in random order"
+
+# Priority order
+implementation_priority:
+  1: "Remove module-level PyQt6/torch stubbing"
+  2: "Rewrite FFmpeg and file operation tests with real operations"
+  3: "Fix ConfigManager/PromptManager singleton pollution"
+  4: "Add error handling and edge case tests"
+  5: "Split large test classes"
+  6: "Add concurrency tests"
+  7: "Add performance tests"
+
+# Estimated effort
+effort_estimate:
+  total_hours: 8
+  breakdown:
+    - task: "Remove module-level mocking"
+      hours: 1
+    - task: "Rewrite file operation tests"
+      hours: 2
+    - task: "Fix singleton tests"
+      hours: 1
+    - task: "Add error/edge cases"
+      hours: 2
+    - task: "Refactor test structure"
+      hours: 1
+    - task: "Add concurrency tests"
+      hours: 1

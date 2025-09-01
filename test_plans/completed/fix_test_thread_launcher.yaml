@@ -1,0 +1,137 @@
+target_file: "/home/john/transcribrr/app/MainTranscriptionWidget.py"
+test_file: "/home/john/transcribrr/app/tests/test_thread_launcher.py"
+critical_issues:
+  - "Dodger anti-pattern: Test creates duplicate implementation (ThreadLauncherTestHelper) instead of testing real code"
+  - "Excessive mocking: Mocks every component including threads and ThreadManager"
+  - "Free Ride anti-pattern: Two nearly identical test methods (95% duplication)"
+  - "Testing implementation details: Verifies exact mock call sequences rather than behavior"
+  - "No error scenarios tested"
+  - "No edge cases covered"
+  - "No integration with actual Qt signals"
+
+fix_strategy:
+  remove_duplicate_implementation:
+    description: "Remove ThreadLauncherTestHelper and test the actual MainTranscriptionWidget._launch_thread method"
+    approach:
+      - "Import and instantiate MainTranscriptionWidget directly"
+      - "Test the actual method, not a duplicate"
+      - "Use dependency injection for testable components"
+    
+  reduce_mocking:
+    description: "Replace excessive mocking with minimal, focused mocks"
+    approach:
+      - "Use real Qt signal mechanisms where possible (with Qt headless mode)"
+      - "Only mock external dependencies like ThreadManager.instance()"
+      - "Create test threads that extend QThread for realistic behavior"
+      - "Test actual signal propagation and connection"
+  
+  test_actual_behavior:
+    description: "Focus on observable outcomes rather than implementation details"
+    test_scenarios:
+      - "Verify thread actually starts when launched"
+      - "Verify signals are properly connected and fire when expected"
+      - "Verify ThreadManager receives and tracks the thread"
+      - "Verify attribute storage works correctly"
+      - "Verify return value is the launched thread"
+  
+  add_error_scenarios:
+    description: "Test error conditions and edge cases"
+    scenarios_to_add:
+      - "Thread with missing signals (incomplete interface)"
+      - "Thread that fails to start"
+      - "ThreadManager registration failure"
+      - "Invalid thread_attr_name (reserved attributes)"
+      - "None thread parameter"
+      - "Thread already running"
+      - "Concurrent launches of multiple threads"
+  
+  eliminate_duplication:
+    description: "Combine similar tests using parameterization"
+    approach:
+      - "Use parameterized tests for thread_attr_name variations"
+      - "Share common test setup logic"
+      - "Extract assertion helpers for repeated checks"
+
+test_structure:
+  test_classes:
+    - name: "TestThreadLauncherUnit"
+      description: "Unit tests for _launch_thread method with minimal mocking"
+      test_methods:
+        - "test_launch_thread_basic_flow"
+        - "test_launch_thread_stores_attribute"
+        - "test_launch_thread_without_attribute"
+        - "test_launch_thread_with_reserved_attribute"
+        - "test_launch_thread_with_none_thread"
+        - "test_launch_thread_with_missing_signals"
+        - "test_launch_thread_registration_failure"
+        - "test_launch_thread_already_running"
+    
+    - name: "TestThreadLauncherIntegration"
+      description: "Integration tests with real Qt components"
+      test_methods:
+        - "test_signal_propagation"
+        - "test_concurrent_thread_launches"
+        - "test_thread_lifecycle_management"
+        - "test_thread_cleanup_on_completion"
+
+implementation_details:
+  test_fixtures:
+    - name: "TestThread"
+      description: "A real QThread subclass for testing"
+      features:
+        - "Emits real Qt signals"
+        - "Can simulate various failure modes"
+        - "Tracks its own state for verification"
+    
+    - name: "MockThreadManager"
+      description: "Minimal mock for ThreadManager singleton"
+      features:
+        - "Tracks registered threads"
+        - "Can simulate registration failures"
+        - "Verifiable without checking call sequences"
+  
+  assertions:
+    - "Use assertTrue(thread.isRunning()) instead of mock.start.assert_called()"
+    - "Use signal spy or connection tracking instead of mock.connect.assert_called()"
+    - "Verify ThreadManager state instead of registration call"
+    - "Check actual attribute presence with hasattr() instead of mock verification"
+
+code_patterns_to_avoid:
+  - "Mock().method.assert_called_with() - test behavior instead"
+  - "Creating duplicate implementations of production code"
+  - "Module-level mocking that affects entire test session"
+  - "Testing Qt signal connection types rather than signal behavior"
+  - "Identical test methods with minor variations"
+
+code_patterns_to_use:
+  - "Parameterized tests with @unittest.TestCase.subTest or pytest.mark.parametrize"
+  - "Real QThread subclasses with controllable behavior"
+  - "Qt's QSignalSpy or custom signal tracking for verification"
+  - "Context managers for temporary mocking"
+  - "Descriptive test names that explain the scenario being tested"
+
+expected_improvements:
+  - "Reduce test file from 161 lines to ~150 lines with better coverage"
+  - "Eliminate duplicate test code (currently 95% duplication)"
+  - "Add 5+ error scenario tests (currently 0)"
+  - "Reduce mock usage from ~80% to <30%"
+  - "Test actual Qt signal behavior instead of mock calls"
+  - "Remove the Dodger anti-pattern completely"
+
+verification_checklist:
+  - "No duplicate implementation of production code"
+  - "Tests use actual MainTranscriptionWidget class"
+  - "Error scenarios are covered"
+  - "Edge cases are tested"
+  - "No excessive mocking of Qt components"
+  - "Tests verify behavior, not implementation"
+  - "No duplicate test methods"
+  - "Clear, descriptive test names"
+  - "Tests are isolated and don't pollute global state"
+  - "Tests run quickly (<1 second total)"
+
+notes:
+  - "Consider using Qt's headless mode (QT_QPA_PLATFORM=offscreen) for CI"
+  - "If Qt is not available in test environment, use minimal stubs but test real logic"
+  - "Focus on the method's contract: signal connection, registration, and thread start"
+  - "The method is simple but critical - ensure thorough testing of all paths"

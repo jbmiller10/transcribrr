@@ -1,0 +1,250 @@
+target_file: "/home/john/transcribrr/app/ui_utils/error_handling.py"
+test_file: "/home/john/transcribrr/app/tests/test_error_handling.py"
+
+identified_issues:
+  - issue: "Excessive mocking - mocks the functions it should test"
+    details: "Mocks logger, safe_error, and redact functions completely, preventing real behavior validation"
+    lines: [27-34]
+  
+  - issue: "Testing mock calls instead of actual behavior"
+    details: "Tests verify mock.assert_called() rather than checking actual error message generation"
+    lines: [44, 53-54, 59-60]
+  
+  - issue: "Happy path only testing"
+    details: "No tests for logger failures, malformed exceptions, or edge cases"
+    coverage_gaps:
+      - "Logger failures or logging exceptions"
+      - "Null/None error inputs"
+      - "Empty error messages"
+      - "Extremely long error messages"
+      - "Unicode/special characters in errors"
+      - "Concurrent error handling"
+      - "Callback exceptions"
+  
+  - issue: "Module stubbing at test file level"
+    details: "Creates fake PyQt6 modules instead of using proper test isolation"
+    lines: [9-13]
+  
+  - issue: "Weak assertions"
+    details: "Uses assertIn and assertIsInstance without verifying complete behavior"
+    lines: [43, 51, 58, 64]
+
+  - issue: "No integration with actual dependencies"
+    details: "Never tests interaction with real redact function or logger configuration"
+
+fix_plan:
+  phase_1_remove_excessive_mocking:
+    - action: "Remove module-level PyQt6 stubbing"
+      approach: "Use environment variable QT_QPA_PLATFORM=offscreen for headless testing"
+      
+    - action: "Replace logger mock with spy pattern"
+      approach: |
+        Instead of fully mocking logger, use a test handler to capture logs:
+        - Add a custom logging.Handler to capture log records
+        - Verify actual log messages and levels
+        - Test logger configuration edge cases
+    
+    - action: "Test redact function integration"
+      approach: |
+        Don't mock redact - test the actual integration:
+        - Verify sensitive data is actually redacted
+        - Test various patterns that should be redacted
+        - Only mock if testing error handling in isolation from security
+    
+    - action: "Mock only external UI components"
+      approach: |
+        Only mock safe_error and show_error_message since they show UI:
+        - Capture arguments passed to verify correct message formatting
+        - Test that UI is only shown when show_dialog=True
+
+  phase_2_test_actual_behavior:
+    - action: "Test error message mapping logic"
+      test_cases:
+        - "All ERROR_MESSAGE_MAP entries produce correct user messages"
+        - "Unmapped exceptions fall back to safe error message"
+        - "Complex exception hierarchies are handled correctly"
+    
+    - action: "Test error context mapping"
+      test_cases:
+        - "All ERROR_CONTEXT_MAP entries format titles correctly"
+        - "Unknown sources default to 'Application'"
+        - "Title override actually overrides computed title"
+    
+    - action: "Test logging severity logic"
+      test_cases:
+        - "FileNotFoundError logs at WARNING level"
+        - "RuntimeError logs at ERROR level with traceback"
+        - "Custom exceptions log appropriately"
+    
+    - action: "Test external library error patterns"
+      test_cases:
+        - "OpenAI API key errors produce specific message"
+        - "Rate limit errors for each library"
+        - "Unknown library errors use default format"
+        - "Case-insensitive pattern matching works"
+
+  phase_3_add_edge_cases:
+    error_edge_cases:
+      - test: "handle_error_with_null_exception"
+        scenario: "Pass None as error parameter"
+        expected: "Should handle gracefully or raise TypeError"
+      
+      - test: "handle_error_with_empty_message"
+        scenario: "Exception with empty string message"
+        expected: "Should provide meaningful fallback message"
+      
+      - test: "handle_error_with_very_long_message"
+        scenario: "Exception with 10000+ character message"
+        expected: "Should truncate or handle without UI issues"
+      
+      - test: "handle_error_with_unicode_characters"
+        scenario: "Error messages with emoji and special chars"
+        expected: "Should handle without encoding errors"
+      
+      - test: "handle_error_with_circular_reference"
+        scenario: "Exception that references itself"
+        expected: "Should not cause infinite loop in traceback"
+    
+    callback_edge_cases:
+      - test: "callback_raises_exception"
+        scenario: "Callback function throws error"
+        expected: "Original error handling completes, callback error logged"
+      
+      - test: "callback_modifies_message"
+        scenario: "Callback attempts to modify the message"
+        expected: "Message remains immutable"
+    
+    library_specific_edge_cases:
+      - test: "unknown_library_name"
+        scenario: "Library name not in predefined list"
+        expected: "Uses generic format with library name"
+      
+      - test: "malformed_library_error"
+        scenario: "Exception without string representation"
+        expected: "Handles gracefully with fallback"
+      
+      - test: "multiple_pattern_matches"
+        scenario: "Error matches multiple patterns"
+        expected: "First match takes precedence"
+
+  phase_4_improve_test_structure:
+    organization:
+      - action: "Split into multiple test classes"
+        structure:
+          - "TestHandleError - Core error handling function"
+          - "TestHandleExternalLibraryError - Library-specific handling"
+          - "TestErrorMessageMaps - Mapping dictionaries"
+          - "TestCommonErrorMessages - Static message retrieval"
+      
+      - action: "Use parameterized tests"
+        targets:
+          - "Exception type to message mapping"
+          - "Library name to error pattern matching"
+          - "Source to context mapping"
+      
+      - action: "Add test fixtures"
+        fixtures:
+          - "Common exception instances"
+          - "Mock parent widgets"
+          - "Test callbacks"
+    
+    assertions:
+      - action: "Replace weak assertions"
+        changes:
+          - "assertIn → assertEqual for exact message matching"
+          - "Add custom assertion messages for debugging"
+          - "Verify complete return values, not just types"
+      
+      - action: "Add comprehensive checks"
+        checks:
+          - "Verify message format and content"
+          - "Check all side effects occurred"
+          - "Validate state after error handling"
+    
+    documentation:
+      - action: "Add docstrings to all tests"
+        format: |
+          """Test that [specific behavior] when [condition].
+          
+          This verifies that [component] correctly [action]
+          when [scenario], ensuring [expected outcome].
+          """
+
+  phase_5_test_implementation:
+    example_improved_tests:
+      - name: "test_handle_error_maps_known_exceptions"
+        approach: |
+          @parameterized.expand([
+              (FileNotFoundError("/path"), "could not be found"),
+              (PermissionError("denied"), "don't have permission"),
+              (ConnectionError("refused"), "connect to the server"),
+          ])
+          def test_handle_error_maps_known_exceptions(self, error, expected_msg):
+              with self.capture_logs() as logs:
+                  result = handle_error(error, show_dialog=False)
+                  self.assertEqual(expected_msg in result, True)
+                  self.verify_log_level(logs, error)
+      
+      - name: "test_handle_error_with_callback_exception"
+        approach: |
+          def test_handle_error_with_callback_exception(self):
+              def bad_callback(msg):
+                  raise ValueError("Callback failed")
+              
+              with self.capture_logs() as logs:
+                  result = handle_error(
+                      RuntimeError("test"),
+                      callback=bad_callback,
+                      show_dialog=False
+                  )
+                  # Original error handled correctly
+                  self.assertIn("test", result)
+                  # Callback error logged
+                  self.assert_log_contains(logs, "Callback failed")
+      
+      - name: "test_external_library_pattern_matching"
+        approach: |
+          def test_external_library_pattern_matching(self):
+              test_cases = [
+                  ("openai", "invalid api key", "Invalid or missing API key"),
+                  ("openai", "RATE LIMIT exceeded", "Rate limit exceeded"),
+                  ("yt-dlp", "Video unavailable", "video is unavailable"),
+                  ("ffmpeg", "ffmpeg not found", "FFmpeg executable not found"),
+              ]
+              
+              for lib, error_msg, expected in test_cases:
+                  with self.subTest(library=lib, error=error_msg):
+                      result = handle_external_library_error(
+                          Exception(error_msg),
+                          lib,
+                          show_dialog=False
+                      )
+                      self.assertIn(expected, result)
+
+test_utilities_needed:
+  - name: "LogCapture context manager"
+    purpose: "Capture and verify log records without mocking"
+    
+  - name: "ExceptionFactory"
+    purpose: "Generate various exception types with consistent messages"
+    
+  - name: "AssertionHelpers"
+    purpose: "Custom assertions for error messages and log verification"
+
+success_metrics:
+  - "Zero mocks for core logic testing"
+  - "100% branch coverage of error handling paths"
+  - "All exception types in ERROR_MESSAGE_MAP tested"
+  - "All library patterns tested with multiple cases"
+  - "Test execution time < 1 second"
+  - "No test exceeds 20 lines (excluding docstrings)"
+  - "Clear test names that describe behavior, not implementation"
+
+implementation_order:
+  1: "Remove module-level mocking and use proper test environment"
+  2: "Replace logger mock with log capture utility"
+  3: "Add parameterized tests for mappings"
+  4: "Add edge case tests for error conditions"
+  5: "Add integration tests with actual redact function"
+  6: "Split into focused test classes"
+  7: "Add comprehensive docstrings"

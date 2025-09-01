@@ -1,0 +1,262 @@
+target_file: "app/tests/test_widget_feedback_interaction.py"
+description: "Fix plan for widget feedback interaction tests to address anti-patterns and improve test quality"
+
+issues_identified:
+  - issue: "Excessive Mocking (Mockery Anti-Pattern)"
+    details:
+      - "Tests create widgets using __new__ to bypass __init__"
+      - "Mocks entire PyQt6 framework and all widget dependencies"
+      - "Patches filesystem operations globally"
+      - "Mocks thread classes and thread manager"
+      - "Creates fake module types and elaborate mock structures"
+    impact: "Tests don't validate actual widget behavior with feedback manager"
+
+  - issue: "Testing Implementation Details"
+    details:
+      - "Tests verify exact mock method call sequences"
+      - "Checks specific parameter values in mock calls"
+      - "Tests internal signal connections rather than behavior"
+    impact: "Tests are brittle and coupled to internal implementation"
+
+  - issue: "Happy Path Only"
+    details:
+      - "No error condition testing"
+      - "No edge case testing (null, empty values)"
+      - "No concurrent operation testing"
+      - "No resource cleanup verification"
+    impact: "Missing critical failure scenarios"
+
+  - issue: "Poor Test Structure"
+    details:
+      - "Complex setUp with 15+ lines of mock configuration"
+      - "Module-level try/except imports creating conditional test skipping"
+      - "No tearDown or cleanup methods"
+      - "Shared mock state across test methods"
+    impact: "Test pollution and maintenance difficulty"
+
+fix_strategy:
+  approach: "Test actual feedback behavior using real FeedbackManager with minimal mocking"
+  
+  principles:
+    - "Use real FeedbackManager instance (headless version from ui_utils/__init__.py)"
+    - "Test observable outcomes, not internal method calls"
+    - "Mock only external dependencies (file I/O, network)"
+    - "Focus on integration between widgets and feedback system"
+    - "Add comprehensive error and edge case coverage"
+
+refactored_test_structure:
+  test_classes:
+    - name: "TestMainTranscriptionWidgetFeedback"
+      description: "Test feedback interactions during transcription operations"
+      setup:
+        - "Create real MainTranscriptionWidget with minimal required setup"
+        - "Use real FeedbackManager instance"
+        - "Mock only file system checks and API key retrieval"
+      
+      test_cases:
+        - name: "test_transcription_starts_feedback_operations"
+          scenario: "When transcription starts with valid recording"
+          behaviors_to_test:
+            - "UI elements are disabled via feedback manager"
+            - "Spinner is activated for transcribe operation"
+            - "Progress dialog is created"
+            - "Status message is displayed"
+            - "Operation ID is tracked in active operations"
+          assertions:
+            - "Assert UI elements have setEnabled(False) called"
+            - "Assert spinner state is active"
+            - "Assert progress dialog exists in feedback manager"
+            - "Assert operation in active_operations set"
+
+        - name: "test_transcription_with_no_recording_selected"
+          scenario: "When transcription attempted without recording"
+          behaviors_to_test:
+            - "Error message is shown"
+            - "No feedback operations are started"
+            - "UI remains enabled"
+          assertions:
+            - "Assert error dialog shown with specific message"
+            - "Assert no spinners active"
+            - "Assert no progress dialogs created"
+            - "Assert UI elements remain enabled"
+
+        - name: "test_transcription_cancellation_cleans_up_feedback"
+          scenario: "When user cancels ongoing transcription"
+          behaviors_to_test:
+            - "Spinner is stopped"
+            - "Progress dialog is closed"
+            - "UI elements are re-enabled"
+            - "Operation removed from active operations"
+          assertions:
+            - "Assert spinner state is inactive"
+            - "Assert progress dialog removed"
+            - "Assert UI elements have setEnabled(True) called"
+            - "Assert operation not in active_operations"
+
+        - name: "test_transcription_error_cleans_up_feedback"
+          scenario: "When transcription fails with exception"
+          behaviors_to_test:
+            - "All feedback is stopped on error"
+            - "Error message is displayed"
+            - "UI is restored to enabled state"
+          assertions:
+            - "Assert error message shown"
+            - "Assert all spinners stopped"
+            - "Assert all progress dialogs closed"
+            - "Assert UI fully re-enabled"
+
+        - name: "test_concurrent_transcription_attempts_blocked"
+          scenario: "When transcription started while another is running"
+          behaviors_to_test:
+            - "Second transcription is prevented"
+            - "Warning message shown to user"
+            - "First operation continues unaffected"
+          assertions:
+            - "Assert warning about ongoing operation"
+            - "Assert first operation still active"
+            - "Assert no additional spinners/progress started"
+
+        - name: "test_transcription_progress_updates"
+          scenario: "When transcription reports progress"
+          behaviors_to_test:
+            - "Progress dialog updates with percentage"
+            - "Status messages update"
+            - "Progress parsing from chunk messages"
+          assertions:
+            - "Assert progress value changes"
+            - "Assert progress message updates"
+            - "Assert correct percentage calculation"
+
+    - name: "TestControlPanelWidgetFeedback"
+      description: "Test feedback interactions during YouTube operations"
+      setup:
+        - "Create real ControlPanelWidget with minimal setup"
+        - "Use real FeedbackManager instance"
+        - "Mock only URL validation and API checks"
+      
+      test_cases:
+        - name: "test_youtube_submit_starts_download_feedback"
+          scenario: "When valid YouTube URL is submitted"
+          behaviors_to_test:
+            - "UI elements disabled during download"
+            - "Progress dialog created for download"
+            - "Status message shows URL being processed"
+            - "YouTube container is hidden"
+          assertions:
+            - "Assert YouTube UI elements disabled"
+            - "Assert progress dialog with 'youtube_download' ID"
+            - "Assert status message contains truncated URL"
+            - "Assert container visibility changed"
+
+        - name: "test_youtube_submit_with_empty_url"
+          scenario: "When submit clicked with empty URL field"
+          behaviors_to_test:
+            - "Error message shown"
+            - "No feedback operations started"
+            - "UI remains in ready state"
+          assertions:
+            - "Assert error about empty URL"
+            - "Assert no progress dialogs created"
+            - "Assert UI elements remain enabled"
+
+        - name: "test_youtube_submit_with_invalid_url"
+          scenario: "When invalid URL is submitted"
+          behaviors_to_test:
+            - "Validation error shown"
+            - "No download initiated"
+            - "Field remains editable for correction"
+          assertions:
+            - "Assert validation error message"
+            - "Assert URL field still enabled"
+            - "Assert no download thread started"
+
+        - name: "test_youtube_download_cancellation"
+          scenario: "When user cancels YouTube download"
+          behaviors_to_test:
+            - "Download thread is cancelled"
+            - "Progress dialog closed"
+            - "UI restored to ready state"
+            - "Container shown again"
+          assertions:
+            - "Assert download thread cancel called"
+            - "Assert progress dialog removed"
+            - "Assert UI elements re-enabled"
+            - "Assert container visible"
+
+        - name: "test_youtube_progress_percentage_extraction"
+          scenario: "When download reports percentage progress"
+          behaviors_to_test:
+            - "Progress percentage extracted from message"
+            - "Progress dialog updated with value"
+            - "Status messages displayed"
+          assertions:
+            - "Assert correct percentage parsing"
+            - "Assert progress dialog value updated"
+            - "Assert status contains progress info"
+
+        - name: "test_youtube_download_error_recovery"
+          scenario: "When YouTube download fails"
+          behaviors_to_test:
+            - "Error message displayed"
+            - "All feedback stopped"
+            - "UI restored for retry"
+            - "Container shown for new attempt"
+          assertions:
+            - "Assert error message with details"
+            - "Assert progress dialog closed"
+            - "Assert UI fully re-enabled"
+            - "Assert ready for new submission"
+
+    - name: "TestFeedbackManagerIntegration"
+      description: "Test FeedbackManager state management across operations"
+      setup:
+        - "Use real FeedbackManager instance"
+        - "Create mock UI elements with isEnabled/setEnabled methods"
+      
+      test_cases:
+        - name: "test_nested_operations_maintain_busy_state"
+          scenario: "When multiple operations start/finish"
+          behaviors_to_test:
+            - "UI stays disabled until all operations complete"
+            - "Operation tracking is accurate"
+            - "Proper cleanup on all completions"
+          assertions:
+            - "Assert UI disabled during any operation"
+            - "Assert UI only enabled when all finish"
+            - "Assert operation set properly maintained"
+
+        - name: "test_feedback_manager_stop_all_feedback"
+          scenario: "When stop_all_feedback is called"
+          behaviors_to_test:
+            - "All spinners stopped"
+            - "All progress dialogs closed"
+            - "All UI elements re-enabled"
+            - "State fully reset"
+          assertions:
+            - "Assert no active spinners"
+            - "Assert no progress dialogs"
+            - "Assert UI state restored"
+            - "Assert active_operations empty"
+
+implementation_notes:
+  - "Remove all __new__ widget creation - use proper initialization"
+  - "Remove module-level PyQt6 mocking"
+  - "Use headless FeedbackManager from ui_utils/__init__.py"
+  - "Create minimal mock UI elements with just isEnabled/setEnabled"
+  - "Focus on state changes and observable behavior"
+  - "Add parameterized tests for similar scenarios"
+  - "Ensure proper cleanup in tearDown methods"
+  - "Remove conditional imports and @skipUnless decorators"
+  - "Test actual error paths, not just happy paths"
+  - "Verify resource cleanup and state restoration"
+
+success_metrics:
+  - "Zero use of __new__ for widget creation"
+  - "Less than 5 mock patches total"
+  - "All test methods under 20 lines"
+  - "100% of test assertions check behavior, not mock calls"
+  - "At least 40% of tests cover error scenarios"
+  - "No module-level mocking or patching"
+  - "Tests run in under 1 second total"
+  - "Clear test names describing scenarios"
+  - "No shared state between test methods"

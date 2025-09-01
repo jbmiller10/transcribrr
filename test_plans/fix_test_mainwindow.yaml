@@ -1,0 +1,204 @@
+target_file: "/home/john/transcribrr/app/tests/test_mainwindow.py"
+issues_identified:
+  - issue: "Excessive mocking - creates fake module types and widget hierarchies"
+    severity: "critical"
+    description: "Lines 44-63 create fake module types in sys.modules, preventing real imports"
+  - issue: "Testing implementation details instead of behavior"
+    severity: "high"
+    description: "Tests verify Qt connection types and exact mock call sequences rather than actual behavior"
+  - issue: "Class-level setup modifies global state"
+    severity: "high"
+    description: "setUpClass modifies sys.modules globally, affecting other tests"
+  - issue: "70+ line test methods with complex mock setups"
+    severity: "medium"
+    description: "Tests like test_init_ui_connects_signals and test_on_new_file_success_flow are too complex"
+  - issue: "Happy path only - missing error scenarios"
+    severity: "high"
+    description: "No tests for concurrent access, resource cleanup, edge cases, or system failures"
+  - issue: "Fake signal implementations instead of real Qt signals"
+    severity: "high"
+    description: "DummySignal class reimplements Qt signal behavior instead of using real signals"
+
+fixes_required:
+  
+  1_remove_excessive_mocking:
+    description: "Remove module-level mocking and use Qt's headless mode"
+    changes:
+      - action: "Remove lines 44-63 that create fake module types"
+        reason: "These prevent testing real behavior and create brittle tests"
+      - action: "Remove DummySignal class (lines 14-27)"
+        reason: "Use real Qt signals or proper test doubles"
+      - action: "Use QT_QPA_PLATFORM=offscreen for headless testing"
+        reason: "Qt provides built-in headless mode for testing"
+      - action: "Mock only external boundaries (file I/O, network, ML models)"
+        reason: "Test real Qt behavior and widget interactions"
+    
+  2_test_actual_behavior:
+    description: "Focus on testing outcomes rather than implementation"
+    changes:
+      - action: "Remove tests that verify mock.assert_called_with patterns"
+        reason: "These test implementation, not behavior"
+      - action: "Test that widgets are created and visible"
+        reason: "Verify actual UI state"
+      - action: "Test that database records are created/updated"
+        reason: "Use in-memory SQLite to verify actual database operations"
+      - action: "Test that status messages appear correctly"
+        reason: "Check actual status bar content, not just method calls"
+      - action: "Test signal emission and reception"
+        reason: "Use Qt's signal spies to verify actual signal behavior"
+  
+  3_add_error_cases:
+    description: "Add comprehensive error handling tests"
+    new_tests:
+      - test_name: "test_window_creation_with_invalid_screen_geometry"
+        scenario: "When QApplication.primaryScreen() returns None or invalid geometry"
+        expected: "Window uses default size and position"
+      
+      - test_name: "test_concurrent_file_processing"
+        scenario: "Multiple files processed simultaneously via on_new_file"
+        expected: "All files processed correctly without race conditions"
+      
+      - test_name: "test_database_connection_lost_during_operation"
+        scenario: "Database connection drops while processing file"
+        expected: "Error handled gracefully, user notified, no crash"
+      
+      - test_name: "test_invalid_file_paths"
+        scenario: "on_new_file called with None, empty string, non-existent file"
+        expected: "Appropriate error messages, no crash"
+      
+      - test_name: "test_memory_cleanup_on_close"
+        scenario: "Window closed with active operations"
+        expected: "All resources cleaned up, no memory leaks"
+      
+      - test_name: "test_widget_initialization_failures"
+        scenario: "Individual widget creation fails"
+        expected: "Specific error messages, graceful degradation"
+      
+      - test_name: "test_signal_disconnection_errors"
+        scenario: "Attempting to disconnect already disconnected signals"
+        expected: "TypeError caught and handled silently"
+  
+  4_add_edge_cases:
+    description: "Test boundary conditions and unusual inputs"
+    new_tests:
+      - test_name: "test_extremely_long_filenames"
+        scenario: "File path with 500+ characters"
+        expected: "Truncated appropriately in UI, full path in database"
+      
+      - test_name: "test_unicode_filenames"
+        scenario: "File paths with emoji and non-ASCII characters"
+        expected: "Handled correctly throughout the system"
+      
+      - test_name: "test_rapid_file_additions"
+        scenario: "100 files added in quick succession"
+        expected: "All processed, UI remains responsive"
+      
+      - test_name: "test_zero_duration_files"
+        scenario: "Audio file with 0 second duration"
+        expected: "Handled appropriately, shown as 00:00:00"
+      
+      - test_name: "test_corrupted_audio_files"
+        scenario: "calculate_duration raises various exceptions"
+        expected: "Each exception type handled appropriately"
+  
+  5_improve_test_structure:
+    description: "Reorganize tests for clarity and maintainability"
+    changes:
+      - action: "Split into multiple test classes by functionality"
+        new_classes:
+          - "TestMainWindowInitialization"
+          - "TestMainWindowFileHandling"
+          - "TestMainWindowUIInteractions"
+          - "TestMainWindowErrorHandling"
+      
+      - action: "Extract common setup to helper methods"
+        helpers:
+          - "create_test_window() -> MainWindow"
+          - "create_test_file(name, duration) -> str"
+          - "assert_status_message(window, expected_text)"
+          - "simulate_database_error(error_type)"
+      
+      - action: "Use setUp/tearDown consistently"
+        setup_pattern: |
+          def setUp(self):
+              self.app = QApplication.instance() or QApplication([])
+              self.window = None
+          
+          def tearDown(self):
+              if self.window:
+                  self.window.close()
+                  self.window.deleteLater()
+              QApplication.processEvents()
+      
+      - action: "Limit test methods to 20 lines maximum"
+        approach: "Extract complex setup to helper methods"
+  
+  6_use_proper_test_doubles:
+    description: "Replace elaborate mocks with appropriate test doubles"
+    changes:
+      - action: "Create minimal test widget classes"
+        example: |
+          class TestControlPanel(QWidget):
+              file_ready_for_processing = pyqtSignal(str)
+              
+              def trigger_file_ready(self, path):
+                  self.file_ready_for_processing.emit(path)
+      
+      - action: "Use in-memory SQLite for database tests"
+        approach: "DatabaseManager(':memory:') for real database behavior"
+      
+      - action: "Create test fixtures for audio files"
+        fixtures:
+          - "valid_audio.wav - small valid WAV file"
+          - "corrupted_audio.wav - invalid file format"
+          - "empty_audio.wav - valid format, 0 duration"
+  
+  7_add_integration_tests:
+    description: "Test real component interactions"
+    new_tests:
+      - test_name: "test_full_file_processing_flow"
+        scenario: "File added, processed, displayed in UI"
+        approach: "Use real widgets with minimal mocking"
+      
+      - test_name: "test_widget_communication"
+        scenario: "Signals flow correctly between widgets"
+        approach: "Create real widgets, verify signal connections work"
+      
+      - test_name: "test_database_widget_synchronization"
+        scenario: "Database updates reflected in UI widgets"
+        approach: "Use in-memory database, verify UI updates"
+
+implementation_order:
+  week_1:
+    - "Remove module-level mocking and fake module types"
+    - "Split test file into multiple focused test classes"
+    - "Implement proper setUp/tearDown"
+    - "Remove DummySignal, use real Qt signals"
+  
+  week_2:
+    - "Add error handling tests"
+    - "Add edge case tests"
+    - "Implement test helpers and fixtures"
+    - "Reduce mock usage to <30%"
+  
+  week_3:
+    - "Add integration tests"
+    - "Ensure all tests run in <1 second each"
+    - "Add performance tests for critical paths"
+    - "Document test patterns for team"
+
+success_metrics:
+  - "No sys.modules manipulation"
+  - "No test method exceeds 20 lines"
+  - "Mock usage < 30% of test code"
+  - "All public methods have error tests"
+  - "Test execution time < 5 seconds total"
+  - "100% of tests use real Qt signals"
+  - "Database tests use in-memory SQLite"
+  - "Clear separation between unit and integration tests"
+
+notes:
+  - "Priority: Remove module stubbing first - it's blocking real testing"
+  - "Consider using pytest-qt for better Qt testing support"
+  - "Document why certain mocks are necessary (e.g., ML models)"
+  - "Create shared test utilities module for common patterns"

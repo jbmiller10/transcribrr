@@ -42,6 +42,32 @@ class TestResourcePath(unittest.TestCase):
             self.assertEqual(base, expected)
             self.assertEqual(resource_path("asset.dat"), os.path.join(expected, "asset.dat"))
 
+    def test_empty_relative_path_returns_base(self):
+        # Empty string returns the base path (os.path.join(base, "") == base)
+        base = resource_path()
+        self.assertEqual(os.path.normpath(resource_path("")), os.path.normpath(base))
+
+    def test_absolute_path_is_preserved(self):
+        # If an absolute path is passed, os.path.join returns the absolute path
+        abs_path = "/tmp/abs/file.txt" if os.name != "nt" else "C:/abs/file.txt"
+        base = resource_path()
+        out = resource_path(abs_path)
+        self.assertEqual(out, abs_path)
+        self.assertEqual(out, os.path.join(base, abs_path))
+
+    def test_unicode_paths(self):
+        rel = "unicodé/файл.txt"
+        base = resource_path()
+        out = resource_path(rel)
+        self.assertEqual(out, os.path.join(base, rel))
+
+    def test_traversal_sequences_are_joined(self):
+        # Function does not normalize; verify simple join happens
+        rel = os.path.join("..", "..", "icons", "logo.png")
+        base = resource_path()
+        out = resource_path(rel)
+        self.assertEqual(out, os.path.join(base, rel))
+
 
 if __name__ == "__main__":
     unittest.main()

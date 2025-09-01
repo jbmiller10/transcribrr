@@ -1,0 +1,199 @@
+target_file: "app/tests/test_spinner_no_gui.py"
+fix_summary: "Transform from mock-heavy implementation testing to behavior-focused unit tests"
+
+identified_issues:
+  - issue: "Excessive Mocking (Mockery Anti-Pattern)"
+    description: "Mocks all PyQt6 components instead of using headless fallback implementation"
+    lines: [21-28, 64-68]
+    severity: "high"
+    
+  - issue: "Testing Implementation Details"
+    description: "Verifies internal dictionary states rather than observable behavior"
+    lines: [51, 56, 62]
+    severity: "high"
+    
+  - issue: "Conjoined Twins Anti-Pattern"
+    description: "Neither proper unit nor integration test - mixes concerns"
+    severity: "medium"
+    
+  - issue: "Happy Path Only"
+    description: "No error scenarios, edge cases, or concurrent access testing"
+    severity: "high"
+    
+  - issue: "Poor Test Structure"
+    description: "Tests multiple behaviors in single methods without clear separation"
+    severity: "medium"
+
+proposed_fixes:
+
+  1_remove_excessive_mocking:
+    problem: "Current tests mock PyQt6 components unnecessarily"
+    solution: |
+      - Remove all @patch decorators for PyQt6 components
+      - Use the headless fallback implementation in app/ui_utils/__init__.py
+      - The fallback already provides a no-GUI implementation for testing
+    implementation:
+      - Remove lines 21-28 and 64-68 (patch decorators)
+      - Remove mock parameter arguments from test methods
+      - Directly instantiate SpinnerManager and FeedbackManager classes
+
+  2_test_actual_behavior:
+    problem: "Tests check internal dictionary states instead of behavior"
+    solution: |
+      - Test public API methods and their return values
+      - Test observable state changes through public methods only
+      - Focus on behavior contracts, not implementation
+    new_test_cases:
+      - "Test spinner lifecycle (create, start, stop, query state)"
+      - "Test multiple spinner management"
+      - "Test operation tracking in FeedbackManager"
+      - "Test UI busy state management"
+      - "Test cleanup behaviors"
+
+  3_add_error_scenarios:
+    problem: "No error handling or edge case testing"
+    solution: "Add comprehensive error and edge case coverage"
+    new_test_cases:
+      - test_toggle_nonexistent_spinner:
+          description: "Verify graceful handling of operations on non-existent spinners"
+          expected: "Returns False, no exceptions raised"
+      
+      - test_concurrent_spinner_operations:
+          description: "Test rapid start/stop cycles on same spinner"
+          expected: "Maintains consistent state"
+      
+      - test_duplicate_spinner_creation:
+          description: "Attempt to create spinner with existing name"
+          expected: "Either replaces or raises appropriate error"
+      
+      - test_stop_already_inactive_spinner:
+          description: "Stop a spinner that's already stopped"
+          expected: "Returns True (idempotent behavior)"
+      
+      - test_empty_spinner_name:
+          description: "Create/toggle spinner with empty string name"
+          expected: "Handles gracefully or raises ValueError"
+      
+      - test_none_spinner_name:
+          description: "Pass None as spinner name"
+          expected: "Handles gracefully or raises TypeError"
+
+  4_add_edge_cases:
+    problem: "Missing boundary and edge case testing"
+    solution: "Add tests for boundary conditions"
+    new_test_cases:
+      - test_stop_all_spinners_with_empty_list:
+          description: "Call stop_all when no spinners exist"
+          expected: "No errors, method completes successfully"
+      
+      - test_stop_all_spinners_with_multiple_active:
+          description: "Stop multiple active spinners at once"
+          expected: "All spinners become inactive"
+      
+      - test_feedback_manager_operation_tracking:
+          description: "Test start/finish operation state management"
+          expected: "Tracks active operations correctly"
+      
+      - test_ui_state_preservation:
+          description: "Test UI state saving and restoration"
+          expected: "Preserves and restores element states"
+      
+      - test_progress_dialog_lifecycle:
+          description: "Test progress dialog creation and cleanup"
+          expected: "Manages dialog lifecycle correctly"
+
+  5_improve_test_structure:
+    problem: "Tests combine multiple behaviors in single methods"
+    solution: "Split into focused, single-purpose test methods"
+    restructuring:
+      - Split test_spinner_creation into:
+        - test_create_spinner_success
+        - test_toggle_spinner_starts_inactive
+        - test_toggle_spinner_activates
+        - test_toggle_spinner_deactivates
+        - test_is_active_returns_correct_state
+      
+      - Split test_feedback_manager into:
+        - test_feedback_manager_creates_spinner_manager
+        - test_start_spinner_activates_and_tracks_operation
+        - test_stop_spinner_deactivates_and_cleans_operation
+        - test_start_nonexistent_spinner_returns_false
+
+  6_add_parameterized_tests:
+    problem: "Repetitive test patterns without parameterization"
+    solution: "Use parameterized tests for similar scenarios"
+    examples:
+      - test_spinner_states:
+          parameters: ["active", "inactive", "toggled_once", "toggled_twice"]
+          description: "Test various spinner state transitions"
+      
+      - test_invalid_inputs:
+          parameters: ["", None, [], {}, 123, float('inf')]
+          description: "Test handling of various invalid inputs"
+
+  7_add_integration_tests:
+    problem: "No tests for component interactions"
+    solution: "Add focused integration tests"
+    new_test_cases:
+      - test_spinner_operation_integration:
+          description: "Test spinner and operation tracking work together"
+          scenario: "Start spinner triggers operation, stop cleans up"
+      
+      - test_multiple_operations_ui_state:
+          description: "Test UI state with overlapping operations"
+          scenario: "Multiple operations affect same UI elements"
+      
+      - test_cleanup_on_stop_all:
+          description: "Test complete cleanup via stop_all_feedback"
+          scenario: "All spinners, operations, and UI states reset"
+
+test_organization:
+  test_classes:
+    - TestSpinnerManager:
+        focus: "SpinnerManager core functionality"
+        tests:
+          - "Spinner creation and lifecycle"
+          - "State management"
+          - "Error handling"
+          - "Edge cases"
+    
+    - TestFeedbackManager:
+        focus: "FeedbackManager orchestration"
+        tests:
+          - "Operation tracking"
+          - "UI state management"
+          - "Spinner integration"
+          - "Progress dialog management"
+    
+    - TestSpinnerFeedbackIntegration:
+        focus: "Component interaction"
+        tests:
+          - "Spinner-operation coordination"
+          - "Cleanup behaviors"
+          - "State consistency"
+
+implementation_guidelines:
+  - "Use self.subTest() for parameterized scenarios"
+  - "Each test method should be under 15 lines"
+  - "Use descriptive assertion messages for debugging"
+  - "No direct access to internal attributes (e.g., spinner_manager.spinners)"
+  - "Test through public API only"
+  - "Use setUp/tearDown for proper test isolation"
+  - "Document test purpose with clear docstrings"
+
+expected_improvements:
+  - "Reduction from ~115 lines to ~250-300 lines of focused tests"
+  - "Complete removal of PyQt6 mocking"
+  - "100% coverage of public API methods"
+  - "Error scenario coverage for all major functions"
+  - "Clear separation of unit and integration concerns"
+  - "Improved test maintainability and readability"
+
+success_metrics:
+  - "0 @patch decorators (currently 10)"
+  - "0 direct internal state checks"
+  - "15+ focused test methods (currently 2)"
+  - "100% public method coverage"
+  - "5+ error scenario tests"
+  - "3+ edge case tests"
+  - "Test execution under 1 second"

@@ -1,0 +1,254 @@
+test_file: test_transcription_controller.py
+current_issues:
+  - excessive_mocking: "Mocks 15+ entire frameworks at module level"
+  - implementation_testing: "Tests mock connections instead of transcription behavior"
+  - monolithic_structure: "Single monolithic test class with 40+ methods"
+  - mock_verification: "Tests verify internal method calls rather than outcomes"
+  - no_real_behavior_testing: "Never tests actual transcription logic or outcomes"
+
+fix_plan:
+  phase_1_remove_excessive_mocking:
+    description: "Remove module-level mocking and reduce mock surface area"
+    tasks:
+      - task: "Remove all module-level sys.modules mocking"
+        details:
+          - "Delete lines 10-55 that mock PyQt6, torch, transformers, etc."
+          - "Use targeted mocking only where absolutely necessary"
+          - "Mock only external I/O operations (file system, API calls)"
+        
+      - task: "Create minimal Qt test fixtures"
+        details:
+          - "Use Qt's offscreen mode (QT_QPA_PLATFORM=offscreen) instead of mocking"
+          - "Create real QObject instances for testing signal behavior"
+          - "Only mock TranscriptionThread if testing controller in isolation"
+      
+      - task: "Remove unnecessary mock attributes"
+        details:
+          - "Stop mocking internal Qt signal connections"
+          - "Don't mock logger unless testing error messages specifically"
+          - "Remove PropertyMock usage - test actual properties"
+
+  phase_2_test_actual_behavior:
+    description: "Focus tests on actual behavior and outcomes instead of mock calls"
+    tasks:
+      - task: "Test file validation behavior"
+        details:
+          - "Create actual test files in temp directory"
+          - "Test with real file sizes (small, medium, boundary cases)"
+          - "Verify actual error messages returned to user"
+          - "Test file permissions and access errors"
+        
+      - task: "Test configuration handling"
+        details:
+          - "Test how controller transforms config into thread arguments"
+          - "Verify default values are applied correctly"
+          - "Test invalid configuration handling"
+          - "Test configuration validation errors"
+      
+      - task: "Test signal behavior"
+        details:
+          - "Use Qt's signal spy or custom signal collectors"
+          - "Test signal emission order and timing"
+          - "Verify signal data content, not just emission"
+          - "Test signal propagation to connected slots"
+      
+      - task: "Test database interaction patterns"
+        details:
+          - "Use in-memory SQLite for database tests"
+          - "Test actual data persistence"
+          - "Verify transcript formatting logic"
+          - "Test database error handling"
+
+  phase_3_improve_test_structure:
+    description: "Split monolithic test class into focused, maintainable units"
+    tasks:
+      - task: "Split into multiple test classes by functionality"
+        new_classes:
+          - class_name: "TestTranscriptionControllerInit"
+            focus: "Constructor and initialization"
+            test_cases:
+              - "test_init_with_valid_db_manager"
+              - "test_init_without_parent"
+              - "test_signal_initialization"
+          
+          - class_name: "TestTranscriptionControllerValidation"
+            focus: "Input validation logic"
+            test_cases:
+              - "test_validate_valid_recording"
+              - "test_validate_null_recording"
+              - "test_validate_missing_file"
+              - "test_validate_oversized_file"
+              - "test_validate_file_permissions_error"
+              - "test_validate_corrupted_file_path"
+          
+          - class_name: "TestTranscriptionControllerConfiguration"
+            focus: "Configuration processing"
+            test_cases:
+              - "test_build_args_local_transcription"
+              - "test_build_args_api_transcription"
+              - "test_build_args_speaker_detection"
+              - "test_missing_api_keys"
+              - "test_invalid_config_values"
+              - "test_config_defaults"
+          
+          - class_name: "TestTranscriptionControllerExecution"
+            focus: "Transcription execution flow"
+            test_cases:
+              - "test_start_successful_flow"
+              - "test_start_validation_failure"
+              - "test_start_config_failure"
+              - "test_cancel_running_transcription"
+              - "test_cancel_no_active_transcription"
+          
+          - class_name: "TestTranscriptionControllerCallbacks"
+            focus: "Callback and signal handling"
+            test_cases:
+              - "test_progress_callback"
+              - "test_completion_callback"
+              - "test_error_callback"
+              - "test_finished_cleanup"
+              - "test_formatted_transcript_detection"
+
+      - task: "Reduce test method size"
+        details:
+          - "No test method should exceed 20 lines"
+          - "Extract common setup into helper methods"
+          - "Use parameterized tests for similar scenarios"
+
+  phase_4_add_missing_test_coverage:
+    description: "Add comprehensive error and edge case testing"
+    test_scenarios_to_add:
+      error_cases:
+        - name: "File system errors"
+          tests:
+            - "test_file_read_permission_denied"
+            - "test_file_deleted_during_transcription"
+            - "test_disk_full_during_save"
+            - "test_network_drive_disconnect"
+        
+        - name: "API errors"
+          tests:
+            - "test_api_key_revoked_during_transcription"
+            - "test_api_rate_limit_exceeded"
+            - "test_api_timeout"
+            - "test_api_malformed_response"
+        
+        - name: "Thread errors"
+          tests:
+            - "test_thread_creation_failure"
+            - "test_thread_unexpected_termination"
+            - "test_thread_memory_error"
+            - "test_thread_deadlock_prevention"
+        
+        - name: "Database errors"
+          tests:
+            - "test_database_connection_lost"
+            - "test_database_locked"
+            - "test_database_constraint_violation"
+            - "test_database_callback_exception"
+      
+      edge_cases:
+        - name: "Boundary conditions"
+          tests:
+            - "test_exactly_300mb_file"
+            - "test_empty_file"
+            - "test_unicode_filename"
+            - "test_very_long_file_path"
+        
+        - name: "Transcript edge cases"
+          tests:
+            - "test_empty_transcript"
+            - "test_very_long_transcript"
+            - "test_special_characters_in_transcript"
+            - "test_multiple_speaker_formats"
+        
+        - name: "Concurrency"
+          tests:
+            - "test_multiple_simultaneous_starts"
+            - "test_cancel_during_database_update"
+            - "test_rapid_start_cancel_cycles"
+            - "test_signal_emission_under_load"
+
+  phase_5_improve_test_quality:
+    description: "Enhance test quality and maintainability"
+    improvements:
+      - task: "Add descriptive test docstrings"
+        details:
+          - "Each test should have a clear docstring explaining what it tests"
+          - "Include expected behavior and edge cases covered"
+      
+      - task: "Use specific assertions"
+        details:
+          - "Replace assertTrue/False with specific assertions"
+          - "Add custom assertion messages for debugging"
+          - "Use assertRaises for exception testing"
+      
+      - task: "Add test fixtures"
+        details:
+          - "Create reusable test recordings"
+          - "Create standard test configurations"
+          - "Create mock audio file generators"
+      
+      - task: "Implement proper cleanup"
+        details:
+          - "Ensure all threads are terminated in tearDown"
+          - "Clean up temporary files"
+          - "Reset singleton states properly"
+          - "Close database connections"
+
+implementation_guidelines:
+  priority_order:
+    1: "Remove module-level mocking (Phase 1)"
+    2: "Split test classes (Phase 3)"
+    3: "Add error cases (Phase 4)"
+    4: "Test actual behavior (Phase 2)"
+    5: "Improve quality (Phase 5)"
+  
+  best_practices:
+    - "Use dependency injection instead of mocking imports"
+    - "Test public interface, not private methods"
+    - "Mock at system boundaries only"
+    - "Prefer real objects to mocks when possible"
+    - "Each test should test one behavior"
+    - "Tests should be independent and repeatable"
+  
+  anti_patterns_to_avoid:
+    - "Don't mock the system under test"
+    - "Don't test mock behavior"
+    - "Don't use module-level state modification"
+    - "Don't create tests that depend on test execution order"
+    - "Don't test implementation details"
+    - "Don't use magic values without context"
+
+expected_outcomes:
+  metrics:
+    - current_lines: 690
+    - target_lines: "< 400"
+    - current_mocking_percentage: "~90%"
+    - target_mocking_percentage: "< 20%"
+    - current_test_classes: 1
+    - target_test_classes: 5
+    - error_coverage: "increase from ~20% to 80%"
+  
+  quality_improvements:
+    - "Tests will actually verify transcription controller behavior"
+    - "Tests will be more maintainable and less brittle"
+    - "Tests will provide meaningful failure messages"
+    - "Tests will catch real bugs instead of mock misconfigurations"
+    - "Test execution will be faster without heavy mocking"
+
+timeline:
+  week_1:
+    - "Remove module-level mocking"
+    - "Split into 5 focused test classes"
+    - "Reduce each test to < 20 lines"
+  
+  week_2:
+    - "Add all error case tests"
+    - "Add edge case tests"
+    - "Implement proper test fixtures"
+  
+  week_3:
+    - "Refactor to test actual behavior"
+    - "Add integration tests with real components"
+    - "Final cleanup and documentation"

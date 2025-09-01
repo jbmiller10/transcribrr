@@ -1,0 +1,279 @@
+target_file: "app/ui_utils_legacy.py"
+test_file: "app/tests/test_feedback_manager.py"
+
+# Current Issues in test_feedback_manager.py
+current_issues:
+  - excessive_mocking:
+      description: "85 lines of PyQt6 stubbing before any tests"
+      impact: "Tests don't validate actual Qt behavior, only mock interactions"
+      lines: "6-91"
+  - implementation_details_testing:
+      description: "Tests check internal state dictionaries directly"
+      examples:
+        - "Tests ui_state dictionary directly (lines 125-128)"
+        - "Tests active_operations set directly (lines 131, 138, 140)"
+      impact: "Brittle tests that break if internal implementation changes"
+  - incomplete_coverage:
+      description: "Only 5 of 15+ public methods tested"
+      missing_methods:
+        - "start_progress"
+        - "update_progress"
+        - "finish_progress"
+        - "close_progress"
+        - "show_status"
+        - "spinner interactions with operations"
+      impact: "Major functionality completely untested"
+  - missing_error_cases:
+      description: "No error handling or edge cases tested"
+      missing_scenarios:
+        - "Invalid operation IDs"
+        - "Null/None UI elements"
+        - "Exception during UI restoration"
+        - "Concurrent operation conflicts"
+        - "Progress dialog failures"
+
+# Proposed Fix Strategy
+fix_strategy:
+  phase_1_remove_excessive_mocking:
+    approach: "Use Qt's headless mode instead of stubbing entire framework"
+    steps:
+      - "Remove 85 lines of module stubbing (lines 6-91)"
+      - "Set QT_QPA_PLATFORM=offscreen environment variable"
+      - "Import real PyQt6 modules with try/except for CI environments"
+      - "Use Qt test utilities for widget testing"
+    benefits:
+      - "Tests validate actual Qt behavior"
+      - "Catches real Qt-related bugs"
+      - "Reduces test file size by 40%"
+
+  phase_2_test_behavior_not_implementation:
+    approach: "Focus on observable behavior and public API contracts"
+    changes:
+      - old: "self.assertIn(self.elem1, self.fm.ui_state)"
+        new: "self.assertFalse(self.elem1.isEnabled())"
+      - old: "self.assertEqual(self.fm.active_operations, {'op1', 'op2'})"
+        new: "Verify UI remains disabled when multiple operations active"
+      - old: "self.assertFalse(self.fm.ui_state)"
+        new: "Verify all UI elements restored to original state"
+    principles:
+      - "Never access private attributes or internal state"
+      - "Test through public methods only"
+      - "Verify outcomes, not method calls"
+
+  phase_3_add_comprehensive_coverage:
+    new_test_cases:
+      - test_spinner_lifecycle:
+          description: "Tests spinner start/stop with operation tracking"
+          scenarios:
+            - "Start spinner creates operation"
+            - "Stop spinner finishes operation"
+            - "Multiple spinners track independently"
+            - "Invalid spinner name handling"
+      
+      - test_progress_dialog_management:
+          description: "Tests progress dialog lifecycle"
+          scenarios:
+            - "Create progress dialog with operation"
+            - "Update progress value and message"
+            - "Auto-close on completion"
+            - "Manual close removes operation"
+            - "Cancel callback execution"
+      
+      - test_nested_operations:
+          description: "Tests complex operation nesting"
+          scenarios:
+            - "Parent operation with child operations"
+            - "UI stays disabled until all complete"
+            - "Partial completion handling"
+      
+      - test_error_resilience:
+          description: "Tests error handling paths"
+          scenarios:
+            - "Widget.setEnabled() throws exception"
+            - "Widget.isEnabled() throws exception"
+            - "Progress dialog close() fails"
+            - "Null parent widget handling"
+      
+      - test_concurrent_feedback_types:
+          description: "Tests mixing spinners and progress"
+          scenarios:
+            - "Spinner and progress for same operation"
+            - "Multiple progress dialogs simultaneously"
+            - "Stop all with mixed feedback types"
+
+  phase_4_improve_test_structure:
+    refactoring:
+      - split_test_classes:
+          - "TestFeedbackManagerOperations" 
+          - "TestFeedbackManagerSpinners"
+          - "TestFeedbackManagerProgress"
+          - "TestFeedbackManagerErrorHandling"
+      - use_parameterized_tests:
+          description: "Reduce duplication with parameterized tests"
+          example: "Test multiple operation IDs with same behavior"
+      - add_test_fixtures:
+          - "create_test_widgets() - reusable test widgets"
+          - "create_mock_parent() - parent with statusBar"
+      - improve_assertions:
+          - "Use specific assertions with messages"
+          - "Verify state transitions, not just final state"
+
+# Implementation Plan
+implementation:
+  step_1_setup_proper_testing_environment:
+    code: |
+      import os
+      import sys
+      import unittest
+      from unittest.mock import Mock, patch, MagicMock
+      
+      # Set headless mode for CI
+      os.environ['QT_QPA_PLATFORM'] = 'offscreen'
+      
+      try:
+          from PyQt6.QtWidgets import QWidget, QProgressDialog, QStatusBar
+          from PyQt6.QtCore import QTimer
+          PYQT_AVAILABLE = True
+      except ImportError:
+          PYQT_AVAILABLE = False
+          # Minimal shims only for CI - not full stubbing
+      
+      from app.ui_utils import FeedbackManager, SpinnerManager
+
+  step_2_create_test_helpers:
+    code: |
+      class TestWidget(QWidget if PYQT_AVAILABLE else object):
+          """Test widget with controllable enabled state"""
+          def __init__(self, enabled=True):
+              super().__init__() if PYQT_AVAILABLE else None
+              self._enabled = enabled
+              self.enable_history = []
+              
+          def isEnabled(self):
+              return self._enabled
+              
+          def setEnabled(self, state):
+              self.enable_history.append(state)
+              self._enabled = state
+
+  step_3_test_actual_behavior:
+    code: |
+      def test_operation_lifecycle_with_ui_management(self):
+          """Test complete operation lifecycle affects UI correctly"""
+          widget1 = TestWidget(enabled=True)
+          widget2 = TestWidget(enabled=False)
+          
+          # Start operation should disable UI
+          self.fm.set_ui_busy(True, [widget1, widget2])
+          self.fm.start_operation("test_op")
+          
+          # Verify UI disabled
+          self.assertFalse(widget1.isEnabled())
+          self.assertFalse(widget2.isEnabled())
+          
+          # Finish operation should restore original states
+          self.fm.finish_operation("test_op")
+          self.assertTrue(widget1.isEnabled())
+          self.assertFalse(widget2.isEnabled())
+          
+          # Verify state transition history
+          self.assertEqual(widget1.enable_history, [False, True])
+          self.assertEqual(widget2.enable_history, [False])
+
+  step_4_add_error_cases:
+    code: |
+      def test_handles_widget_exceptions_gracefully(self):
+          """Test resilience when widgets throw exceptions"""
+          broken_widget = Mock()
+          broken_widget.isEnabled.side_effect = AttributeError("No isEnabled")
+          broken_widget.setEnabled.side_effect = RuntimeError("Cannot set")
+          
+          # Should not crash when widget methods fail
+          self.fm.set_ui_busy(True, [broken_widget])
+          self.fm.start_operation("error_test")
+          self.fm.finish_operation("error_test")
+          
+          # Verify attempted to interact despite errors
+          broken_widget.isEnabled.assert_called()
+          broken_widget.setEnabled.assert_called()
+
+  step_5_test_integration_points:
+    code: |
+      @unittest.skipUnless(PYQT_AVAILABLE, "Requires PyQt6")
+      def test_progress_dialog_integration(self):
+          """Test real progress dialog creation and management"""
+          parent = QWidget()
+          fm = FeedbackManager(parent)
+          
+          # Start progress operation
+          dialog = fm.start_progress(
+              "download", 
+              "Downloading", 
+              "Downloading file...",
+              maximum=100
+          )
+          
+          # Verify dialog created and operation tracked
+          self.assertIsInstance(dialog, QProgressDialog)
+          self.assertIn("download", fm.progress_dialogs)
+          
+          # Update progress
+          fm.update_progress("download", 50, "50% complete")
+          self.assertEqual(dialog.value(), 50)
+          
+          # Finish with auto-close
+          fm.finish_progress("download", "Complete!", auto_close=True)
+          # Dialog should be scheduled for removal
+
+# Expected Outcomes
+expected_outcomes:
+  test_quality:
+    - "Reduced from 192 to ~250 lines with full coverage"
+    - "Tests actual Qt behavior when available"
+    - "Graceful fallback for CI environments"
+    - "No direct access to internal state"
+  
+  coverage_improvements:
+    - "100% public method coverage (up from 33%)"
+    - "Error path coverage for all methods"
+    - "Edge case handling validated"
+    - "Integration points tested"
+  
+  maintainability:
+    - "Tests won't break if internal implementation changes"
+    - "Clear test names describe behavior being tested"
+    - "Parameterized tests reduce duplication"
+    - "Modular test structure with focused classes"
+
+# Metrics to Track
+success_metrics:
+  before:
+    lines_of_code: 192
+    methods_tested: 5
+    methods_total: 15
+    mock_lines: 85
+    test_methods: 5
+    error_cases: 0
+  
+  after_target:
+    lines_of_code: 250
+    methods_tested: 15
+    methods_total: 15
+    mock_lines: 10
+    test_methods: 20
+    error_cases: 8
+
+# Priority Order
+priority:
+  high:
+    - "Remove excessive PyQt6 stubbing"
+    - "Add progress dialog tests"
+    - "Add error handling tests"
+  medium:
+    - "Test spinner lifecycle"
+    - "Stop testing internal state"
+    - "Add concurrent operation tests"
+  low:
+    - "Parameterize similar tests"
+    - "Split into multiple test classes"
+    - "Add performance tests"

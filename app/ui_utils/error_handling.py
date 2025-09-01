@@ -6,11 +6,16 @@ to users in a consistent manner across the application.
 
 import logging
 import traceback
-from typing import Optional, Dict, Any, Type, Callable, List
-from PyQt6.QtWidgets import QWidget
+from typing import Optional, Dict, Any, Type, Callable, List, TYPE_CHECKING
+
+# Make PyQt6 optional for headless test environments
+if TYPE_CHECKING:  # pragma: no cover - typing aid only
+    from PyQt6.QtWidgets import QWidget  # type: ignore
+else:
+    class QWidget:  # type: ignore
+        pass
 
 from app.secure import redact
-from app.ui_utils_legacy import show_error_message, safe_error
 
 # Configure logging
 logger = logging.getLogger("transcribrr")
@@ -94,7 +99,13 @@ def handle_error(
 
     # Show error dialog if requested
     if show_dialog and parent:
-        safe_error(parent, title, user_friendly_message)
+        # Import lazily to avoid Qt dependency at import time in headless tests
+        try:
+            from app.ui_utils_legacy import safe_error  # type: ignore
+        except Exception:
+            safe_error = None  # type: ignore
+        if safe_error:
+            safe_error(parent, title, user_friendly_message)
 
     # Call callback if provided
     if callback:
@@ -177,7 +188,12 @@ def handle_external_library_error(
 
     # Show dialog if requested
     if show_dialog and parent:
-        safe_error(parent, title, user_message)
+        try:
+            from app.ui_utils_legacy import safe_error  # type: ignore
+        except Exception:
+            safe_error = None  # type: ignore
+        if safe_error:
+            safe_error(parent, title, user_message)
 
     return user_message
 

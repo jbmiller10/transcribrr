@@ -578,8 +578,34 @@ class TestDatabaseWorker(unittest.TestCase):
     @patch('app.DatabaseManager.get_connection')
     def test_run_disconnect_error_in_cleanup(self, mock_get_conn):
         """Tests handling of disconnection errors in callback cleanup."""
-        # This test would be in DatabaseManager tests since disconnection happens there
-        pass
+        from app.DatabaseManager import DatabaseManager
+        mock_get_conn.return_value = self.mock_connection
+        # Patch DatabaseWorker to control signal behavior
+        with patch('app.DatabaseManager.DatabaseWorker') as mock_worker_cls:
+            worker = Mock()
+            # Signals with connect/disconnect
+            worker.operation_complete = Mock()
+            worker.error_occurred = Mock()
+            # Capture connected handler
+            captured_handler = {}
+            def connect_handler(func, *args, **kwargs):
+                captured_handler['fn'] = func
+            worker.operation_complete.connect.side_effect = connect_handler
+            # Make disconnect raise TypeError to simulate already disconnected
+            worker.operation_complete.disconnect.side_effect = TypeError('already disconnected')
+            worker.error_occurred.disconnect.side_effect = TypeError('already disconnected')
+            mock_worker_cls.return_value = worker
+
+            manager = DatabaseManager(self.mock_parent)
+            cb = Mock()
+            # Act: create and then simulate completion
+            manager.create_recording({'filename': 'x.wav'}, cb)
+            # Ensure handler captured
+            self.assertIn('fn', captured_handler)
+            # Invoke handler; should perform cleanup without propagating TypeError
+            captured_handler['fn']('create_recording_callback_1', 99)
+            # Callback executed
+            cb.assert_called_once_with(99)
         
     # Note: The following decorators were dangling without a test function.
     # They caused a SyntaxError/IndentationError at import time.
