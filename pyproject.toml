@@ -213,8 +213,12 @@ permission.microphone = true
 [tool.briefcase.app.transcribrr.macOS]
 
 [tool.briefcase.app.transcribrr.macOS.app]
-icon = "icons/app/app_icon.icns"
+# Briefcase expects icon paths without extension; it appends .icns/.ico, etc.
+icon = "icons/app/app_icon"
 resources = ["icons", "preset_prompts.json"]
 universal_build = false
 info."NSMicrophoneUsageDescription" = "Transcribrr records audio so it can transcribe your speech."
 requirement_installer_args = ["--find-links", "wheelhouse"]
+
+# Use the same icon for the DMG installer (path without extension).
+installer_icon = "icons/app/app_icon"
