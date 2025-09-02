@@ -93,6 +93,19 @@ jobs:
           brew update
           brew install --quiet portaudio ffmpeg
 
+      - name: Pre-build PyAudio wheel (universal runner env)
+        run: |
+          set -euxo pipefail
+          mkdir -p wheelhouse
+          BREW_PREFIX=$(brew --prefix)
+          export SDKROOT=$(xcrun --show-sdk-path)
+          export SYSROOT_PATH="$SDKROOT"
+          export CFLAGS="-I${BREW_PREFIX}/include"
+          export LDFLAGS="-L${BREW_PREFIX}/lib"
+          export PKG_CONFIG_PATH="${BREW_PREFIX}/lib/pkgconfig"
+          uv run python -m pip wheel "PyAudio==0.2.14" -w wheelhouse
+          ls -la wheelhouse
+
       - name: Generate Briefcase wrapper package
         run: |
           mkdir -p transcribrr
@@ -109,8 +122,6 @@ jobs:
         run: |
           BREW_PREFIX=$(brew --prefix)
           echo "Using Homebrew at: ${BREW_PREFIX}"
-          # Force building PyAudio from source so pip doesn't require wheels
-          export PIP_NO_BINARY=PyAudio
           # Set SDK root for compiler toolchain
           export SDKROOT=$(xcrun --show-sdk-path)
           export SYSROOT_PATH="$SDKROOT"
