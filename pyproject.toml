@@ -169,3 +169,51 @@ exclude_lines = [
     "pass",
     "except ImportError:",
 ]
+
+# ---------------------------------------------------------------------------
+# Briefcase packaging configuration (macOS)
+# ---------------------------------------------------------------------------
+[tool.briefcase]
+project_name = "Transcribrr"
+bundle = "com.transcribrr"
+author = "John Miller"
+author_email = "john@johnbmiller.com"
+
+[tool.briefcase.app.transcribrr]
+formal_name = "Transcribrr"
+description = "Speech-to-text transcription tool"
+sources = [
+    "transcribrr",  # lightweight wrapper generated in CI
+    "app",          # main application package
+]
+# Keep core runtime libs minimal; heavy ML deps are intentionally excluded.
+# Ensure GUI and core API clients are available at runtime.
+requires = [
+    "requests>=2.31.0",
+    "python-dotenv>=1.0.0",
+    "keyring>=24.0.0",
+    "appdirs>=1.4.4",
+    "psutil>=5.9.0",
+    "beautifulsoup4>=4.12.0",
+    "pyyaml>=6.0",
+    "colorlog>=6.8.0",
+    "humanfriendly>=10.0",
+    "openai>=1.0.0",
+    "moviepy>=1.0.3",
+    "PyAudio>=0.2.11",
+    "torch>=2.0.0",
+    "torchaudio>=2.0.0",
+    "PyQt6>=6.5.0",
+    "PyQt6-Qt6>=6.5.0",
+]
+
+# Microphone access prompt string (macOS privacy usage)
+permission.microphone = true
+
+[tool.briefcase.app.transcribrr.macOS]
+
+[tool.briefcase.app.transcribrr.macOS.app]
+icon = "icons/app/app_icon.icns"
+resources = ["icons", "preset_prompts.json"]
+universal_build = false
+info."NSMicrophoneUsageDescription" = "Transcribrr records audio so it can transcribe your speech."
