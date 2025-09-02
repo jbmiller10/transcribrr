@@ -1,7 +1,10 @@
 import sys
 import os
 import shutil
-import pyaudio
+try:
+    import pyaudio  # type: ignore
+except Exception:  # PyAudio may be unavailable on some platforms (e.g., macOS app build)
+    pyaudio = None  # type: ignore
 from pydub import AudioSegment
 import wave
 from PyQt6.QtWidgets import (
@@ -465,6 +468,14 @@ class VoiceRecorderWidget(QWidget):
         self.layout.addLayout(buttonLayout)
 
     def initAudio(self):
+        if pyaudio is None:
+            logger.warning("PyAudio is not available; disabling recording UI.")
+            self.statusLabel.setText("PyAudio not available; recording disabled")
+            self.recordButton.setEnabled(False)
+            self.saveButton.setEnabled(False)
+            self.deleteButton.setEnabled(False)
+            return
+
         self.format = pyaudio.paInt16
         self.channels = 1
         self.rate = 44100
@@ -491,8 +502,7 @@ class VoiceRecorderWidget(QWidget):
 
         except Exception as e:
             logger.error(f"Error initializing audio: {e}", exc_info=True)
-            self.statusLabel.setText(
-                "Error: Could not initialize audio system")
+            self.statusLabel.setText("Error: Could not initialize audio system")
             self.recordButton.setEnabled(False)
 
     def toggleRecording(self):
