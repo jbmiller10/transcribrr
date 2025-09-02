@@ -240,7 +240,7 @@ jobs:
       - name: Package macOS app (Developer ID)
         if: ${{ env.SIGNING_IDENTITY != '' }}
         run: |
-          uv run briefcase package macOS --no-input
+          uv run briefcase package macOS --no-input -i "$SIGNING_IDENTITY" --no-notarize
 
       - name: Notarize and staple DMG (conditional)
         if: ${{ env.SIGNING_IDENTITY != '' && env.APPLE_TEAM_ID != '' && env.APPLE_ID != '' && env.APPLE_APP_PASSWORD != '' }}
