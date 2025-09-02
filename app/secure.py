@@ -1,3 +1,5 @@
+import os
+import sys
 import re
 import logging
 from typing import Dict, Optional
@@ -114,6 +116,11 @@ def get_service_id() -> str:
     return f"{APP_NAME.lower()}-v{APP_VERSION}"
 
 
+def _is_packaged() -> bool:
+    """Return True if running as a packaged app (PyInstaller/py2app)."""
+    return hasattr(sys, "_MEIPASS") or getattr(sys, "frozen", False)
+
+
 def get_api_key(key_name: str) -> Optional[str]:
     """
     Get an API key securely from the keyring.
@@ -124,10 +131,13 @@ def get_api_key(key_name: str) -> Optional[str]:
     Returns:
         The API key if found, None otherwise
     """
-    # For tests, return a fake key
-    if key_name in ["OPENAI_API_KEY", "HF_API_KEY", "HF_AUTH_TOKEN"]:
+    # In development and test environments, allow returning fake keys by default
+    # to keep unit tests import-safe and avoid keyring dependencies. Packaged
+    # builds and explicit overrides disable this behavior.
+    use_fake = os.environ.get("TRANSCRIBRR_FAKE_KEYS", "1") == "1" and not _is_packaged()
+    if use_fake and key_name in ["OPENAI_API_KEY", "HF_API_KEY", "HF_AUTH_TOKEN"]:
         return "fake-api-key"
-        
+
     import keyring
     return keyring.get_password(get_service_id(), key_name)
 

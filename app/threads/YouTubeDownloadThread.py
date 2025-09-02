@@ -269,7 +269,7 @@ class YouTubeDownloadThread(QThread):
             else:
                 self.error.emit(f"YouTube download failed: {safe_err}")
 
-            logger.error(f"yt-dlp DownloadError: {safe_err}", exc_info=True)
+            logger.error(f"yt-dlp DownloadError: {safe_err}")
 
         except requests.exceptions.RequestException as e:
             if not self.is_canceled():
@@ -278,7 +278,7 @@ class YouTubeDownloadThread(QThread):
                 safe_err = redact(str(e))
                 self.error.emit(f"Network error: {safe_err}")
                 logger.error(
-                    f"YouTube download network error: {safe_err}", exc_info=True
+                    f"YouTube download network error: {safe_err}"
                 )
             else:
                 self.update_progress.emit(
@@ -289,7 +289,7 @@ class YouTubeDownloadThread(QThread):
             if not self.is_canceled():
                 self.error.emit(f"Invalid input: {e}")
                 logger.error(
-                    f"YouTube download value error: {e}", exc_info=True)
+                    f"YouTube download value error: {e}")
             else:
                 self.update_progress.emit(
                     "YouTube download cancelled during validation."
@@ -299,7 +299,7 @@ class YouTubeDownloadThread(QThread):
             if not self.is_canceled():
                 self.error.emit(f"File system error: {e}")
                 logger.error(
-                    f"YouTube download file system error: {e}", exc_info=True)
+                    f"YouTube download file system error: {e}")
             else:
                 self.update_progress.emit(
                     "YouTube download cancelled during file operation."
@@ -309,7 +309,7 @@ class YouTubeDownloadThread(QThread):
             if not self.is_canceled():
                 self.error.emit(f"Processing error: {e}")
                 logger.error(
-                    f"YouTube download runtime error: {e}", exc_info=True)
+                    f"YouTube download runtime error: {e}")
             else:
                 self.update_progress.emit(
                     "YouTube download cancelled during processing."
@@ -322,7 +322,7 @@ class YouTubeDownloadThread(QThread):
                 safe_err = redact(str(e))
                 self.error.emit(f"An unexpected error occurred: {safe_err}")
                 logger.error(
-                    f"YouTubeDownloadThread error: {e}", exc_info=True)
+                    f"YouTubeDownloadThread error: {safe_err}")
             else:
                 self.update_progress.emit(
                     "YouTube download cancelled during error.")

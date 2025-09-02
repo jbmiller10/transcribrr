@@ -1,15 +1,11 @@
 from ..utils import language_to_iso
 from openai import OpenAI
-import requests
-import numpy as np
-from torchaudio import functional as F
 import os
 import torch
 import logging
 import warnings
-from typing import Optional, List, Dict, Any, Union, Tuple
+from typing import Optional, List, Dict, Any, Union, Tuple, Callable
 from transformers import AutoModelForSpeechSeq2Seq, AutoProcessor, pipeline
-from pyannote.audio import Pipeline
 
 # Filter torchaudio warning about set_audio_backend
 warnings.filterwarnings(
@@ -259,6 +255,9 @@ class TranscriptionService:
         hf_auth_key: Optional[str] = None,
         speaker_detection: bool = False,
         hardware_acceleration_enabled: bool = True,
+        *,
+        progress_cb: Optional[Callable[[int, str], None]] = None,
+        cancel_cb: Optional[Callable[[], bool]] = None,
     ) -> Dict[str, Any]:
         """
         Transcribe an audio file using the specified method.
@@ -293,6 +292,25 @@ class TranscriptionService:
             logger.info(
                 f"Using API method for transcription of {os.path.basename(file_path)}"
             )
+            # If file is larger than API limit, use chunked flow
+            try:
+                from app.constants import OPENAI_WHISPER_API_LIMIT_MB
+                size_mb = os.path.getsize(file_path) / (1024 * 1024)
+                if size_mb > OPENAI_WHISPER_API_LIMIT_MB:
+                    logger.info(
+                        f"File {os.path.basename(file_path)} is {size_mb:.1f}MB (> {OPENAI_WHISPER_API_LIMIT_MB}MB). Using chunked API transcription."
+                    )
+                    return self._transcribe_with_api_chunked(
+                        file_path,
+                        language,
+                        openai_api_key,
+                        limit_mb=OPENAI_WHISPER_API_LIMIT_MB,
+                        progress_cb=progress_cb,
+                        cancel_cb=cancel_cb,
+                    )
+            except Exception as e:
+                logger.warning(f"Size check failed, proceeding without chunking: {e}")
+
             return self._transcribe_with_api(file_path, language, openai_api_key)
 
         # For local method, decide on hardware acceleration path
@@ -486,6 +504,77 @@ class TranscriptionService:
             raise RuntimeError(
                 f"OpenAI Whisper API transcription failed: {exc}"
             ) from exc
+
+    def _transcribe_with_api_chunked(
+        self,
+        file_path: str,
+        language: str,
+        api_key: Optional[str],
+        *,
+        limit_mb: int,
+        progress_cb: Optional[Callable[[int, str], None]] = None,
+        cancel_cb: Optional[Callable[[], bool]] = None,
+    ) -> Dict[str, Any]:
+        """Transcribe a large file by chunking and combining results.
+
+        Splits the file into approximately even chunks based on size limit,
+        transcribes each chunk via the OpenAI API, and concatenates text.
+        """
+        if not api_key:
+            raise ValueError("OpenAI API transcription requires an API key")
+
+        # Lazy import heavy dependency
+        try:
+            from pydub import AudioSegment  # type: ignore
+        except Exception as e:  # pragma: no cover - exercised via integration
+            raise RuntimeError(f"Chunked transcription requires pydub: {e}") from e
+
+        import tempfile
+
+        audio = AudioSegment.from_file(file_path)
+        duration_ms = len(audio)
+        file_size_mb = os.path.getsize(file_path) / (1024 * 1024)
+        # at least 2 chunks if exceeding limit
+        num_chunks = max(2, int(file_size_mb / float(limit_mb)) + 1)
+        chunk_duration = max(1, duration_ms // num_chunks)
+
+        pieces: List[str] = []
+
+        for i in range(num_chunks):
+            if cancel_cb and cancel_cb():
+                if progress_cb:
+                    progress_cb(0, "Chunked transcription cancelled.")
+                return {"text": "[Cancelled]", "method": "api"}
+
+            start_ms = i * chunk_duration
+            end_ms = duration_ms if i == num_chunks - 1 else (i + 1) * chunk_duration
+            segment = audio[start_ms:end_ms]
+
+            # Status update
+            if progress_cb:
+                pct = int(((i) / num_chunks) * 100)
+                progress_cb(pct, f"Transcribing chunk {i+1}/{num_chunks}...")
+
+            # Export to a temp WAV and call the API
+            fd, tmp_path = tempfile.mkstemp(suffix=".wav", prefix=f"temp_chunk_{i+1}_")
+            os.close(fd)
+            try:
+                segment.export(tmp_path, format="wav")
+                result = self._transcribe_with_api(tmp_path, language, api_key)
+            finally:
+                try:
+                    os.remove(tmp_path)
+                except Exception:
+                    pass
+
+            pieces.append(result.get("text", ""))
+
+            if progress_cb:
+                pct = int(((i + 1) / num_chunks) * 100)
+                progress_cb(pct, f"Progress: {pct}% ({i+1}/{num_chunks})")
+
+        combined = " ".join(pieces).strip()
+        return {"text": combined, "method": "api"}
 
     def _add_speaker_detection(
         self, file_path: str, result: Dict[str, Any], hf_auth_key: str

@@ -133,7 +133,7 @@ class GPT4ProcessingThread(QThread):
                 from app.secure import redact
 
                 logger.error(
-                    f"GPT Processing timeout: {redact(str(e))}", exc_info=True)
+                    f"GPT Processing timeout: {redact(str(e))}", exc_info=False)
             else:
                 self.update_progress.emit(
                     "GPT processing cancelled during timeout.")
@@ -145,7 +145,7 @@ class GPT4ProcessingThread(QThread):
                 from app.secure import redact
 
                 logger.error(
-                    f"GPT Processing connection error: {redact(str(e))}", exc_info=True
+                    f"GPT Processing connection error: {redact(str(e))}", exc_info=False
                 )
             else:
                 self.update_progress.emit(
@@ -160,7 +160,7 @@ class GPT4ProcessingThread(QThread):
                 error_message = f"Network request error: {safe_msg}"
                 self.error.emit(error_message)
                 logger.error(
-                    f"GPT Processing request error: {safe_msg}", exc_info=True)
+                    f"GPT Processing request error: {safe_msg}", exc_info=False)
             else:
                 self.update_progress.emit(
                     "GPT processing cancelled during request error."
@@ -220,7 +220,7 @@ class GPT4ProcessingThread(QThread):
 
                 self.error.emit(error_message)
                 logger.error(
-                    f"GPT Processing error: {safe_msg}", exc_info=True)
+                    f"GPT Processing error: {safe_msg}", exc_info=False)
             else:
                 self.update_progress.emit(
                     "GPT processing cancelled during error handling."
