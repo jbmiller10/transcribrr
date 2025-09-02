@@ -47,7 +47,7 @@ class TranscriptionThread(QThread):
         self.language = language
         self.hardware_acceleration_enabled = hardware_acceleration_enabled
 
-        # API file size limit in MB
+        # API file size limit in MB (kept for potential UI messages; service enforces)
         self.api_file_size_limit = 25  # OpenAI's limit
 
         # Cancellation flag
@@ -148,7 +148,7 @@ class TranscriptionThread(QThread):
                 self.error.emit(
                     f"Network error during transcription: {safe_msg}")
                 logger.error(
-                    f"Transcription network error: {safe_msg}", exc_info=True)
+                    f"Transcription network error: {safe_msg}", exc_info=False)
             self.update_progress.emit("Transcription failed: Network error")
         except (torch.cuda.OutOfMemoryError, RuntimeError) as e:
             if not self.is_canceled():
@@ -170,7 +170,7 @@ class TranscriptionThread(QThread):
 
                 safe_msg = redact(str(e))
                 self.error.emit(f"Unexpected error: {safe_msg}")
-                logger.error(f"Transcription error: {e}", exc_info=True)
+                logger.error(f"Transcription error: {safe_msg}", exc_info=False)
             self.update_progress.emit("Transcription failed: Unexpected error")
         finally:
             try:
@@ -336,42 +336,10 @@ class TranscriptionThread(QThread):
         logger.info(f"Starting processing for: {task_label}")
         self.update_progress.emit(f"Processing: {task_label}...")
 
-        # Check if using API method and if file exceeds API size limit
+        # Using API? Service will handle chunking if needed
         method = self.transcription_method.lower()
         if method == "api":
-            file_size_mb = os.path.getsize(file_path) / (1024 * 1024)
-            if file_size_mb > self.api_file_size_limit:
-                self.update_progress.emit(
-                    f"File size ({file_size_mb:.1f}MB) exceeds API limit ({self.api_file_size_limit}MB)"
-                )
-
-                # Disable speaker detection for chunked API processing
-                original_speaker_detection = self.speaker_detection_enabled
-                if original_speaker_detection:
-                    self.update_progress.emit(
-                        "Speaker detection is disabled for chunked API processing"
-                    )
-
-                # Create temporary chunks for processing
-                temp_chunks = self._create_temporary_chunks(file_path)
-                if not temp_chunks:
-                    return "[Failed to create temporary chunks for API processing]"
-
-                # Process the temporary chunks
-                result = self._process_temporary_chunks(
-                    temp_chunks, time.time())
-
-                end_time = time.time()
-                runtime = end_time - start_time
-                logger.info(
-                    f"Finished temporary chunk processing in {runtime:.2f}s")
-                self.update_progress.emit(
-                    f"Finished API transcription with temporary chunks in {runtime:.2f}s"
-                )
-
-                return result
-            else:
-                self.update_progress.emit("Using OpenAI API for transcription")
+            self.update_progress.emit("Using OpenAI API for transcription")
         elif method == "local":
             device = ModelManager.instance().device
             self.update_progress.emit(f"Using device: {device}")
@@ -390,19 +358,17 @@ class TranscriptionThread(QThread):
 
         try:
             # Process file with normal transcription
-            transcription_result = (
-                self.transcription_service.transcribe_file(
-                    file_path=file_path,
-                    model_id=self.transcription_quality,
-                    language=self.language,
-                    method=self.transcription_method,
-                    openai_api_key=self.openai_api_key,
-                    hf_auth_key=(
-                        self.hf_auth_key if self.speaker_detection_enabled else None
-                    ),
-                    speaker_detection=self.speaker_detection_enabled,
-                    hardware_acceleration_enabled=self.hardware_acceleration_enabled,
-                )
+            transcription_result = self.transcription_service.transcribe_file(
+                file_path=file_path,
+                model_id=self.transcription_quality,
+                language=self.language,
+                method=self.transcription_method,
+                openai_api_key=self.openai_api_key,
+                hf_auth_key=(self.hf_auth_key if self.speaker_detection_enabled else None),
+                speaker_detection=self.speaker_detection_enabled,
+                hardware_acceleration_enabled=self.hardware_acceleration_enabled,
+                progress_cb=lambda pct, msg: self.update_progress.emit(msg),
+                cancel_cb=self.is_canceled,
             )
 
             # Process Result
