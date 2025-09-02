@@ -5,7 +5,16 @@ import torch
 import logging
 import warnings
 from typing import Optional, List, Dict, Any, Union, Tuple, Callable
-from transformers import AutoModelForSpeechSeq2Seq, AutoProcessor, pipeline
+try:
+    from transformers import (  # type: ignore
+        AutoModelForSpeechSeq2Seq,
+        AutoProcessor,
+        pipeline,
+    )
+except Exception:  # transformers may be excluded from packaged builds
+    AutoModelForSpeechSeq2Seq = None  # type: ignore
+    AutoProcessor = None  # type: ignore
+    pipeline = None  # type: ignore
 
 # Filter torchaudio warning about set_audio_backend
 warnings.filterwarnings(
@@ -143,6 +152,10 @@ class ModelManager:
         Returns:
             The loaded processor
         """
+        if AutoProcessor is None:
+            raise RuntimeError(
+                "Local transcription requires 'transformers'. This build doesn't include it."
+            )
         if model_id not in self._processors:
             logger.info(f"Loading processor: {model_id}")
             self._processors[model_id] = AutoProcessor.from_pretrained(
@@ -159,6 +172,10 @@ class ModelManager:
         Returns:
             The loaded model
         """
+        if AutoModelForSpeechSeq2Seq is None:
+            raise RuntimeError(
+                "Local transcription requires 'transformers'. This build doesn't include it."
+            )
         try:
             model = AutoModelForSpeechSeq2Seq.from_pretrained(
                 model_id,
@@ -210,6 +227,10 @@ class ModelManager:
         model = self.get_model(model_id)
         processor = self.get_processor(model_id)
 
+        if pipeline is None:
+            raise RuntimeError(
+                "Local transcription requires 'transformers'. This build doesn't include it."
+            )
         # Create pipeline
         pipe = pipeline(
             "automatic-speech-recognition",
