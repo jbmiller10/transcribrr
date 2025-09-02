@@ -141,24 +141,22 @@ jobs:
           echo "Found app: $APP_PATH"
           FRAMEWORKS_DIR="$APP_PATH/Contents/Frameworks"
           mkdir -p "$FRAMEWORKS_DIR"
-          # Copy PortAudio dylibs (both link and SONAME if present)
-          for LIB in libportaudio.2.dylib libportaudio.dylib; do
-            if [ -f "${BREW_PREFIX}/lib/$LIB" ]; then
-              cp -a "${BREW_PREFIX}/lib/$LIB" "$FRAMEWORKS_DIR/" || true
-            fi
-          done
-          # Determine the actual copied dylib name to target
-          if [ -f "$FRAMEWORKS_DIR/libportaudio.2.dylib" ]; then
+          # Copy PortAudio dylib, dereferencing symlinks so the app has a real file
+          if [ -f "${BREW_PREFIX}/lib/libportaudio.2.dylib" ]; then
+            cp -fL "${BREW_PREFIX}/lib/libportaudio.2.dylib" "$FRAMEWORKS_DIR/libportaudio.2.dylib"
             TARGET_LIB=libportaudio.2.dylib
-          elif [ -f "$FRAMEWORKS_DIR/libportaudio.dylib" ]; then
+          elif [ -f "${BREW_PREFIX}/lib/libportaudio.dylib" ]; then
+            cp -fL "${BREW_PREFIX}/lib/libportaudio.dylib" "$FRAMEWORKS_DIR/libportaudio.dylib"
             TARGET_LIB=libportaudio.dylib
           else
-            echo "PortAudio dylib not found in Homebrew lib"; ls -la "${BREW_PREFIX}/lib" | grep -i portaudio || true; exit 1
+            echo "PortAudio dylib not found in Homebrew lib" >&2
+            ls -la "${BREW_PREFIX}/lib" | grep -i portaudio || true
+            exit 1
           fi
           # Set the dylib ID for proper @rpath usage (non-fatal if it fails)
           install_name_tool -id "@rpath/${TARGET_LIB}" "$FRAMEWORKS_DIR/${TARGET_LIB}" || true
           # Locate the PyAudio extension inside the app bundle
-          EXT_SO=$(find "$APP_PATH/Contents/Resources" -name "*_portaudio*.so" -print -quit)
+          EXT_SO=$(find "$APP_PATH" -path "*/Contents/Resources/*" -name "*_portaudio*.so" -print -quit)
           if [ -z "$EXT_SO" ]; then echo "PyAudio extension not found"; find "$APP_PATH" -maxdepth 4 -type f -name "*_portaudio*.so"; exit 1; fi
           echo "Found extension: $EXT_SO"
           echo "Before relink:"; otool -L "$EXT_SO" | sed 's/^/    /'
