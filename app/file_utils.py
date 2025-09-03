@@ -18,7 +18,7 @@ from app.constants import (
 )
 
 # Configure logging
-logger = logging.getLogger(__name__)
+logger = logging.getLogger("transcribrr")
 
 
 def get_file_type(file_path: str) -> FileType:

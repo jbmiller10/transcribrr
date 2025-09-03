@@ -123,14 +123,15 @@ class YouTubeDownloadThread(QThread):
                 return
 
             # Lazy import yt_dlp
+            ydl_mod = None
             try:
-                import yt_dlp
+                import yt_dlp as ydl_mod  # type: ignore
             except ImportError:
                 self.error.emit("yt-dlp library not available for YouTube downloads")
                 return
                 
             logger.info(f"Starting download for: {self.youtube_url}")
-            with yt_dlp.YoutubeDL(ydl_opts) as ydl:
+            with ydl_mod.YoutubeDL(ydl_opts) as ydl:
                 # Store for potential (limited) interruption
                 self.ydl_instance = ydl
 
@@ -242,7 +243,13 @@ class YouTubeDownloadThread(QThread):
             error_str = str(e).lower()
             safe_err = redact(error_str)
             
-            is_download_error = "yt_dlp" in str(type(e).__module__)
+            is_download_error = False
+            try:
+                if 'ydl_mod' in locals() and ydl_mod is not None:
+                    is_download_error = isinstance(e, ydl_mod.utils.DownloadError)
+            except Exception:
+                is_download_error = False
+
             if not is_download_error:
                 # Not a yt_dlp error, handle as generic error
                 if not self.is_canceled():
