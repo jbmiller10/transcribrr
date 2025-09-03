@@ -203,6 +203,9 @@ requires = [
     "PyAudio>=0.2.11",
     "torch>=2.0.0",
     "torchaudio>=2.0.0",
+    "transformers>=4.30.0",
+    "safetensors>=0.4.2",
+    "tokenizers>=0.14.0",
     "PyQt6>=6.5.0",
     "PyQt6-Qt6>=6.5.0",
 ]
