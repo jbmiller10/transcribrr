@@ -8,7 +8,12 @@ import requests
 from threading import Lock  # Import Lock
 import tempfile
 from pydub import AudioSegment  # Import at the top to avoid runtime import
-from app.services.transcription_service import TranscriptionService, ModelManager
+# Lazy import to avoid triggering heavy ML imports at app startup
+try:
+    from app.services.transcription_service import TranscriptionService, ModelManager
+except Exception:  # Will import when thread starts if needed
+    TranscriptionService = None  # type: ignore
+    ModelManager = None  # type: ignore
 
 # Configure logging
 # logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s') # Configured in main
@@ -54,8 +59,16 @@ class TranscriptionThread(QThread):
         self._is_canceled = False
         self._lock = Lock()  # For thread-safe access to the flag
 
-        # Initialize the transcription service
-        self.transcription_service = TranscriptionService()
+        # Initialize the transcription service lazily
+        if TranscriptionService is None:
+            from app.services.transcription_service import TranscriptionService as _TS, ModelManager as _MM
+
+            self.transcription_service = _TS()
+            # Also update module-level refs for cleanup usage
+            globals()['TranscriptionService'] = _TS
+            globals()['ModelManager'] = _MM
+        else:
+            self.transcription_service = TranscriptionService()
 
         # Temporary files that may be created during processing
         self.temp_files: List[str] = []
@@ -177,7 +190,14 @@ class TranscriptionThread(QThread):
                 # Always attempt to release resources regardless of cancellation state
                 self.update_progress.emit(
                     "Cleaning up transcription resources...")
-                ModelManager.instance().release_memory()
+                try:
+                    if ModelManager is None:
+                        from app.services.transcription_service import ModelManager as _MM
+                        _MM.instance().release_memory()
+                    else:
+                        ModelManager.instance().release_memory()
+                except Exception:
+                    pass
 
                 # Clean up any temporary files that might still exist
                 self._cleanup_temp_files()

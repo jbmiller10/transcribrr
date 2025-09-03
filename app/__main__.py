@@ -1,7 +1,6 @@
 from app.secure import SensitiveLogFilter
 from .constants import LOG_FORMAT, APP_NAME, get_user_data_dir, get_log_file
 from .ThreadManager import ThreadManager
-from .services.transcription_service import ModelManager
 from .ResponsiveUI import ResponsiveUIManager, ResponsiveEventFilter
 from .ThemeManager import ThemeManager
 from .utils import (
@@ -124,9 +123,15 @@ class StartupThread(QThread):
             # Emit signal for GUI thread to apply theme
             self.apply_theme.emit(theme)
 
-            # Pre-initialize model manager without loading models
+            # Pre-initialize model manager without loading models (lazy import)
             self.update_progress.emit(70, "Initializing model manager...")
-            model_manager = ModelManager.instance()
+            try:
+                from .services.transcription_service import ModelManager
+
+                model_manager = ModelManager.instance()
+            except Exception as e:
+                # Don't block app startup if ML stack is unavailable; UI will handle errors on use.
+                logger.warning(f"Model manager init skipped: {e}")
 
             # Initialize responsive UI manager via signal
             self.update_progress.emit(80, "Setting up UI manager...")
