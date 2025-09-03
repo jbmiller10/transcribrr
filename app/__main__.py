@@ -670,8 +670,10 @@ def cleanup_application():
             logger.error(
                 f"Error terminating thread {thread.__class__.__name__}: {e}")
 
-    # Release model resources
+    # Release model resources (lazy import to avoid startup import costs)
     try:
+        from .services.transcription_service import ModelManager
+
         ModelManager.instance().release_memory()
         logger.info("Released model resources")
     except Exception as e:
