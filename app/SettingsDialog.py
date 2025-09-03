@@ -283,6 +283,15 @@ class SettingsDialog(QDialog):
                 "openai/whisper-large-v3",
             ]
         )
+        # Set current selection from saved config or default to whisper-small
+        try:
+            from app.constants import DEFAULT_CONFIG
+            default_quality = DEFAULT_CONFIG.get("transcription_quality", "openai/whisper-small")
+            idx = self.transcription_quality_dropdown.findText(default_quality)
+            if idx >= 0:
+                self.transcription_quality_dropdown.setCurrentIndex(idx)
+        except Exception:
+            pass
         quality_info = QLabel(
             "Larger models are more accurate but slower & require more memory."
         )

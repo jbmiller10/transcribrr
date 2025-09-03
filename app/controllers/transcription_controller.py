@@ -147,7 +147,7 @@ class TranscriptionController(QObject):
         # Extract config values
         transcription_method = config.get("transcription_method", "local")
         transcription_quality = config.get(
-            "transcription_quality", "openai/whisper-large-v3"
+            "transcription_quality", "openai/whisper-small"
         )
         speaker_detection_enabled = config.get(
             "speaker_detection_enabled", False)
