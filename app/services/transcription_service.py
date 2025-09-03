@@ -4,6 +4,9 @@ import logging
 import warnings
 from typing import Optional, List, Dict, Any, Union, Tuple, Callable
 
+# Expose OpenAI symbol for tests to patch; lazily import at runtime.
+OpenAI = None  # type: ignore
+
 # Lazy imports for heavy ML dependencies - these are loaded only when needed
 # to prevent import errors in packaged builds without these dependencies
 
@@ -557,16 +560,19 @@ class TranscriptionService:
             raise ValueError("API URL must use HTTPS for security")
 
         try:
-            # Lazy import OpenAI client
-            try:
-                from openai import OpenAI
-            except ImportError as e:
-                raise RuntimeError(
-                    "API transcription requires 'openai' package. "
-                    "Please install it with: pip install openai"
-                ) from e
-                
-            client = OpenAI(api_key=api_key, base_url=base_url)
+            # Lazy import OpenAI client; honor module-level symbol for tests
+            global OpenAI  # noqa: PLW0603 - allow test patching
+            if OpenAI is None:
+                try:
+                    from openai import OpenAI as _OpenAI  # type: ignore
+                except ImportError as e:
+                    raise RuntimeError(
+                        "API transcription requires 'openai' package. "
+                        "Please install it with: pip install openai"
+                    ) from e
+                OpenAI = _OpenAI  # type: ignore
+
+            client = OpenAI(api_key=api_key, base_url=base_url)  # type: ignore[call-arg]
             with open(file_path, "rb") as f:
                 lang = language_to_iso(language)
                 rsp = client.audio.transcriptions.create(

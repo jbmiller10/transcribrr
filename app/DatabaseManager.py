@@ -783,9 +783,6 @@ class DatabaseManager(QObject):
             if callback
             else "create_recording_no_callback"
         )
-        self.worker.add_operation(
-            "create_recording", operation_id, [recording_data])
-
         if callback and callable(callback):
 
             def _finalise():
@@ -813,6 +810,10 @@ class DatabaseManager(QObject):
             self.worker.operation_complete.connect(handler)
             self.worker.error_occurred.connect(error_handler)
 
+        # Enqueue operation after handlers are connected to avoid race
+        self.worker.add_operation(
+            "create_recording", operation_id, [recording_data])
+
     def get_all_recordings(self, callback):
         """Fetch all recordings, call callback with result."""
         if not callback or not callable(callback):
@@ -822,8 +823,6 @@ class DatabaseManager(QObject):
             return
 
         operation_id = f"get_all_recordings_{id(callback)}"
-        self.worker.add_operation("get_all_recordings", operation_id)
-
         def handler(op_id, _result):
             expected_prefix = "get_all_recordings_"
             if isinstance(op_id, str) and op_id.startswith(expected_prefix):
@@ -834,6 +833,9 @@ class DatabaseManager(QObject):
                     pass
 
         self.worker.operation_complete.connect(handler)
+
+        # Enqueue after connect to avoid race
+        self.worker.add_operation("get_all_recordings", operation_id)
 
     def get_recording_by_id(self, recording_id, callback):
         """
@@ -850,9 +852,6 @@ class DatabaseManager(QObject):
             return
 
         operation_id = f"get_recording_{recording_id}_{id(callback)}"
-        self.worker.add_operation(
-            "get_recording_by_id", operation_id, [recording_id])
-
         def handler(op_id, _result):
             expected_prefix = f"get_recording_{recording_id}_"
             if isinstance(op_id, str) and op_id.startswith(expected_prefix):
@@ -863,6 +862,10 @@ class DatabaseManager(QObject):
                     pass
 
         self.worker.operation_complete.connect(handler)
+
+        # Enqueue after connect
+        self.worker.add_operation(
+            "get_recording_by_id", operation_id, [recording_id])
 
     def update_recording(self, recording_id, callback=None, **kwargs):
         """
@@ -878,10 +881,6 @@ class DatabaseManager(QObject):
             if callback
             else f"update_recording_{recording_id}_no_callback"
         )
-        self.worker.add_operation(
-            "update_recording", operation_id, [recording_id], kwargs
-        )
-
         if callback and callable(callback):
 
             def _finalise():
@@ -907,6 +906,11 @@ class DatabaseManager(QObject):
             self.worker.operation_complete.connect(handler)
             self.worker.error_occurred.connect(error_handler)
 
+        # Enqueue after connect
+        self.worker.add_operation(
+            "update_recording", operation_id, [recording_id], kwargs
+        )
+
     def delete_recording(self, recording_id, callback=None):
         """
         Delete a recording from the database.
@@ -920,9 +924,6 @@ class DatabaseManager(QObject):
             if callback
             else f"delete_recording_{recording_id}_no_callback"
         )
-        self.worker.add_operation(
-            "delete_recording", operation_id, [recording_id])
-
         if callback and callable(callback):
 
             def _finalise():
@@ -948,6 +949,10 @@ class DatabaseManager(QObject):
             self.worker.operation_complete.connect(handler)
             self.worker.error_occurred.connect(error_handler)
 
+        # Enqueue after connect
+        self.worker.add_operation(
+            "delete_recording", operation_id, [recording_id])
+
     def execute_query(
         self,
         query,
@@ -971,14 +976,6 @@ class DatabaseManager(QObject):
                 f"execute_query_{id(query)}_{'callback_' + str(id(callback)) if callback else 'no_callback'}"
             )
 
-        # Use the operation_id for callback binding
-        self.worker.add_operation(
-            "execute_query",
-            operation_id,
-            [query, (params or [])],
-            {"return_last_row_id": bool(return_last_row_id)},
-        )
-
         if callback and callable(callback):
 
             def handler(op_id, _result):
@@ -998,6 +995,14 @@ class DatabaseManager(QObject):
 
             self.worker.operation_complete.connect(handler)
 
+        # Enqueue after connect
+        self.worker.add_operation(
+            "execute_query",
+            operation_id,
+            [query, (params or [])],
+            {"return_last_row_id": bool(return_last_row_id)},
+        )
+
     def search_recordings(self, search_term, callback):
         """
         Search for recordings by filename or transcript.
@@ -1012,9 +1017,6 @@ class DatabaseManager(QObject):
             return
 
         operation_id = f"search_recordings_callback_{id(callback)}"
-        self.worker.add_operation(
-            "search_recordings", operation_id, [search_term])
-
         def handler(op_id, _result):
             expected_prefix = "search_recordings_"
             if isinstance(op_id, str) and op_id.startswith(expected_prefix):
@@ -1025,6 +1027,10 @@ class DatabaseManager(QObject):
                     pass
 
         self.worker.operation_complete.connect(handler)
+
+        # Enqueue after connect
+        self.worker.add_operation(
+            "search_recordings", operation_id, [search_term])
 
     def shutdown(self):
         """Shut down the database manager and worker thread."""
