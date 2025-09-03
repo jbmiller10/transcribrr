@@ -1,5 +1,4 @@
 import os
-import torch
 import logging
 from PyQt6.QtWidgets import (
     QWidget,

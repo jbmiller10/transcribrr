@@ -1194,16 +1194,19 @@ class TextEditor(QMainWindow):
                 if not file_path.endswith(".docx"):
                     file_path += ".docx"
 
-                # Create a new document
+                # Lazy import document export dependencies
                 try:
                     import docx  # type: ignore
                     from htmldocx import HtmlToDocx  # type: ignore
-                except Exception:
+                except ImportError as e:
                     show_error_message(
                         self,
-                        "Missing dependency",
-                        "Export to Word requires 'python-docx' and 'htmldocx'.",
+                        "Export to Word Unavailable",
+                        "Export to Word requires additional packages.\n\n"
+                        "Please install: python-docx and htmldocx\n"
+                        "Run: pip install python-docx htmldocx",
                     )
+                    logger.warning(f"Word export dependencies not available: {e}")
                     return
 
                 doc = docx.Document()

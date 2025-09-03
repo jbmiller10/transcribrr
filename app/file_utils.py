@@ -3,12 +3,10 @@
 import os
 import shutil
 import tempfile
-from datetime import datetime
+import datetime
 import logging
 from typing import Optional, Tuple, List
 import wave
-from pydub import AudioSegment
-import datetime
 
 from app.constants import (
     AUDIO_EXTENSIONS,
@@ -123,11 +121,27 @@ def calculate_duration(file_path: str) -> str:
         if file_type == FileType.AUDIO:
             # Prefer pydub for audio duration (no heavy moviepy dependency)
             try:
+                from pydub import AudioSegment
+
                 audio = AudioSegment.from_file(file_path)
                 duration_in_seconds = len(audio) / 1000.0
                 audio = None
-            except Exception:
-                # Fallback to moviepy if available
+            except ImportError:
+                # Fallback to moviepy if pydub not available
+                try:
+                    from moviepy.editor import AudioFileClip  # type: ignore
+
+                    clip = AudioFileClip(file_path)
+                    duration_in_seconds = clip.duration
+                    clip.close()
+                except ImportError as mp_err:
+                    logger.error(
+                        f"Audio duration check failed "
+                        f"(pydub or moviepy required): {mp_err}"
+                    )
+                    return "00:00:00"
+            except Exception as e:
+                # Other errors with pydub, try moviepy fallback
                 try:
                     from moviepy.editor import AudioFileClip  # type: ignore
 
@@ -136,7 +150,8 @@ def calculate_duration(file_path: str) -> str:
                     clip.close()
                 except Exception as mp_err:
                     logger.error(
-                        f"Audio duration check failed (no moviepy?): {mp_err}"
+                        f"Audio duration check failed: {e}, "
+                        f"moviepy also failed: {mp_err}"
                     )
                     return "00:00:00"
         elif file_type == FileType.VIDEO:
@@ -147,9 +162,15 @@ def calculate_duration(file_path: str) -> str:
                 clip = VideoFileClip(file_path)
                 duration_in_seconds = clip.duration
                 clip.close()
+            except ImportError as imp_err:
+                logger.error(
+                    f"Video duration check requires moviepy "
+                    f"(not installed): {imp_err}"
+                )
+                return "00:00:00"
             except Exception as mp_err:
                 logger.error(
-                    f"Video duration check requires moviepy: {mp_err}"
+                    f"Video duration check failed: {mp_err}"
                 )
                 return "00:00:00"
         else:
@@ -192,16 +213,35 @@ def save_temp_recording(
             ensure_recordings_dir(), f"Recording-{timestamp}.mp3"
         )
 
-        # Convert to MP3
-        audio = AudioSegment.from_wav(temp_wav)
-        audio.export(mp3_filename, format="mp3", bitrate="192k")
+        # Convert to MP3 using pydub
+        try:
+            from pydub import AudioSegment
+
+            audio = AudioSegment.from_wav(temp_wav)
+            audio.export(mp3_filename, format="mp3", bitrate="192k")
+        except ImportError:
+            # If pydub not available, keep as WAV
+            logger.warning("pydub not available, saving as WAV instead of MP3")
+            wav_filename = os.path.join(
+                ensure_recordings_dir(), f"Recording-{timestamp}.wav"
+            )
+            shutil.move(temp_wav, wav_filename)
+            logger.info(f"Recording saved to {wav_filename}")
+            return wav_filename
 
         # Clean up temporary file
-        os.remove(temp_wav)
+        if os.path.exists(temp_wav):
+            os.remove(temp_wav)
 
         logger.info(f"Recording saved to {mp3_filename}")
         return mp3_filename
 
     except Exception as e:
         logger.error(f"Error saving recording: {e}")
+        # Clean up temp file on error
+        if 'temp_wav' in locals() and os.path.exists(temp_wav):
+            try:
+                os.remove(temp_wav)
+            except OSError:
+                pass
         return None

@@ -11,7 +11,6 @@ from PyQt6.QtWidgets import (
 )
 import os
 import logging
-from moviepy.editor import VideoFileClip
 
 # Use managers and ui_utils
 from app.path_utils import resource_path
@@ -394,12 +393,17 @@ class ControlPanelWidget(QWidget):
             logger.info(f"Transcoding needed for {filepath}")
             # Quick UI-level check for mute video to provide instant feedback
             try:
+                # Lazy import moviepy only when needed for video
+                from moviepy.editor import VideoFileClip
                 with VideoFileClip(filepath) as test_clip:
                     if test_clip.audio is None:
                         self.on_error(
                             "The selected video file contains no audio track."
                         )
                         return
+            except ImportError:
+                logger.warning("MoviePy not available - skipping audio track check")
+                # Continue without checking - let transcoding thread handle it
             except Exception as e:
                 self.on_error(f"Error analyzing video file: {e}")
                 return
