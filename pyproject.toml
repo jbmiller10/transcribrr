@@ -206,6 +206,9 @@ requires = [
     "transformers>=4.30.0",
     "safetensors>=0.4.2",
     "tokenizers>=0.14.0",
+    "pydub>=0.25.1",
+    "python-docx>=1.0.0",
+    "htmldocx>=0.0.6",
     "PyQt6>=6.5.0",
     "PyQt6-Qt6>=6.5.0",
 ]
