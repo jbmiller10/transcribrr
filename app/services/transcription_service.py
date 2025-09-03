@@ -5,16 +5,8 @@ import torch
 import logging
 import warnings
 from typing import Optional, List, Dict, Any, Union, Tuple, Callable
-try:
-    from transformers import (  # type: ignore
-        AutoModelForSpeechSeq2Seq,
-        AutoProcessor,
-        pipeline,
-    )
-except Exception:  # transformers may be excluded from packaged builds
-    AutoModelForSpeechSeq2Seq = None  # type: ignore
-    AutoProcessor = None  # type: ignore
-    pipeline = None  # type: ignore
+
+from transformers import AutoModelForSpeechSeq2Seq, AutoProcessor, pipeline
 
 # Filter torchaudio warning about set_audio_backend
 warnings.filterwarnings(
