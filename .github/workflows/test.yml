@@ -8,6 +8,11 @@ on:
   pull_request:
     branches: [ main ]
   workflow_dispatch:
+    inputs:
+      ref:
+        description: "Git ref (branch or tag) to package"
+        required: false
+        default: "main"
 
 jobs:
   test:
@@ -73,7 +78,10 @@ jobs:
       APPLE_ID: ${{ secrets.APPLE_ID }}
       APPLE_APP_PASSWORD: ${{ secrets.APPLE_APP_PASSWORD }}
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.ref || github.ref }}
 
       - name: Install uv
         uses: astral-sh/setup-uv@v4
