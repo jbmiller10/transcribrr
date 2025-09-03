@@ -40,8 +40,6 @@ from PyQt6.QtGui import (
 )
 from PyQt6.QtCore import Qt, QSize, pyqtSignal, QTimer
 from PyQt6.QtPrintSupport import QPrinter, QPrintDialog, QPrintPreviewDialog
-import docx
-from htmldocx import HtmlToDocx
 
 from app.path_utils import resource_path
 
@@ -1197,6 +1195,17 @@ class TextEditor(QMainWindow):
                     file_path += ".docx"
 
                 # Create a new document
+                try:
+                    import docx  # type: ignore
+                    from htmldocx import HtmlToDocx  # type: ignore
+                except Exception:
+                    show_error_message(
+                        self,
+                        "Missing dependency",
+                        "Export to Word requires 'python-docx' and 'htmldocx'.",
+                    )
+                    return
+
                 doc = docx.Document()
 
                 # Clean up HTML for better conversion
