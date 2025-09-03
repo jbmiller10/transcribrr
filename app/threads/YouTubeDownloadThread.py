@@ -1,4 +1,3 @@
-import yt_dlp
 from PyQt6.QtCore import QThread, pyqtSignal
 from datetime import datetime
 import os
@@ -123,6 +122,13 @@ class YouTubeDownloadThread(QThread):
                 )
                 return
 
+            # Lazy import yt_dlp
+            try:
+                import yt_dlp
+            except ImportError:
+                self.error.emit("yt-dlp library not available for YouTube downloads")
+                return
+                
             logger.info(f"Starting download for: {self.youtube_url}")
             with yt_dlp.YoutubeDL(ydl_opts) as ydl:
                 # Store for potential (limited) interruption
@@ -230,11 +236,19 @@ class YouTubeDownloadThread(QThread):
                             "Failed to find downloaded audio file. The file may not have been downloaded correctly."
                         )
 
-        except yt_dlp.utils.DownloadError as e:
-            error_str = str(e).lower()
+        except Exception as e:
+            # Handle yt_dlp.utils.DownloadError if yt_dlp is available
             from app.secure import redact
-
+            error_str = str(e).lower()
             safe_err = redact(error_str)
+            
+            is_download_error = "yt_dlp" in str(type(e).__module__)
+            if not is_download_error:
+                # Not a yt_dlp error, handle as generic error
+                if not self.is_canceled():
+                    self.error.emit(f"Unexpected error: {safe_err}")
+                    logger.error(f"Unexpected error in YouTube thread: {safe_err}", exc_info=True)
+                return
 
             # Handle common yt-dlp errors more specifically
             if "confirm your age" in error_str:
@@ -417,7 +431,12 @@ class YouTubeDownloadThread(QThread):
             # Attempt to signal yt-dlp to stop (may not work reliably)
             # This will raise an exception to interrupt the download
             logger.info("Raising DownloadCancelled exception in progress hook")
-            raise yt_dlp.utils.DownloadCancelled("Download cancelled by user")
+            # Raise cancellation error dynamically
+            try:
+                import yt_dlp
+                raise yt_dlp.utils.DownloadCancelled("Download cancelled by user")
+            except ImportError:
+                raise Exception("Download cancelled by user")
 
         # Track the current temporary file path for possible cleanup
         if d.get("info_dict") and d.get("filename"):
@@ -439,15 +458,25 @@ class YouTubeDownloadThread(QThread):
             if self.is_canceled():
                 logger.info(
                     "Cancellation detected during download progress update")
-                raise yt_dlp.utils.DownloadCancelled(
-                    "Download cancelled by user")
+                # Raise cancellation error dynamically
+                try:
+                    import yt_dlp
+                    raise yt_dlp.utils.DownloadCancelled(
+                        "Download cancelled by user")
+                except ImportError:
+                    raise Exception("Download cancelled by user")
         elif d["status"] == "finished":
             self.update_progress.emit("Download complete. Processing audio...")
             # Check cancellation before post-processing starts
             if self.is_canceled():
                 logger.info("Cancellation detected after download finished")
-                raise yt_dlp.utils.DownloadCancelled(
-                    "Download cancelled by user")
+                # Raise cancellation error dynamically
+                try:
+                    import yt_dlp
+                    raise yt_dlp.utils.DownloadCancelled(
+                        "Download cancelled by user")
+                except ImportError:
+                    raise Exception("Download cancelled by user")
         elif d["status"] == "error":
             logger.error(
                 "yt-dlp reported an error during download/processing.")

@@ -1,8 +1,6 @@
 from PyQt6.QtCore import QThread, pyqtSignal
-from pydub import AudioSegment
 import os
 from app.constants import get_recordings_dir
-from moviepy.editor import VideoFileClip
 import logging
 from threading import Lock
 from app.utils import is_video_file, is_audio_file
@@ -183,11 +181,23 @@ class TranscodingThread(QThread):
         )
 
         try:
+            # Lazy import moviepy only when needed for video processing
+            try:
+                from moviepy.editor import VideoFileClip
+            except ImportError as e:
+                logger.error("MoviePy not available for video processing")
+                raise RuntimeError(
+                    "Video processing requires moviepy. Please ensure it's installed."
+                ) from e
+            
             with VideoFileClip(video_path) as video:
                 if video.audio is None:
                     raise ValueError(
                         "The selected video file contains no audio track.")
                 video.audio.write_audiofile(audio_path, logger=None)
+        except ImportError:
+            # Re-raise ImportError with cleaner message
+            raise
         except Exception as e:
             if isinstance(e, ValueError):
                 raise
@@ -216,6 +226,11 @@ class TranscodingThread(QThread):
 
     def reencode_audio(self, source_path, target_path):
         self.update_progress.emit("Re-encoding audio...")
+        try:
+            from pydub import AudioSegment
+        except ImportError:
+            self.error.emit("pydub library not available for audio transcoding")
+            return
         audio = AudioSegment.from_file(source_path)
         audio.export(target_path, format=self.target_format)
 

@@ -13,15 +13,14 @@ dependencies = [
     "keyring>=24.0.0",
     "appdirs>=1.4.4",
     "psutil>=5.9.0",
-    
     # Data processing
     "beautifulsoup4>=4.12.0",
     "pyyaml>=6.0",
     "colorlog>=6.8.0",
     "humanfriendly>=10.0",
-    
     # API client
     "openai>=1.0.0",
+    "pyqt6>=6.9.1",
 ]
 
 [project.optional-dependencies]

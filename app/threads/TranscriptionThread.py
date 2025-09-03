@@ -3,7 +3,6 @@ from typing import List, Optional, Any, Dict
 import os
 import time
 import logging
-import torch
 import requests
 from threading import Lock  # Import Lock
 import tempfile
@@ -163,7 +162,8 @@ class TranscriptionThread(QThread):
                 logger.error(
                     f"Transcription network error: {safe_msg}", exc_info=False)
             self.update_progress.emit("Transcription failed: Network error")
-        except (torch.cuda.OutOfMemoryError, RuntimeError) as e:
+        except RuntimeError as e:
+            # Handle GPU memory errors without importing torch at module level
             if not self.is_canceled():
                 err_str = str(e)
                 if "CUDA out of memory" in err_str or "MPS out of memory" in err_str:
@@ -176,7 +176,18 @@ class TranscriptionThread(QThread):
                     self.update_progress.emit(
                         "Transcription failed: Out of memory")
                 else:
-                    raise  # Re-raise if it's not a memory error
+                    # Check if it's a torch OutOfMemoryError by checking the exception type name
+                    if e.__class__.__name__ == "OutOfMemoryError":
+                        self.error.emit(
+                            "Not enough GPU memory. Try disabling hardware acceleration in settings."
+                        )
+                        logger.error(
+                            f"Transcription memory error: {err_str}", exc_info=True
+                        )
+                        self.update_progress.emit(
+                            "Transcription failed: Out of memory")
+                    else:
+                        raise  # Re-raise if it's not a memory error
         except Exception as e:
             if not self.is_canceled():
                 from app.secure import redact
@@ -365,12 +376,14 @@ class TranscriptionThread(QThread):
             self.update_progress.emit(f"Using device: {device}")
             if device == "cuda":
                 try:
+                    # Lazy import torch only when needed for GPU info
+                    import torch
                     gpu_mem = torch.cuda.get_device_properties(0).total_memory / (
                         1024**3
                     )
                     self.update_progress.emit(f"GPU Memory: {gpu_mem:.2f}GB")
                 except Exception:
-                    pass  # Ignore if props fail
+                    pass  # Ignore if props fail or torch not available
 
         # Check before the potentially long call
         if self.is_canceled():

@@ -1,5 +1,4 @@
 import os
-import torch
 import logging
 from PyQt6.QtWidgets import (
     QWidget,
@@ -372,6 +371,13 @@ class MainTranscriptionWidget(ResponsiveWidget):
 
     def start_transcription(self):
         """Start the transcription process using the TranscriptionController."""
+        # Lazy import torch only when needed
+        try:
+            import torch
+        except ImportError:
+            logger.warning("PyTorch not available - transcription may be limited")
+            torch = None
+        
         if not self.current_recording_data:
             show_error_message(
                 self,

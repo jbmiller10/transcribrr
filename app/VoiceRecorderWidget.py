@@ -1,12 +1,7 @@
 import sys
 import os
 import shutil
-try:
-    import pyaudio  # type: ignore
-except Exception:  # PyAudio may be unavailable on some platforms (e.g., macOS app build)
-    pyaudio = None  # type: ignore
-from pydub import AudioSegment
-import wave
+# Heavy audio libraries are imported lazily when needed
 from PyQt6.QtWidgets import (
     QApplication,
     QWidget,
@@ -24,8 +19,8 @@ import datetime
 import logging
 from collections import deque
 import tempfile
-import numpy as np
 import time
+# numpy imported lazily when needed for audio level calculation
 from app.SVGToggleButton import SVGToggleButton
 from app.path_utils import resource_path
 from app.utils import format_time_duration
@@ -161,6 +156,8 @@ class RecordingThread(QThread):
                         # Calculate audio level for visualization
                         if len(data) > 0:
                             try:
+                                # Lazy import numpy only when calculating audio levels
+                                import numpy as np
                                 audio_array = np.frombuffer(
                                     data, dtype=np.int16)
                                 max_amplitude = (
@@ -172,6 +169,10 @@ class RecordingThread(QThread):
                                     max_amplitude / 32768.0
                                 )  # Normalize to 0.0-1.0
                                 self.update_level.emit(normalized_level)
+                            except ImportError:
+                                # If numpy is not available, skip level visualization
+                                logger.debug("numpy not available for audio level visualization")
+                                pass
                             except Exception as viz_error:
                                 # Non-critical error, just log it
                                 logger.warning(
@@ -265,7 +266,7 @@ class RecordingThread(QThread):
     def stopRecording(self):
         self.is_recording = False
         self.is_paused = False
-        self.level_timer.stop()
+        # Removed level_timer.stop() - this was a bug, level_timer doesn't exist
 
     def saveRecording(self, filename=None):
         if not self.frames:
@@ -286,6 +287,9 @@ class RecordingThread(QThread):
         final_path = filename
 
         try:
+            # Lazy import audio libraries only when saving
+            import wave
+            
             # 1. Save raw audio to temp WAV file
             with tempfile.NamedTemporaryFile(suffix=".wav", delete=False) as tmp_wav:
                 temp_wav_path = tmp_wav.name
@@ -305,6 +309,14 @@ class RecordingThread(QThread):
             logger.debug(f"Created temporary MP3 path: {temp_mp3_path}")
 
             logger.debug(f"Converting {temp_wav_path} to {temp_mp3_path}")
+            # Lazy import pydub only when converting audio
+            try:
+                from pydub import AudioSegment
+            except ImportError:
+                self.error.emit("pydub is required for saving recordings as MP3")
+                logger.error("pydub not available for MP3 conversion")
+                return None
+            
             audio_segment = AudioSegment.from_wav(temp_wav_path)
             audio_segment.export(temp_mp3_path, format="mp3", bitrate="192k")
             logger.debug("Conversion to temporary MP3 successful.")
@@ -352,8 +364,10 @@ class VoiceRecorderWidget(QWidget):
 
     def __init__(self, parent=None):
         super().__init__(parent)
+        self.audio = None  # Will be initialized on first recording
+        self.audio_available = None  # Cache availability check
         self.initUI()
-        self.initAudio()
+        # Removed initAudio() - now lazy-initialized on first use
         self.recording_thread = None
         self.is_recording = False
         self.is_paused = False
@@ -467,21 +481,44 @@ class VoiceRecorderWidget(QWidget):
 
         self.layout.addLayout(buttonLayout)
 
+    def _check_audio_availability(self):
+        """Check if audio recording is available (lazy check)."""
+        if self.audio_available is not None:
+            return self.audio_available
+        
+        try:
+            import pyaudio  # type: ignore
+            self.audio_available = True
+            return True
+        except ImportError:
+            logger.warning("PyAudio is not available; recording will be disabled")
+            self.audio_available = False
+            return False
+        except Exception as e:
+            logger.error(f"Error checking PyAudio availability: {e}")
+            self.audio_available = False
+            return False
+
     def initAudio(self):
-        if pyaudio is None:
-            logger.warning("PyAudio is not available; disabling recording UI.")
-            self.statusLabel.setText("PyAudio not available; recording disabled")
+        """Initialize audio system lazily when first needed."""
+        if self.audio is not None:
+            return True  # Already initialized
+        
+        if not self._check_audio_availability():
+            self.statusLabel.setText("Audio recording not available")
             self.recordButton.setEnabled(False)
             self.saveButton.setEnabled(False)
             self.deleteButton.setEnabled(False)
-            return
-
-        self.format = pyaudio.paInt16
-        self.channels = 1
-        self.rate = 44100
-        self.frames_per_buffer = 4096
+            return False
 
         try:
+            import pyaudio  # type: ignore
+            
+            self.format = pyaudio.paInt16
+            self.channels = 1
+            self.rate = 44100
+            self.frames_per_buffer = 4096
+            
             self.audio = pyaudio.PyAudio()
 
             # Check available input devices
@@ -496,14 +533,18 @@ class VoiceRecorderWidget(QWidget):
                     )
                     > 0
                 ):
-                    logger.info(
+                    logger.debug(
                         f"Input Device {i}: {self.audio.get_device_info_by_host_api_device_index(0, i).get('name')}"
                     )
+            
+            return True
 
         except Exception as e:
             logger.error(f"Error initializing audio: {e}", exc_info=True)
             self.statusLabel.setText("Error: Could not initialize audio system")
             self.recordButton.setEnabled(False)
+            self.audio = None
+            return False
 
     def toggleRecording(self):
         if not self.is_recording:
@@ -514,6 +555,15 @@ class VoiceRecorderWidget(QWidget):
             self.pauseRecording()
 
     def startRecording(self):
+        # Initialize audio system lazily on first recording attempt
+        if not self.initAudio():
+            QMessageBox.warning(
+                self,
+                "Audio Not Available",
+                "Audio recording is not available. Please check that PyAudio is installed."
+            )
+            return
+        
         self.is_recording = True
         self.is_paused = False
         self.elapsed_time = 0

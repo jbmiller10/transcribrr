@@ -19,9 +19,17 @@ from PyQt6.QtWidgets import (
 from PyQt6.QtCore import pyqtSignal, Qt, QThread, QTimer
 from PyQt6.QtGui import QIcon
 import logging
-from openai import OpenAI
-import torch
 from threading import Lock
+
+# Lazy import openai when needed
+def _get_openai():
+    """Lazy import OpenAI client."""
+    try:
+        from openai import OpenAI
+        return OpenAI
+    except ImportError:
+        logger.warning("OpenAI library not available")
+        return None
 
 from app.path_utils import resource_path
 from app.utils import ConfigManager, PromptManager
@@ -56,6 +64,10 @@ class OpenAIModelFetcherThread(QThread):
                 self.fetch_error.emit("No API key provided")
                 return
 
+            OpenAI = _get_openai()
+            if not OpenAI:
+                self.fetch_error.emit("OpenAI library not installed")
+                return
             client = OpenAI(api_key=self.api_key)
             response = client.models.list()
 
@@ -341,6 +353,8 @@ class SettingsDialog(QDialog):
 
         # Check available hardware
         try:
+            # Lazy import torch only when checking hardware
+            import torch
             has_cuda = torch.cuda.is_available()
             has_mps = (
                 hasattr(torch.backends,
@@ -363,7 +377,7 @@ class SettingsDialog(QDialog):
                 accel_tooltip = "No hardware acceleration detected. CPU will be used."
 
             self.hw_accel_checkbox.setToolTip(accel_tooltip)
-        except Exception:
+        except (ImportError, Exception):
             # Handle case where torch might not be properly installed
             logger.warning(
                 "Could not check hardware acceleration availability.")
@@ -526,6 +540,7 @@ class SettingsDialog(QDialog):
                 )
 
                 # Check if MPS is the only available hardware - only then we need to disable speaker detection
+                import torch
                 has_cuda = torch.cuda.is_available()
                 has_mps = (
                     hasattr(torch.backends,
@@ -535,7 +550,7 @@ class SettingsDialog(QDialog):
                 # Only disable speaker detection for MPS-only devices with hardware acceleration enabled
                 mps_only_device = has_mps and not has_cuda
                 disable_for_hw = hw_accel_enabled and mps_only_device
-            except Exception:
+            except (ImportError, Exception):
                 logger.warning(
                     "Error checking hardware status, assuming standard operation"
                 )
@@ -674,6 +689,7 @@ class SettingsDialog(QDialog):
             # Check for incompatibilities between hardware acceleration and speaker detection
             try:
                 # Only check for MPS-only devices (no CUDA)
+                import torch
                 has_cuda = torch.cuda.is_available()
                 has_mps = (
                     hasattr(torch.backends,
@@ -685,7 +701,7 @@ class SettingsDialog(QDialog):
                 if mps_only and self.hw_accel_checkbox.isChecked():
                     self.speaker_detection_checkbox.setChecked(False)
                     self.speaker_detection_checkbox.setEnabled(False)
-            except Exception as e:
+            except (ImportError, Exception) as e:
                 logger.warning(f"Error checking hardware compatibility: {e}")
 
             # GPT settings
