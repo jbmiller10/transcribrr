@@ -6,7 +6,6 @@ import tempfile
 from datetime import datetime
 import logging
 from typing import Optional, Tuple, List
-from moviepy.editor import VideoFileClip, AudioFileClip
 import wave
 from pydub import AudioSegment
 import datetime
@@ -122,17 +121,41 @@ def calculate_duration(file_path: str) -> str:
         file_type = get_file_type(file_path)
 
         if file_type == FileType.AUDIO:
-            clip = AudioFileClip(file_path)
+            # Prefer pydub for audio duration (no heavy moviepy dependency)
+            try:
+                audio = AudioSegment.from_file(file_path)
+                duration_in_seconds = len(audio) / 1000.0
+                audio = None
+            except Exception:
+                # Fallback to moviepy if available
+                try:
+                    from moviepy.editor import AudioFileClip  # type: ignore
+
+                    clip = AudioFileClip(file_path)
+                    duration_in_seconds = clip.duration
+                    clip.close()
+                except Exception as mp_err:
+                    logger.error(
+                        f"Audio duration check failed (no moviepy?): {mp_err}"
+                    )
+                    return "00:00:00"
         elif file_type == FileType.VIDEO:
-            clip = VideoFileClip(file_path)
+            # Use moviepy for video if available
+            try:
+                from moviepy.editor import VideoFileClip  # type: ignore
+
+                clip = VideoFileClip(file_path)
+                duration_in_seconds = clip.duration
+                clip.close()
+            except Exception as mp_err:
+                logger.error(
+                    f"Video duration check requires moviepy: {mp_err}"
+                )
+                return "00:00:00"
         else:
             logger.error(
                 f"Unsupported file type for duration calculation: {file_path}")
             return "00:00:00"
-
-        # Calculate the duration
-        duration_in_seconds = clip.duration
-        clip.close()  # Close the clip to release the file
 
         # Format the duration as HH:MM:SS
         duration_str = str(datetime.timedelta(
