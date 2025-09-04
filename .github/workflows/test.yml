@@ -143,6 +143,11 @@ jobs:
           export CFLAGS="-I${BREW_PREFIX}/include"
           export LDFLAGS="-L${BREW_PREFIX}/lib"
           export PKG_CONFIG_PATH="${BREW_PREFIX}/lib/pkgconfig"
+          # Ensure icons are also present inside the Python package so they can
+          # be accessed from Resources/app/app/icons as a fallback.
+          mkdir -p app/icons
+          rsync -a --delete icons/ app/icons/
+          echo "In-package icons prepared:"; find app/icons -maxdepth 2 -type f | head -n 10
           uv run briefcase create macOS --no-input
           # Update both requirements and resources (icons, etc.) before build
           uv run briefcase build macOS --no-input --update-requirements --update-resources
@@ -156,6 +161,13 @@ jobs:
           if [ ! -d "$ICONS_DIR" ]; then
             echo "Expected icons directory is missing at $ICONS_DIR" >&2
             echo "Resources layout:"; find "$APP_PATH/Contents/Resources" -maxdepth 3 -type d -print
+            # Fallback: icons bundled inside the Python package
+            ALT_ICONS_DIR="$APP_PATH/Contents/Resources/app/app/icons"
+            if [ -d "$ALT_ICONS_DIR" ]; then
+              echo "Found alternative icons directory: $ALT_ICONS_DIR"
+              ls -la "$ALT_ICONS_DIR" | head -n 50
+              exit 0
+            fi
             exit 1
           fi
           echo "Found icons directory: $ICONS_DIR"

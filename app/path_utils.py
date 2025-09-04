@@ -113,7 +113,9 @@ def resource_path(relative_path: Optional[str] = None, *, env_detector: Optional
 
     if env == "py2app":
         fallbacks = [
+            # Common locations inside a Briefcase .app bundle
             os.path.join(base_path, "app", relative_path),
+            os.path.join(base_path, "app", "app", relative_path),
             os.path.join(base_path, "transcribrr", relative_path),
             os.path.join(base_path, "app", "transcribrr", relative_path),
         ]

@@ -110,6 +110,10 @@ torchaudio = { index = "pytorch-cu121" }
 
 [tool.hatch.build.targets.wheel]
 packages = ["app"]
+# Ensure static assets packaged inside the app wheel (fallback location)
+include = [
+  "app/icons/**",
+]
 
 [tool.black]
 line-length = 100
