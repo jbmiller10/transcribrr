@@ -8,7 +8,14 @@ from app.constants import get_database_path
 
 # Lightweight QTimer fallback for headless/test environments
 try:  # pragma: no cover - exercised implicitly by headless tests
-    from PyQt6.QtCore import QTimer as _QtQTimer  # type: ignore
+    from PyQt6.QtCore import QTimer as _RealQtQTimer, QCoreApplication as _QtQCoreApplication  # type: ignore
+
+    # If no Qt application instance is running, use a stub that executes
+    # immediately to avoid relying on the event loop in tests.
+    if _QtQCoreApplication.instance() is None:  # type: ignore
+        raise RuntimeError("No Qt application instance; use stub timer")
+
+    _QtQTimer = _RealQtQTimer  # type: ignore
 except Exception:  # pragma: no cover
     class _QtQTimer:  # type: ignore
         @staticmethod

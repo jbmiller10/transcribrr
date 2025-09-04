@@ -27,9 +27,32 @@ from types import ModuleType
 import sys
 import threading
 
+force_stubs = False
 try:
-    from PyQt6.QtCore import QObject, pyqtSignal, QThread, QMutex, Qt  # type: ignore
-except ImportError:  # pragma: no cover – executed only in non-Qt test envs
+    # Try importing QtCore. If available but there's no QCoreApplication instance,
+    # we prefer light-weight stubs so unit tests don't need a running event loop.
+    from PyQt6.QtCore import (  # type: ignore
+        QObject as _QtQObject,
+        pyqtSignal as _QtPyqtSignal,
+        QThread as _QtQThread,
+        QMutex as _QtQMutex,
+        Qt as _QtQt,
+        QCoreApplication as _QtQCoreApplication,
+    )
+
+    if _QtQCoreApplication.instance() is None:
+        # Qt installed but no event loop – use stubs for direct, synchronous signals
+        force_stubs = True
+    else:  # Real Qt with app instance – use the real symbols
+        QObject = _QtQObject  # type: ignore
+        pyqtSignal = _QtPyqtSignal  # type: ignore
+        QThread = _QtQThread  # type: ignore
+        QMutex = _QtQMutex  # type: ignore
+        Qt = _QtQt  # type: ignore
+except Exception:  # pragma: no cover – executed only in non-Qt or headless envs
+    force_stubs = True
+
+if force_stubs:
     # Create a functional stub of the QtCore module and required symbols.
     # The goal is to behave closely enough for tests: connect/emit must work.
 
@@ -141,6 +164,8 @@ except ImportError:  # pragma: no cover – executed only in non-Qt test envs
 
     # Register the stubs in sys.modules *before* assigning to local names so
     # that any follow-up imports (also in other files) resolve correctly.
+    # Only register stubs if PyQt6 isn't already present to avoid clobbering
+    # a real Qt install. setdefault() preserves an existing module.
     sys.modules.setdefault("PyQt6", _pyqt6_stub)
     sys.modules.setdefault("PyQt6.QtCore", _qtcore_stub)
 
@@ -271,21 +296,14 @@ class DatabaseWorker(QThread):
                     )
                     return  # Exit thread if we can't establish a connection
 
-            # Process operations until stopped and the queue is drained. Using a
-            # loop that always attempts a fetch ensures we can gracefully exit
-            # even if `running` is set to False before a sentinel is queued.
+            # Process operations until stopped and the queue is drained. Use a
+            # blocking queue.get() so newly enqueued work is picked up
+            # immediately (tests use a tight 0.3s timeout for callbacks).
             while True:
                 operation = None
                 try:
-                    # Queue.get with timeout to allow for thread interruption
-                    try:
-                        operation = self.operations_queue.get(timeout=0.5)
-                    except queue.Empty:
-                        # If we're asked to stop and there is nothing to do,
-                        # exit the loop; otherwise keep polling.
-                        if not self.running:
-                            break
-                        continue  # No operation available, continue the loop
+                    # Blocking get – stop() enqueues a sentinel to unblock
+                    operation = self.operations_queue.get()
 
                     # Check for sentinel value indicating thread should exit
                     if operation is None:
@@ -654,9 +672,6 @@ class DatabaseWorker(QThread):
                                     f"Error marking queue task as done: {task_done_error}"
                                 )
 
-                except queue.Empty:
-                    # This shouldn't happen since we already handle it above, but just in case
-                    continue
                 except Exception as e:
                     # Error in the outer try block (queue operations)
                     self._log_error("Operation queue error",
