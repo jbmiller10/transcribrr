@@ -10,33 +10,25 @@ logger = logging.getLogger("transcribrr")
 
 
 def get_execution_environment() -> str:
-    """
-    Return execution environment: 'pyinstaller', 'app_bundle', or 'development'.
-
-    Notes:
-    - Briefcase and py2app style macOS bundles may not set sys.frozen; detect by
-      the executable path pattern (.../Contents/MacOS/...) or presence of a
-      sibling Resources directory.
-    """
+    """Return execution environment: 'pyinstaller', 'py2app', or 'development'."""
     try:
+        # PyInstaller explicitly exposes _MEIPASS
         if hasattr(sys, "_MEIPASS"):
             return "pyinstaller"
 
-        exe = getattr(sys, "executable", "") or ""
-        # Heuristic for macOS app bundles (Briefcase/py2app)
+        # Detect macOS app bundle layouts (Briefcase/py2app)
         if sys.platform == "darwin":
+            exe = getattr(sys, "executable", "") or ""
+            if "/Contents/MacOS/" in exe:
+                return "py2app"
             macos_dir = os.path.dirname(exe)
             resources_dir = os.path.normpath(os.path.join(macos_dir, os.pardir, "Resources"))
-            if "/Contents/MacOS/" in exe or os.path.isdir(resources_dir):
-                return "app_bundle"
-
-        # Generic frozen fallback
-        if getattr(sys, "frozen", False):
-            return "app_bundle"
+            if os.path.isdir(resources_dir):
+                return "py2app"
     except Exception:
-        # If detection fails, assume development to avoid crashing
         pass
 
+    # Default to development in all other cases (including frozen on non-macOS)
     return "development"
 
 
@@ -57,7 +49,7 @@ def _get_base_resource_path(env_detector: Optional[Callable[[], str]] = None) ->
         return pyinstaller_path
 
     # Check if running as a macOS app bundle (Briefcase/py2app)
-    elif env == "app_bundle":
+    elif env == "py2app":
         bundle_dir = os.path.normpath(
             os.path.join(os.path.dirname(sys.executable),
                          os.pardir, "Resources")
@@ -98,6 +90,6 @@ def resource_path(relative_path: Optional[str] = None, *, env_detector: Optional
         return base_path
 
     # Join with the relative path and return
-    full_path = os.path.normpath(os.path.join(base_path, relative_path))
+    full_path = os.path.join(base_path, relative_path)
     logger.debug(f"Resource path for '{relative_path}': {full_path}")
     return full_path
