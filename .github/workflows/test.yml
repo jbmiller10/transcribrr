@@ -146,6 +146,23 @@ jobs:
           uv run briefcase create macOS --no-input
           uv run briefcase build macOS --no-input --update-requirements
 
+      - name: Verify app resources (icons present)
+        run: |
+          set -euxo pipefail
+          APP_PATH=$(find build -type d -name "Transcribrr.app" | head -n 1)
+          if [ -z "$APP_PATH" ]; then echo "App bundle not found"; exit 1; fi
+          ICONS_DIR="$APP_PATH/Contents/Resources/icons"
+          if [ ! -d "$ICONS_DIR" ]; then
+            echo "Expected icons directory is missing at $ICONS_DIR" >&2
+            echo "Resources layout:"; find "$APP_PATH/Contents/Resources" -maxdepth 3 -type d -print
+            exit 1
+          fi
+          echo "Found icons directory: $ICONS_DIR"
+          ls -la "$ICONS_DIR" | head -n 50
+          # Also check Qt plugin directory for image formats
+          QT_PLUGINS_DIR="$APP_PATH/Contents/Resources/app_packages/PyQt6/Qt6/plugins"
+          echo "Qt plugins (if present):"; test -d "$QT_PLUGINS_DIR" && find "$QT_PLUGINS_DIR" -maxdepth 2 -type d -print || true
+
       - name: Bundle PortAudio into app and fix linkage
         run: |
           set -euxo pipefail

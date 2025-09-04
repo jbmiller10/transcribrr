@@ -584,6 +584,19 @@ def run_application():
     global logger
     logger = setup_logging()
     
+    # Ensure Qt can locate bundled image/format plugins (e.g., gif, svg icon engine)
+    # This helps when running as a packaged app where plugin discovery paths differ.
+    try:
+        from PyQt6.QtCore import QCoreApplication
+        plugin_path = resource_path(os.path.join("app_packages", "PyQt6", "Qt6", "plugins"))
+        if os.path.isdir(plugin_path):
+            QCoreApplication.addLibraryPath(plugin_path)
+            logger.info(f"Added Qt plugin path: {plugin_path}")
+        else:
+            logger.debug(f"Qt plugin path not found: {plugin_path}")
+    except Exception as e:
+        logger.debug(f"Unable to set Qt plugin path: {e}")
+    
     # Keep a reference to the startup thread to prevent early destruction
     try:
         # Log startup information

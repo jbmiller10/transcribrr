@@ -92,7 +92,39 @@ def resource_path(relative_path: Optional[str] = None, *, env_detector: Optional
     if relative_path is None:
         return base_path
 
-    # Join with the relative path and return
+    # If an absolute path is provided, honor it verbatim
+    if os.path.isabs(relative_path):
+        logger.debug(f"Absolute resource path requested: {relative_path}")
+        return relative_path
+
+    # Primary join: Resources/<relative_path>
     full_path = os.path.join(base_path, relative_path)
-    logger.debug(f"Resource path for '{relative_path}': {full_path}")
+    if os.path.exists(full_path):
+        logger.debug(f"Resource path for '{relative_path}': {full_path}")
+        return full_path
+
+    # In some Briefcase/py2app layouts, app code is at Resources/app and
+    # additional resources may also be nested under that folder. Fall back to a
+    # couple of common alternatives if the primary join isn't present.
+    try:
+        env = env_detector() if env_detector else get_execution_environment()
+    except Exception:
+        env = "development"
+
+    if env == "py2app":
+        fallbacks = [
+            os.path.join(base_path, "app", relative_path),
+            os.path.join(base_path, "transcribrr", relative_path),
+            os.path.join(base_path, "app", "transcribrr", relative_path),
+        ]
+        for alt in fallbacks:
+            if os.path.exists(alt):
+                logger.debug(
+                    f"Resource fallback for '{relative_path}': {alt}")
+                return alt
+
+    # Last resort: return the primary joined path (may not exist) for callers
+    # that want to probe existence or handle their own fallback.
+    logger.debug(
+        f"Resource path (not found, returning best-effort) for '{relative_path}': {full_path}")
     return full_path
