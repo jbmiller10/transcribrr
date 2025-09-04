@@ -278,8 +278,9 @@ class RecentRecordingsWidget(ResponsiveWidget):
 
         for file_path in selected_files:
             try:
-                # Ensure the recordings directory exists
-                recordings_dir = os.path.join(os.getcwd(), "Recordings")
+                # Ensure the recordings directory exists in the user data location
+                from app.constants import get_recordings_dir
+                recordings_dir = get_recordings_dir()
                 os.makedirs(recordings_dir, exist_ok=True)
 
                 # Generate a unique destination path

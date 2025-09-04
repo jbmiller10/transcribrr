@@ -274,20 +274,22 @@ class RecordingThread(QThread):
             self.error.emit("No audio data to save")
             return None
 
-        recordings_dir = os.path.join(os.getcwd(), "Recordings")
-        os.makedirs(recordings_dir, exist_ok=True)
-
+        # Determine destination path using the configured recordings directory
+        # Avoid using os.getcwd() which may be '/' in packaged builds
         if filename is None:
+            recordings_dir = get_recordings_dir()
+            os.makedirs(recordings_dir, exist_ok=True)
             timestamp = datetime.datetime.now().strftime("%Y%m%d-%H%M%S")
-            filename = os.path.join(
-                recordings_dir, f"Recording-{timestamp}.mp3")
+            final_path = os.path.join(recordings_dir, f"Recording-{timestamp}.mp3")
+        else:
+            final_path = filename
 
         temp_wav_path = None
         temp_mp3_path = None
 
-        final_path = filename
-
         try:
+            # Ensure the parent directory of the final path exists
+            os.makedirs(os.path.dirname(final_path), exist_ok=True)
             # Lazy import audio libraries only when saving
             import wave
             
