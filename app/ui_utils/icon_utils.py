@@ -6,7 +6,7 @@ from app.path_utils import resource_path
 
 try:  # pragma: no cover - exercised in packaged app
     from PyQt6.QtGui import QIcon, QPixmap
-    from PyQt6.QtCore import QSize
+    from PyQt6.QtCore import QSize, QRectF, Qt
     try:
         from PyQt6.QtSvg import QSvgRenderer  # type: ignore
     except Exception:  # QtSvg may be missing in some runtimes
@@ -34,12 +34,16 @@ def _render_svg_to_pixmap(svg_path: str, size: int = 32):
             return None
         pm = QPixmap(size, size)
         # Transparent background
-        pm.fill(0)
+        try:
+            pm.fill(Qt.GlobalColor.transparent)
+        except Exception:
+            # Fallback if Qt namespace differs
+            pm.fill(0)
         from PyQt6.QtGui import QPainter
 
         p = QPainter(pm)
-        # Render into the full pixmap rect
-        renderer.render(p)
+        # Render into the full pixmap rect to ensure scaling
+        renderer.render(p, QRectF(0, 0, size, size))
         p.end()
         return pm
     except Exception as e:
@@ -87,4 +91,3 @@ def load_icon(path: str, *, size: int = 32) -> "QIcon":
         return QIcon(abs_path)  # type: ignore
     except Exception:
         return QIcon  # type: ignore
-

@@ -395,6 +395,13 @@ def initialize_app():
         responsive_event_filter = ResponsiveEventFilter()
         app.installEventFilter(responsive_event_filter)
 
+        # Basic diagnostics to help debug resource resolution in packaged app
+        try:
+            test_icon = resource_path("icons/folder.svg")
+            logger.info(f"Sample icon path: {test_icon}; exists={os.path.exists(test_icon)}")
+        except Exception as diag_e:
+            logger.warning(f"Resource path diagnostic failed: {diag_e}")
+
         # Create splash screen
         splash, progress_bar, status_label = create_splash_screen()
         splash.show()
@@ -749,3 +756,12 @@ def main() -> int:
 
 if __name__ == "__main__":
     sys.exit(main())
+# Proactively import QtSvg to ensure the QtSvg framework is bundled in packaged apps.
+try:  # pragma: no cover - runtime only
+    from PyQt6.QtSvg import QSvgRenderer as _ensure_qtsvg  # noqa: F401
+    logger and logger.debug("QtSvg module import successful; SVG rendering available")
+except Exception as _e:  # pragma: no cover
+    try:
+        logger and logger.warning(f"QtSvg not available: {_e}")
+    except Exception:
+        pass
