@@ -209,21 +209,8 @@ class DatabaseWorker(QThread):
             # Stay resilient in production; tests will surface setup issues
             pass
 
-        # Make queue methods patch-friendly in tests while delegating to the
-        # real queue by default. Tests often set side_effect/return_value on
-        # these callables.
-        try:  # pragma: no cover - behaviour exercised via tests
-            from unittest.mock import MagicMock  # Local import to avoid prod dep
-
-            _real_get = self.operations_queue.get
-            _real_put = self.operations_queue.put
-            self.operations_queue.get = MagicMock(side_effect=_real_get)  # type: ignore[attr-defined]
-            self.operations_queue.put = MagicMock(side_effect=_real_put)  # type: ignore[attr-defined]
-            _real_task_done = self.operations_queue.task_done
-            self.operations_queue.task_done = MagicMock(side_effect=_real_task_done)  # type: ignore[attr-defined]
-        except Exception:
-            # If unittest.mock is unavailable, keep the real methods.
-            pass
+        # Use the real queue methods; tests can patch DatabaseManager APIs
+        # directly if they need to simulate queue behavior.
 
     def _log_error(
         self,
