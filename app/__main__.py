@@ -10,6 +10,7 @@ from .utils import (
     ensure_ffmpeg_available,
 )
 from .path_utils import resource_path
+from .ui_utils.icon_utils import load_icon
 from .MainWindow import MainWindow
 from PyQt6.QtSvg import QSvgRenderer
 from PyQt6.QtCore import Qt, QTimer, QThread, pyqtSignal, pyqtSlot, QRect
@@ -382,7 +383,7 @@ def initialize_app():
         app = QApplication(sys.argv)
         app.setApplicationName("Transcribrr")
         app.setApplicationVersion("1.0.0")
-        app.setWindowIcon(QIcon(resource_path("./icons/app/app_icon.svg")))
+        app.setWindowIcon(load_icon("./icons/app/app_icon.svg", size=64))
 
         # Initialize theme manager (defer applying theme until we're signaled)
         theme_manager = ThemeManager.instance()

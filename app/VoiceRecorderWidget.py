@@ -23,6 +23,7 @@ import time
 # numpy imported lazily when needed for audio level calculation
 from app.SVGToggleButton import SVGToggleButton
 from app.path_utils import resource_path
+from app.ui_utils.icon_utils import load_icon
 from app.utils import format_time_duration
 from app.ThreadManager import ThreadManager
 from app.constants import get_recordings_dir
@@ -431,7 +432,7 @@ class VoiceRecorderWidget(QWidget):
 
         # Icon-only save button with transparent background
         self.saveButton = QPushButton()
-        self.saveButton.setIcon(QIcon(resource_path("icons/save.svg")))
+        self.saveButton.setIcon(load_icon("icons/save.svg", size=24))
         self.saveButton.setIconSize(QSize(24, 24))  # Smaller icon size
         self.saveButton.setStyleSheet(
             """
@@ -456,7 +457,7 @@ class VoiceRecorderWidget(QWidget):
 
         # Icon-only delete button with transparent background
         self.deleteButton = QPushButton()
-        self.deleteButton.setIcon(QIcon(resource_path("icons/delete.svg")))
+        self.deleteButton.setIcon(load_icon("icons/delete.svg", size=24))
         self.deleteButton.setIconSize(QSize(24, 24))  # Smaller icon size
         self.deleteButton.setStyleSheet(
             """

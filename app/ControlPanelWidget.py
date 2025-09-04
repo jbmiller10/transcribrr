@@ -14,6 +14,7 @@ import logging
 
 # Use managers and ui_utils
 from app.path_utils import resource_path
+from app.ui_utils.icon_utils import load_icon
 from app.utils import validate_url, resource_path, ConfigManager
 from app.ui_utils import show_error_message, FeedbackManager
 from app.threads.TranscodingThread import TranscodingThread
@@ -227,7 +228,7 @@ class ControlPanelWidget(QWidget):
         absolute_icon_path = resource_path(icon_path)
         button = QPushButton()
         if os.path.exists(absolute_icon_path):
-            button.setIcon(QIcon(absolute_icon_path))
+            button.setIcon(load_icon(absolute_icon_path, size=24))
             button.setIconSize(QSize(22, 22))  # Slightly larger icons
         else:
             logger.warning(f"Icon not found: {absolute_icon_path}")

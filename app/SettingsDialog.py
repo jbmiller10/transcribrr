@@ -32,6 +32,7 @@ def _get_openai():
         return None
 
 from app.path_utils import resource_path
+from app.ui_utils.icon_utils import load_icon
 from app.utils import ConfigManager, PromptManager
 from app.PromptManagerDialog import PromptManagerDialog
 from app.ThemeManager import ThemeManager
@@ -484,8 +485,7 @@ class SettingsDialog(QDialog):
         prompts_layout = QVBoxLayout(prompts_group)
         self.manage_prompts_button = QPushButton("Manage Prompt Templates")
         self.manage_prompts_button.clicked.connect(self.open_prompt_manager)
-        self.manage_prompts_button.setIcon(
-            QIcon(resource_path("icons/edit.svg")))
+        self.manage_prompts_button.setIcon(load_icon("icons/edit.svg", size=24))
         prompts_layout.addWidget(self.manage_prompts_button)
         gpt_layout.addWidget(prompts_group)
         gpt_layout.addStretch()

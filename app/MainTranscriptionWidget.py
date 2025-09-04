@@ -30,6 +30,7 @@ from app.ui_utils import (
 )
 from app.file_utils import is_valid_media_file, check_file_size
 from app.path_utils import resource_path
+from app.ui_utils.icon_utils import load_icon
 from app.utils import ConfigManager, PromptManager
 from app.ThreadManager import ThreadManager
 from app.widgets import PromptBar
@@ -231,8 +232,7 @@ class MainTranscriptionWidget(ResponsiveWidget):
         self.gpt_processed_label = QLabel("Processed")
 
         self.settings_button = QPushButton()
-        self.settings_button.setIcon(
-            QIcon(resource_path("icons/settings.svg")))
+        self.settings_button.setIcon(load_icon("icons/settings.svg", size=24))
         self.settings_button.setToolTip("Open Settings")
         self.settings_button.setIconSize(QSize(18, 18))
         self.settings_button.setFixedSize(28, 28)

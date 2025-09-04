@@ -14,6 +14,7 @@ from PyQt6.QtWidgets import (
 from PyQt6.QtCore import Qt, QSize, QTimer
 from PyQt6.QtGui import QMovie, QIcon, QAction
 from app.path_utils import resource_path
+from app.ui_utils.icon_utils import load_icon
 
 
 # Configure logging (use app name)
@@ -74,7 +75,7 @@ class SpinnerManager:
             return dummy_action
 
         # Action for logic/shortcuts (real toolbar path)
-        action = QAction(QIcon(action_icon_path), action_tooltip, self.parent)
+        action = QAction(load_icon(action_icon_path, size=24), action_tooltip, self.parent)
         action.setCheckable(False)
         if callable(callback):
             action.triggered.connect(callback)
@@ -82,7 +83,7 @@ class SpinnerManager:
         # Visible Button Widget
         button = QPushButton()
         if os.path.exists(action_icon_path):
-            button.setIcon(QIcon(action_icon_path))
+            button.setIcon(load_icon(action_icon_path, size=24))
         else:
             logger.warning(
                 f"Action icon not found: {action_icon_path}. Using text.")
