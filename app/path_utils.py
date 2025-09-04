@@ -16,16 +16,19 @@ def get_execution_environment() -> str:
         if hasattr(sys, "_MEIPASS"):
             return "pyinstaller"
 
-        # Detect macOS app bundle layouts (Briefcase/py2app)
+        # Detect macOS app bundle layouts (Briefcase/py2app) by path pattern
+        exe = getattr(sys, "executable", "") or ""
+        if "/Contents/MacOS/" in exe:
+            return "py2app"
+
+        # Secondary heuristic on macOS: presence of sibling Resources directory
         if sys.platform == "darwin":
-            exe = getattr(sys, "executable", "") or ""
-            if "/Contents/MacOS/" in exe:
-                return "py2app"
             macos_dir = os.path.dirname(exe)
             resources_dir = os.path.normpath(os.path.join(macos_dir, os.pardir, "Resources"))
             if os.path.isdir(resources_dir):
                 return "py2app"
     except Exception:
+        # Fall back to development on any detection failure
         pass
 
     # Default to development in all other cases (including frozen on non-macOS)
