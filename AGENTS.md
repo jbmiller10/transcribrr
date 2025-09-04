@@ -50,3 +50,8 @@ uv run briefcase create macOS && uv run briefcase build macOS && uv run briefcas
 ## Security & Configuration Tips
 - Never hard‑code or log secrets. See `app/secure.py` (`SensitiveLogFilter`). Store API keys via OS keyring.
 - Ensure FFmpeg is available in `PATH`; startup checks live in `app/utils.py`.
+
+## User Data Paths
+- Use `get_user_data_dir()` (root) and `get_recordings_dir()` for recordings.
+- Do not use `os.getcwd()` or absolute paths like `/Recordings`.
+- Ensure parent dirs exist: `os.makedirs(os.path.dirname(path), exist_ok=True)`.
