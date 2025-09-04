@@ -737,5 +737,14 @@ def cleanup_application():
         logger.error(f"Error saving configuration: {e}")
 
 
+def main() -> int:
+    """Entry point used by packaged builds.
+
+    Briefcase/pyinstaller wrappers import `app.__main__:main`. Keep this thin and
+    delegate to the real runner to avoid duplicating logic.
+    """
+    return run_application()
+
+
 if __name__ == "__main__":
-    sys.exit(run_application())
+    sys.exit(main())
