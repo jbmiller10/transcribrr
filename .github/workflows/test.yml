@@ -144,7 +144,8 @@ jobs:
           export LDFLAGS="-L${BREW_PREFIX}/lib"
           export PKG_CONFIG_PATH="${BREW_PREFIX}/lib/pkgconfig"
           uv run briefcase create macOS --no-input
-          uv run briefcase build macOS --no-input --update-requirements
+          # Update both requirements and resources (icons, etc.) before build
+          uv run briefcase build macOS --no-input --update-requirements --update-resources
 
       - name: Verify app resources (icons present)
         run: |

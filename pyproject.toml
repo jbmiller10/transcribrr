@@ -185,6 +185,8 @@ sources = [
     "transcribrr",  # lightweight wrapper generated in CI
     "app",          # main application package
 ]
+# Ensure app resources (icons, presets) are bundled cross‑platform
+resources = ["icons", "preset_prompts.json"]
 # Keep core runtime libs minimal; heavy ML deps are intentionally excluded.
 # Ensure GUI and core API clients are available at runtime.
 requires = [
@@ -220,7 +222,6 @@ permission.microphone = true
 [tool.briefcase.app.transcribrr.macOS.app]
 # Briefcase expects icon paths without extension; it appends .icns/.ico, etc.
 icon = "icons/app/app_icon"
-resources = ["icons", "preset_prompts.json"]
 universal_build = false
 info."NSMicrophoneUsageDescription" = "Transcribrr records audio so it can transcribe your speech."
 requirement_installer_args = ["--find-links", "wheelhouse"]
