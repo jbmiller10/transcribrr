@@ -31,20 +31,24 @@ import os as _os
 # Allow forcing stubs in headless CI by setting an env var
 force_stubs = _os.environ.get("TRANSCRIBRR_USE_QT_STUBS") == "1"
 try:
-    if not force_stubs:
-        # Prefer real Qt bindings if importable; safe to use before app instance exists
-        from PyQt6.QtCore import (  # type: ignore
-            QObject as _QtQObject,
-            pyqtSignal as _QtPyqtSignal,
-            QThread as _QtQThread,
-            QMutex as _QtQMutex,
-            Qt as _QtQt,
-        )
+    # Import QtCore symbols if available
+    from PyQt6.QtCore import (  # type: ignore
+        QObject as _QtQObject,
+        pyqtSignal as _QtPyqtSignal,
+        QThread as _QtQThread,
+        QMutex as _QtQMutex,
+        Qt as _QtQt,
+        QCoreApplication as _QtQCoreApplication,
+    )
+    # Use real Qt only if not forcing stubs AND there is an active application instance
+    if not force_stubs and _QtQCoreApplication.instance() is not None:
         QObject = _QtQObject  # type: ignore
         pyqtSignal = _QtPyqtSignal  # type: ignore
         QThread = _QtQThread  # type: ignore
         QMutex = _QtQMutex  # type: ignore
         Qt = _QtQt  # type: ignore
+    else:
+        force_stubs = True
 except Exception:  # pragma: no cover – executed only in non-Qt or headless envs
     force_stubs = True
 
