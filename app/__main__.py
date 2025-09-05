@@ -1,7 +1,6 @@
 from app.secure import SensitiveLogFilter
 from .constants import LOG_FORMAT, APP_NAME, get_user_data_dir, get_log_file
 from .ThreadManager import ThreadManager
-from .services.transcription_service import ModelManager
 from .ResponsiveUI import ResponsiveUIManager, ResponsiveEventFilter
 from .ThemeManager import ThemeManager
 from .utils import (
@@ -11,6 +10,7 @@ from .utils import (
     ensure_ffmpeg_available,
 )
 from .path_utils import resource_path
+from .ui_utils.icon_utils import load_icon
 from .MainWindow import MainWindow
 from PyQt6.QtSvg import QSvgRenderer
 from PyQt6.QtCore import Qt, QTimer, QThread, pyqtSignal, pyqtSlot, QRect
@@ -37,39 +37,51 @@ warnings.filterwarnings(
     message="urllib3 v2 only supports OpenSSL 1.1.1+, currently the 'ssl' module is compiled with",
 )
 
+# Global logger variable - will be initialized in setup_logging()
+logger = None
 
-# Import constants for paths
+def setup_logging():
+    """Setup logging configuration - called at runtime, not import time."""
+    global logger
+    
+    # Configure logging - now all paths come from constants
+    # Root logging may have been configured by app.utils already (imported by
+    # many modules).  Add handlers only if not present to avoid duplicate log
+    # lines.
+    if not logging.getLogger().handlers:
+        logging.basicConfig(
+            level=logging.INFO,
+            format=LOG_FORMAT,
+            handlers=[
+                logging.StreamHandler(),
+                logging.FileHandler(get_log_file()),
+            ],
+        )
 
-# Configure logging - now all paths come from constants
-# Root logging may have been configured by app.utils already (imported by
-# many modules).  Add handlers only if not present to avoid duplicate log
-# lines.
-
-if not logging.getLogger().handlers:
-    logging.basicConfig(
-        level=logging.INFO,
-        format=LOG_FORMAT,
-        handlers=[
-            logging.StreamHandler(),
-            logging.FileHandler(get_log_file()),
-        ],
-    )
-
-# Apply sensitive data redaction filter to the root logger
-root_logger = logging.getLogger()
-root_logger.addFilter(SensitiveLogFilter())
-logger = logging.getLogger(APP_NAME)
-logger.info("Secure logging filter initialized")
-
-# Now get the application‑level logger
-logger = logging.getLogger(APP_NAME)
-logger.info(
-    f"Application starting. User data directory: {get_user_data_dir()}")
+    # Apply sensitive data redaction filter to the root logger
+    root_logger = logging.getLogger()
+    root_logger.addFilter(SensitiveLogFilter())
+    
+    # Now get the application‑level logger
+    logger = logging.getLogger(APP_NAME)
+    logger.info("Secure logging filter initialized")
+    logger.info(
+        f"Application starting. User data directory: {get_user_data_dir()}")
+    
+    return logger
 
 # Directories are already created in constants.py, no need to recreate them here
 
 # Global variable to keep reference to the startup thread
 startup_thread = None
+
+# Initialize logging when module is run (not on import)
+def _ensure_logger():
+    """Ensure logger is initialized."""
+    global logger
+    if logger is None:
+        logger = setup_logging()
+    return logger
 
 
 class StartupThread(QThread):
@@ -86,6 +98,8 @@ class StartupThread(QThread):
 
     def run(self) -> None:
         """Run the initialization process."""
+        # Ensure logger is available
+        _ensure_logger()
         try:
             self.update_progress.emit(10, "Checking dependencies...")
             dependencies = self.check_dependencies()
@@ -124,9 +138,19 @@ class StartupThread(QThread):
             # Emit signal for GUI thread to apply theme
             self.apply_theme.emit(theme)
 
-            # Pre-initialize model manager without loading models
+            # Pre-initialize model manager without loading models (lazy import)
             self.update_progress.emit(70, "Initializing model manager...")
-            model_manager = ModelManager.instance()
+            try:
+                # Lazy import to avoid heavy dependencies at startup
+                from app.services.transcription_service import ModelManager
+                model_manager = ModelManager.instance()
+                logger.info("Model manager initialized successfully")
+            except ImportError as e:
+                # ML stack not installed - this is OK for packaging
+                logger.info(f"Model manager not available (ML dependencies not installed): {e}")
+            except Exception as e:
+                # Don't block app startup if ML stack is unavailable; UI will handle errors on use.
+                logger.warning(f"Model manager initialization error: {e}")
 
             # Initialize responsive UI manager via signal
             self.update_progress.emit(80, "Setting up UI manager...")
@@ -167,13 +191,18 @@ class StartupThread(QThread):
         ffmpeg_available, ffmpeg_message = ensure_ffmpeg_available()
         logger.info(f"FFmpeg check: {ffmpeg_message}")
 
-        # Check PyAudio
+        # Check PyAudio (lazy import with proper error handling)
+        pyaudio_available = False
         try:
+            # Lazy import to avoid packaging issues
             import pyaudio
-
             pyaudio_available = True
-        except ImportError:
-            pyaudio_available = False
+            logger.info("PyAudio is available")
+        except ImportError as e:
+            logger.warning(f"PyAudio not available: {e}")
+        except Exception as e:
+            # Catch other potential errors from pyaudio initialization
+            logger.warning(f"PyAudio initialization error: {e}")
 
         return {"ffmpeg": ffmpeg_available, "pyaudio": pyaudio_available}
 
@@ -185,6 +214,7 @@ class StartupThread(QThread):
             Tuple of (CUDA available, GPU info list)
         """
         try:
+            # Lazy import torch to avoid packaging issues
             import torch
 
             cuda_available = torch.cuda.is_available()
@@ -209,6 +239,9 @@ class StartupThread(QThread):
                 if mps_available:
                     return False, ["  • Apple MPS acceleration available"]
                 return False, []
+        except ImportError:
+            logger.info("PyTorch not installed - CUDA check skipped")
+            return False, []
         except Exception as e:
             logger.warning(f"Error checking CUDA: {e}")
             return False, []
@@ -216,6 +249,7 @@ class StartupThread(QThread):
 
 def toggle_theme():
     """Toggle between light and dark theme."""
+    _ensure_logger()
     ThemeManager.instance().toggle_theme()
 
 
@@ -230,6 +264,7 @@ def apply_high_dpi_scaling():
 
 def create_splash_screen():
     """Create a splash screen with progress bar."""
+    _ensure_logger()
     # Try to use the SVG splash image if available
     svg_path = resource_path("./icons/app/splash.svg")
     png_path = resource_path("./icons/app/splash.png")
@@ -320,6 +355,7 @@ def create_splash_screen():
 @pyqtSlot(str)
 def apply_theme_main_thread(theme):
     """Apply theme on the main thread"""
+    _ensure_logger()
     logger.info(f"Applying theme on main thread: {theme}")
     ThemeManager.instance().apply_theme(theme)
 
@@ -327,6 +363,7 @@ def apply_theme_main_thread(theme):
 @pyqtSlot(dict)
 def apply_responsive_ui_main_thread(ui_params):
     """Apply responsive UI settings on the main thread"""
+    _ensure_logger()
     width = ui_params.get("width", 1024)
     height = ui_params.get("height", 768)
     logger.info(f"Applying responsive UI on main thread: {width}x{height}")
@@ -337,6 +374,7 @@ def apply_responsive_ui_main_thread(ui_params):
 
 def initialize_app():
     """Initialize the application with proper error handling."""
+    _ensure_logger()
     try:
         # Enable high DPI scaling
         apply_high_dpi_scaling()
@@ -345,7 +383,7 @@ def initialize_app():
         app = QApplication(sys.argv)
         app.setApplicationName("Transcribrr")
         app.setApplicationVersion("1.0.0")
-        app.setWindowIcon(QIcon(resource_path("./icons/app/app_icon.svg")))
+        app.setWindowIcon(load_icon("./icons/app/app_icon.svg", size=64))
 
         # Initialize theme manager (defer applying theme until we're signaled)
         theme_manager = ThemeManager.instance()
@@ -356,6 +394,13 @@ def initialize_app():
         # Create an event filter to handle window resize events
         responsive_event_filter = ResponsiveEventFilter()
         app.installEventFilter(responsive_event_filter)
+
+        # Basic diagnostics to help debug resource resolution in packaged app
+        try:
+            test_icon = resource_path("icons/folder.svg")
+            logger.info(f"Sample icon path: {test_icon}; exists={os.path.exists(test_icon)}")
+        except Exception as diag_e:
+            logger.warning(f"Resource path diagnostic failed: {diag_e}")
 
         # Create splash screen
         splash, progress_bar, status_label = create_splash_screen()
@@ -535,8 +580,24 @@ def copy_initial_data_files():
 
 def run_application():
     """Main application entry point."""
+    # Initialize logging at startup, not import time
+    global logger
+    logger = setup_logging()
+    
+    # Ensure Qt can locate bundled image/format plugins (e.g., gif, svg icon engine)
+    # This helps when running as a packaged app where plugin discovery paths differ.
+    try:
+        from PyQt6.QtCore import QCoreApplication
+        plugin_path = resource_path(os.path.join("app_packages", "PyQt6", "Qt6", "plugins"))
+        if os.path.isdir(plugin_path):
+            QCoreApplication.addLibraryPath(plugin_path)
+            logger.info(f"Added Qt plugin path: {plugin_path}")
+        else:
+            logger.debug(f"Qt plugin path not found: {plugin_path}")
+    except Exception as e:
+        logger.debug(f"Unable to set Qt plugin path: {e}")
+    
     # Keep a reference to the startup thread to prevent early destruction
-
     try:
         # Log startup information
         is_frozen = getattr(sys, "frozen", False)
@@ -641,6 +702,7 @@ def run_application():
 
 def cleanup_application():
     """Clean up any resources before application exit."""
+    _ensure_logger()
     logger.info("Cleaning up application resources...")
 
     # Use ThreadManager to cancel all active threads
@@ -665,10 +727,15 @@ def cleanup_application():
             logger.error(
                 f"Error terminating thread {thread.__class__.__name__}: {e}")
 
-    # Release model resources
+    # Release model resources (lazy import to avoid startup import costs)
     try:
+        # Lazy import - only if ModelManager was actually used
+        from app.services.transcription_service import ModelManager
         ModelManager.instance().release_memory()
         logger.info("Released model resources")
+    except ImportError:
+        # ModelManager not available - ML dependencies not installed
+        logger.debug("ModelManager not available - skipping memory release")
     except Exception as e:
         logger.error(f"Error releasing model resources: {e}")
 
@@ -691,5 +758,23 @@ def cleanup_application():
         logger.error(f"Error saving configuration: {e}")
 
 
+def main() -> int:
+    """Entry point used by packaged builds.
+
+    Briefcase/pyinstaller wrappers import `app.__main__:main`. Keep this thin and
+    delegate to the real runner to avoid duplicating logic.
+    """
+    return run_application()
+
+
 if __name__ == "__main__":
-    sys.exit(run_application())
+    sys.exit(main())
+# Proactively import QtSvg to ensure the QtSvg framework is bundled in packaged apps.
+try:  # pragma: no cover - runtime only
+    from PyQt6.QtSvg import QSvgRenderer as _ensure_qtsvg  # noqa: F401
+    logger and logger.debug("QtSvg module import successful; SVG rendering available")
+except Exception as _e:  # pragma: no cover
+    try:
+        logger and logger.warning(f"QtSvg not available: {_e}")
+    except Exception:
+        pass

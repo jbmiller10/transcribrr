@@ -8,6 +8,11 @@ on:
   pull_request:
     branches: [ main ]
   workflow_dispatch:
+    inputs:
+      ref:
+        description: "Git ref (branch or tag) to package"
+        required: false
+        default: "main"
 
 jobs:
   test:
@@ -64,8 +69,19 @@ jobs:
     if: github.event_name == 'workflow_dispatch' || startsWith(github.ref, 'refs/tags/v')
     runs-on: macos-latest
     needs: test
+    environment: Packaging
+    env:
+      SIGNING_IDENTITY: ${{ secrets.SIGNING_IDENTITY }}
+      CERT_P12_BASE64: ${{ secrets.CERT_P12_BASE64 }}
+      CERT_PASSWORD: ${{ secrets.CERT_PASSWORD }}
+      APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+      APPLE_ID: ${{ secrets.APPLE_ID }}
+      APPLE_APP_PASSWORD: ${{ secrets.APPLE_APP_PASSWORD }}
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.ref || github.ref }}
 
       - name: Install uv
         uses: astral-sh/setup-uv@v4
@@ -80,6 +96,24 @@ jobs:
         run: |
           uv sync --extra build --extra gui --no-install-project
 
+      - name: Install system deps for audio
+        run: |
+          brew update
+          brew install --quiet portaudio ffmpeg
+
+      - name: Pre-build PyAudio wheel (universal runner env)
+        run: |
+          set -euxo pipefail
+          mkdir -p wheelhouse
+          BREW_PREFIX=$(brew --prefix)
+          export SDKROOT=$(xcrun --show-sdk-path)
+          export SYSROOT_PATH="$SDKROOT"
+          export CFLAGS="-I${BREW_PREFIX}/include"
+          export LDFLAGS="-L${BREW_PREFIX}/lib"
+          export PKG_CONFIG_PATH="${BREW_PREFIX}/lib/pkgconfig"
+          uv run python -m pip wheel "PyAudio==0.2.14" -w wheelhouse
+          ls -la wheelhouse
+
       - name: Generate Briefcase wrapper package
         run: |
           mkdir -p transcribrr
@@ -89,14 +123,184 @@ jobs:
               from app.__main__ import main as real_main
               return real_main()
           PY
+          cat > transcribrr/__main__.py << 'PY'
+          from .app import main
+
+          if __name__ == "__main__":
+              raise SystemExit(main())
+          PY
 
       - name: Build macOS app (Briefcase)
         env:
           PYTHONUTF8: "1"
         run: |
-          uv run briefcase create macOS
-          uv run briefcase build macOS
-          uv run briefcase package macOS
+          BREW_PREFIX=$(brew --prefix)
+          echo "Using Homebrew at: ${BREW_PREFIX}"
+          # Set SDK root for compiler toolchain
+          export SDKROOT=$(xcrun --show-sdk-path)
+          export SYSROOT_PATH="$SDKROOT"
+          # Help compiler and linker find Homebrew PortAudio
+          export CFLAGS="-I${BREW_PREFIX}/include"
+          export LDFLAGS="-L${BREW_PREFIX}/lib"
+          export PKG_CONFIG_PATH="${BREW_PREFIX}/lib/pkgconfig"
+          # Ensure icons are also present inside the Python package so they can
+          # be accessed from Resources/app/app/icons as a fallback.
+          mkdir -p app/icons
+          rsync -a --delete icons/ app/icons/
+          echo "In-package icons prepared:"; find app/icons -maxdepth 2 -type f | head -n 10
+          uv run briefcase create macOS --no-input
+          # Update both requirements and resources (icons, etc.) before build
+          uv run briefcase build macOS --no-input --update-requirements --update-resources
+
+      - name: Verify app resources (icons present)
+        run: |
+          set -euxo pipefail
+          APP_PATH=$(find build -type d -name "Transcribrr.app" | head -n 1)
+          if [ -z "$APP_PATH" ]; then echo "App bundle not found"; exit 1; fi
+          ICONS_DIR="$APP_PATH/Contents/Resources/icons"
+          if [ ! -d "$ICONS_DIR" ]; then
+            echo "Expected icons directory is missing at $ICONS_DIR" >&2
+            echo "Resources layout:"; find "$APP_PATH/Contents/Resources" -maxdepth 3 -type d -print
+            # Fallback: icons bundled inside the Python package
+            ALT_ICONS_DIR="$APP_PATH/Contents/Resources/app/app/icons"
+            if [ -d "$ALT_ICONS_DIR" ]; then
+              echo "Found alternative icons directory: $ALT_ICONS_DIR"
+              ls -la "$ALT_ICONS_DIR" | head -n 50
+              exit 0
+            fi
+            exit 1
+          fi
+          echo "Found icons directory: $ICONS_DIR"
+          ls -la "$ICONS_DIR" | head -n 50
+          # Also check Qt plugin directory for image formats
+          QT_PLUGINS_DIR="$APP_PATH/Contents/Resources/app_packages/PyQt6/Qt6/plugins"
+          echo "Qt plugins (if present):"; test -d "$QT_PLUGINS_DIR" && find "$QT_PLUGINS_DIR" -maxdepth 2 -type d -print || true
+
+      - name: Bundle PortAudio into app and fix linkage
+        run: |
+          set -euxo pipefail
+          BREW_PREFIX=$(brew --prefix)
+          APP_PATH=$(find build -type d -name "Transcribrr.app" | head -n 1)
+          if [ -z "$APP_PATH" ]; then echo "App bundle not found"; exit 1; fi
+          echo "Found app: $APP_PATH"
+          FRAMEWORKS_DIR="$APP_PATH/Contents/Frameworks"
+          mkdir -p "$FRAMEWORKS_DIR"
+          # Copy PortAudio dylib, dereferencing symlinks so the app has a real file
+          if [ -f "${BREW_PREFIX}/lib/libportaudio.2.dylib" ]; then
+            cp -fL "${BREW_PREFIX}/lib/libportaudio.2.dylib" "$FRAMEWORKS_DIR/libportaudio.2.dylib"
+            TARGET_LIB=libportaudio.2.dylib
+          elif [ -f "${BREW_PREFIX}/lib/libportaudio.dylib" ]; then
+            cp -fL "${BREW_PREFIX}/lib/libportaudio.dylib" "$FRAMEWORKS_DIR/libportaudio.dylib"
+            TARGET_LIB=libportaudio.dylib
+          else
+            echo "PortAudio dylib not found in Homebrew lib" >&2
+            ls -la "${BREW_PREFIX}/lib" | grep -i portaudio || true
+            exit 1
+          fi
+          # Set the dylib ID for proper @rpath usage (non-fatal if it fails)
+          install_name_tool -id "@rpath/${TARGET_LIB}" "$FRAMEWORKS_DIR/${TARGET_LIB}" || true
+          # Locate the PyAudio extension inside the app bundle
+          EXT_SO=$(find "$APP_PATH" -path "*/Contents/Resources/*" -name "*_portaudio*.so" -print -quit)
+          if [ -z "$EXT_SO" ]; then echo "PyAudio extension not found"; find "$APP_PATH" -maxdepth 4 -type f -name "*_portaudio*.so"; exit 1; fi
+          echo "Found extension: $EXT_SO"
+          echo "Before relink:"; otool -L "$EXT_SO" | sed 's/^/    /'
+          # Replace absolute Homebrew path with app-local Frameworks path
+          for LINK in "${BREW_PREFIX}/lib/libportaudio.2.dylib" "${BREW_PREFIX}/lib/libportaudio.dylib"; do
+            if otool -L "$EXT_SO" | grep -q "$LINK"; then
+              install_name_tool -change "$LINK" "@loader_path/../../../Frameworks/${TARGET_LIB}" "$EXT_SO"
+            fi
+          done
+          echo "After relink:"; otool -L "$EXT_SO" | sed 's/^/    /'
+          # Ad-hoc sign the app bundle after modifications
+          codesign --force --deep --sign - --timestamp=none "$APP_PATH"
+
+      - name: Install signing certificate
+        if: ${{ env.CERT_P12_BASE64 != '' }}
+        run: |
+          set -euxo pipefail
+          KEYCHAIN="$RUNNER_TEMP/build.keychain"
+          KEYCHAIN_PW="$(openssl rand -base64 24)"
+          echo "$CERT_P12_BASE64" | base64 --decode > "$RUNNER_TEMP/cert.p12"
+          security create-keychain -p "$KEYCHAIN_PW" "$KEYCHAIN"
+          security set-keychain-settings "$KEYCHAIN"
+          security unlock-keychain -p "$KEYCHAIN_PW" "$KEYCHAIN"
+          security import "$RUNNER_TEMP/cert.p12" -k "$KEYCHAIN" -P "$CERT_PASSWORD" -T /usr/bin/codesign -T /usr/bin/security
+          security list-keychain -d user -s "$KEYCHAIN" $(security list-keychains -d user | sed 's/[\"\ ]//g')
+          security default-keychain -s "$KEYCHAIN"
+          security set-key-partition-list -S apple-tool:,apple: -s -k "$KEYCHAIN_PW" "$KEYCHAIN"
+          # Try to resolve the Developer ID identity string, fall back to hash
+          IDENT=$(security find-identity -p codesigning -v "$KEYCHAIN" | sed -n 's/.*"\(Developer ID Application:.*\)"/\1/p' | head -n 1 || true)
+          if [ -z "$IDENT" ]; then
+            IDENT=$(security find-identity -p codesigning -v "$KEYCHAIN" | awk '/Developer ID Application/ {print $2; exit}' || true)
+          fi
+          if [ -z "${SIGNING_IDENTITY:-}" ] && [ -n "$IDENT" ]; then
+            echo "Resolved SIGNING_IDENTITY=$IDENT"
+            echo "SIGNING_IDENTITY=$IDENT" >> "$GITHUB_ENV"
+          fi
+          echo "SIGNING_KEYCHAIN=$KEYCHAIN" >> "$GITHUB_ENV"
+          # Show available identities for debugging
+          security find-identity -p codesigning -v "$KEYCHAIN" || true
+
+      - name: Validate signing identity presence
+        run: |
+          set -euxo pipefail
+          FOUND=0
+          if [ -n "${SIGNING_KEYCHAIN:-}" ]; then
+            N=$(security find-identity -p codesigning -v "$SIGNING_KEYCHAIN" | tail -n 1 | awk '{print $1}' || echo 0)
+            if [ "${N}" != "0" ]; then FOUND=1; fi
+          fi
+          if [ "$FOUND" -eq 0 ]; then
+            echo "No valid code signing identities available; falling back to ad-hoc signing."
+            echo "SIGNING_IDENTITY=" >> "$GITHUB_ENV"
+          fi
+
+      - name: Sign app with Developer ID (conditional)
+        if: ${{ env.SIGNING_IDENTITY != '' }}
+        run: |
+          set -euxo pipefail
+          APP_PATH=$(find build -type d -name "Transcribrr.app" | head -n 1)
+          if [ -z "$APP_PATH" ]; then echo "App bundle not found"; exit 1; fi
+          echo "Signing app with identity: $SIGNING_IDENTITY"
+          # Show identities in selected keychain if available
+          if [ -n "${SIGNING_KEYCHAIN:-}" ]; then
+            security find-identity -p codesigning -v "$SIGNING_KEYCHAIN" || true
+          fi
+          # Sign nested binaries first, then the app
+          if [ -n "${SIGNING_KEYCHAIN:-}" ]; then KEYCHAIN_ARG=(--keychain "$SIGNING_KEYCHAIN"); else KEYCHAIN_ARG=(); fi
+          find "$APP_PATH/Contents/Frameworks" -type f \( -name "*.dylib" -o -name "*.so" -o -name "Python" \) -print0 | \
+            xargs -0 -I {} codesign --force --options runtime --timestamp "${KEYCHAIN_ARG[@]}" --sign "$SIGNING_IDENTITY" {}
+          # Some PyQt and plugin binaries may reside in Resources; sign .so there too
+          find "$APP_PATH/Contents/Resources" -type f -name "*.so" -print0 | \
+            xargs -0 -I {} codesign --force --options runtime --timestamp "${KEYCHAIN_ARG[@]}" --sign "$SIGNING_IDENTITY" {}
+          # Finally sign the app bundle
+          codesign --force --options runtime --timestamp "${KEYCHAIN_ARG[@]}" --sign "$SIGNING_IDENTITY" "$APP_PATH"
+          codesign -vvv --strict "$APP_PATH" || true
+
+      - name: Package macOS app (adhoc)
+        if: ${{ env.SIGNING_IDENTITY == '' }}
+        run: |
+          uv run briefcase package macOS --adhoc-sign --no-input
+
+      - name: Package macOS app (Developer ID)
+        if: ${{ env.SIGNING_IDENTITY != '' }}
+        run: |
+          uv run briefcase package macOS --no-input -i "$SIGNING_IDENTITY" --no-notarize
+
+      - name: Notarize and staple DMG (conditional)
+        if: ${{ env.SIGNING_IDENTITY != '' && env.APPLE_TEAM_ID != '' && env.APPLE_ID != '' && env.APPLE_APP_PASSWORD != '' }}
+        run: |
+          set -euxo pipefail
+          DMG=$(find dist -type f -name "*.dmg" | head -n 1)
+          if [ -z "$DMG" ]; then echo "DMG not found"; exit 1; fi
+          echo "Submitting to Apple Notary Service..."
+          xcrun notarytool submit "$DMG" \
+            --apple-id "$APPLE_ID" \
+            --team-id "$APPLE_TEAM_ID" \
+            --password "$APPLE_APP_PASSWORD" \
+            --wait
+          echo "Stapling notarization ticket..."
+          xcrun stapler staple "$DMG"
+          echo "Notarization complete: $DMG"
 
       - name: Locate artifacts
         run: |

@@ -17,6 +17,7 @@ from PyQt6.QtWidgets import (
 from PyQt6.QtGui import QIcon, QFont, QAction
 from app.RecordingListItem import RecordingListItem
 from app.path_utils import resource_path
+from app.ui_utils.icon_utils import load_icon
 
 # Use ui_utils for messages
 from app.ui_utils import show_error_message, show_info_message, show_confirmation_dialog
@@ -215,23 +216,17 @@ class RecentRecordingsWidget(ResponsiveWidget):
         toolbar.setIconSize(QSize(18, 18))  # Slightly larger icons
         toolbar.setMovable(False)
 
-        new_folder_action = QAction(
-            QIcon(resource_path("icons/folder.svg")), "New Folder", self
-        )
+        new_folder_action = QAction(load_icon("icons/folder.svg", size=24), "New Folder", self)
         new_folder_action.triggered.connect(self.create_new_folder)
         toolbar.addAction(new_folder_action)
 
-        refresh_action = QAction(
-            QIcon(resource_path("icons/refresh.svg")), "Refresh", self
-        )
+        refresh_action = QAction(load_icon("icons/refresh.svg", size=24), "Refresh", self)
         refresh_action.triggered.connect(self.refresh_recordings)
         toolbar.addAction(refresh_action)
 
         toolbar.addSeparator()
 
-        import_action = QAction(
-            QIcon(resource_path("icons/import.svg")), "Import Files", self
-        )
+        import_action = QAction(load_icon("icons/import.svg", size=24), "Import Files", self)
         import_action.triggered.connect(self.import_recordings)
         toolbar.addAction(import_action)
 
@@ -283,8 +278,9 @@ class RecentRecordingsWidget(ResponsiveWidget):
 
         for file_path in selected_files:
             try:
-                # Ensure the recordings directory exists
-                recordings_dir = os.path.join(os.getcwd(), "Recordings")
+                # Ensure the recordings directory exists in the user data location
+                from app.constants import get_recordings_dir
+                recordings_dir = get_recordings_dir()
                 os.makedirs(recordings_dir, exist_ok=True)
 
                 # Generate a unique destination path

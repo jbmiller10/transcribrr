@@ -18,6 +18,7 @@ from PyQt6.QtGui import QIcon
 from typing import Dict, List, Any
 
 from app.path_utils import resource_path
+from app.ui_utils.icon_utils import load_icon
 from app.utils import PromptManager
 from app.ui_utils import show_error_message, show_info_message, show_confirmation_dialog
 
@@ -57,7 +58,7 @@ class PromptBar(QWidget):
         # Create edit button
         self.edit_button = QPushButton("Edit")
         self.edit_button.setToolTip("Edit selected prompt template")
-        self.edit_button.setIcon(QIcon(resource_path("icons/edit.svg")))
+        self.edit_button.setIcon(load_icon("icons/edit.svg", size=24))
         self.edit_button.setIconSize(QSize(16, 16))
         self.edit_button.setFixedSize(QSize(60, 28))
 

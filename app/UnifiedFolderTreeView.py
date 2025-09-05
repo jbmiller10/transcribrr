@@ -15,6 +15,7 @@ from app.RecordingFolderModel import RecordingFolderModel, RecordingFilterProxyM
 from app.RecordingListItem import RecordingListItem
 from app.FolderManager import FolderManager
 from app.path_utils import resource_path
+from app.ui_utils.icon_utils import load_icon
 
 logger = logging.getLogger("transcribrr")
 
@@ -146,19 +147,11 @@ class UnifiedFolderTreeView(QTreeView):
         folder_icon_path = resource_path("icons/folder.svg")
         folder_open_icon_path = resource_path("icons/folder_open.svg")
 
-        self.folder_icon = (
-            QIcon(folder_icon_path)
-            if os.path.exists(folder_icon_path)
-            else QIcon.fromTheme("folder")
-        )
-        self.folder_open_icon = (
-            QIcon(folder_open_icon_path)
-            if os.path.exists(folder_open_icon_path)
-            else QIcon.fromTheme("folder-open")
-        )
-        self.audio_icon = QIcon(resource_path("icons/status/audio.svg"))
-        self.video_icon = QIcon(resource_path("icons/status/video.svg"))
-        self.file_icon = QIcon(resource_path("icons/status/file.svg"))
+        self.folder_icon = load_icon(folder_icon_path, size=24)
+        self.folder_open_icon = load_icon(folder_open_icon_path, size=24)
+        self.audio_icon = load_icon("icons/status/audio.svg", size=24)
+        self.video_icon = load_icon("icons/status/video.svg", size=24)
+        self.file_icon = load_icon("icons/status/file.svg", size=24)
 
         # Set icons in model
         self.source_model.set_icons(

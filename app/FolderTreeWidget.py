@@ -17,6 +17,7 @@ from PyQt6.QtGui import QIcon, QFont, QColor
 import logging
 from app.FolderManager import FolderManager
 from app.path_utils import resource_path
+from app.ui_utils.icon_utils import load_icon
 
 
 logger = logging.getLogger("transcribrr")
@@ -50,15 +51,14 @@ class FolderTreeWidget(QWidget):
         header_layout.addWidget(header_label)
 
         self.refresh_button = QToolButton()
-        self.refresh_button.setIcon(QIcon(resource_path("icons/refresh.svg")))
+        self.refresh_button.setIcon(load_icon("icons/refresh.svg", size=24))
         self.refresh_button.setToolTip("Refresh Folders")
         self.refresh_button.setFixedSize(24, 24)
         self.refresh_button.clicked.connect(self.load_folders)
         header_layout.addWidget(self.refresh_button)
 
         self.add_folder_button = QToolButton()
-        self.add_folder_button.setIcon(
-            QIcon(resource_path("icons/folder.svg")))
+        self.add_folder_button.setIcon(load_icon("icons/folder.svg", size=24))
         self.add_folder_button.setToolTip("Add New Folder")
         self.add_folder_button.setFixedSize(24, 24)
         self.add_folder_button.clicked.connect(self.create_folder)
@@ -102,7 +102,7 @@ class FolderTreeWidget(QWidget):
 
         root_item = QTreeWidgetItem(self.folder_tree)
         root_item.setText(0, "Unorganized Recordings")
-        root_item.setIcon(0, QIcon(resource_path("icons/folder.svg")))
+        root_item.setIcon(0, load_icon("icons/folder.svg", size=24))
         root_item.setData(
             0, Qt.ItemDataRole.UserRole, {
                 "id": -1, "name": "Unorganized Recordings"}
@@ -110,8 +110,8 @@ class FolderTreeWidget(QWidget):
         root_item.setExpanded(True)
         self.folder_tree.setCurrentItem(root_item)
 
-        self.folder_icon = QIcon(resource_path("icons/folder.svg"))
-        self.folder_open_icon = QIcon(resource_path("icons/folder_open.svg"))
+        self.folder_icon = load_icon("icons/folder.svg", size=24)
+        self.folder_open_icon = load_icon("icons/folder_open.svg", size=24)
 
     def load_folders(self):
         """Load and rebuild the folder tree."""

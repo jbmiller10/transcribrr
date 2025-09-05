@@ -26,10 +26,33 @@ import queue
 from types import ModuleType
 import sys
 import threading
+import os as _os
 
+# Allow forcing stubs in headless CI by setting an env var
+force_stubs = _os.environ.get("TRANSCRIBRR_USE_QT_STUBS") == "1"
 try:
-    from PyQt6.QtCore import QObject, pyqtSignal, QThread, QMutex, Qt  # type: ignore
-except ImportError:  # pragma: no cover – executed only in non-Qt test envs
+    # Import QtCore symbols if available
+    from PyQt6.QtCore import (  # type: ignore
+        QObject as _QtQObject,
+        pyqtSignal as _QtPyqtSignal,
+        QThread as _QtQThread,
+        QMutex as _QtQMutex,
+        Qt as _QtQt,
+        QCoreApplication as _QtQCoreApplication,
+    )
+    # Use real Qt only if not forcing stubs AND there is an active application instance
+    if not force_stubs and _QtQCoreApplication.instance() is not None:
+        QObject = _QtQObject  # type: ignore
+        pyqtSignal = _QtPyqtSignal  # type: ignore
+        QThread = _QtQThread  # type: ignore
+        QMutex = _QtQMutex  # type: ignore
+        Qt = _QtQt  # type: ignore
+    else:
+        force_stubs = True
+except Exception:  # pragma: no cover – executed only in non-Qt or headless envs
+    force_stubs = True
+
+if force_stubs:
     # Create a functional stub of the QtCore module and required symbols.
     # The goal is to behave closely enough for tests: connect/emit must work.
 
@@ -37,7 +60,7 @@ except ImportError:  # pragma: no cover – executed only in non-Qt test envs
         def __init__(self):
             self._slots = []
 
-        def connect(self, fn):  # noqa: ANN001
+        def connect(self, fn, *args, **kwargs):  # noqa: ANN001
             if fn not in self._slots:
                 self._slots.append(fn)
 
@@ -141,6 +164,8 @@ except ImportError:  # pragma: no cover – executed only in non-Qt test envs
 
     # Register the stubs in sys.modules *before* assigning to local names so
     # that any follow-up imports (also in other files) resolve correctly.
+    # Only register stubs if PyQt6 isn't already present to avoid clobbering
+    # a real Qt install. setdefault() preserves an existing module.
     sys.modules.setdefault("PyQt6", _pyqt6_stub)
     sys.modules.setdefault("PyQt6.QtCore", _qtcore_stub)
 
@@ -209,21 +234,8 @@ class DatabaseWorker(QThread):
             # Stay resilient in production; tests will surface setup issues
             pass
 
-        # Make queue methods patch-friendly in tests while delegating to the
-        # real queue by default. Tests often set side_effect/return_value on
-        # these callables.
-        try:  # pragma: no cover - behaviour exercised via tests
-            from unittest.mock import MagicMock  # Local import to avoid prod dep
-
-            _real_get = self.operations_queue.get
-            _real_put = self.operations_queue.put
-            self.operations_queue.get = MagicMock(side_effect=_real_get)  # type: ignore[attr-defined]
-            self.operations_queue.put = MagicMock(side_effect=_real_put)  # type: ignore[attr-defined]
-            _real_task_done = self.operations_queue.task_done
-            self.operations_queue.task_done = MagicMock(side_effect=_real_task_done)  # type: ignore[attr-defined]
-        except Exception:
-            # If unittest.mock is unavailable, keep the real methods.
-            pass
+        # Use the real queue methods; tests can patch DatabaseManager APIs
+        # directly if they need to simulate queue behavior.
 
     def _log_error(
         self,
@@ -284,21 +296,14 @@ class DatabaseWorker(QThread):
                     )
                     return  # Exit thread if we can't establish a connection
 
-            # Process operations until stopped and the queue is drained. Using a
-            # loop that always attempts a fetch ensures we can gracefully exit
-            # even if `running` is set to False before a sentinel is queued.
+            # Process operations until stopped and the queue is drained. Use a
+            # blocking queue.get() so newly enqueued work is picked up
+            # immediately (tests use a tight 0.3s timeout for callbacks).
             while True:
                 operation = None
                 try:
-                    # Queue.get with timeout to allow for thread interruption
-                    try:
-                        operation = self.operations_queue.get(timeout=0.5)
-                    except queue.Empty:
-                        # If we're asked to stop and there is nothing to do,
-                        # exit the loop; otherwise keep polling.
-                        if not self.running:
-                            break
-                        continue  # No operation available, continue the loop
+                    # Blocking get – stop() enqueues a sentinel to unblock
+                    operation = self.operations_queue.get()
 
                     # Check for sentinel value indicating thread should exit
                     if operation is None:
@@ -667,9 +672,6 @@ class DatabaseWorker(QThread):
                                     f"Error marking queue task as done: {task_done_error}"
                                 )
 
-                except queue.Empty:
-                    # This shouldn't happen since we already handle it above, but just in case
-                    continue
                 except Exception as e:
                     # Error in the outer try block (queue operations)
                     self._log_error("Operation queue error",
@@ -768,6 +770,18 @@ class DatabaseManager(QObject):
         logger.info(
             f"DatabaseWorker thread started: {self.worker.isRunning()}")
 
+        # Internal mapping for routing create_recording callbacks to main thread
+        self._pending_create_callbacks = {}
+
+        # Route worker completion signals through a QObject method to ensure
+        # callbacks execute on the main thread (queued connection semantics)
+        try:
+            # Use UniqueConnection to avoid duplicate connections if multiple managers are created in tests
+            self.worker.operation_complete.connect(self._on_worker_operation_complete)
+        except Exception:
+            # In stubbed environments, connection semantics are simplified
+            pass
+
     def _on_data_changed(self):
         """Handle data change from worker and emit our signal with parameters."""
         logger.info(
@@ -783,35 +797,41 @@ class DatabaseManager(QObject):
             if callback
             else "create_recording_no_callback"
         )
+        if callback and callable(callback):
+            # Store the callback to be delivered on the main thread when the
+            # worker reports completion for this specific operation id.
+            self._pending_create_callbacks[operation_id] = callback
+
+            def error_handler(op_name, msg):
+                # On error, drop the pending callback for this op (if any)
+                if op_name == "create_recording":
+                    self._pending_create_callbacks.pop(operation_id, None)
+
+            try:
+                self.worker.error_occurred.connect(error_handler)
+            except Exception:
+                pass
+
+        # Enqueue operation after handlers are connected to avoid race
         self.worker.add_operation(
             "create_recording", operation_id, [recording_data])
 
-        if callback and callable(callback):
+    def _on_worker_operation_complete(self, op_id, result):
+        """Deliver create_recording callbacks on the main thread.
 
-            def _finalise():
-                # Disconnect both signals *if* they are still connected.
-                try:
-                    self.worker.operation_complete.disconnect(handler)
-                except TypeError:
-                    pass
-                try:
-                    self.worker.error_occurred.disconnect(error_handler)
-                except TypeError:
-                    pass
-
-            def handler(op_id, _result):
-                expected_prefix = "create_recording_"
-                if isinstance(op_id, str) and op_id.startswith(expected_prefix):
-                    callback(_result)
-                    _finalise()
-
-            def error_handler(op_name, msg):
-                if op_name == "create_recording":
-                    _finalise()
-
-            # Use UniqueConnection to prevent duplicate connections
-            self.worker.operation_complete.connect(handler)
-            self.worker.error_occurred.connect(error_handler)
+        This ensures any UI updates performed by the provided callback are
+        thread-safe.
+        """
+        try:
+            if isinstance(op_id, str) and op_id.startswith("create_recording_callback_"):
+                cb = self._pending_create_callbacks.pop(op_id, None)
+                if cb and callable(cb):
+                    try:
+                        cb(result)
+                    except Exception as e:
+                        logger.error(f"Error in create_recording callback: {e}", exc_info=True)
+        except Exception as e:
+            logger.warning(f"Operation completion routing error: {e}")
 
     def get_all_recordings(self, callback):
         """Fetch all recordings, call callback with result."""
@@ -822,8 +842,6 @@ class DatabaseManager(QObject):
             return
 
         operation_id = f"get_all_recordings_{id(callback)}"
-        self.worker.add_operation("get_all_recordings", operation_id)
-
         def handler(op_id, _result):
             expected_prefix = "get_all_recordings_"
             if isinstance(op_id, str) and op_id.startswith(expected_prefix):
@@ -834,6 +852,9 @@ class DatabaseManager(QObject):
                     pass
 
         self.worker.operation_complete.connect(handler)
+
+        # Enqueue after connect to avoid race
+        self.worker.add_operation("get_all_recordings", operation_id)
 
     def get_recording_by_id(self, recording_id, callback):
         """
@@ -850,9 +871,6 @@ class DatabaseManager(QObject):
             return
 
         operation_id = f"get_recording_{recording_id}_{id(callback)}"
-        self.worker.add_operation(
-            "get_recording_by_id", operation_id, [recording_id])
-
         def handler(op_id, _result):
             expected_prefix = f"get_recording_{recording_id}_"
             if isinstance(op_id, str) and op_id.startswith(expected_prefix):
@@ -863,6 +881,10 @@ class DatabaseManager(QObject):
                     pass
 
         self.worker.operation_complete.connect(handler)
+
+        # Enqueue after connect
+        self.worker.add_operation(
+            "get_recording_by_id", operation_id, [recording_id])
 
     def update_recording(self, recording_id, callback=None, **kwargs):
         """
@@ -878,10 +900,6 @@ class DatabaseManager(QObject):
             if callback
             else f"update_recording_{recording_id}_no_callback"
         )
-        self.worker.add_operation(
-            "update_recording", operation_id, [recording_id], kwargs
-        )
-
         if callback and callable(callback):
 
             def _finalise():
@@ -907,6 +925,11 @@ class DatabaseManager(QObject):
             self.worker.operation_complete.connect(handler)
             self.worker.error_occurred.connect(error_handler)
 
+        # Enqueue after connect
+        self.worker.add_operation(
+            "update_recording", operation_id, [recording_id], kwargs
+        )
+
     def delete_recording(self, recording_id, callback=None):
         """
         Delete a recording from the database.
@@ -920,9 +943,6 @@ class DatabaseManager(QObject):
             if callback
             else f"delete_recording_{recording_id}_no_callback"
         )
-        self.worker.add_operation(
-            "delete_recording", operation_id, [recording_id])
-
         if callback and callable(callback):
 
             def _finalise():
@@ -948,6 +968,10 @@ class DatabaseManager(QObject):
             self.worker.operation_complete.connect(handler)
             self.worker.error_occurred.connect(error_handler)
 
+        # Enqueue after connect
+        self.worker.add_operation(
+            "delete_recording", operation_id, [recording_id])
+
     def execute_query(
         self,
         query,
@@ -971,14 +995,6 @@ class DatabaseManager(QObject):
                 f"execute_query_{id(query)}_{'callback_' + str(id(callback)) if callback else 'no_callback'}"
             )
 
-        # Use the operation_id for callback binding
-        self.worker.add_operation(
-            "execute_query",
-            operation_id,
-            [query, (params or [])],
-            {"return_last_row_id": bool(return_last_row_id)},
-        )
-
         if callback and callable(callback):
 
             def handler(op_id, _result):
@@ -998,6 +1014,14 @@ class DatabaseManager(QObject):
 
             self.worker.operation_complete.connect(handler)
 
+        # Enqueue after connect
+        self.worker.add_operation(
+            "execute_query",
+            operation_id,
+            [query, (params or [])],
+            {"return_last_row_id": bool(return_last_row_id)},
+        )
+
     def search_recordings(self, search_term, callback):
         """
         Search for recordings by filename or transcript.
@@ -1012,9 +1036,6 @@ class DatabaseManager(QObject):
             return
 
         operation_id = f"search_recordings_callback_{id(callback)}"
-        self.worker.add_operation(
-            "search_recordings", operation_id, [search_term])
-
         def handler(op_id, _result):
             expected_prefix = "search_recordings_"
             if isinstance(op_id, str) and op_id.startswith(expected_prefix):
@@ -1025,6 +1046,10 @@ class DatabaseManager(QObject):
                     pass
 
         self.worker.operation_complete.connect(handler)
+
+        # Enqueue after connect
+        self.worker.add_operation(
+            "search_recordings", operation_id, [search_term])
 
     def shutdown(self):
         """Shut down the database manager and worker thread."""

@@ -18,12 +18,12 @@ It's primarily a **personal project** that I tinker with in my free time. If you
 
 ## Getting Started
 
-
 If you want to run it from source:
 
 **Prerequisites:**
 
-*   Python >3.11,<3.12
+*   Python 3.11+
+*   [uv](https://docs.astral.sh/uv/getting-started/installation/) (Python package manager)
 *   [FFmpeg](https://ffmpeg.org/download.html) (needs to be in your system's PATH)
 *   (Optional) NVIDIA GPU + [CUDA Toolkit](https://developer.nvidia.com/cuda-toolkit) (matching PyTorch's requirements, usually 11.8 or 12.1) for GPU acceleration.
 
@@ -34,28 +34,50 @@ If you want to run it from source:
     git clone https://github.com/jbmiller10/transcribrr.git
     cd transcribrr
     ```
-2.  **Set up a Virtual Environment:** (Recommended)
+2.  **Set up Environment & Install Dependencies:**
     ```bash
-    # Windows
-    python -m venv venv
-    .\venv\Scripts\activate
-    # macOS/Linux
-    python -m venv venv
-    source venv/bin/activate
+    # Creates venv and installs all dependencies from pyproject.toml + uv.lock
+    uv venv
+    uv sync
     ```
-3.  **Install Dependencies:**
-    *   **(Optional) Install PyTorch with CUDA:** Find the correct command for your CUDA version on the [PyTorch website](https://pytorch.org/get-started/locally/). Example for CUDA 11.8:
-        ```bash
-        pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu118
-        ```
-    *   **Install other requirements:**
-        ```bash
-        pip install -r requirements.txt
-        ```
+3.  **(Optional) Install PyTorch with CUDA:** 
+    If you have an NVIDIA GPU and want to use GPU acceleration, install the appropriate PyTorch version. Example for CUDA 11.8:
+    ```bash
+    uv pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu118
+    ```
 4.  **Run:**
     ```bash
-    python main.py
+    uv run python main.py
     ```
+
+## Development
+
+**Testing:**
+```bash
+# Run all tests
+uv run python -m unittest discover
+
+# Run specific test
+uv run python -m unittest app.tests.test_busy_guard
+```
+
+**Linting & Type Checking:**
+```bash
+# Lint
+uv run flake8 .
+
+# Type check
+uv run mypy --no-strict-optional app/controllers app/widgets app/models
+```
+
+**Building:**
+```bash
+# Windows (PyInstaller)
+uv run pyinstaller transcribrr.spec --noconfirm
+
+# macOS (Briefcase)
+uv run briefcase create macOS && uv run briefcase build macOS && uv run briefcase package macOS
+```
     
 
 ## Feedback & Ideas Welcome

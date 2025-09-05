@@ -147,7 +147,7 @@ FILE_TYPES: Dict[str, Dict[str, Any]] = {
 }
 
 DEFAULT_CONFIG = {
-    "transcription_quality": "openai/whisper-large-v3",
+    "transcription_quality": "openai/whisper-small",
     "transcription_method": "local",
     "gpt_model": "gpt-4o",
     "max_tokens": 16000,

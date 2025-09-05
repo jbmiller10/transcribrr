@@ -53,6 +53,9 @@ class _DatabaseTestBase(unittest.TestCase):
         self.tmp = tempfile.mkdtemp(prefix=prefix)
         self.prev = os.environ.get("TRANSCRIBRR_USER_DATA_DIR")
         os.environ["TRANSCRIBRR_USER_DATA_DIR"] = self.tmp
+        # Force Qt stubs to ensure signal delivery without an event loop
+        self.prev_use_stubs = os.environ.get("TRANSCRIBRR_USE_QT_STUBS")
+        os.environ["TRANSCRIBRR_USE_QT_STUBS"] = "1"
         # Reset cached user data dir to honor env override
         self.prev_cache = getattr(_const, "_USER_DATA_DIR_CACHE", None)
         _const._USER_DATA_DIR_CACHE = None
@@ -63,6 +66,11 @@ class _DatabaseTestBase(unittest.TestCase):
             os.environ.pop("TRANSCRIBRR_USER_DATA_DIR", None)
         else:
             os.environ["TRANSCRIBRR_USER_DATA_DIR"] = self.prev
+        # Restore stub forcing variable
+        if self.prev_use_stubs is None:
+            os.environ.pop("TRANSCRIBRR_USE_QT_STUBS", None)
+        else:
+            os.environ["TRANSCRIBRR_USE_QT_STUBS"] = self.prev_use_stubs
         _const._USER_DATA_DIR_CACHE = self.prev_cache
         shutil.rmtree(self.tmp, ignore_errors=True)
 
@@ -197,6 +205,26 @@ class TestDatabaseManagerBehavior(_DatabaseTestBase):
         etype, _msg = err_evt.payload if isinstance(err_evt.payload, tuple) else (err_evt.payload, None)
         # db_utils raises ValueError, worker wraps as RuntimeError -> 'Runtime error'
         self.assertEqual(etype, "Runtime error")
+
+    def test_dataChanged_emitted_on_create_recording(self):
+        """Creating a recording emits DatabaseManager.dataChanged for UI refresh."""
+        # Arrange: subscribe to manager-level dataChanged
+        chg = _Wait()
+        self.mgr.dataChanged.connect(lambda t, i: chg.cb((t, i)))
+
+        # Act: create a new recording
+        win = _Wait()
+        data = ("z.wav", f"{self.tmp}/z.wav", "2024-01-01 00:00:00", "1s")
+        self.mgr.create_recording(data, win.cb)
+        self.assertTrue(win.wait(1.0), "create callback not received in time")
+
+        # Assert: dataChanged fired with expected payload
+        self.assertTrue(chg.wait(1.0), "dataChanged not emitted in time")
+        payload = chg.payload
+        self.assertIsInstance(payload, tuple)
+        self.assertEqual(payload[0], "recording")
+        # -1 indicates 'refresh all' semantics for the UI model
+        self.assertEqual(payload[1], -1)
 
     def test_create_recording_with_none_in_required_field_emits_error(self):
         data = (None, f"{self.tmp}/z.wav", "2024-01-01 00:00:00", "1s")

@@ -1,11 +1,14 @@
 from ..utils import language_to_iso
-from openai import OpenAI
 import os
-import torch
 import logging
 import warnings
 from typing import Optional, List, Dict, Any, Union, Tuple, Callable
-from transformers import AutoModelForSpeechSeq2Seq, AutoProcessor, pipeline
+
+# Expose OpenAI symbol for tests to patch; lazily import at runtime.
+OpenAI = None  # type: ignore
+
+# Lazy imports for heavy ML dependencies - these are loaded only when needed
+# to prevent import errors in packaged builds without these dependencies
 
 # Filter torchaudio warning about set_audio_backend
 warnings.filterwarnings(
@@ -26,7 +29,12 @@ def _torch_mps_available() -> bool:
     """
     try:
         import sys  # local import to avoid global side effects
-
+        # Lazy import torch only when checking availability
+        try:
+            import torch
+        except ImportError:
+            return False
+        
         t = sys.modules.get("torch", torch)
         backends = getattr(t, "backends", None)
         mps = getattr(backends, "mps", None)
@@ -40,7 +48,12 @@ def _torch_cuda_available() -> bool:
     """Return True if torch.cuda reports availability (robust to stubs)."""
     try:
         import sys
-
+        # Lazy import torch only when checking availability
+        try:
+            import torch
+        except ImportError:
+            return False
+        
         t = sys.modules.get("torch", torch)
         cuda = getattr(t, "cuda", None)
         is_avail = getattr(cuda, "is_available", None)
@@ -83,6 +96,13 @@ class ModelManager:
             logger.info(
                 "Hardware acceleration disabled in settings. Using CPU.")
             return "cpu"
+        
+        # Try to import torch for hardware detection
+        try:
+            import torch
+        except ImportError:
+            logger.info("PyTorch not available. Using CPU.")
+            return "cpu"
 
         if torch.cuda.is_available():
             # Check available GPU memory before setting device to cuda
@@ -105,6 +125,8 @@ class ModelManager:
     def _get_free_gpu_memory(self) -> float:
         """Get free GPU memory in GB."""
         try:
+            import torch
+            
             if torch.cuda.is_available():
                 # This is an approximate way to get free memory
                 gpu_memory = torch.cuda.get_device_properties(0).total_memory / (
@@ -114,8 +136,11 @@ class ModelManager:
                     0) / (1024**3)  # Convert to GB
                 return gpu_memory - allocated
             return 0.0
-        except Exception as e:
-            logger.warning(f"Error checking GPU memory: {e}")
+        except (ImportError, Exception) as e:
+            if isinstance(e, ImportError):
+                logger.debug("PyTorch not available for GPU memory check")
+            else:
+                logger.warning(f"Error checking GPU memory: {e}")
             return 0.0
 
     def get_model(self, model_id: str) -> Any:
@@ -143,6 +168,14 @@ class ModelManager:
         Returns:
             The loaded processor
         """
+        try:
+            from transformers import AutoProcessor
+        except ImportError as e:
+            raise RuntimeError(
+                "Local transcription requires 'transformers' package. "
+                "Please install it with: pip install transformers"
+            ) from e
+            
         if model_id not in self._processors:
             logger.info(f"Loading processor: {model_id}")
             self._processors[model_id] = AutoProcessor.from_pretrained(
@@ -159,6 +192,15 @@ class ModelManager:
         Returns:
             The loaded model
         """
+        try:
+            from transformers import AutoModelForSpeechSeq2Seq
+            import torch
+        except ImportError as e:
+            raise RuntimeError(
+                "Local transcription requires 'transformers' and 'torch' packages. "
+                "Please install them with: pip install transformers torch"
+            ) from e
+            
         try:
             model = AutoModelForSpeechSeq2Seq.from_pretrained(
                 model_id,
@@ -189,7 +231,12 @@ class ModelManager:
         else:
             self._models.clear()
             self._processors.clear()
-            torch.cuda.empty_cache()
+            # Only clear CUDA cache if torch is available
+            try:
+                import torch
+                torch.cuda.empty_cache()
+            except ImportError:
+                pass
             logger.info("Cleared all models from cache")
 
     def create_pipeline(
@@ -210,6 +257,15 @@ class ModelManager:
         model = self.get_model(model_id)
         processor = self.get_processor(model_id)
 
+        try:
+            from transformers import pipeline
+            import torch
+        except ImportError as e:
+            raise RuntimeError(
+                "Local transcription requires 'transformers' and 'torch' packages. "
+                "Please install them with: pip install transformers torch"
+            ) from e
+            
         # Create pipeline
         pipe = pipeline(
             "automatic-speech-recognition",
@@ -231,7 +287,11 @@ class ModelManager:
         """Release memory by clearing caches and running garbage collection."""
         self.clear_cache()
         if self.device == "cuda":
-            torch.cuda.empty_cache()
+            try:
+                import torch
+                torch.cuda.empty_cache()
+            except ImportError:
+                pass
         import gc
 
         gc.collect()
@@ -424,6 +484,16 @@ class TranscriptionService:
                     f"Using MPS device for transcription of {os.path.basename(file_path)}"
                 )
 
+                # Lazy import transformers components
+                try:
+                    from transformers import AutoModelForSpeechSeq2Seq, AutoProcessor, pipeline
+                    import torch
+                except ImportError as e:
+                    raise RuntimeError(
+                        "MPS transcription requires 'transformers' and 'torch' packages. "
+                        "Please install them with: pip install transformers torch"
+                    ) from e
+                    
                 # Initialize model
                 model = AutoModelForSpeechSeq2Seq.from_pretrained(
                     model_id,
@@ -490,7 +560,19 @@ class TranscriptionService:
             raise ValueError("API URL must use HTTPS for security")
 
         try:
-            client = OpenAI(api_key=api_key, base_url=base_url)
+            # Lazy import OpenAI client; honor module-level symbol for tests
+            global OpenAI  # noqa: PLW0603 - allow test patching
+            if OpenAI is None:
+                try:
+                    from openai import OpenAI as _OpenAI  # type: ignore
+                except ImportError as e:
+                    raise RuntimeError(
+                        "API transcription requires 'openai' package. "
+                        "Please install it with: pip install openai"
+                    ) from e
+                OpenAI = _OpenAI  # type: ignore
+
+            client = OpenAI(api_key=api_key, base_url=base_url)  # type: ignore[call-arg]
             with open(file_path, "rb") as f:
                 lang = language_to_iso(language)
                 rsp = client.audio.transcriptions.create(
@@ -500,7 +582,8 @@ class TranscriptionService:
                 raise ValueError("OpenAI API returned empty response")
             return {"text": rsp.text, "method": "api"}
         except Exception as exc:
-            logger.error("Whisper API error: %s", exc, exc_info=True)
+            if "ImportError" not in str(type(exc).__name__):
+                logger.error("Whisper API error: %s", exc, exc_info=True)
             raise RuntimeError(
                 f"OpenAI Whisper API transcription failed: {exc}"
             ) from exc
@@ -590,8 +673,14 @@ class TranscriptionService:
         Returns:
             Enhanced transcription with speaker detection
         """
-        from pyannote.audio import Pipeline
-
+        try:
+            from pyannote.audio import Pipeline
+        except ImportError as e:
+            raise RuntimeError(
+                "Speaker detection requires 'pyannote.audio' package. "
+                "Please install it with: pip install pyannote.audio"
+            ) from e
+            
         try:
             # Initialize diarization pipeline
             logger.info("Initializing speaker diarization pipeline")

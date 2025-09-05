@@ -40,10 +40,9 @@ from PyQt6.QtGui import (
 )
 from PyQt6.QtCore import Qt, QSize, pyqtSignal, QTimer
 from PyQt6.QtPrintSupport import QPrinter, QPrintDialog, QPrintPreviewDialog
-import docx
-from htmldocx import HtmlToDocx
 
 from app.path_utils import resource_path
+from app.ui_utils.icon_utils import load_icon
 
 from app.ui_utils import SpinnerManager, show_error_message, show_info_message
 
@@ -752,7 +751,7 @@ class TextEditor(QMainWindow):
 
         export_button = QToolButton()
         export_button.setText("Export")
-        export_button.setIcon(QIcon(resource_path("./icons/export.svg")))
+        export_button.setIcon(load_icon("./icons/export.svg", size=24))
         export_button.setToolTip("Export to different formats")
         export_button.setMenu(self.export_menu)
         export_button.setPopupMode(
@@ -766,7 +765,7 @@ class TextEditor(QMainWindow):
         Kept for compatibility with existing code."""
         # Create a QPushButton with icon and text
         button = QPushButton()
-        button.setIcon(QIcon(resource_path(icon_path)))
+        button.setIcon(load_icon(resource_path(icon_path), size=20))
         button.setIconSize(QSize(18, 18))
         button.setToolTip(tooltip)
         button.clicked.connect(callback)
@@ -836,7 +835,7 @@ class TextEditor(QMainWindow):
     ):
         # Check if icon file exists
         if icon_path and os.path.exists(icon_path):
-            action = QAction(QIcon(icon_path), tooltip, self)
+            action = QAction(load_icon(icon_path, size=20), tooltip, self)
         else:
             # Use text-only action if icon is missing
             action = QAction(tooltip, self)
@@ -1196,7 +1195,21 @@ class TextEditor(QMainWindow):
                 if not file_path.endswith(".docx"):
                     file_path += ".docx"
 
-                # Create a new document
+                # Lazy import document export dependencies
+                try:
+                    import docx  # type: ignore
+                    from htmldocx import HtmlToDocx  # type: ignore
+                except ImportError as e:
+                    show_error_message(
+                        self,
+                        "Export to Word Unavailable",
+                        "Export to Word requires additional packages.\n\n"
+                        "Please install: python-docx and htmldocx\n"
+                        "Run: pip install python-docx htmldocx",
+                    )
+                    logger.warning(f"Word export dependencies not available: {e}")
+                    return
+
                 doc = docx.Document()
 
                 # Clean up HTML for better conversion

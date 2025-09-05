@@ -15,6 +15,7 @@ import logging
 # Removed direct DB import, DatabaseManager will handle updates
 # from app.database import create_connection, update_recording
 from app.path_utils import resource_path
+from app.ui_utils.icon_utils import load_icon
 
 from app.FolderManager import FolderManager  # Keep for folder info
 
@@ -176,8 +177,7 @@ class RecordingListItem(QWidget):
         left_section.setSpacing(4)
         icon_label = QLabel()
         icon_path = self.get_icon_for_file()
-        icon_label.setPixmap(
-            QIcon(resource_path(icon_path)).pixmap(QSize(24, 24)))
+        icon_label.setPixmap(load_icon(resource_path(icon_path), size=24).pixmap(QSize(24, 24)))
         self.status_indicator = StatusIndicator(self)
         self.status_indicator.set_status(
             bool(self.raw_transcript), bool(self.processed_text)

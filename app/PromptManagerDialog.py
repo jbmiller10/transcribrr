@@ -18,6 +18,8 @@ from PyQt6.QtWidgets import (
 from PyQt6.QtCore import Qt
 from PyQt6.QtGui import QIcon
 from app.path_utils import resource_path
+from app.ui_utils.icon_utils import load_icon
+from app.ui_utils.icon_utils import load_icon
 from app.utils import PromptManager
 from app.ui_utils import show_error_message, show_info_message, show_confirmation_dialog
 
@@ -116,10 +118,10 @@ class PromptManagerDialog(QDialog):
 
         self.button_layout = QHBoxLayout()
         self.import_button = QPushButton("Import")
-        self.import_button.setIcon(QIcon(resource_path("icons/import.svg")))
+        self.import_button.setIcon(load_icon("icons/import.svg", size=24))
         self.import_button.clicked.connect(self.import_prompts)
         self.export_button = QPushButton("Export")
-        self.export_button.setIcon(QIcon(resource_path("icons/export.svg")))
+        self.export_button.setIcon(load_icon("icons/export.svg", size=24))
         self.export_button.clicked.connect(self.export_prompts)
         self.cancel_button = QPushButton("Close")
         self.cancel_button.clicked.connect(self.reject)  # Close dialog
@@ -196,14 +198,14 @@ class PromptManagerDialog(QDialog):
 
         button_layout = QHBoxLayout()
         self.add_button = QPushButton("Add New")
-        self.add_button.setIcon(QIcon(resource_path("icons/add.svg")))
+        self.add_button.setIcon(load_icon("icons/add.svg", size=24))
         self.add_button.clicked.connect(self.add_new_prompt)
         self.edit_button = QPushButton("Edit")
-        self.edit_button.setIcon(QIcon(resource_path("icons/edit.svg")))
+        self.edit_button.setIcon(load_icon("icons/edit.svg", size=24))
         self.edit_button.clicked.connect(self.edit_selected_prompt)
         self.edit_button.setEnabled(False)
         self.remove_button = QPushButton("Remove")
-        self.remove_button.setIcon(QIcon(resource_path("icons/delete.svg")))
+        self.remove_button.setIcon(load_icon("icons/delete.svg", size=24))
         self.remove_button.clicked.connect(self.remove_selected_prompt)
         self.remove_button.setEnabled(False)
         button_layout.addWidget(self.add_button)
@@ -226,7 +228,7 @@ class PromptManagerDialog(QDialog):
         self.clear_button.clicked.connect(self.clear_editor)
         # Changed button text - action depends on context (add vs update)
         self.save_edit_button = QPushButton("Save Prompt")
-        self.save_edit_button.setIcon(QIcon(resource_path("icons/save.svg")))
+        self.save_edit_button.setIcon(load_icon("icons/save.svg", size=24))
         self.save_edit_button.clicked.connect(self.save_edited_prompt_from_tab)
         button_layout.addWidget(self.clear_button)
         button_layout.addStretch()

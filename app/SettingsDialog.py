@@ -19,11 +19,20 @@ from PyQt6.QtWidgets import (
 from PyQt6.QtCore import pyqtSignal, Qt, QThread, QTimer
 from PyQt6.QtGui import QIcon
 import logging
-from openai import OpenAI
-import torch
 from threading import Lock
 
+# Lazy import openai when needed
+def _get_openai():
+    """Lazy import OpenAI client."""
+    try:
+        from openai import OpenAI
+        return OpenAI
+    except ImportError:
+        logger.warning("OpenAI library not available")
+        return None
+
 from app.path_utils import resource_path
+from app.ui_utils.icon_utils import load_icon
 from app.utils import ConfigManager, PromptManager
 from app.PromptManagerDialog import PromptManagerDialog
 from app.ThemeManager import ThemeManager
@@ -56,6 +65,10 @@ class OpenAIModelFetcherThread(QThread):
                 self.fetch_error.emit("No API key provided")
                 return
 
+            OpenAI = _get_openai()
+            if not OpenAI:
+                self.fetch_error.emit("OpenAI library not installed")
+                return
             client = OpenAI(api_key=self.api_key)
             response = client.models.list()
 
@@ -283,6 +296,15 @@ class SettingsDialog(QDialog):
                 "openai/whisper-large-v3",
             ]
         )
+        # Set current selection from saved config or default to whisper-small
+        try:
+            from app.constants import DEFAULT_CONFIG
+            default_quality = DEFAULT_CONFIG.get("transcription_quality", "openai/whisper-small")
+            idx = self.transcription_quality_dropdown.findText(default_quality)
+            if idx >= 0:
+                self.transcription_quality_dropdown.setCurrentIndex(idx)
+        except Exception:
+            pass
         quality_info = QLabel(
             "Larger models are more accurate but slower & require more memory."
         )
@@ -332,6 +354,8 @@ class SettingsDialog(QDialog):
 
         # Check available hardware
         try:
+            # Lazy import torch only when checking hardware
+            import torch
             has_cuda = torch.cuda.is_available()
             has_mps = (
                 hasattr(torch.backends,
@@ -354,7 +378,7 @@ class SettingsDialog(QDialog):
                 accel_tooltip = "No hardware acceleration detected. CPU will be used."
 
             self.hw_accel_checkbox.setToolTip(accel_tooltip)
-        except Exception:
+        except (ImportError, Exception):
             # Handle case where torch might not be properly installed
             logger.warning(
                 "Could not check hardware acceleration availability.")
@@ -461,8 +485,7 @@ class SettingsDialog(QDialog):
         prompts_layout = QVBoxLayout(prompts_group)
         self.manage_prompts_button = QPushButton("Manage Prompt Templates")
         self.manage_prompts_button.clicked.connect(self.open_prompt_manager)
-        self.manage_prompts_button.setIcon(
-            QIcon(resource_path("icons/edit.svg")))
+        self.manage_prompts_button.setIcon(load_icon("icons/edit.svg", size=24))
         prompts_layout.addWidget(self.manage_prompts_button)
         gpt_layout.addWidget(prompts_group)
         gpt_layout.addStretch()
@@ -517,6 +540,7 @@ class SettingsDialog(QDialog):
                 )
 
                 # Check if MPS is the only available hardware - only then we need to disable speaker detection
+                import torch
                 has_cuda = torch.cuda.is_available()
                 has_mps = (
                     hasattr(torch.backends,
@@ -526,7 +550,7 @@ class SettingsDialog(QDialog):
                 # Only disable speaker detection for MPS-only devices with hardware acceleration enabled
                 mps_only_device = has_mps and not has_cuda
                 disable_for_hw = hw_accel_enabled and mps_only_device
-            except Exception:
+            except (ImportError, Exception):
                 logger.warning(
                     "Error checking hardware status, assuming standard operation"
                 )
@@ -665,6 +689,7 @@ class SettingsDialog(QDialog):
             # Check for incompatibilities between hardware acceleration and speaker detection
             try:
                 # Only check for MPS-only devices (no CUDA)
+                import torch
                 has_cuda = torch.cuda.is_available()
                 has_mps = (
                     hasattr(torch.backends,
@@ -676,7 +701,7 @@ class SettingsDialog(QDialog):
                 if mps_only and self.hw_accel_checkbox.isChecked():
                     self.speaker_detection_checkbox.setChecked(False)
                     self.speaker_detection_checkbox.setEnabled(False)
-            except Exception as e:
+            except (ImportError, Exception) as e:
                 logger.warning(f"Error checking hardware compatibility: {e}")
 
             # GPT settings
