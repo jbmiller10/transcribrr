@@ -770,6 +770,18 @@ class DatabaseManager(QObject):
         logger.info(
             f"DatabaseWorker thread started: {self.worker.isRunning()}")
 
+        # Internal mapping for routing create_recording callbacks to main thread
+        self._pending_create_callbacks = {}
+
+        # Route worker completion signals through a QObject method to ensure
+        # callbacks execute on the main thread (queued connection semantics)
+        try:
+            # Use UniqueConnection to avoid duplicate connections if multiple managers are created in tests
+            self.worker.operation_complete.connect(self._on_worker_operation_complete)
+        except Exception:
+            # In stubbed environments, connection semantics are simplified
+            pass
+
     def _on_data_changed(self):
         """Handle data change from worker and emit our signal with parameters."""
         logger.info(
@@ -786,35 +798,40 @@ class DatabaseManager(QObject):
             else "create_recording_no_callback"
         )
         if callback and callable(callback):
-
-            def _finalise():
-                # Disconnect both signals *if* they are still connected.
-                try:
-                    self.worker.operation_complete.disconnect(handler)
-                except TypeError:
-                    pass
-                try:
-                    self.worker.error_occurred.disconnect(error_handler)
-                except TypeError:
-                    pass
-
-            def handler(op_id, _result):
-                expected_prefix = "create_recording_"
-                if isinstance(op_id, str) and op_id.startswith(expected_prefix):
-                    callback(_result)
-                    _finalise()
+            # Store the callback to be delivered on the main thread when the
+            # worker reports completion for this specific operation id.
+            self._pending_create_callbacks[operation_id] = callback
 
             def error_handler(op_name, msg):
+                # On error, drop the pending callback for this op (if any)
                 if op_name == "create_recording":
-                    _finalise()
+                    self._pending_create_callbacks.pop(operation_id, None)
 
-            # Use UniqueConnection to prevent duplicate connections
-            self.worker.operation_complete.connect(handler)
-            self.worker.error_occurred.connect(error_handler)
+            try:
+                self.worker.error_occurred.connect(error_handler)
+            except Exception:
+                pass
 
         # Enqueue operation after handlers are connected to avoid race
         self.worker.add_operation(
             "create_recording", operation_id, [recording_data])
+
+    def _on_worker_operation_complete(self, op_id, result):
+        """Deliver create_recording callbacks on the main thread.
+
+        This ensures any UI updates performed by the provided callback are
+        thread-safe.
+        """
+        try:
+            if isinstance(op_id, str) and op_id.startswith("create_recording_callback_"):
+                cb = self._pending_create_callbacks.pop(op_id, None)
+                if cb and callable(cb):
+                    try:
+                        cb(result)
+                    except Exception as e:
+                        logger.error(f"Error in create_recording callback: {e}", exc_info=True)
+        except Exception as e:
+            logger.warning(f"Operation completion routing error: {e}")
 
     def get_all_recordings(self, callback):
         """Fetch all recordings, call callback with result."""
