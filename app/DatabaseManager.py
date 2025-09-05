@@ -26,24 +26,20 @@ import queue
 from types import ModuleType
 import sys
 import threading
+import os as _os
 
-force_stubs = False
+# Allow forcing stubs in headless CI by setting an env var
+force_stubs = _os.environ.get("TRANSCRIBRR_USE_QT_STUBS") == "1"
 try:
-    # Try importing QtCore. If available but there's no QCoreApplication instance,
-    # we prefer light-weight stubs so unit tests don't need a running event loop.
-    from PyQt6.QtCore import (  # type: ignore
-        QObject as _QtQObject,
-        pyqtSignal as _QtPyqtSignal,
-        QThread as _QtQThread,
-        QMutex as _QtQMutex,
-        Qt as _QtQt,
-        QCoreApplication as _QtQCoreApplication,
-    )
-
-    if _QtQCoreApplication.instance() is None:
-        # Qt installed but no event loop – use stubs for direct, synchronous signals
-        force_stubs = True
-    else:  # Real Qt with app instance – use the real symbols
+    if not force_stubs:
+        # Prefer real Qt bindings if importable; safe to use before app instance exists
+        from PyQt6.QtCore import (  # type: ignore
+            QObject as _QtQObject,
+            pyqtSignal as _QtPyqtSignal,
+            QThread as _QtQThread,
+            QMutex as _QtQMutex,
+            Qt as _QtQt,
+        )
         QObject = _QtQObject  # type: ignore
         pyqtSignal = _QtPyqtSignal  # type: ignore
         QThread = _QtQThread  # type: ignore
@@ -60,7 +56,7 @@ if force_stubs:
         def __init__(self):
             self._slots = []
 
-        def connect(self, fn):  # noqa: ANN001
+        def connect(self, fn, *args, **kwargs):  # noqa: ANN001
             if fn not in self._slots:
                 self._slots.append(fn)
 
